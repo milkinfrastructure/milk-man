@@ -5,7 +5,7 @@
     {
       "name": "milk-churn",
       "url": "https://github.com/milkinfrastructure/milk-churn",
-      "base_commit": "5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853",
+      "base_commit": "38bb2977a71b549f1456203d9f2e03bc82dbe1f8",
       "branch": "codex/local-agent-proof"
     }
   ],

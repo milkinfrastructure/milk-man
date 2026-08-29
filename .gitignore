@@ -36,7 +36,11 @@ out.html
 packages/coding-agent/binaries/
 todo.md
 plans/
-.prime/agent/
+.prime/agent/*
+!.prime/agent/skills/
+.prime/agent/skills/*
+!.prime/agent/skills/milk-system/
+!.prime/agent/skills/milk-system/SKILL.md
 collect.sh
 .kernel-venv/
 .worktrees/
