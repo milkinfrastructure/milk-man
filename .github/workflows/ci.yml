@@ -63,6 +63,11 @@ jobs:
       - name: Check
         run: npm run check
 
+      - name: Check Milk job bridge
+        env:
+          PYTHONPATH: .prime/agent/skills/milk-jobs/src
+        run: python3 -m unittest discover -s .prime/agent/skills/milk-jobs/tests -p 'test_*.py'
+
   test:
     name: Test (${{ matrix.name }})
     needs: trust
