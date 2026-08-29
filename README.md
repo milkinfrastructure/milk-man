@@ -1,38 +1,43 @@
 <p align="center">
-  <a href="https://primeintellect.ai">
-    <picture>
-      <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/40c36e38-c5bd-4c5a-9cb3-f7b902cd155d">
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/6414bc9b-126b-41ca-9307-9e982430cde8">
-      <img alt="Prime Intellect" src="https://github.com/user-attachments/assets/6414bc9b-126b-41ca-9307-9e982430cde8" width="312" style="max-width: 100%;">
-    </picture>
-  </a>
+  <img alt="Milk pixel carton" src="assets/milk/milk-carton.png" width="128">
 </p>
 
 <h3 align="center">
-Prime Agent: A Self-Improving RLM Harness
+Milk Churn
 </h3>
 
 <p align="center">
-  <a href="packages/coding-agent/docs/index.md">Documentation</a> &bull;
-  <a href="https://github.com/PrimeIntellect-ai/verifiers">Verifiers</a> &bull;
-  <a href="https://github.com/PrimeIntellect-ai/prime-rl">PRIME-RL</a>
+  Milk's local self-iterating coding and research agent
 </p>
 
 <p align="center">
-  <a href="https://github.com/PrimeIntellect-ai/prime-agent/actions/workflows/ci.yml">
-    <img src="https://github.com/PrimeIntellect-ai/prime-agent/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <a href="docs/milk-churn-transition.md">Milk system boundary</a> &bull;
+  <a href="packages/coding-agent/docs/index.md">Documentation</a> &bull;
+  <a href="https://github.com/PrimeIntellect-ai/prime-agent">Upstream</a>
+</p>
+
+Milk Churn is the Milk-maintained fork of
+[Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent), pinned initially
+to commit `5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853`. It iterates on trusted local
+checkouts of `milk-gateway` and `milk-harness`; it is not part of the production
+request or object-store path. The executable remains `prime-agent` so upstream
+updates stay reviewable and small.
+
+Milk-specific state is intentionally limited to a project skill, a portable
+task schema, model configuration examples, and documentation. Existing Prime
+Agent goals, schedules, subagents, autonomous gates, and session storage do the
+work. Cloud deploys, paid calls, route signing, and route publication remain
+separate operator actions.
+
+<p align="center">
+  <a href="https://github.com/milkinfrastructure/milk-churn/actions/workflows/ci.yml">
+    <img src="https://github.com/milkinfrastructure/milk-churn/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
-  <a href="https://github.com/PrimeIntellect-ai/prime-agent/actions/workflows/build-binaries.yml">
-    <img src="https://github.com/PrimeIntellect-ai/prime-agent/actions/workflows/build-binaries.yml/badge.svg" alt="Build Binaries" />
+  <a href="https://github.com/milkinfrastructure/milk-churn/actions/workflows/build-binaries.yml">
+    <img src="https://github.com/milkinfrastructure/milk-churn/actions/workflows/build-binaries.yml/badge.svg" alt="Build Binaries" />
   </a>
   <a href="https://arxiv.org/abs/2608.23552">
     <img src="https://img.shields.io/badge/arXiv-2608.23552-b31b1b.svg" alt="arXiv" />
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://trendshift.io/repositories/104249?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-104249" target="_blank" rel="noopener noreferrer">
-    <img src="https://trendshift.io/api/badge/repositories/104249" alt="PrimeIntellect-ai%2Fprime-agent | Trendshift" width="250" height="55" />
   </a>
 </p>
 
@@ -53,13 +58,17 @@ Prime Agent combines a persistent Python control environment with durable harnes
 
 ## Getting Started
 
-Install the latest stable release on macOS or Linux:
+Clone and run the pinned fork from source on macOS or Linux:
 
 ```bash
-curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh
+git clone https://github.com/milkinfrastructure/milk-churn.git
+cd milk-churn
+npm ci
+./prime-agent.sh --version
 ```
 
-The installer downloads a versioned release, verifies its SHA-256 checksum, installs the `prime-agent` command, and can prepare the Python runtime used by the agent.
+See [local Milk execution](docs/milk-local-execution.md) for the bounded task
+handoff, GLM configuration, and disposable-worktree command.
 
 Start Prime Agent from the repository or directory you want it to work in:
 

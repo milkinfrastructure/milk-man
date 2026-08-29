@@ -1,0 +1,41 @@
+{
+  "schema_version": "milk.local-agent-task.v1",
+  "task": "Make one reviewed documentation-only improvement and pass the full local repository gate.",
+  "repositories": [
+    {
+      "name": "milk-churn",
+      "url": "https://github.com/milkinfrastructure/milk-churn",
+      "base_commit": "5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853",
+      "branch": "codex/local-agent-proof"
+    }
+  ],
+  "allowed_paths": {
+    "milk-churn": ["docs/"]
+  },
+  "acceptance": [
+    "Change only a documentation file under docs/.",
+    "Keep the Prime Agent MIT license and upstream provenance unchanged.",
+    "Pass the milk-churn:check gate."
+  ],
+  "gates": ["milk-churn:check"],
+  "limits": {
+    "max_turns": 4,
+    "max_tokens": 20000,
+    "wall_time_seconds": 900,
+    "gate_time_seconds": 300,
+    "max_output_bytes": 262144,
+    "model_spend_microusd": 250000
+  },
+  "permissions": {
+    "agent_model_call": true,
+    "push": false,
+    "cloud_deploy": false,
+    "milk_provider_call": false,
+    "object_write": false,
+    "route_prepare": false,
+    "route_sign": false,
+    "route_publish": false
+  },
+  "config_digests": {},
+  "credential_refs": []
+}
