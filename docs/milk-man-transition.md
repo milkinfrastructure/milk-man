@@ -1,80 +1,84 @@
 # Milk Man transition
 
-Status: implementation decision, 2026-08-29.
+Status: two-product implementation decision, 2026-08-29.
 
 ## Decision
 
-`milkinfrastructure/milk-man` is a fork of Prime Intellect's Prime Agent and
-the local agentic harness for Milk. It picks up reviewed tasks and returns
-tested diffs; it is not a third production service.
+Milk has two products:
 
-Production remains:
+- `milk-carton` is the small Rust data plane. It authenticates operator-issued
+  keys, serves the OpenAI-compatible API, captures admitted traffic, enforces
+  signed routes, and performs bounded fallback.
+- `milk-man` is the agentic harness. It edits trusted checkouts and invokes a
+  small set of deterministic jobs for traffic summaries, classification,
+  readiness, eval generation, and unsigned route proposals.
 
-- `milk-gateway`: Rust request handling, sampling, route selection, and signed
-  route enforcement;
-- `milk-harness`: a deterministic finite job that reads S3-compatible storage,
-  summarizes traffic, invokes a teacher within a fixed budget, generates eval
-  revisions, and writes unsigned route proposals.
+Milk Man uses Prime Agent's existing sessions, goals, schedules, subagents,
+compaction, autonomous gates, and supplemental self-refinement. It does not add
+a Milk database, queue, resident manager, scheduler service, or generic provider
+framework.
 
-Milk Man may edit and test trusted disposable checkouts. It may not become the
-traffic router, storage scheduler, signer, or paid-job manager. Prime Agent
-already supplies sessions, goals, schedules, subagents, compaction, autonomous
-gates, and supplemental self-refinement. Milk will not rebuild them.
+The model may choose among calls admitted by a reviewed task. It cannot supply
+an arbitrary command or change a job's scope, configuration digest, budget,
+credential reference, write target, or route policy. Route signing and route
+publication remain operator-only actions outside Milk Man.
 
-## Current Milk state
+## Implementation checkpoint
 
-The routing and eval-generation milestone is implemented locally but not
-committed or deployed.
+- Milk Carton's routing and capture implementation is checkpointed at
+  `8ce45f3daf3d262eaa77e672ece2aa7918033aed`; its Rust workspace tests passed
+  150 tests on 2026-08-29.
+- The deterministic Python implementation is checkpointed at
+  `07db7b7e472a87d44e0dd62ee32a878d2874b012`. For this migration it remains a
+  temporary implementation bridge behind Milk Man's fixed job call. It is not a
+  third product, service, scheduler, or authority.
+- Milk Man's published pre-stitch checkpoint is
+  `8e6d875fca9c4e3377e9e8ac9aae85c81e3555e3`; its source check and one bounded
+  model-backed disposable-worktree proof passed.
 
-| Repository | Base commit | Working state | Verified 2026-08-29 |
-| --- | --- | --- | --- |
-| `milk-gateway` | `e7ddf254dc996476f9762b7770ddc9e3e06ca322` | `codex/routing-eval-pipeline`; 16 modified files; +2,454/-683 | Rust workspace tests: 150 passed |
-| `milk-harness` | `e01ded36cef1208f8af64eecb9c5ec32a7521ad5` | `codex/routing-eval-pipeline`; 5 modified and 5 untracked files | Python unit tests: 243 passed |
-
-Implemented locally:
-
-- OpenAI Chat Completions and Responses through the Rust gateway;
-- scope-first object keys, deterministic session sampling, and aggregate
-  counters;
-- candidate fallback, a sticky failure fuse, and signed canary/zero routes;
-- one deterministic `python -m milk_harness run-once` pass;
-- bounded summary, classification, readiness, eval-generation, and unsigned
-  proposal stages;
-- a 51-line hourly/manual workflow around the same command;
-- separate production and mechanics configurations.
+The temporary bridge already performs one finite
+`python -m milk_harness run-once` pass: summary, classification, readiness,
+eval generation, and unsigned proposal. Milk Man calls it with operator-pinned
+configuration and credentials. The bridge can be absorbed after the fixed call
+and object-store contract are proven; its repository is not part of the final
+product boundary.
 
 Baseten's hosted `zai-org/GLM-5.3-Flash` endpoint has passed Chat Completions,
-Responses, and exact classifier-wire qualification. Observed qualification
-spend was approximately $0.000072. The key is in the macOS Keychain, not a
-repository.
+Responses, and classifier-wire qualification. Observed qualification spend was
+approximately $0.000072. Provider credentials remain outside repositories and
+object storage.
 
-Still required for production proof:
+Local tests and provider-wire checks do not prove deployment. Production proof
+still requires exact published commits and CI, a current Milk Carton deployment,
+real captured traffic, one completed scheduled Milk Man job, an
+operator-reviewed proposal, signed canary, fallback, signed zero route, and a
+verified zero-GPU finish.
 
-- reviewed commits for both current branches and CI on those exact commits;
-- a current Rust gateway deployment;
-- real production R2 traffic and one completed scheduled pass;
-- an operator-reviewed proposal, signed canary, fallback, signed zero route,
-  and verified zero-GPU finish.
+## Durable memory
 
-Local tests and provider-wire checks do not prove those live steps.
+Milk Carton and Milk Man share one scope-first object contract. Traffic, job
+claims and results, summaries, eval revisions, unsigned proposals, and route
+versions are durable objects. Immutable objects identify their inputs; small
+head pointers may move only through conditional writes. Live REPL state and
+scratch files are disposable. Credentials and signing keys are never objects.
 
-## Production flow
+The supported storage modes are local filesystem and qualified S3-compatible
+storage. AWS S3, Cloudflare R2, MinIO, or another implementation is supported
+only after it passes the required create-if-absent, ETag compare-and-swap,
+read-after-write, ordered-prefix-list, and delete semantics. “S3-compatible” is
+not accepted from branding alone.
 
 ```text
 OpenAI SDK traffic
-  -> Rust gateway
-  -> sampled S3-compatible objects
-  -> finite milk-harness run-once job
+  -> Milk Carton
+  -> sampled scope objects
+  -> fixed Milk Man job call
   -> summary and readiness decision
   -> teacher-generated eval revision
   -> unsigned route proposal
-  -> operator signing
-  -> Rust gateway route
+  -> operator signing and publication
+  -> Milk Carton route
 ```
-
-Object storage is the durable index. Immutable objects name their inputs; only
-small current pointers move with conditional writes. There is no production
-database, queue, resident workflow manager, or model-driven planner.
 
 ## Upstream provenance
 
@@ -117,9 +121,9 @@ Migrate one reviewed task document conforming to
 [`milk/task.schema.json`](../milk/task.schema.json). It contains exact base
 commits, intended branches, allowed paths, acceptance text, fixed gate IDs,
 limits, configuration hashes, non-secret credential references, and explicit
-permissions. The task may admit its bounded agent-model calls while push,
-deploy, Milk-side provider calls, object writes, and route publication default
-to false.
+permissions. A task can admit a bounded agent-model call or one fixed Milk job
+call. Push, deploy, provider calls, object writes, route preparation, signing,
+and publication remain separate permissions and default to false.
 
 Do not migrate the Codex transcript, hidden reasoning, raw credentials,
 browser sessions, shell history, memory folders, production prompts or
@@ -128,20 +132,21 @@ responses, signing keys, implicit approvals, or an unreviewed dirty checkout.
 ## Minimum local loop
 
 1. Review the task document and verify exact clean base commits.
-2. Create disposable worktrees for the admitted repositories.
+2. Create disposable worktrees for the admitted Milk Carton or Milk Man
+   repositories.
 3. Run the pinned Milk Man source against those worktrees.
 4. Load only the Milk project skill and trusted repository context.
-5. Let Prime Agent edit within the task and run the fixed local gates.
+5. Let Prime Agent edit within the task and run the fixed local gates, or invoke
+   the one admitted fixed job call.
 6. Stop on success or declared turn, time, token, or spend limits.
 7. Return a reviewable diff and bounded test result.
-8. Keep commit, push, cloud deploy, spend, signing, and publication as separate
-   operator actions.
+8. Keep commit, push, cloud deploy, provider spend, object writes, signing, and
+   publication as separately admitted operator actions.
 
 Local deployment means a checked-in fixed command such as launching a temporary
-Rust gateway and running the official SDK smoke. Cloud deployment is separate.
-No new Rust orchestration framework is required: Milk Man calls existing Rust
-CLI and HTTP contracts. Add Rust only when an operation cannot be expressed by
-an existing typed command.
+Milk Carton and running the official SDK smoke. Cloud deployment is separate.
+No new Rust orchestration framework is required: Milk Man calls existing typed
+commands and HTTP contracts.
 
 Self-refinement may update supplemental prompts, task guidance, or skills. It
 may not alter the immutable base prompt, task limits, secret mapping, gate
@@ -160,8 +165,7 @@ integer scaling. Do not add gradients, smoothing, or unrelated Exo artwork.
 
 ## Stop point
 
-This milestone ends after the fork is published, source checks pass, and one
-disposable local agent run completes. Its receipt is recorded in
-[`local-proof-receipt.md`](local-proof-receipt.md). Production deployment
-resumes only after the existing gateway and harness branches are reviewed and
-committed.
+The fork, source check, and disposable local agent proof are recorded in
+[`local-proof-receipt.md`](local-proof-receipt.md). The next milestone ends only
+when the fixed Milk Man job call and Milk Carton object contract pass locally
+and on exact published commits. Production proof remains a separate live gate.

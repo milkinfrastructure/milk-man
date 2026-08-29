@@ -5,7 +5,7 @@
     {
       "name": "milk-man",
       "url": "https://github.com/milkinfrastructure/milk-man",
-      "base_commit": "a55c149288b268d226790f9766f8f14ad4548656",
+      "base_commit": "8e6d875fca9c4e3377e9e8ac9aae85c81e3555e3",
       "branch": "codex/local-agent-proof"
     }
   ],
@@ -28,6 +28,7 @@
   },
   "permissions": {
     "agent_model_call": true,
+    "milk_job_call": false,
     "push": false,
     "cloud_deploy": false,
     "milk_provider_call": false,

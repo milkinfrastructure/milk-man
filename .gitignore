@@ -41,6 +41,8 @@ plans/
 .prime/agent/skills/*
 !.prime/agent/skills/milk-system/
 !.prime/agent/skills/milk-system/SKILL.md
+!.prime/agent/skills/milk-jobs/
+!.prime/agent/skills/milk-jobs/**
 collect.sh
 .kernel-venv/
 .worktrees/

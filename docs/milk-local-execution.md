@@ -1,7 +1,7 @@
 # Local Milk Man execution
 
-Milk Man uses Prime Agent's source runner directly. There is no Milk daemon,
-planner, scheduler, or wrapper service.
+Milk Man uses Prime Agent's source runner, goals, and schedules directly. There
+is no separate Milk daemon, queue, scheduler service, or wrapper service.
 
 ## Build
 
@@ -48,8 +48,27 @@ PRIME_AGENT_CODING_AGENT_DIR=/absolute/private/config \
 ```
 
 The gate shown is only for a Milk Man worktree. Use the exact fixed command
-listed by the Milk skill for a gateway or harness task. The operator chooses
-the command from the admitted gate ID; the model does not construct it.
+listed by the Milk skill for a Milk Carton task. The operator chooses the
+command from the admitted gate ID; the model does not construct it.
+
+## Deterministic jobs
+
+The checked-in `milk-jobs` skill exposes `await milk_jobs.reconcile()` for one
+finite reconciliation pass. It accepts no arguments. `MILK_HARNESS_ROOT` pins
+the checkpointed implementation and `MILK_RUN_ONCE_CONFIG` pins the reviewed
+configuration. The model cannot supply a shell command, path, configuration,
+budget, credential, scope, or write target.
+
+During migration, that call executes the checkpointed
+`python -m milk_harness run-once` implementation. This is an implementation
+bridge, not a third Milk product or service. A Prime Agent schedule may re-enter
+the reviewed task and invoke the same call; scheduling does not expand its
+permissions.
+
+Durable inputs and outputs belong in local or qualified S3-compatible object
+storage. AWS S3, Cloudflare R2, and MinIO are admitted only after the backend
+passes the object contract. Session state and scratch files are local and
+disposable. Secrets and signing keys stay outside object storage.
 
 Prime Agent runs generated code with the user's permissions and is not a
 security sandbox. Use a disposable trusted worktree. A production-grade broker
@@ -58,7 +77,8 @@ reason to build another framework now.
 
 ## Result
 
-A successful local run yields a diff and passing gate. It does not commit,
-push, deploy to cloud, spend outside the declared model limit, write remote
-objects, sign a route, or publish a route. Those remain explicit operator
-actions.
+A successful coding run yields a diff and passing gate. A successful job call
+yields a bounded result backed by object-store artifacts. Neither result proves
+a deployment. Commit, push, cloud deploy, provider calls, remote object writes,
+route preparation, signing, and publication require their own admitted
+permissions.

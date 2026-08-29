@@ -19,17 +19,21 @@ Milk Man
 
 Milk Man is the Milk-maintained fork of
 [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent), pinned initially
-to commit `5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853`. It picks up a reviewed task,
-iterates on trusted local checkouts of `milk-gateway` and `milk-harness`, and
-delivers a tested diff. It is not part of the production request or object-store
-path. The executable remains `prime-agent` so upstream updates stay reviewable
-and small.
+to commit `5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853`. It edits and tests trusted
+`milk-man` and `milk-carton` checkouts, and runs admitted deterministic Milk jobs
+through fixed Python calls. The executable remains `prime-agent` so upstream
+updates stay reviewable and small.
 
 Milk-specific state is intentionally limited to a project skill, a portable
-task schema, model configuration examples, and documentation. Existing Prime
-Agent goals, schedules, subagents, autonomous gates, and session storage do the
-work. Cloud deploys, paid calls, route signing, and route publication remain
-separate operator actions.
+task schema, model configuration examples, and documentation. Milk Carton is
+the Rust request and routing data plane. Local or qualified S3-compatible object
+storage is durable system memory; secrets and signing keys never enter it.
+Existing Prime Agent goals, schedules, subagents, autonomous gates, and session
+storage coordinate the work. A model may select an admitted job call, but it
+cannot change that job's scope, configuration, budget, write target, or signing
+boundary. Cloud deploys, paid calls, route signing, and route publication remain
+separate operator actions unless the reviewed task explicitly admits the exact
+action.
 
 <p align="center">
   <a href="https://github.com/milkinfrastructure/milk-man/actions/workflows/ci.yml">

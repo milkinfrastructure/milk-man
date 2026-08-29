@@ -1,6 +1,6 @@
 ---
 name: milk-system
-description: Work on the Milk Rust gateway, deterministic object-store harness, or Milk Man fork. Use for local implementation, testing, and review of Milk tasks.
+description: Work on the Milk Carton Rust data plane or Milk Man agentic harness. Use for local implementation, testing, and review of Milk tasks.
 license: MIT
 ---
 
@@ -12,27 +12,34 @@ checkout is dirty or its commit differs from the task.
 
 ## Boundaries
 
-- `milk-gateway` owns the OpenAI-compatible Rust request path, sampling, route
-  selection, and signed route enforcement.
-- `milk-harness` owns deterministic finite S3-compatible summary, classifier,
-  readiness, eval-generation, and unsigned proposal jobs.
-- Milk Man owns local coding iteration only.
-- Do not add a database, queue, resident manager, scheduler, planner, generic
+- Milk Carton owns operator-issued-key authentication, the OpenAI-compatible
+  Rust request path, sampling, route selection, fallback, and signed route
+  enforcement.
+- Milk Man owns local coding iteration and admitted deterministic summary,
+  classifier, readiness, eval-generation, and unsigned-proposal job calls.
+- The checkpointed `milk_harness run-once` executable is a temporary
+  implementation behind argument-free `milk_jobs.reconcile()`, not a third
+  product or service.
+- Durable state belongs in local or qualified S3-compatible object storage.
+  Never store credentials or signing keys there.
+- Do not add a database, queue, resident manager, scheduler service, generic
   provider layer, or Rust agent framework.
 - Do not read browser state, memory folders, Keychain, SSH configuration,
   `.env` files, production traffic, or raw credentials.
-- The configured agent model may run only within the task's model budget. Do
-  not make separate Milk provider calls, push, deploy to cloud, write remote
-  objects, sign routes, or publish routes unless the task explicitly enables
-  that exact action. A local task normally enables none of them.
+- The configured agent model may run only within the task's model budget. A
+  fixed Milk job may run only when `milk_job_call` is admitted. Do not make a
+  Milk provider call, push, deploy to cloud, write remote objects, prepare a
+  route, sign, or publish unless the task separately enables that exact action.
+  A local coding task normally enables none of them.
+- Never pass a model-provided command, path, configuration, scope, budget,
+  credential, or write target to a Milk job.
 - Never interpret a passing local gate as a live deployment result.
 
 ## Fixed local gates
 
 Only use the gate selected by the task:
 
-- `milk-gateway:test`: `cargo +1.95.0 test --locked --workspace`
-- `milk-harness:test`: `python3 -m unittest discover -s milk_harness -p 'test_*.py'`
+- `milk-carton:test`: `cargo +1.95.0 test --locked --offline --workspace --all-targets`
 - `milk-man:check`: `npm run check`
 
 Run from the named repository root. Do not alter a gate command or replace a

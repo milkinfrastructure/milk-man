@@ -22,7 +22,7 @@
     "repositories": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 3,
+      "maxItems": 2,
       "uniqueItems": true,
       "items": {
         "type": "object",
@@ -30,11 +30,11 @@
         "required": ["name", "url", "base_commit", "branch"],
         "properties": {
           "name": {
-            "enum": ["milk-gateway", "milk-harness", "milk-man"]
+            "enum": ["milk-carton", "milk-man"]
           },
           "url": {
             "type": "string",
-            "pattern": "^https://github\\.com/milkinfrastructure/milk-(gateway|harness|man)(\\.git)?$"
+            "pattern": "^https://github\\.com/milkinfrastructure/milk-(carton|man)(\\.git)?$"
           },
           "base_commit": {
             "type": "string",
@@ -50,9 +50,9 @@
     "allowed_paths": {
       "type": "object",
       "minProperties": 1,
-      "maxProperties": 3,
+      "maxProperties": 2,
       "propertyNames": {
-        "enum": ["milk-gateway", "milk-harness", "milk-man"]
+        "enum": ["milk-carton", "milk-man"]
       },
       "additionalProperties": {
         "type": "array",
@@ -73,12 +73,11 @@
     "gates": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 3,
+      "maxItems": 2,
       "uniqueItems": true,
       "items": {
         "enum": [
-          "milk-gateway:test",
-          "milk-harness:test",
+          "milk-carton:test",
           "milk-man:check"
         ]
       }
@@ -128,6 +127,7 @@
       "additionalProperties": false,
       "required": [
         "agent_model_call",
+        "milk_job_call",
         "push",
         "cloud_deploy",
         "milk_provider_call",
@@ -138,6 +138,7 @@
       ],
       "properties": {
         "agent_model_call": { "type": "boolean" },
+        "milk_job_call": { "type": "boolean" },
         "push": { "type": "boolean" },
         "cloud_deploy": { "type": "boolean" },
         "milk_provider_call": { "type": "boolean" },
