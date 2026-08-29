@@ -1,6 +1,7 @@
 # Disposable local proof receipt
 
-Run: 2026-08-29, model-backed Milk Churn source execution.
+Run: 2026-08-29, model-backed fork source execution under its initial working
+name, Milk Churn.
 
 - source commit: `b464e2fc63f912ee128643359bcbeb37cd5a0344`;
 - source mode: detached disposable Git worktree;

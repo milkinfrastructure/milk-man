@@ -3,7 +3,7 @@
 </p>
 
 <h3 align="center">
-Milk Churn
+Milk Creamery
 </h3>
 
 <p align="center">
@@ -11,12 +11,12 @@ Milk Churn
 </p>
 
 <p align="center">
-  <a href="docs/milk-churn-transition.md">Milk system boundary</a> &bull;
+  <a href="docs/milk-creamery-transition.md">Milk system boundary</a> &bull;
   <a href="packages/coding-agent/docs/index.md">Documentation</a> &bull;
   <a href="https://github.com/PrimeIntellect-ai/prime-agent">Upstream</a>
 </p>
 
-Milk Churn is the Milk-maintained fork of
+Milk Creamery is the Milk-maintained fork of
 [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent), pinned initially
 to commit `5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853`. It iterates on trusted local
 checkouts of `milk-gateway` and `milk-harness`; it is not part of the production
@@ -30,11 +30,11 @@ work. Cloud deploys, paid calls, route signing, and route publication remain
 separate operator actions.
 
 <p align="center">
-  <a href="https://github.com/milkinfrastructure/milk-churn/actions/workflows/ci.yml">
-    <img src="https://github.com/milkinfrastructure/milk-churn/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <a href="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/ci.yml">
+    <img src="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
-  <a href="https://github.com/milkinfrastructure/milk-churn/actions/workflows/build-binaries.yml">
-    <img src="https://github.com/milkinfrastructure/milk-churn/actions/workflows/build-binaries.yml/badge.svg" alt="Build Binaries" />
+  <a href="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/build-binaries.yml">
+    <img src="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/build-binaries.yml/badge.svg" alt="Build Binaries" />
   </a>
   <a href="https://arxiv.org/abs/2608.23552">
     <img src="https://img.shields.io/badge/arXiv-2608.23552-b31b1b.svg" alt="arXiv" />
@@ -61,8 +61,8 @@ Prime Agent combines a persistent Python control environment with durable harnes
 Clone and run the pinned fork from source on macOS or Linux:
 
 ```bash
-git clone https://github.com/milkinfrastructure/milk-churn.git
-cd milk-churn
+git clone https://github.com/milkinfrastructure/milk-creamery.git
+cd milk-creamery
 npm ci
 ./prime-agent.sh --version
 ```
