@@ -12,6 +12,7 @@ Milk Creamery
 
 <p align="center">
   <a href="docs/milk-creamery-transition.md">Milk system boundary</a> &bull;
+  <a href="docs/local-proof-receipt.md">Local proof</a> &bull;
   <a href="packages/coding-agent/docs/index.md">Documentation</a> &bull;
   <a href="https://github.com/PrimeIntellect-ai/prime-agent">Upstream</a>
 </p>
@@ -34,7 +35,7 @@ separate operator actions.
     <img src="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
   <a href="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/build-binaries.yml">
-    <img src="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/build-binaries.yml/badge.svg" alt="Build Binaries" />
+    <img src="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/build-binaries.yml/badge.svg" alt="Release" />
   </a>
   <a href="https://arxiv.org/abs/2608.23552">
     <img src="https://img.shields.io/badge/arXiv-2608.23552-b31b1b.svg" alt="arXiv" />
