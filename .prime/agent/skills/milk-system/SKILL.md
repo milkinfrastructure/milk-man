@@ -1,6 +1,6 @@
 ---
 name: milk-system
-description: Work on the Milk Rust gateway, deterministic object-store harness, or Milk Creamery fork. Use for local implementation, testing, and review of Milk tasks.
+description: Work on the Milk Rust gateway, deterministic object-store harness, or Milk Man fork. Use for local implementation, testing, and review of Milk tasks.
 license: MIT
 ---
 
@@ -16,7 +16,7 @@ checkout is dirty or its commit differs from the task.
   selection, and signed route enforcement.
 - `milk-harness` owns deterministic finite S3-compatible summary, classifier,
   readiness, eval-generation, and unsigned proposal jobs.
-- Milk Creamery owns local coding iteration only.
+- Milk Man owns local coding iteration only.
 - Do not add a database, queue, resident manager, scheduler, planner, generic
   provider layer, or Rust agent framework.
 - Do not read browser state, memory folders, Keychain, SSH configuration,
@@ -33,7 +33,7 @@ Only use the gate selected by the task:
 
 - `milk-gateway:test`: `cargo +1.95.0 test --locked --workspace`
 - `milk-harness:test`: `python3 -m unittest discover -s milk_harness -p 'test_*.py'`
-- `milk-creamery:check`: `npm run check`
+- `milk-man:check`: `npm run check`
 
 Run from the named repository root. Do not alter a gate command or replace a
 failure with a narrower test. Return the exit code, duration, bounded failure

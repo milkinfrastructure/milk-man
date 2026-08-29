@@ -3,26 +3,27 @@
 </p>
 
 <h3 align="center">
-Milk Creamery
+Milk Man
 </h3>
 
 <p align="center">
-  Milk's local self-iterating coding and research agent
+  Milk's local self-iterating agentic harness
 </p>
 
 <p align="center">
-  <a href="docs/milk-creamery-transition.md">Milk system boundary</a> &bull;
+  <a href="docs/milk-man-transition.md">Milk system boundary</a> &bull;
   <a href="docs/local-proof-receipt.md">Local proof</a> &bull;
   <a href="packages/coding-agent/docs/index.md">Documentation</a> &bull;
   <a href="https://github.com/PrimeIntellect-ai/prime-agent">Upstream</a>
 </p>
 
-Milk Creamery is the Milk-maintained fork of
+Milk Man is the Milk-maintained fork of
 [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent), pinned initially
-to commit `5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853`. It iterates on trusted local
-checkouts of `milk-gateway` and `milk-harness`; it is not part of the production
-request or object-store path. The executable remains `prime-agent` so upstream
-updates stay reviewable and small.
+to commit `5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853`. It picks up a reviewed task,
+iterates on trusted local checkouts of `milk-gateway` and `milk-harness`, and
+delivers a tested diff. It is not part of the production request or object-store
+path. The executable remains `prime-agent` so upstream updates stay reviewable
+and small.
 
 Milk-specific state is intentionally limited to a project skill, a portable
 task schema, model configuration examples, and documentation. Existing Prime
@@ -31,11 +32,11 @@ work. Cloud deploys, paid calls, route signing, and route publication remain
 separate operator actions.
 
 <p align="center">
-  <a href="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/ci.yml">
-    <img src="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <a href="https://github.com/milkinfrastructure/milk-man/actions/workflows/ci.yml">
+    <img src="https://github.com/milkinfrastructure/milk-man/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
-  <a href="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/build-binaries.yml">
-    <img src="https://github.com/milkinfrastructure/milk-creamery/actions/workflows/build-binaries.yml/badge.svg" alt="Release" />
+  <a href="https://github.com/milkinfrastructure/milk-man/actions/workflows/build-binaries.yml">
+    <img src="https://github.com/milkinfrastructure/milk-man/actions/workflows/build-binaries.yml/badge.svg" alt="Release" />
   </a>
   <a href="https://arxiv.org/abs/2608.23552">
     <img src="https://img.shields.io/badge/arXiv-2608.23552-b31b1b.svg" alt="arXiv" />
@@ -62,8 +63,8 @@ Prime Agent combines a persistent Python control environment with durable harnes
 Clone and run the pinned fork from source on macOS or Linux:
 
 ```bash
-git clone https://github.com/milkinfrastructure/milk-creamery.git
-cd milk-creamery
+git clone https://github.com/milkinfrastructure/milk-man.git
+cd milk-man
 npm ci
 ./prime-agent.sh --version
 ```

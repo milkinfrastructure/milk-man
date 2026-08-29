@@ -1,6 +1,6 @@
 # Third-party model notices
 
-Milk Creamery is software derived from Prime Agent and is licensed under the
+Milk Man is software derived from Prime Agent and is licensed under the
 repository's MIT `LICENSE`. Model licenses remain separate.
 
 ## GLM-5.3
@@ -12,8 +12,8 @@ The custom GLM-5.3 license is preserved at
 
 That license applies when its covered weights, parameters, configuration,
 inference or training code, or documentation are copied or distributed. Milk
-Creamery does not currently include those artifacts. Calling a hosted GLM-5.3
-endpoint does not change Milk Creamery's software license.
+Man does not currently include those artifacts. Calling a hosted GLM-5.3
+endpoint does not change Milk Man's software license.
 
 ## GLM-5.3-Flash
 

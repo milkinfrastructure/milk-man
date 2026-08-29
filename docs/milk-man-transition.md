@@ -1,12 +1,12 @@
-# Milk Creamery transition
+# Milk Man transition
 
 Status: implementation decision, 2026-08-29.
 
 ## Decision
 
-`milkinfrastructure/milk-creamery` is a fork of Prime Intellect's Prime Agent and
-the local coding and research agent for Milk. It is not a third production
-service.
+`milkinfrastructure/milk-man` is a fork of Prime Intellect's Prime Agent and
+the local agentic harness for Milk. It picks up reviewed tasks and returns
+tested diffs; it is not a third production service.
 
 Production remains:
 
@@ -16,8 +16,8 @@ Production remains:
   summarizes traffic, invokes a teacher within a fixed budget, generates eval
   revisions, and writes unsigned route proposals.
 
-Milk Creamery may edit and test trusted disposable checkouts. It may not become
-the traffic router, storage scheduler, signer, or paid-job manager. Prime Agent
+Milk Man may edit and test trusted disposable checkouts. It may not become the
+traffic router, storage scheduler, signer, or paid-job manager. Prime Agent
 already supplies sessions, goals, schedules, subagents, compaction, autonomous
 gates, and supplemental self-refinement. Milk will not rebuild them.
 
@@ -93,7 +93,7 @@ The pinned upstream dependency audit currently reports three advisories: a
 high-severity `extract-zip` path-traversal advisory with no npm-proposed fix, a
 high-severity transitive `nanoid` zero-size loop advisory with a fix available,
 and a moderate transitive `protobufjs` parser loop advisory with a fix
-available. Milk Creamery is limited to trusted disposable repositories for this
+available. Milk Man is limited to trusted disposable repositories for this
 milestone. Do not present it as a sandbox or run untrusted packages until the
 archive path is removed, replaced, or fixed upstream.
 
@@ -101,7 +101,7 @@ archive path is removed, replaced, or fixed upstream.
 
 Repository software and model artifacts are licensed separately.
 
-- Milk Creamery preserves Prime Agent's MIT license and notices.
+- Milk Man preserves Prime Agent's MIT license and notices.
 - The custom GLM-5.3 license applies when covered GLM-5.3 weights,
   configuration, code, or documentation are copied or distributed.
 - GLM-5.3-Flash is MIT at the pinned source revision.
@@ -129,7 +129,7 @@ responses, signing keys, implicit approvals, or an unreviewed dirty checkout.
 
 1. Review the task document and verify exact clean base commits.
 2. Create disposable worktrees for the admitted repositories.
-3. Run the pinned Milk Creamery source against those worktrees.
+3. Run the pinned Milk Man source against those worktrees.
 4. Load only the Milk project skill and trusted repository context.
 5. Let Prime Agent edit within the task and run the fixed local gates.
 6. Stop on success or declared turn, time, token, or spend limits.
@@ -139,7 +139,7 @@ responses, signing keys, implicit approvals, or an unreviewed dirty checkout.
 
 Local deployment means a checked-in fixed command such as launching a temporary
 Rust gateway and running the official SDK smoke. Cloud deployment is separate.
-No new Rust orchestration framework is required: Milk Creamery calls existing Rust
+No new Rust orchestration framework is required: Milk Man calls existing Rust
 CLI and HTTP contracts. Add Rust only when an operation cannot be expressed by
 an existing typed command.
 

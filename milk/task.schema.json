@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/milkinfrastructure/milk-creamery/blob/main/milk/task.schema.json",
+  "$id": "https://github.com/milkinfrastructure/milk-man/blob/main/milk/task.schema.json",
   "title": "Milk local agent task",
   "type": "object",
   "additionalProperties": false,
@@ -30,11 +30,11 @@
         "required": ["name", "url", "base_commit", "branch"],
         "properties": {
           "name": {
-            "enum": ["milk-gateway", "milk-harness", "milk-creamery"]
+            "enum": ["milk-gateway", "milk-harness", "milk-man"]
           },
           "url": {
             "type": "string",
-            "pattern": "^https://github\\.com/milkinfrastructure/milk-(gateway|harness|creamery)(\\.git)?$"
+            "pattern": "^https://github\\.com/milkinfrastructure/milk-(gateway|harness|man)(\\.git)?$"
           },
           "base_commit": {
             "type": "string",
@@ -52,7 +52,7 @@
       "minProperties": 1,
       "maxProperties": 3,
       "propertyNames": {
-        "enum": ["milk-gateway", "milk-harness", "milk-creamery"]
+        "enum": ["milk-gateway", "milk-harness", "milk-man"]
       },
       "additionalProperties": {
         "type": "array",
@@ -79,7 +79,7 @@
         "enum": [
           "milk-gateway:test",
           "milk-harness:test",
-          "milk-creamery:check"
+          "milk-man:check"
         ]
       }
     },

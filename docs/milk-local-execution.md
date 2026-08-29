@@ -1,6 +1,6 @@
-# Local Milk Creamery execution
+# Local Milk Man execution
 
-Milk Creamery uses Prime Agent's source runner directly. There is no Milk daemon,
+Milk Man uses Prime Agent's source runner directly. There is no Milk daemon,
 planner, scheduler, or wrapper service.
 
 ## Build
@@ -33,7 +33,7 @@ PRIME_AGENT_CODING_AGENT_DIR=/absolute/private/config \
   --session-dir /absolute/private/sessions \
   --no-extensions \
   --no-skills \
-  --skill /absolute/milk-creamery/.prime/agent/skills/milk-system/SKILL.md \
+  --skill /absolute/milk-man/.prime/agent/skills/milk-system/SKILL.md \
   --no-prompt-templates \
   --no-themes \
   --model milk-teacher/zai-org/GLM-5.3-Flash \
@@ -47,7 +47,7 @@ PRIME_AGENT_CODING_AGENT_DIR=/absolute/private/config \
   @/absolute/reviewed-task.json
 ```
 
-The gate shown is only for a Milk Creamery worktree. Use the exact fixed command
+The gate shown is only for a Milk Man worktree. Use the exact fixed command
 listed by the Milk skill for a gateway or harness task. The operator chooses
 the command from the admitted gate ID; the model does not construct it.
 
