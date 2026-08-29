@@ -1,0 +1,75 @@
+name: Milk Jobs Reconcile
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Run production reconciliation or the isolated mechanics proof
+        type: choice
+        options: [production, mechanics]
+        default: production
+
+concurrency:
+  group: milk-jobs-reconcile
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    name: Reconcile closed traffic windows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: milk-provider-jobs-prod
+    steps:
+      - name: Checkout Milk Man
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Checkout pinned Milk Harness
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: milkinfrastructure/milk-harness
+          ref: 3c4cc68baca632cec0383927bd67c61bf2011659
+          path: milk-harness
+          persist-credentials: false
+
+      - name: Run fixed Milk job
+        env:
+          BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
+          MILK_CONTROL_R2_ACCOUNT_ID: ${{ secrets.MILK_CONTROL_R2_ACCOUNT_ID }}
+          MILK_CONTROL_R2_BUCKET: ${{ secrets.MILK_CONTROL_R2_BUCKET }}
+          MILK_CONTROL_R2_ACCESS_KEY_ID: ${{ secrets.MILK_CONTROL_R2_ACCESS_KEY_ID }}
+          MILK_CONTROL_R2_SECRET_ACCESS_KEY: ${{ secrets.MILK_CONTROL_R2_SECRET_ACCESS_KEY }}
+          MILK_CONTROL_R2_SESSION_TOKEN: ${{ secrets.MILK_CONTROL_R2_SESSION_TOKEN }}
+          MILK_HARNESS_REVISION: 3c4cc68baca632cec0383927bd67c61bf2011659
+          MILK_HARNESS_ROOT: ${{ github.workspace }}/milk-harness
+          MILK_RUN_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'production' }}
+          MILK_RUN_ONCE_CONFIG: ${{ format('{0}/milk-harness/deploy/run-once.{1}.json', github.workspace, github.event_name == 'workflow_dispatch' && inputs.profile || 'production') }}
+          PYTHONPATH: ${{ github.workspace }}/.prime/agent/skills/milk-jobs/src
+        run: |
+          set -eu
+          command -v zstd >/dev/null
+          test "$(git -C "$MILK_HARNESS_ROOT" rev-parse HEAD)" = "$MILK_HARNESS_REVISION"
+          case "$MILK_RUN_PROFILE" in
+            production|mechanics) ;;
+            *) exit 64 ;;
+          esac
+          python3 - <<'PY'
+          import asyncio
+          import json
+
+          import milk_jobs
+
+
+          async def main():
+              report = await milk_jobs.reconcile()
+              print(json.dumps(report, sort_keys=True, separators=(",", ":")))
+
+
+          asyncio.run(main())
+          PY
