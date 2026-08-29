@@ -5,7 +5,7 @@
     {
       "name": "milk-creamery",
       "url": "https://github.com/milkinfrastructure/milk-creamery",
-      "base_commit": "38bb2977a71b549f1456203d9f2e03bc82dbe1f8",
+      "base_commit": "78b5913ffa5f87851e8f608e13587af6541ba743",
       "branch": "codex/local-agent-proof"
     }
   ],
@@ -36,6 +36,13 @@
     "route_sign": false,
     "route_publish": false
   },
-  "config_digests": {},
-  "credential_refs": []
+  "config_digests": {
+    "milk/models.example.json": "095c2003a148900c8c98ba50478f6023b98fdd320d87414d4239b32824ad615f"
+  },
+  "credential_refs": [
+    {
+      "kind": "environment",
+      "name": "BASETEN_API_KEY"
+    }
+  ]
 }
