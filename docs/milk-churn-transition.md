@@ -89,6 +89,14 @@ Prime Agent is a TypeScript/Node application with a Python kernel. It stays
 that way. Rust remains the small always-on Milk data plane; agent execution is
 not latency-sensitive and should follow upstream.
 
+The pinned upstream dependency audit currently reports three advisories: a
+high-severity `extract-zip` path-traversal advisory with no npm-proposed fix, a
+high-severity transitive `nanoid` zero-size loop advisory with a fix available,
+and a moderate transitive `protobufjs` parser loop advisory with a fix
+available. Milk Churn is limited to trusted disposable repositories for this
+milestone. Do not present it as a sandbox or run untrusted packages until the
+archive path is removed, replaced, or fixed upstream.
+
 ## License boundary
 
 Repository software and model artifacts are licensed separately.
@@ -153,5 +161,7 @@ integer scaling. Do not add gradients, smoothing, or unrelated Exo artwork.
 ## Stop point
 
 This milestone ends after the fork is published, source checks pass, and one
-disposable local agent run completes. Production deployment resumes only after
-the existing gateway and harness branches are reviewed and committed.
+disposable local agent run completes. Its receipt is recorded in
+[`local-proof-receipt.md`](local-proof-receipt.md). Production deployment
+resumes only after the existing gateway and harness branches are reviewed and
+committed.
