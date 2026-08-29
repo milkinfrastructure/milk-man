@@ -5,7 +5,7 @@
     {
       "name": "milk-man",
       "url": "https://github.com/milkinfrastructure/milk-man",
-      "base_commit": "78b5913ffa5f87851e8f608e13587af6541ba743",
+      "base_commit": "a55c149288b268d226790f9766f8f14ad4548656",
       "branch": "codex/local-agent-proof"
     }
   ],
