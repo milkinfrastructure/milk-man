@@ -38,6 +38,8 @@ TMP="$STATE/tmp"
 HOME_DIR="$STATE/home"
 VENV="$STATE/kernel-venv"
 ARTIFACTS="$STATE/session-artifacts"
+RUNTIME_TMP="$(mktemp -d /private/tmp/milk-man-runtime.XXXXXXXX)" || die "cannot create short runtime directory"
+chmod 700 "$RUNTIME_TMP"
 WORKTREE_CREATED=0
 
 report_retained_worktree() {
@@ -45,6 +47,9 @@ report_retained_worktree() {
 	if [[ "$WORKTREE_CREATED" -eq 1 ]]; then
 		echo "Retained worktree: $WORKTREE"
 	fi
+	case "$RUNTIME_TMP" in
+		/private/tmp/milk-man-runtime.*) rm -rf -- "$RUNTIME_TMP" ;;
+	esac
 	trap - EXIT
 	exit "$code"
 }
@@ -79,10 +84,10 @@ cp -cR "$ROOT/node_modules" "$WORKTREE/node_modules"
 
 SRT_SETTINGS="$CONTROL/srt.json"
 PYTHON_ROOT="$("$KERNEL_PYTHON" -c 'import os, sys; print(os.path.dirname(os.path.dirname(os.path.realpath(sys.executable))))')"
-node - "$SRT_SETTINGS" "$HOST_HOME" "$ROOT" "$WORKTREE" "$STATE" "$CONTROL" "$VENV" "$PYTHON_ROOT" <<'NODE'
+node - "$SRT_SETTINGS" "$HOST_HOME" "$ROOT" "$WORKTREE" "$STATE" "$CONTROL" "$VENV" "$PYTHON_ROOT" "$RUNTIME_TMP" <<'NODE'
 const fs = require("node:fs");
 const path = require("node:path");
-const [out, home, root, worktree, state, control, venv, pythonRoot] = process.argv.slice(2);
+const [out, home, root, worktree, state, control, venv, pythonRoot, runtimeTmp] = process.argv.slice(2);
 const config = {
 	network: {
 		allowedDomains: [],
@@ -100,23 +105,33 @@ const config = {
 			path.join(control, "refine"),
 			venv,
 			pythonRoot,
+			runtimeTmp,
 		],
 		allowWrite: [
 			worktree,
 			path.join(state, "tmp"),
+			runtimeTmp,
 			path.join(state, "session-artifacts", "**", "kernel-state.dill"),
 			path.join(state, "session-artifacts", "**", "kernel-state.dill.*.tmp"),
 			path.join(state, "session-artifacts", "**", "kernel-state.json"),
 			path.join(state, "session-artifacts", "**", "kernel-state.json.*.tmp"),
 		],
-		denyWrite: [path.join(worktree, ".git"), path.join(worktree, "node_modules"), control, venv],
+		denyWrite: [
+			path.join(worktree, ".git"),
+			path.join(worktree, "node_modules"),
+			path.join(runtimeTmp, "check"),
+			control,
+			venv,
+		],
 	},
 	allowAppleEvents: false,
 };
 fs.writeFileSync(out, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
 NODE
 
-GATE="$CONTROL/check"
+# The autonomous runner treats the gate as a shell command, so keep its path
+# short and space-free. SRT denies the model write access to this exact file.
+GATE="$RUNTIME_TMP/check"
 printf '#!/usr/bin/env bash\ncd %q\nexec env -i PATH=%q HOME=%q TMPDIR=%q CLAUDE_CODE_TMPDIR=%q NO_COLOR=1 %q --settings %q sh -eu -c %q\n' \
 	"$WORKTREE" "${PATH:-/usr/bin:/bin}" "$HOME_DIR" "$TMP" "$TMP" "$ROOT/node_modules/.bin/srt" "$SRT_SETTINGS" \
 	'node_modules/.bin/biome check --error-on-warnings . && node_modules/.bin/tsgo --noEmit && node scripts/check-installer-render.mjs && node scripts/check-browser-smoke.mjs && bash -n milk/self-improve.sh milk/codex-context.sh' >"$GATE"
@@ -130,8 +145,8 @@ env -i \
 	PATH="${PATH:-/usr/bin:/bin}" \
 	LANG="${LANG:-C}" \
 	HOME="$HOME_DIR" \
-	TMPDIR="$TMP" \
-	CLAUDE_CODE_TMPDIR="$TMP" \
+	TMPDIR="$RUNTIME_TMP" \
+	CLAUDE_CODE_TMPDIR="$RUNTIME_TMP" \
 	OPENAI_API_KEY="$OPENAI_API_KEY" \
 	PRIME_AGENT_CODING_AGENT_DIR="$CONFIG" \
 	PRIME_AGENT_KERNEL_VENV="$VENV" \
