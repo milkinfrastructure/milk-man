@@ -3,17 +3,23 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
 _HARNESS_ROOT_ENV = "MILK_HARNESS_ROOT"
+_HARNESS_REVISION_ENV = "MILK_HARNESS_REVISION"
 _RUN_CONFIG_ENV = "MILK_RUN_ONCE_CONFIG"
+_RUN_PROFILE_ENV = "MILK_RUN_PROFILE"
 _REPORT_SCHEMA = "milk.run-once-report.v1"
 _TIMEOUT_SECONDS = 900.0
 _OUTPUT_LIMIT_BYTES = 1_048_576
 _READ_CHUNK_BYTES = 65_536
+_HEX40 = re.compile(r"[0-9a-f]{40}\Z")
+_HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 
 
 class MilkJobError(RuntimeError):
@@ -33,6 +39,7 @@ async def reconcile() -> dict[str, object]:
     """Run the fixed operator-configured summary/eval/proposal reconciliation."""
     harness_root = _configured_path(_HARNESS_ROOT_ENV, directory=True)
     run_config = _configured_path(_RUN_CONFIG_ENV, directory=False)
+    config_sha256 = hashlib.sha256(run_config.read_bytes()).hexdigest()
     if not (harness_root / "milk_harness" / "__main__.py").is_file():
         raise MilkJobError(f"{_HARNESS_ROOT_ENV} is not a Milk Harness checkout")
 
@@ -80,11 +87,50 @@ async def reconcile() -> dict[str, object]:
         report = json.loads(stdout)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise MilkJobError("Milk Harness returned invalid JSON") from error
-    if not isinstance(report, dict) or report.get("schema_version") != _REPORT_SCHEMA:
-        raise MilkJobError(f"Milk Harness did not return {_REPORT_SCHEMA}")
-    if report.get("route_activation_attempted") is not False:
-        raise MilkJobError("Milk Harness report did not prove route activation stayed disabled")
+    _validate_report(report, config_sha256)
     return report
+
+
+def _validate_report(value: object, config_sha256: str) -> None:
+    if not isinstance(value, dict) or value.get("schema_version") != _REPORT_SCHEMA:
+        raise MilkJobError(f"Milk Harness did not return {_REPORT_SCHEMA}")
+    if value.get("route_activation_attempted") is not False:
+        raise MilkJobError("Milk Harness report did not prove route activation stayed disabled")
+
+    expected_revision = os.environ.get(_HARNESS_REVISION_ENV)
+    if expected_revision is None or _HEX40.fullmatch(expected_revision) is None:
+        raise MilkJobError(f"{_HARNESS_REVISION_ENV} must be a 40-character lowercase SHA-1")
+    if value.get("harness_revision") != expected_revision:
+        raise MilkJobError("Milk Harness report revision does not match the admitted checkout")
+    if value.get("config_sha256") != config_sha256:
+        raise MilkJobError("Milk Harness report config does not match the admitted file")
+    expected_profile = os.environ.get(_RUN_PROFILE_ENV)
+    if expected_profile not in {"production", "mechanics"}:
+        raise MilkJobError(f"{_RUN_PROFILE_ENV} must be production or mechanics")
+    if value.get("profile") != expected_profile:
+        raise MilkJobError("Milk Harness report profile does not match the admitted profile")
+
+    eval_sha256 = _optional_digest(value, "eval_sha256")
+    validation_sha256 = _optional_digest(value, "eval_validation_sha256")
+    score_sha256 = _optional_digest(value, "candidate_score_sha256")
+    proposal_sha256 = _optional_digest(value, "route_proposal_sha256")
+    if validation_sha256 is not None and eval_sha256 is None:
+        raise MilkJobError("Milk Harness validation is missing its eval")
+    if score_sha256 is not None and validation_sha256 is None:
+        raise MilkJobError("Milk Harness candidate score is missing eval validation")
+    if proposal_sha256 is not None and score_sha256 is None:
+        raise MilkJobError("Milk Harness route proposal is missing candidate score")
+
+
+def _optional_digest(value: dict[str, object], name: str) -> str | None:
+    if name not in value:
+        raise MilkJobError(f"Milk Harness report is missing {name}")
+    digest = value[name]
+    if digest is None:
+        return None
+    if not isinstance(digest, str) or _HEX64.fullmatch(digest) is None:
+        raise MilkJobError(f"Milk Harness report {name} is invalid")
+    return digest
 
 
 def _configured_path(name: str, *, directory: bool) -> Path:
