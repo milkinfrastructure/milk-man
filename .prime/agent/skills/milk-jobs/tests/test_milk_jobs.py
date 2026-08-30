@@ -18,6 +18,7 @@ import milk_jobs
 ROOT = Path(__file__).parents[5]
 MAN_REVISION = "1" * 40
 ADMITTED_CONFIG = json.loads((ROOT / "milk/jobs.mechanics.json").read_bytes())
+PRODUCTION_CONFIG = json.loads((ROOT / "milk/jobs.production.json").read_bytes())
 SCOPE_ID = ADMITTED_CONFIG["scope_id"]
 SERIES_ID = ADMITTED_CONFIG["eval"]["series_id"]
 SOURCE_MANIFEST_SHA256 = "0" * 64
@@ -90,6 +91,10 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(source["max_traces"], 999)
         self.assertEqual(source["max_total_trace_bytes"], 64 * 1024 * 1024)
         self.assertEqual(source["classifier_sample_sessions"], 32)
+
+    def test_shipped_teacher_timeout_covers_large_bounded_requests(self):
+        self.assertEqual(ADMITTED_CONFIG["teacher"]["timeout_seconds"], 120)
+        self.assertEqual(PRODUCTION_CONFIG["teacher"]["timeout_seconds"], 120)
 
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
