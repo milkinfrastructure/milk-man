@@ -789,7 +789,7 @@ class DirectTeacher:
                 "Authorization": "Bearer " + api_key,
                 "Content-Type": "application/json",
                 "Idempotency-Key": job_id,
-                "User-Agent": "milk-harness-run-once/1",
+                "User-Agent": "milk-man-run-once/1",
             },
         )
         with self.opener.open(request, timeout=self.config.timeout_seconds) as response:
@@ -865,7 +865,7 @@ class DirectScoreClient:
                 "Authorization": "Bearer " + api_key,
                 "Content-Type": "application/json",
                 "Idempotency-Key": f"{job_id}-{target_name}-{case['case_id']}",
-                "User-Agent": "milk-harness-candidate-score/1",
+                "User-Agent": "milk-man-candidate-score/1",
             },
         )
         started = self._paced_start()
