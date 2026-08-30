@@ -96,6 +96,11 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ADMITTED_CONFIG["teacher"]["timeout_seconds"], 120)
         self.assertEqual(PRODUCTION_CONFIG["teacher"]["timeout_seconds"], 120)
 
+    def test_shipped_mechanics_canary_is_one_percent(self):
+        self.assertEqual(
+            ADMITTED_CONFIG["route_proposal"]["candidate_basis_points"], 100
+        )
+
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary_directory.name)
