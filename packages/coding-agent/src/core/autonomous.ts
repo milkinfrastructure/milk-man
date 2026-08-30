@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import type { AssistantMessage, Usage, UserMessage } from "@earendil-works/pi-ai";
 import { waitForChildProcess } from "../utils/child-process.js";
 import { killProcessTree, trackDetachedChildPid, untrackDetachedChildPid } from "../utils/shell.js";
+import { childProcessEnv } from "./kernel/process-boundary.js";
 
 export interface AgentAutonomousConfig {
 	enabled?: boolean;
@@ -494,6 +495,7 @@ function runChildProcess(
 		const child = spawn(command, args, {
 			cwd: options.cwd,
 			detached: process.platform !== "win32",
+			env: childProcessEnv(process.env),
 			shell: options.shell === true,
 			stdio: ["ignore", "pipe", "pipe"],
 		});

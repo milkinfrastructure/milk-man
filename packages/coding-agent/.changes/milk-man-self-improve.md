@@ -1,0 +1,1 @@
+- Added a sandboxed local self-improvement runner with bounded validation.

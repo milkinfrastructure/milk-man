@@ -7,6 +7,12 @@ import { v4 as uuid } from "uuid";
 import { reapKernelOrphanProcesses, recordOrphanProcessState } from "../orphan-process-journal.js";
 import { ensureKernelPython } from "./bootstrap.js";
 import {
+	childProcessEnv,
+	KERNEL_HOST_REQUEST_ALLOWLIST_ENV,
+	kernelHostRequestAllowlist,
+	kernelProcessSpec,
+} from "./process-boundary.js";
+import {
 	AGENT_MESSAGE_DISPLAY_MIME,
 	ATTACHMENT_DISPLAY_MIME,
 	createDeferred,
@@ -138,6 +144,7 @@ export class ReplKernelManager {
 		KernelManagerOptions,
 		"python" | "cwd" | "env" | "sessionId" | "hostHandlers" | "pythonSkills" | "snapshot" | "bootstrapCode"
 	>;
+	private readonly hostRequestAllowlist: ReadonlySet<string> | undefined;
 	private readonly handledHostRequestIds = new Set<string>();
 	private child?: ChildProcess;
 	private readyDeferred?: ReturnType<typeof createDeferred<number>>;
@@ -184,6 +191,7 @@ export class ReplKernelManager {
 	private teardownInFlight = 0;
 
 	constructor(options: KernelManagerOptions) {
+		const env = { ...process.env, ...options.env };
 		this.options = {
 			python: options.python,
 			cwd: options.cwd,
@@ -194,6 +202,7 @@ export class ReplKernelManager {
 			snapshot: options.snapshot,
 			bootstrapCode: options.bootstrapCode,
 		};
+		this.hostRequestAllowlist = kernelHostRequestAllowlist(env[KERNEL_HOST_REQUEST_ALLOWLIST_ENV]);
 	}
 
 	get ownerSessionId(): string | undefined {
@@ -249,15 +258,17 @@ export class ReplKernelManager {
 			throw new Error("Kernel was disposed during startup");
 		}
 
-		const child = spawn(python, ["-m", "rlm.repl"], {
+		const env = childProcessEnv({
+			...process.env,
+			...this.options.env,
+			PRIME_AGENT_KERNEL_OWNER_PID: String(process.pid),
+		});
+		const processSpec = kernelProcessSpec(python, env);
+		const child = spawn(processSpec.command, processSpec.args, {
 			cwd: this.options.cwd,
 			// bash.py journals its process groups under this pid so the host can
 			// reap them if the runtime dies without running its shutdown hook.
-			env: {
-				...process.env,
-				...this.options.env,
-				PRIME_AGENT_KERNEL_OWNER_PID: String(process.pid),
-			},
+			env,
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 		this.child = child;
@@ -1123,6 +1134,9 @@ export class ReplKernelManager {
 		}
 		if (typeof data.type !== "string" || data.type.length === 0) {
 			throw new Error("host request payload must have a string type");
+		}
+		if (this.hostRequestAllowlist && !this.hostRequestAllowlist.has(data.type)) {
+			throw new Error(`host request type "${data.type}" is not allowed by ${KERNEL_HOST_REQUEST_ALLOWLIST_ENV}`);
 		}
 
 		const handler = this.options.hostHandlers?.[data.type];
