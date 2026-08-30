@@ -24,10 +24,10 @@ to commit `5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853`. It edits and tests trusted
 through fixed Python calls. The executable remains `prime-agent` so upstream
 updates stay reviewable and small.
 
-Milk-specific state is intentionally limited to a project skill, a portable
-task schema, model configuration examples, and documentation. Milk Carton is
-the Rust request and routing data plane. Local or qualified S3-compatible object
-storage is durable system memory; secrets and signing keys never enter it.
+Milk-specific code is limited to two Bash entrypoints, one deterministic job
+skill, and documentation. Milk Carton is the Rust request and routing data
+plane. Local or qualified S3-compatible object storage is durable system
+memory; secrets and signing keys never enter it.
 Existing Prime Agent goals, schedules, subagents, autonomous gates, and session
 storage coordinate the work. A model may select an admitted job call, but it
 cannot change that job's scope, configuration, budget, write target, or signing
@@ -36,12 +36,12 @@ separate operator actions unless the reviewed task explicitly admits the exact
 action.
 
 The hourly [`Milk Jobs Reconcile`](.github/workflows/milk-jobs.yml) workflow
-checks out an exact Milk Harness revision and calls the argument-free
+runs the in-repository deterministic engine through the argument-free
 `milk_jobs.reconcile()` wrapper. Its production and isolated mechanics profiles
 use checked-in configs; object-store and teacher credentials come only from the
 protected `milk-provider-jobs-prod` GitHub environment. The job may write
-summary, readiness, eval, and unsigned route-proposal objects. It cannot sign or
-publish a route.
+summary, readiness, eval, validation, score, and unsigned route-proposal
+objects. It cannot sign or publish a route.
 
 <p align="center">
   <a href="https://github.com/milkinfrastructure/milk-man/actions/workflows/ci.yml">

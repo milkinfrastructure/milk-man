@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import unittest
 from pathlib import Path
@@ -7,7 +8,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[5]
 WORKFLOW = ROOT / ".github/workflows/milk-jobs.yml"
-HARNESS_REVISION = "12fd42d7f039b55ae61a479543b5f4caa182784c"
 
 
 class MilkJobsWorkflowTest(unittest.TestCase):
@@ -27,19 +27,20 @@ class MilkJobsWorkflowTest(unittest.TestCase):
             ["reconcile"],
         )
 
-    def test_harness_and_entry_point_are_pinned(self) -> None:
-        self.assertIn("repository: milkinfrastructure/milk-harness", self.text)
-        self.assertEqual(self.text.count(f"ref: {HARNESS_REVISION}"), 1)
-        self.assertEqual(
-            self.text.count(f"MILK_HARNESS_REVISION: {HARNESS_REVISION}"), 1
-        )
-        self.assertIn(
-            "MILK_HARNESS_ROOT: ${{ github.workspace }}/milk-harness", self.text
-        )
-        self.assertIn("/milk-harness/deploy/run-once.{1}.json", self.text)
-        self.assertEqual(self.text.count("await milk_jobs.reconcile()"), 1)
+    def test_engine_config_and_entry_point_are_in_repo(self) -> None:
+        self.assertNotIn("milkinfrastructure/milk-harness", self.text)
+        self.assertNotIn("MILK_HARNESS", self.text)
+        self.assertEqual(self.text.count("MILK_MAN_REVISION: ${{ github.sha }}"), 1)
+        self.assertIn("/milk/jobs.{1}.json", self.text)
+        self.assertIn('test "$(git rev-parse HEAD)" = "$MILK_MAN_REVISION"', self.text)
+        self.assertEqual(self.text.count("./milk/jobs.sh"), 1)
+        self.assertNotIn("await milk_jobs.reconcile()", self.text)
         self.assertNotIn("python -m milk_harness", self.text)
         self.assertNotIn("python3 -m milk_harness", self.text)
+
+        for profile in ("production", "mechanics"):
+            config = json.loads((ROOT / f"milk/jobs.{profile}.json").read_bytes())
+            self.assertEqual(config["profile"], profile)
 
     def test_only_reconciliation_credentials_are_exposed(self) -> None:
         self.assertEqual(
