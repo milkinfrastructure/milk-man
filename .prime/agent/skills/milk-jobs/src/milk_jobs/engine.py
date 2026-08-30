@@ -2477,6 +2477,35 @@ def _advance_watermark(store, config, previous, etag, target):
     raise RuntimeError("closed watermark was concurrently changed")
 
 
+_JOB_REPORT_FIELDS = (
+    "outcome",
+    "error_class",
+    "failure_stage",
+    "failure_message_sha256",
+    "http_status",
+)
+
+
+def _job_report(result):
+    if result is None:
+        return None
+    return {
+        "schema_version": "milk.content-free-job-report.v1",
+        **{field: result[field] for field in _JOB_REPORT_FIELDS if field in result},
+    }
+
+
+def _stored_classifier_report(store, prefix, job_id):
+    if job_id is None:
+        return None
+    result = _load_optional_json(
+        store,
+        f"{prefix}/jobs/classify/{job_id}/result.json.zst",
+        compressed=True,
+    )
+    return _job_report(result)
+
+
 def _existing_report(store, config, meter, harness_revision):
     summary_sha256, summary = _current_version(
         store, f"{config.prefix}/summaries/current.json"
@@ -2527,6 +2556,14 @@ def _existing_report(store, config, meter, harness_revision):
         and proposal.get("candidate_score_sha256") == candidate_score_sha256
     ):
         proposal_sha256 = None
+    classifier_job_id = summary.get("classifier_job_id") if summary else None
+    eval_job_id = eval_value.get("generation_job_id") if eval_value else None
+    eval_validation_job_id = (
+        eval_validation.get("validation_job_id") if eval_validation else None
+    )
+    candidate_score_job_id = (
+        candidate_score.get("score_job_id") if candidate_score else None
+    )
     report = {
         "schema_version": REPORT_SCHEMA,
         "scope_id": config.scope_id,
@@ -2541,27 +2578,23 @@ def _existing_report(store, config, meter, harness_revision):
         "trace_count": 0,
         "summary_sha256": summary_sha256,
         "summary_pointer": "existing" if summary else "absent",
-        "classifier_job_id": summary.get("classifier_job_id") if summary else None,
+        "classifier_job_id": classifier_job_id,
         "classifier_provider_called": False,
         "readiness_sha256": readiness_sha256,
         "ready": readiness.get("ready", False) if readiness else False,
         "statistically_qualified": readiness.get("statistically_qualified", False)
         if readiness
         else False,
-        "eval_job_id": eval_value.get("generation_job_id") if eval_value else None,
+        "eval_job_id": eval_job_id,
         "eval_provider_called": False,
         "eval_sha256": eval_sha256,
         "eval_pointer": "existing" if eval_value else "absent",
         "eval_validation_provider_called": False,
         "eval_validation_sha256": eval_validation_sha256,
-        "eval_validation_job_id": (
-            eval_validation.get("validation_job_id") if eval_validation else None
-        ),
+        "eval_validation_job_id": eval_validation_job_id,
         "candidate_score_provider_called": False,
         "candidate_score_sha256": candidate_score_sha256,
-        "candidate_score_job_id": (
-            candidate_score.get("score_job_id") if candidate_score else None
-        ),
+        "candidate_score_job_id": candidate_score_job_id,
         "route_proposal_sha256": proposal_sha256,
         "provider_calls": 0,
         "provider_tokens": 0,
@@ -2569,6 +2602,11 @@ def _existing_report(store, config, meter, harness_revision):
         "route_activation_attempted": False,
         "watermark": "existing",
         "pending_source": "existing",
+        "job_results": {
+            "classifier": _stored_classifier_report(
+                store, config.prefix, classifier_job_id
+            )
+        },
     }
     report["artifact_refs"] = _artifact_refs(config, report)
     return report
@@ -5135,6 +5173,9 @@ def _run_once_locked(
         "route_activation_attempted": False,
         "watermark": watermark_status,
         "pending_source": pending_status,
+        "job_results": {
+            "classifier": _job_report(classification)
+        },
     }
     report["artifact_refs"] = _artifact_refs(config, report)
     return report
