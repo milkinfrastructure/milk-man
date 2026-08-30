@@ -17,9 +17,9 @@ checkout is dirty or its commit differs from the task.
   enforcement.
 - Milk Man owns local coding iteration and admitted deterministic summary,
   classifier, readiness, eval-generation, and unsigned-proposal job calls.
-- The checkpointed `milk_harness run-once` executable is a temporary
-  implementation behind argument-free `milk_jobs.reconcile()`, not a third
-  product or service.
+- The checked-in deterministic engine behind argument-free
+  `milk_jobs.reconcile()` is an implementation detail, not a third product or
+  service.
 - Durable state belongs in local or qualified S3-compatible object storage.
   Never store credentials or signing keys there.
 - Do not add a database, queue, resident manager, scheduler service, generic

@@ -61,7 +61,9 @@ dependency.
 prompt notes are mutable policy, memories hold durable facts, skills hold
 reusable procedures, and subagent entries hold delegation patterns. Executable
 tools remain reviewed source changes; a run may propose them but should not
-activate new code before review.
+activate new code before review. Cross-session entries are stored in
+`$MILK_MAN_STATE_DIR/config/harness/harness_state.json`; session-local entries
+stay with that session's artifacts.
 
 The Carton client remains outside the sandbox so it can call the model. The
 model-controlled Python kernel and every process it starts run under SRT with no
