@@ -28,6 +28,10 @@ Milk-specific code is limited to three Bash entrypoints, one deterministic job
 skill, and documentation. Milk Carton is the Rust request and routing data
 plane. Local or qualified S3-compatible object storage is durable system
 memory; secrets and signing keys never enter it.
+The source-editing `milk/self-improve.sh` path and provider-backed
+`milk/jobs.sh` reconciliation path are separate: the former cannot access
+object storage or provider-job credentials, and the latter does not run the
+source-editing agent loop.
 Existing Prime Agent goals, schedules, subagents, autonomous gates, and session
 storage coordinate the work. A model may select an admitted job call, but it
 cannot change that job's scope, configuration, budget, write target, or signing
