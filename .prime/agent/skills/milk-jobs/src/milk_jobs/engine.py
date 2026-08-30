@@ -28,7 +28,7 @@ from .evidence import LocalEvidenceStore, R2EvidenceStore, canonical_json, creat
 CONFIG_SCHEMA = "milk.harness-run-config.v1"
 REPORT_SCHEMA = "milk.run-once-report.v2"
 CODE_VERSION = "milk.harness-run-once.v2"
-PROVIDER_JOB_CODE_VERSION = "milk.provider-job.v3"
+PROVIDER_JOB_CODE_VERSION = "milk.provider-job.v4"
 TEACHER_RESPONSE_CONTENT_CONTRACT = "milk.teacher-json-string-or-object-stop.v2"
 TAXONOMY_VERSION = "milk.semantic-taxonomy.v1"
 MAX_INCREMENTAL_SPEND_MICROUSD = 25_000_000
