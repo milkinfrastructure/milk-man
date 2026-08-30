@@ -1720,13 +1720,13 @@ class RunOnceTests(unittest.TestCase):
                 "provider_request_id", first["job_results"]["classifier"]
             )
 
-    def test_provider_job_version_does_not_invalidate_pending_source(self):
+    def test_provider_binding_revision_separates_failed_job_from_pending_source(self):
         with tempfile.TemporaryDirectory() as root:
             store = seed(root)
             teacher = HttpErrorTeacher()
             with mock.patch(
                 "milk_jobs.engine.PROVIDER_JOB_CODE_VERSION",
-                "milk.harness-run-once.v2",
+                "milk.provider-job.v3",
             ):
                 previous = run_once(
                     config(root), store=store, teacher=teacher, now=NOW
@@ -1759,7 +1759,7 @@ class RunOnceTests(unittest.TestCase):
             }
             self.assertEqual(
                 claim_versions,
-                {"milk.harness-run-once.v2", "milk.provider-job.v3"},
+                {"milk.provider-job.v3", "milk.provider-job.v4"},
             )
 
     def test_real_zstd_responses_trace_is_parsed_without_rejecting_unknown_items(self):
