@@ -14,22 +14,43 @@ Node 22.8 or newer and Python 3.11 or newer are required.
 
 ## Self-improvement
 
-Start from a clean source checkout on macOS. Supply a project-scoped OpenAI key
-and a dedicated state directory outside the repository:
+Start from a clean source checkout on macOS. Supply an operator-issued Milk
+Carton key and a dedicated state directory outside the repository:
 
 ```sh
-export OPENAI_API_KEY=...
+export OPENAI_API_KEY=milk_live_...
 export MILK_MAN_STATE_DIR=/absolute/private/milk-man-state
+mkdir -p "$MILK_MAN_STATE_DIR"
 ./milk/self-improve.sh \
   "Treat empty piped stdin as absent and add the focused regression test."
 ```
 
 The launcher retains a detached worktree at the source checkout's exact `HEAD`
 and APFS-clones its installed `node_modules`, preserving relative symlinks. It
-selects `openai/gpt-5.6-luna`, loads only the checked-in refinement skill,
+calls `zai-org/GLM-5.3-Flash` through
+`https://carton.milkinfrastructure.com/v1`, assigns a unique Milk session ID,
+loads only the checked-in refinement skill,
 disables recursive agents, limits the run to four turns, and requires the fixed
-`npm run check` gate. Commit, push, merge, and production actions remain
+repository gate. Commit, push, merge, and production actions remain
 operator work.
+
+To seed a run from a bounded part of a local Codex task, install
+[`txcript`](https://github.com/skillsynchq/txcript), select an explicit message
+range, and pipe the sanitized projection into the same launcher:
+
+```sh
+./milk/codex-context.sh \
+  01234567-89ab-cdef-0123-456789abcdef#120-160 |
+  ./milk/self-improve.sh "Continue the Milk implementation from this reviewed context."
+```
+
+The adapter requires a closed range (`N` or `N-M`) and keeps only user and
+assistant text. It drops reasoning, tool calls, tool results, images, artifacts,
+usage, and harness metadata, refuses an
+unbounded session, and caps output at 128 KiB by default. Review the selected
+range: text written directly by a user or assistant can still contain sensitive
+material. `txcript` remains an optional local CLI, not a Milk runtime
+dependency.
 
 `MILK_MAN_STATE_DIR` persists sessions and the continual harness. Supplemental
 prompt notes are mutable policy, memories hold durable facts, skills hold
@@ -37,7 +58,7 @@ reusable procedures, and subagent entries hold delegation patterns. Executable
 tools remain reviewed source changes; a run may propose them but should not
 activate new code before review.
 
-The OpenAI client remains outside the sandbox so it can call the model. The
+The Carton client remains outside the sandbox so it can call the model. The
 model-controlled Python kernel and every process it starts run under SRT with no
 network and no API key. The kernel can write only the disposable worktree,
 temporary files, and its namespace snapshots. Harness configuration, session

@@ -84,20 +84,29 @@ npm ci
 Run the existing harness against its own source from bash on macOS:
 
 ```bash
-export OPENAI_API_KEY=...
+export OPENAI_API_KEY=milk_live_...
 export MILK_MAN_STATE_DIR=/absolute/private/milk-man-state
+mkdir -p "$MILK_MAN_STATE_DIR"
 ./milk/self-improve.sh "Fix one reviewed Milk Man issue and prove it with tests."
 ```
 
 The launcher requires a clean source checkout, creates and retains a detached
 worktree at its exact `HEAD`, and APFS-clones `node_modules`. The OpenAI client
-runs in the trusted parent. The Python tool and its child commands run under SRT
+uses the operator-issued key to call GLM through the hosted Milk Carton endpoint
+from the trusted parent. The Python tool and its child commands run under SRT
 without network access or API keys; they can write only the disposable worktree,
 temporary files, and kernel snapshots, not harness configuration, sessions,
 `.git`, `node_modules`, the real checkout, or user files.
-The fixed `npm run check` gate runs in the same sandbox without credentials.
+The fixed repository gate runs in the same sandbox without credentials.
 Review the retained worktree before copying or committing a diff. See
 [local Milk execution](docs/milk-local-execution.md).
+
+An optional bounded Codex handoff stays shell-native:
+
+```bash
+./milk/codex-context.sh SESSION_UUID#120-160 |
+  ./milk/self-improve.sh "Continue from this reviewed context."
+```
 
 Start Prime Agent from the repository or directory you want it to work in:
 

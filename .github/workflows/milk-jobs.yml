@@ -34,7 +34,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: milkinfrastructure/milk-harness
-          ref: be8bf11c81636858594632c4248b6e2d87f70dd3
+          ref: b0a52cac1d15a3a51b95ec503bd701b46d2b9cec
           path: milk-harness
           persist-credentials: false
 
@@ -47,7 +47,7 @@ jobs:
           MILK_CONTROL_R2_ACCESS_KEY_ID: ${{ secrets.MILK_CONTROL_R2_ACCESS_KEY_ID }}
           MILK_CONTROL_R2_SECRET_ACCESS_KEY: ${{ secrets.MILK_CONTROL_R2_SECRET_ACCESS_KEY }}
           MILK_CONTROL_R2_SESSION_TOKEN: ${{ secrets.MILK_CONTROL_R2_SESSION_TOKEN }}
-          MILK_HARNESS_REVISION: be8bf11c81636858594632c4248b6e2d87f70dd3
+          MILK_HARNESS_REVISION: b0a52cac1d15a3a51b95ec503bd701b46d2b9cec
           MILK_HARNESS_ROOT: ${{ github.workspace }}/milk-harness
           MILK_RUN_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'production' }}
           MILK_RUN_ONCE_CONFIG: ${{ format('{0}/milk-harness/deploy/run-once.{1}.json', github.workspace, github.event_name == 'workflow_dispatch' && inputs.profile || 'production') }}
