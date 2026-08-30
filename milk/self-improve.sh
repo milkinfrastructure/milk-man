@@ -116,14 +116,22 @@ const config = {
 			path.join(state, "session-artifacts", "**", "kernel-state.json"),
 			path.join(state, "session-artifacts", "**", "kernel-state.json.*.tmp"),
 		],
-		denyWrite: [path.join(worktree, ".git"), path.join(worktree, "node_modules"), control, venv],
+		denyWrite: [
+			path.join(worktree, ".git"),
+			path.join(worktree, "node_modules"),
+			path.join(runtimeTmp, "check"),
+			control,
+			venv,
+		],
 	},
 	allowAppleEvents: false,
 };
 fs.writeFileSync(out, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
 NODE
 
-GATE="$CONTROL/check"
+# The autonomous runner treats the gate as a shell command, so keep its path
+# short and space-free. SRT denies the model write access to this exact file.
+GATE="$RUNTIME_TMP/check"
 printf '#!/usr/bin/env bash\ncd %q\nexec env -i PATH=%q HOME=%q TMPDIR=%q CLAUDE_CODE_TMPDIR=%q NO_COLOR=1 %q --settings %q sh -eu -c %q\n' \
 	"$WORKTREE" "${PATH:-/usr/bin:/bin}" "$HOME_DIR" "$TMP" "$TMP" "$ROOT/node_modules/.bin/srt" "$SRT_SETTINGS" \
 	'node_modules/.bin/biome check --error-on-warnings . && node_modules/.bin/tsgo --noEmit && node scripts/check-installer-render.mjs && node scripts/check-browser-smoke.mjs && bash -n milk/self-improve.sh milk/codex-context.sh' >"$GATE"
