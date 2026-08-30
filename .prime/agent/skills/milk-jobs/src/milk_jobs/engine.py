@@ -3582,11 +3582,11 @@ def _readiness(
 
 
 EVAL_INSTRUCTIONS = """Return only JSON as {"pairs":[[input,expected],...]}. Input case_plan rows are [suite,source_trace_sha256,oracle,operation,selection_reason]. Input trace rows are [trace_sha256,endpoint,request_text_prefix,response_text_prefix,flags,modality_bits,request_bytes], where endpoint is c or r, flags bits are request_truncated=1,response_truncated=2,error=4,tool_use=8, and modality bits are audio=1,file=2,image=4,text=8,unknown=16. Return exactly one pair for every case_plan row in the same order. The case plan is authoritative and contains all representative rows first, then all tail rows; do not return or alter its metadata. Each input must be a newly generated task grounded in its source trace, not a copy of the source request or response. Each input must be self-contained, substantive, and uniquely answerable using only information included in that input; include all text, data, or code needed to solve it, never emit a bare instruction or template, and never reuse an input across rows. Expected must be a concise canonical reference answer that is sufficient to answer the input and suitable for strict normalized comparison; never use a generic acknowledgement. When expected_format is atomic-number, every expected must be a canonical decimal number and every input must end with "Return only the number." Formally, casefold(expected) must not be a substring of casefold(input), except that an atomic numeric expected answer may also appear as an operand in the task. Do not generate yes/no or multiple-choice tasks whose answer label would appear in the input. Before returning, solve every emitted input from the input alone. Final gate for every pair: input must differ from both source text prefixes, and casefold(expected) must not occur in casefold(input) unless expected is atomic numeric; rewrite and recheck any failure; never delete, replace, mask, or corrupt required input data. Do not include trace IDs, reasoning, configuration, routes, budgets, or prose."""
-MECHANICS_EVAL_INSTRUCTIONS = EVAL_INSTRUCTIONS + """ For atomic-number pair N, use exactly: "Scenario N: One captured request contains B bytes. A batch keeps M copies and adds H metadata bytes. What is the total byte count? Return only the number." B must equal that source trace's request_bytes, M must be an integer from 2 through 9, H must equal 17 + N, and expected must equal B * M + H."""
+MECHANICS_EVAL_INSTRUCTIONS = EVAL_INSTRUCTIONS + """ For atomic-number pair N, use exactly: "Scenario N: One captured request contains B bytes. A header adds H metadata bytes. What is the total byte count? Return only the number." B must equal that source trace's request_bytes, H must be an integer from 2 through 9, and expected must equal B + H."""
 EVAL_ANSWER_LEAK_POLICY = "milk.eval-answer-leak-reject.v1"
 MECHANICS_EVAL_PATTERN = re.compile(
     r"Scenario (\d+): One captured request contains (\d+) bytes\. "
-    r"A batch keeps ([2-9]) copies and adds (\d+) metadata bytes\. "
+    r"A header adds ([2-9]) metadata bytes\. "
     r"What is the total byte count\? Return only the number\."
 )
 
@@ -3883,16 +3883,13 @@ def _validate_eval_output(
             trace = traces_by_sha[case["source_trace_sha256"]]
             if match is None:
                 raise ValueError("mechanics eval input format is invalid")
-            scenario, request_bytes, multiplier, overhead = map(
-                int, match.groups()
-            )
+            scenario, request_bytes, overhead = map(int, match.groups())
             if (
                 scenario != case_index
                 or request_bytes != len(trace.request_raw)
-                or overhead != 17 + case_index
             ):
                 raise ValueError("mechanics eval operands lack source evidence")
-            if expected != str(request_bytes * multiplier + overhead):
+            if expected != str(request_bytes + overhead):
                 raise ValueError("mechanics eval expected is incorrect")
         if input_text.casefold() in source_text_prefixes[case["source_trace_sha256"]]:
             raise ValueError("eval input copies its source trace")
@@ -3994,7 +3991,7 @@ def _eval_generation(
         "atomic-number" if config.profile == "mechanics" else "semantic-reference"
     )
     payload = {
-        "schema_version": "milk.eval-generation-input.v10",
+        "schema_version": "milk.eval-generation-input.v12",
         "answer_leak_policy": EVAL_ANSWER_LEAK_POLICY,
         "eval_oracle_policy": "generated-reference-from-text-source-v1",
         "expected_format": expected_format,
@@ -4048,7 +4045,7 @@ def _eval_generation(
     ):
         retry_payload = {
             **payload,
-            "schema_version": "milk.eval-generation-input.v11",
+            "schema_version": "milk.eval-generation-input.v13",
             "retry": {
                 "schema_version": "milk.eval-generation-retry.v1",
                 "previous_job_id": job_id,

@@ -77,14 +77,10 @@ class FakeTeacher:
                 "pairs": [
                     [
                         f"Scenario {index}: One captured request contains "
-                        f"{request_bytes[row[1]]} bytes. A batch keeps "
-                        f"{2 + (index - 1) % 8} copies and adds {17 + index} metadata "
+                        f"{request_bytes[row[1]]} bytes. A header adds "
+                        f"{2 + (index - 1) % 8} metadata "
                         "bytes. What is the total byte count? Return only the number.",
-                        str(
-                            request_bytes[row[1]] * (2 + (index - 1) % 8)
-                            + 17
-                            + index
-                        ),
+                        str(request_bytes[row[1]] + 2 + (index - 1) % 8),
                     ]
                     for index, row in enumerate(payload["case_plan"], 1)
                 ]
@@ -3118,7 +3114,7 @@ class RunOnceTests(unittest.TestCase):
             self.assertIsNotNone(report["eval_sha256"])
             self.assertEqual(
                 teacher.eval_payload["schema_version"],
-                "milk.eval-generation-input.v10",
+                "milk.eval-generation-input.v12",
             )
             self.assertEqual(
                 teacher.eval_payload["expected_format"], "atomic-number"
