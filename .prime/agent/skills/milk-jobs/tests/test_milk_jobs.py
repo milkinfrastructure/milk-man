@@ -101,6 +101,7 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
             teacher = shipped["teacher"]
             self.assertEqual(teacher["model"], "zai-org/GLM-5.2-Fast")
             self.assertEqual(teacher["reasoning_effort"], "none")
+            self.assertEqual(teacher["api_key_env"], "BASETEN_TEACHER_API_KEY")
             self.assertEqual(
                 teacher["input_rate_microusd_per_million"], 2_100_000
             )
@@ -113,6 +114,10 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 shipped["candidate_score"]["candidate"]["model"],
                 "zai-org/GLM-5.3-Flash",
+            )
+            self.assertEqual(
+                shipped["candidate_score"]["candidate"]["api_key_env"],
+                "BASETEN_API_KEY",
             )
 
     def test_shipped_mechanics_canary_is_one_percent(self):

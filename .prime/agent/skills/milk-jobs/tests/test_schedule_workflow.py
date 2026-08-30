@@ -47,6 +47,7 @@ class MilkJobsWorkflowTest(unittest.TestCase):
             set(re.findall(r"secrets\.([A-Z0-9_]+)", self.text)),
             {
                 "BASETEN_API_KEY",
+                "BASETEN_TEACHER_API_KEY",
                 "MILK_GATEWAY_API_KEY",
                 "MILK_CONTROL_R2_ACCOUNT_ID",
                 "MILK_CONTROL_R2_ACCESS_KEY_ID",
@@ -54,6 +55,16 @@ class MilkJobsWorkflowTest(unittest.TestCase):
                 "MILK_CONTROL_R2_SECRET_ACCESS_KEY",
                 "MILK_CONTROL_R2_SESSION_TOKEN",
             },
+        )
+        self.assertEqual(
+            self.text.count(
+                "BASETEN_TEACHER_API_KEY: ${{ secrets.BASETEN_TEACHER_API_KEY }}"
+            ),
+            1,
+        )
+        self.assertEqual(
+            self.text.count("BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}"),
+            1,
         )
         self.assertEqual(set(re.findall(r"vars\.([A-Z0-9_]+)", self.text)), set())
         self.assertIn("environment: milk-provider-jobs-prod", self.text)
