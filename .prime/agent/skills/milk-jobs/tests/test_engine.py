@@ -710,7 +710,9 @@ class RunOnceTests(unittest.TestCase):
         def complete(content):
             response = FakeHttpResponse(
                 {
-                    "choices": [{"message": {"content": content}}],
+                    "choices": [
+                        {"finish_reason": "stop", "message": {"content": content}}
+                    ],
                     "usage": {"prompt_tokens": 7, "completion_tokens": 3},
                 }
             )
@@ -739,6 +741,28 @@ class RunOnceTests(unittest.TestCase):
                     "teacher response content must be a JSON string or object",
                 ):
                     complete(content)
+
+        response = FakeHttpResponse(
+            {
+                "choices": [
+                    {"finish_reason": "length", "message": {"content": None}}
+                ],
+                "usage": {"prompt_tokens": 7, "completion_tokens": 64},
+            }
+        )
+        with mock.patch.dict(
+            os.environ,
+            {"MILK_TEST_TEACHER_API_KEY": "secret-test-key"},
+            clear=False,
+        ), self.assertRaisesRegex(ValueError, "did not finish with JSON content"):
+            DirectTeacher(
+                bounded.teacher, opener=RecordingOpener(response)
+            ).complete(
+                task="classify",
+                instructions=CLASSIFIER_INSTRUCTIONS,
+                payload={"rows": [["c", "request", 0, 8]]},
+                job_id="a" * 64,
+            )
 
     def test_harness_revision_is_exact_and_fail_closed(self):
         with mock.patch.dict(
@@ -1066,7 +1090,7 @@ class RunOnceTests(unittest.TestCase):
             self.assertEqual(len(identity["response_format_sha256"]), 64)
             self.assertEqual(
                 identity["response_content_contract"],
-                "milk.teacher-json-string-or-object.v1",
+                "milk.teacher-json-string-or-object-stop.v2",
             )
             eval_claim_key = next(
                 key

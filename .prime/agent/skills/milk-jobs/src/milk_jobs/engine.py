@@ -28,7 +28,7 @@ from .evidence import LocalEvidenceStore, R2EvidenceStore, canonical_json, creat
 CONFIG_SCHEMA = "milk.harness-run-config.v1"
 REPORT_SCHEMA = "milk.run-once-report.v2"
 CODE_VERSION = "milk.harness-run-once.v2"
-TEACHER_RESPONSE_CONTENT_CONTRACT = "milk.teacher-json-string-or-object.v1"
+TEACHER_RESPONSE_CONTENT_CONTRACT = "milk.teacher-json-string-or-object-stop.v2"
 TAXONOMY_VERSION = "milk.semantic-taxonomy.v1"
 MAX_INCREMENTAL_SPEND_MICROUSD = 25_000_000
 MAX_STOP_NEW_SPEND_MICROUSD = 20_000_000
@@ -799,12 +799,16 @@ class DirectTeacher:
             provider_request_id = response.headers.get("x-request-id") or response.headers.get("request-id") or "unavailable"
         envelope = _json(raw, "teacher response")
         try:
-            content = envelope["choices"][0]["message"]["content"]
+            choice = envelope["choices"][0]
+            content = choice["message"]["content"]
+            finish_reason = choice["finish_reason"]
             usage = envelope["usage"]
             input_tokens = usage.get("prompt_tokens", usage.get("input_tokens"))
             output_tokens = usage.get("completion_tokens", usage.get("output_tokens"))
         except (KeyError, IndexError, TypeError) as error:
             raise ValueError("teacher response does not match the OpenAI-compatible contract") from error
+        if finish_reason != "stop":
+            raise ValueError("teacher response did not finish with JSON content")
         if isinstance(content, str):
             value = _json(content.encode(), "teacher response content")
         elif isinstance(content, dict):
