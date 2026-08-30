@@ -1,0 +1,1 @@
+- Added canonical object-store artifact references to deterministic Milk job reports.
