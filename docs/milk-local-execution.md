@@ -107,7 +107,8 @@ object storage.
 ## Result
 
 A successful self-improvement run yields a retained disposable worktree branch
-with an uncommitted diff and a passing repository gate. Its path and branch are
-printed before the run. A successful Milk job yields bounded object-store
-artifacts. Neither result proves a deployment; production routing remains a
-separate operator action.
+with a non-empty uncommitted diff and a passing repository gate. An agent that
+only returns prose fails the launcher. The worktree path and branch are printed
+before the run. A successful Milk job yields bounded object-store artifacts.
+Neither result proves a deployment; production routing remains a separate
+operator action.
