@@ -85,6 +85,12 @@ def _artifact_refs(report: dict[str, object]) -> dict[str, object]:
 
 
 class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
+    def test_mechanics_source_capacity_preserves_bounded_sampling(self):
+        source = ADMITTED_CONFIG["source"]
+        self.assertEqual(source["max_traces"], 999)
+        self.assertEqual(source["max_total_trace_bytes"], 64 * 1024 * 1024)
+        self.assertEqual(source["classifier_sample_sessions"], 32)
+
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary_directory.name)
