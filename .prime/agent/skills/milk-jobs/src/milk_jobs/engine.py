@@ -3579,7 +3579,7 @@ def _readiness(
     }
 
 
-EVAL_INSTRUCTIONS = """Return only JSON as {"pairs":[[input,expected],...]}. Input case_plan rows are [suite,source_trace_sha256,oracle,operation,selection_reason]. Input trace rows are [trace_sha256,endpoint,request_text_prefix,response_text_prefix,flags,modality_bits,request_bytes], where endpoint is c or r, flags bits are request_truncated=1,response_truncated=2,error=4,tool_use=8, and modality bits are audio=1,file=2,image=4,text=8,unknown=16. Return exactly one pair for every case_plan row in the same order. The case plan is authoritative and contains all representative rows first, then all tail rows; do not return or alter its metadata. Each input must be a newly generated task grounded in its source trace, not a copy of the source request or response. Each input must be self-contained, substantive, and uniquely answerable using only information included in that input; include all text, data, or code needed to solve it, never emit a bare instruction or template, and never reuse an input across rows. Expected must be a concise canonical reference answer that is sufficient to answer the input and suitable for strict normalized comparison; never use a generic acknowledgement. Formally, casefold(expected) must not be a substring of casefold(input), except that an atomic numeric expected answer may also appear as an operand in the task. Do not generate yes/no or multiple-choice tasks whose answer label would appear in the input. Before returning, solve every emitted input from the input alone. Final gate for every pair: input must differ from both source text prefixes, and casefold(expected) must not occur in casefold(input) unless expected is atomic numeric; rewrite and recheck any failure; never delete, replace, mask, or corrupt required input data. Do not include trace IDs, reasoning, configuration, routes, budgets, or prose."""
+EVAL_INSTRUCTIONS = """Return only JSON as {"pairs":[[input,expected],...]}. Input case_plan rows are [suite,source_trace_sha256,oracle,operation,selection_reason]. Input trace rows are [trace_sha256,endpoint,request_text_prefix,response_text_prefix,flags,modality_bits,request_bytes], where endpoint is c or r, flags bits are request_truncated=1,response_truncated=2,error=4,tool_use=8, and modality bits are audio=1,file=2,image=4,text=8,unknown=16. Return exactly one pair for every case_plan row in the same order. The case plan is authoritative and contains all representative rows first, then all tail rows; do not return or alter its metadata. Each input must be a newly generated task grounded in its source trace, not a copy of the source request or response. Each input must be self-contained, substantive, and uniquely answerable using only information included in that input; include all text, data, or code needed to solve it, never emit a bare instruction or template, and never reuse an input across rows. Expected must be a concise canonical reference answer that is sufficient to answer the input and suitable for strict normalized comparison; never use a generic acknowledgement. When expected_format is atomic-number, every expected must be a canonical decimal number and every input must end with "Return only the number." Formally, casefold(expected) must not be a substring of casefold(input), except that an atomic numeric expected answer may also appear as an operand in the task. Do not generate yes/no or multiple-choice tasks whose answer label would appear in the input. Before returning, solve every emitted input from the input alone. Final gate for every pair: input must differ from both source text prefixes, and casefold(expected) must not occur in casefold(input) unless expected is atomic numeric; rewrite and recheck any failure; never delete, replace, mask, or corrupt required input data. Do not include trace IDs, reasoning, configuration, routes, budgets, or prose."""
 EVAL_ANSWER_LEAK_POLICY = "milk.eval-answer-leak-reject.v1"
 
 
@@ -3804,6 +3804,7 @@ def _validate_eval_output(
     teacher_trace_bytes,
     semantic_labels=None,
     long_context_threshold=None,
+    expected_format="semantic-reference",
 ):
     value = _object(value, "eval output", required={"cases"})
     cases = value["cases"]
@@ -3869,6 +3870,14 @@ def _validate_eval_output(
             raise ValueError("eval output text exceeds the aggregate byte cap")
         if _eval_answer_leaks(input_text, expected):
             raise ValueError("eval input leaks its expected answer")
+        if expected_format == "atomic-number" and not re.fullmatch(
+            r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)", expected.strip()
+        ):
+            raise ValueError("mechanics eval expected must be an atomic number")
+        if expected_format == "atomic-number" and not input_text.endswith(
+            "Return only the number."
+        ):
+            raise ValueError("mechanics eval input must require a bare number")
         if input_text.casefold() in source_text_prefixes[case["source_trace_sha256"]]:
             raise ValueError("eval input copies its source trace")
         if case["operation"] != source_operations.get(case["source_trace_sha256"]):
@@ -3965,10 +3974,14 @@ def _eval_generation(
     ]
     if len(selected) > config.eval.max_source_traces:
         raise ValueError("eval plan exceeds eval.max_source_traces")
+    expected_format = (
+        "atomic-number" if config.profile == "mechanics" else "semantic-reference"
+    )
     payload = {
-        "schema_version": "milk.eval-generation-input.v7",
+        "schema_version": "milk.eval-generation-input.v8",
         "answer_leak_policy": EVAL_ANSWER_LEAK_POLICY,
         "eval_oracle_policy": "generated-reference-from-text-source-v1",
+        "expected_format": expected_format,
         "summary_sha256": summary_sha256,
         "readiness_sha256": readiness_sha256,
         "series_id": config.eval.series_id,
@@ -4008,6 +4021,7 @@ def _eval_generation(
                 config.source.eval_trace_bytes,
                 semantic_labels,
                 long_context_threshold,
+                expected_format,
             ),
         )
 
@@ -4018,7 +4032,7 @@ def _eval_generation(
     ):
         retry_payload = {
             **payload,
-            "schema_version": "milk.eval-generation-input.v8",
+            "schema_version": "milk.eval-generation-input.v9",
             "retry": {
                 "schema_version": "milk.eval-generation-retry.v1",
                 "previous_job_id": job_id,
