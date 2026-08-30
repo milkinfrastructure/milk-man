@@ -2402,6 +2402,68 @@ class RunOnceTests(unittest.TestCase):
                 )
             )
 
+    def test_mechanics_supplements_only_feasible_long_text_tail(self):
+        with tempfile.TemporaryDirectory() as root:
+            store = seed(root, count=1)
+            run_config = config(root)
+            key = store.list(run_config.prefix + "/traffic")[0]
+            base = _parse_trace(store, run_config, key)
+            def trace(index, size=10, request=None):
+                return replace(
+                    base, object_sha256=f"{index:064x}",
+                    session_hmac=f"{index:064x}", request_raw=b"x" * size,
+                    request=request or base.request,
+                )
+            representative = trace(2)
+            tool = trace(0, 1000, {
+                **base.request,
+                "tools": [{"type": "function", "name": "lookup"}],
+            })
+            long_text = trace(1, 1000)
+            value = _config_dict(root)
+            value["source"]["classifier_sample_sessions"] = 1
+            value["eval"].update(
+                representative_cases=1, tail_cases=1, max_source_traces=2
+            )
+            value["candidate_score"]["held_out_cases"] = 2
+            value["candidate_score"]["max_calls_per_run"] = 4
+            bounded = RunConfig.parse(value)
+            semantic, classifier, long_context_threshold = _classification_sources(
+                [representative, tool, long_text], bounded
+            )
+            labels = [
+                {"trace_sha256": trace.object_sha256, "operation": "answer",
+                 "expected_oracle": "reference", "abstain": False}
+                for trace in classifier
+            ]
+            eligible_traces, eligible_labels, unsupported = \
+                _eligible_eval_inputs(bounded, classifier, labels)
+            plan = _eval_case_plan(
+                eligible_traces, eligible_labels, 1, 1, [labels[0]],
+                long_context_threshold
+            )
+            self.assertEqual(
+                (semantic, classifier),
+                ([representative], [representative, long_text]),
+            )
+            self.assertEqual(long_context_threshold, 1000)
+            self.assertNotIn(
+                tool.object_sha256,
+                {trace.object_sha256 for trace in classifier},
+            )
+            self.assertEqual((eligible_traces, unsupported), (classifier, {}))
+            self.assertEqual(
+                [
+                    (row["suite"], row["source_trace_sha256"], row["selection_reason"])
+                    for row in plan
+                ],
+                [
+                    ("representative", representative.object_sha256,
+                     "representative_mix"),
+                    ("tail", long_text.object_sha256, "long_context"),
+                ],
+            )
+
     def test_production_classifier_allows_eight_tail_supplements(self):
         with tempfile.TemporaryDirectory() as root:
             store = seed(root, count=1)
