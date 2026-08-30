@@ -27,6 +27,9 @@ mkdir -p "$MILK_MAN_STATE_DIR"
 
 The launcher retains a detached worktree at the source checkout's exact `HEAD`
 and APFS-clones its installed `node_modules`, preserving relative symlinks. It
+keeps durable state at `MILK_MAN_STATE_DIR` but places Unix sockets in an
+owner-only short-lived `/private/tmp` directory so long state paths work on
+macOS. It
 calls `zai-org/GLM-5.3-Flash` through
 `https://carton.milkinfrastructure.com/v1`, assigns a unique Milk session ID,
 loads only the checked-in refinement skill,
@@ -46,7 +49,8 @@ range, and pipe the sanitized projection into the same launcher:
 
 The adapter requires a closed range (`N` or `N-M`) and keeps only user and
 assistant text. It drops reasoning, tool calls, tool results, images, artifacts,
-usage, and harness metadata, refuses an
+usage, and harness metadata. It isolates txcript from unrelated local harness
+stores before resolving the exact Codex rollout, refuses an
 unbounded session, and caps output at 128 KiB by default. Review the selected
 range: text written directly by a user or assistant can still contain sensitive
 material. `txcript` remains an optional local CLI, not a Milk runtime
@@ -77,6 +81,26 @@ The separate checked-in `milk-jobs` skill exposes
 arguments. `MILK_HARNESS_ROOT` pins the checkpointed implementation and
 `MILK_RUN_ONCE_CONFIG` pins the reviewed configuration. A schedule may re-enter
 that fixed call; scheduling does not expand its permissions.
+
+The same job runs directly from bash; credentials remain envvars:
+
+```sh
+export MILK_HARNESS_ROOT=/absolute/path/to/milk-harness
+export MILK_HARNESS_REVISION=<exact-40-character-commit>
+export MILK_RUN_PROFILE=production
+export MILK_RUN_ONCE_CONFIG="$MILK_HARNESS_ROOT/deploy/run-once.production.json"
+export MILK_CONTROL_R2_ACCOUNT_ID=<cloudflare-account-id>
+export MILK_CONTROL_R2_BUCKET=<bucket>
+export MILK_CONTROL_R2_ACCESS_KEY_ID=<access-key-id>
+export MILK_CONTROL_R2_SECRET_ACCESS_KEY=<secret-access-key>
+export BASETEN_API_KEY=<baseten-key>
+export MILK_GATEWAY_API_KEY=<operator-issued-milk-key>
+export PYTHONPATH="$PWD/.prime/agent/skills/milk-jobs/src"
+python3 - <<'PY'
+import asyncio, json, milk_jobs
+print(json.dumps(asyncio.run(milk_jobs.reconcile()), sort_keys=True))
+PY
+```
 
 Durable job inputs and outputs belong in local or qualified S3-compatible
 object storage. AWS S3, Cloudflare R2, and MinIO are admitted only after the

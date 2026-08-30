@@ -12,14 +12,36 @@ die() {
 	die "an explicit Codex session UUID and message range are required"
 command -v txcript >/dev/null || die "txcript is required"
 command -v node >/dev/null || die "Node.js is required"
+command -v rg >/dev/null || die "ripgrep is required"
+TXCRIPT="$(command -v txcript)"
+[[ "$TXCRIPT" == /* ]] || die "txcript must resolve to an absolute executable path"
 
 MAX_BYTES="${MILK_MAN_CONTEXT_MAX_BYTES:-131072}"
 [[ "$MAX_BYTES" =~ ^[1-9][0-9]*$ ]] || die "MILK_MAN_CONTEXT_MAX_BYTES must be a positive integer"
 
-TMP="$(mktemp -d "${TMPDIR:-/tmp}/milk-man-context.XXXXXX")"
-trap 'rm -f "$TMP/session.json" "$TMP/context.txt"; rmdir "$TMP"' EXIT
+SESSION_ID="${1%%#*}"
+SESSIONS_ROOT="${CODEX_HOME:-$HOME/.codex}/sessions"
+[[ -d "$SESSIONS_ROOT" ]] || die "Codex sessions directory does not exist"
+SESSION_FILES=()
+while IFS= read -r file; do
+	SESSION_FILES+=("$file")
+done < <(rg --files "$SESSIONS_ROOT" -g "rollout-*-$SESSION_ID.jsonl")
+[[ "${#SESSION_FILES[@]}" -eq 1 ]] || die "expected exactly one local rollout for $SESSION_ID"
+SESSION_FILE="${SESSION_FILES[0]}"
+RELATIVE_SESSION="${SESSION_FILE#"$SESSIONS_ROOT"/}"
+[[ "$RELATIVE_SESSION" != "$SESSION_FILE" ]] || die "Codex rollout is outside the sessions directory"
 
-txcript export "$1" --from codex --out "$TMP/session.json"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/milk-man-context.XXXXXX")"
+trap 'rm -rf -- "$TMP"' EXIT
+mkdir -p "$TMP/home" "$TMP/codex-home/sessions/$(dirname "$RELATIVE_SESSION")"
+ln -s "$SESSION_FILE" "$TMP/codex-home/sessions/$RELATIVE_SESSION"
+
+env -i \
+	HOME="$TMP/home" \
+	CODEX_HOME="$TMP/codex-home" \
+	PATH=/usr/bin:/bin \
+	LANG=C \
+	"$TXCRIPT" export "$1" --from codex --out "$TMP/session.json"
 node - "$TMP/session.json" "$TMP/context.txt" <<'NODE'
 const fs = require("node:fs");
 const [input, output] = process.argv.slice(2);
