@@ -81,8 +81,23 @@ npm ci
 ./prime-agent.sh --version
 ```
 
-See [local Milk execution](docs/milk-local-execution.md) for the bounded task
-handoff, GLM configuration, and disposable-worktree command.
+Run the existing harness against its own source from bash on macOS:
+
+```bash
+export OPENAI_API_KEY=...
+export MILK_MAN_STATE_DIR=/absolute/private/milk-man-state
+./milk/self-improve.sh "Fix one reviewed Milk Man issue and prove it with tests."
+```
+
+The launcher requires a clean source checkout, creates and retains a detached
+worktree at its exact `HEAD`, and APFS-clones `node_modules`. The OpenAI client
+runs in the trusted parent. The Python tool and its child commands run under SRT
+without network access or API keys; they can write only the disposable worktree,
+temporary files, and kernel snapshots, not harness configuration, sessions,
+`.git`, `node_modules`, the real checkout, or user files.
+The fixed `npm run check` gate runs in the same sandbox without credentials.
+Review the retained worktree before copying or committing a diff. See
+[local Milk execution](docs/milk-local-execution.md).
 
 Start Prime Agent from the repository or directory you want it to work in:
 

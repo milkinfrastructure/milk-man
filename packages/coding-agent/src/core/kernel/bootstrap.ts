@@ -10,6 +10,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { getPackageDir } from "../../config.js";
 import type { PythonSkillRuntimeInfo } from "../skills.js";
+import { childProcessEnv } from "./process-boundary.js";
 
 const BOOTSTRAP_SCHEMA = 9;
 const PYTHON_VERSION = "3.11";
@@ -372,7 +373,7 @@ async function resolveWritableKernelVenvDir(): Promise<string> {
 function run(command: string, args: string[], options: { stdio?: "ignore" | "inherit" } = {}): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(command, args, {
-			env: process.env,
+			env: childProcessEnv(process.env),
 			stdio: options.stdio ?? "ignore",
 		});
 		child.on("error", reject);
