@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import re
 from pathlib import Path
@@ -19,6 +20,27 @@ _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 
 class MilkJobError(RuntimeError):
     """Raised when the fixed Milk job cannot produce a valid report."""
+
+
+def _failure_fingerprint(error: Exception) -> str:
+    error_class = type(error).__name__
+    failure_stage = "milk_jobs.unknown"
+    traceback = error.__traceback__
+    while traceback is not None:
+        module = traceback.tb_frame.f_globals.get("__name__")
+        function = traceback.tb_frame.f_code.co_name
+        if isinstance(module, str) and (
+            module == "milk_jobs" or module.startswith("milk_jobs.")
+        ):
+            failure_stage = f"{module}.{function}"
+        traceback = traceback.tb_next
+    message_sha256 = hashlib.sha256(
+        str(error).encode("utf-8", errors="replace")
+    ).hexdigest()
+    return (
+        f"error_class={error_class};failure_stage={failure_stage};"
+        f"failure_message_sha256={message_sha256}"
+    )
 
 
 async def run() -> dict[str, object]:
@@ -38,7 +60,9 @@ async def reconcile() -> dict[str, object]:
     except asyncio.CancelledError:
         raise
     except Exception as error:
-        raise MilkJobError("Milk Man reconciliation failed") from error
+        raise MilkJobError(
+            f"Milk Man reconciliation failed;{_failure_fingerprint(error)}"
+        ) from error
     _validate_report(
         report,
         config.config_sha256,

@@ -239,13 +239,22 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self._reconcile_report(report), report)
 
     async def test_reconcile_does_not_return_engine_errors(self) -> None:
+        raw_message = "provider-secret"
         with patch.object(
-            milk_jobs, "_run_once", side_effect=RuntimeError("provider-secret")
+            milk_jobs, "_run_once", side_effect=RuntimeError(raw_message)
         ), self.assertRaisesRegex(
             milk_jobs.MilkJobError, "Milk Man reconciliation failed"
         ) as raised:
             await milk_jobs.reconcile()
-        self.assertNotIn("provider-secret", str(raised.exception))
+        diagnostic = str(raised.exception)
+        self.assertNotIn(raw_message, diagnostic)
+        self.assertIn("error_class=RuntimeError", diagnostic)
+        self.assertIn("failure_stage=milk_jobs.reconcile", diagnostic)
+        self.assertIn(
+            "failure_message_sha256="
+            + hashlib.sha256(raw_message.encode()).hexdigest(),
+            diagnostic,
+        )
 
     async def _reconcile_report(self, report: dict[str, object]) -> dict[str, object]:
         with patch.object(milk_jobs, "_run_once", return_value=report):
