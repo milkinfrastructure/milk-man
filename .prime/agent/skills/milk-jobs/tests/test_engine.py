@@ -74,7 +74,10 @@ class FakeTeacher:
         elif task == "generate_eval":
             value = {
                 "pairs": [
-                    [f"new task {index}", f"expected result {index}"]
+                    [
+                        f"Add {index} and 1. Return only the number.",
+                        str(index + 1),
+                    ]
                     for index in range(len(payload["case_plan"]))
                 ]
             }
@@ -2185,6 +2188,21 @@ class RunOnceTests(unittest.TestCase):
             )
             self.assertEqual(len(checked), 32)
 
+            numeric_pairs = [
+                [f"Add {index} and 1.", str(index + 1)]
+                for index in range(32)
+            ]
+            with self.assertRaisesRegex(ValueError, "must require a bare number"):
+                _validate_eval_output(
+                    _eval_cases_from_pairs({"pairs": numeric_pairs}, first),
+                    traces,
+                    labels,
+                    24,
+                    8,
+                    bounded.source.teacher_trace_bytes,
+                    expected_format="atomic-number",
+                )
+
             duplicate_pairs = [list(pair) for pair in pairs]
             duplicate_pairs[1][0] = "  NEW   TASK 0!!!  "
             self.assertNotEqual(
@@ -3095,7 +3113,10 @@ class RunOnceTests(unittest.TestCase):
             self.assertIsNotNone(report["eval_sha256"])
             self.assertEqual(
                 teacher.eval_payload["schema_version"],
-                "milk.eval-generation-input.v7",
+                "milk.eval-generation-input.v8",
+            )
+            self.assertEqual(
+                teacher.eval_payload["expected_format"], "atomic-number"
             )
             self.assertEqual(
                 teacher.eval_payload["answer_leak_policy"],
