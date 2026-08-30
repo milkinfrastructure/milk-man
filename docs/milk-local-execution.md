@@ -112,6 +112,11 @@ export MILK_MAN_PYTHON=/absolute/path/to/python3.13
 ./milk/jobs.sh
 ```
 
+`MILK_CONTROL_R2_*` must identify a job-owned, bucket-scoped credential with
+object read/write access because `milk/jobs.sh` creates claims, results, leases,
+and compare-and-swap pointers. A route read-only credential is invalid for this
+job and must remain separate.
+
 Durable job inputs and outputs belong in local or qualified S3-compatible
 object storage. AWS S3, Cloudflare R2, and MinIO are admitted only after the
 backend passes the object contract. Secrets and signing keys stay outside

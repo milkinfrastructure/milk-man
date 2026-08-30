@@ -45,7 +45,10 @@ runs the in-repository deterministic engine through the argument-free
 use checked-in configs; object-store and teacher credentials come only from the
 protected `milk-provider-jobs-prod` GitHub environment. The job may write
 summary, readiness, eval, validation, score, and unsigned route-proposal
-objects. It cannot sign or publish a route.
+objects, plus claims, results, leases, and compare-and-swap pointers. Therefore,
+`MILK_CONTROL_R2_*` must identify a job-owned, bucket-scoped credential with
+object read/write access. A route read-only credential is invalid for this
+workflow and must remain separate. The job cannot sign or publish a route.
 
 <p align="center">
   <a href="https://github.com/milkinfrastructure/milk-man/actions/workflows/ci.yml">
