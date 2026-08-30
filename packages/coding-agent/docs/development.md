@@ -80,4 +80,11 @@ cd packages/coding-agent
 npx tsx ../../node_modules/vitest/dist/cli.js --run test/specific.test.ts
 ```
 
+Local LLM integration tests are opt-in and may download models:
+
+```bash
+cd packages/ai
+PI_TEST_LOCAL_LLM=1 npx tsx ../../node_modules/vitest/dist/cli.js --run test/context-overflow.test.ts test/stream.test.ts
+```
+
 If you create or modify a test file, run that file and iterate until it passes. Coding-agent suite regressions belong under `test/suite/regressions/` and use the suite harness and faux provider rather than live provider credentials.

@@ -19,8 +19,8 @@ if [[ -f "$AUTH_FILE" ]]; then
     echo "Moved auth.json to backup"
 fi
 
-# Skip local LLM tests (ollama, lmstudio)
-export PI_NO_LOCAL_LLM=1
+# Local LLM integration tests may download models and are opt-in
+unset PI_TEST_LOCAL_LLM
 
 # Unset API keys (see packages/ai/src/stream.ts getEnvApiKey)
 unset ANTHROPIC_API_KEY
