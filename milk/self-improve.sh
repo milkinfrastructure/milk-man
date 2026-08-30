@@ -180,7 +180,7 @@ env -i \
 	--autonomous-max-turns 4 \
 	--autonomous-max-tokens 20000 \
 	--autonomous-timeout-ms 900000 \
-	--append-system-prompt "Improve Milk Man itself, not Milk jobs. Work only in the disposable checkout. Do not use git, edit node_modules, push, deploy, call Milk providers, write object storage, or publish routes. After validation, persist at most one reusable lesson with await refine.run('focused lesson', global_=True); otherwise do not refine." \
+	--append-system-prompt "Improve Milk Man itself, not Milk jobs. Work only in the disposable checkout. Discover the current checkout with os.getcwd() instead of assuming any fixed location, use repository-relative paths for all work, and never guess or hardcode absolute worktree paths. Do not use git, edit node_modules, push, deploy, call Milk providers, write object storage, or publish routes. After validation, persist at most one reusable lesson with await refine.run('focused lesson', global_=True); otherwise do not refine." \
 	-- "$1"
 STATUS=$?
 set -e
