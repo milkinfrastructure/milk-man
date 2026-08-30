@@ -96,6 +96,25 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ADMITTED_CONFIG["teacher"]["timeout_seconds"], 120)
         self.assertEqual(PRODUCTION_CONFIG["teacher"]["timeout_seconds"], 120)
 
+    def test_shipped_teacher_binding_and_candidate_are_separate(self):
+        for shipped in (ADMITTED_CONFIG, PRODUCTION_CONFIG):
+            teacher = shipped["teacher"]
+            self.assertEqual(teacher["model"], "zai-org/GLM-5.2-Fast")
+            self.assertEqual(teacher["reasoning_effort"], "none")
+            self.assertEqual(
+                teacher["input_rate_microusd_per_million"], 2_100_000
+            )
+            self.assertEqual(
+                teacher["output_rate_microusd_per_million"], 6_600_000
+            )
+            self.assertEqual(
+                shipped["route_proposal"]["model"], "zai-org/GLM-5.3-Flash"
+            )
+            self.assertEqual(
+                shipped["candidate_score"]["candidate"]["model"],
+                "zai-org/GLM-5.3-Flash",
+            )
+
     def test_shipped_mechanics_canary_is_one_percent(self):
         self.assertEqual(
             ADMITTED_CONFIG["route_proposal"]["candidate_basis_points"], 100

@@ -19,16 +19,16 @@
   },
   "teacher": {
     "api_url": "https://inference.baseten.co/v1/chat/completions",
-    "model": "zai-org/GLM-5.3-Flash",
-    "reasoning_effort": "low",
+    "model": "zai-org/GLM-5.2-Fast",
+    "reasoning_effort": "none",
     "api_key_env": "BASETEN_API_KEY",
     "timeout_seconds": 120,
     "max_calls_per_run": 2,
     "max_input_tokens_per_call": 100000,
     "max_output_tokens_per_call": 16384,
     "max_total_tokens_per_run": 232768,
-    "input_rate_microusd_per_million": 150000,
-    "output_rate_microusd_per_million": 500000
+    "input_rate_microusd_per_million": 2100000,
+    "output_rate_microusd_per_million": 6600000
   },
   "budget": {
     "starting_spend_microusd": 0,
