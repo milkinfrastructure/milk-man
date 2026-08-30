@@ -3988,27 +3988,48 @@ def _eval_generation(
             if trace.object_sha256 in planned_sources
         ],
     }
-    result, job_id, called = _provider_job(
-        store,
-        config,
-        meter,
-        teacher,
-        lease,
-        now,
-        job_type="generate-eval",
-        task="generate_eval",
-        input_value=payload,
-        validate=lambda value: _validate_eval_output(
-            _eval_cases_from_pairs(value, plan),
-            selected,
-            labels,
-            config.eval.representative_cases,
-            config.eval.tail_cases,
-            config.source.eval_trace_bytes,
-            semantic_labels,
-            long_context_threshold,
-        ),
-    )
+    def generate(input_value):
+        return _provider_job(
+            store,
+            config,
+            meter,
+            teacher,
+            lease,
+            now,
+            job_type="generate-eval",
+            task="generate_eval",
+            input_value=input_value,
+            validate=lambda value: _validate_eval_output(
+                _eval_cases_from_pairs(value, plan),
+                selected,
+                labels,
+                config.eval.representative_cases,
+                config.eval.tail_cases,
+                config.source.eval_trace_bytes,
+                semantic_labels,
+                long_context_threshold,
+            ),
+        )
+
+    result, job_id, called = generate(payload)
+    if (
+        result.get("outcome") == "invalid_provider_response"
+        and result.get("failure_stage") == "validation"
+    ):
+        retry_payload = {
+            **payload,
+            "schema_version": "milk.eval-generation-input.v8",
+            "retry": {
+                "schema_version": "milk.eval-generation-retry.v1",
+                "previous_job_id": job_id,
+                "failure_message_sha256": result["failure_message_sha256"],
+                "correction": "Regenerate every pair from scratch. No input may equal either source text prefix, and no non-numeric expected may occur case-insensitively in its input.",
+            },
+        }
+        retry_result, retry_job_id, retry_called = generate(retry_payload)
+        if not retry_result.get("outcome", "").startswith("not_started_"):
+            result, job_id = retry_result, retry_job_id
+            called = called or retry_called
     return result, job_id, called
 
 

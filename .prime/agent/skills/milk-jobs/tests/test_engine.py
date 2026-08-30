@@ -460,7 +460,7 @@ class InvalidTeacher(FakeTeacher):
 class LeakingEvalTeacher(FakeTeacher):
     def complete(self, **kwargs):
         response = super().complete(**kwargs)
-        if kwargs["task"] == "generate_eval":
+        if kwargs["task"] == "generate_eval" and "retry" not in kwargs["payload"]:
             response.value["pairs"][0] = [
                 "Compute two plus two without copying four.",
                 "four",
@@ -1551,31 +1551,50 @@ class RunOnceTests(unittest.TestCase):
             )
             self.assertNotIn("output", result)
 
-    def test_eval_answer_leak_is_rejected_without_mutating_input(self):
+    def test_eval_answer_leak_gets_one_content_free_regeneration(self):
         with tempfile.TemporaryDirectory() as root:
             store = seed(root)
             teacher = LeakingEvalTeacher()
             first = run_once(config(root), store=store, teacher=teacher, now=NOW)
             replay = run_once(config(root), store=store, teacher=teacher, now=NOW)
+            exhausted = config(root)
+            exhausted = replace(
+                exhausted,
+                budget=replace(
+                    exhausted.budget,
+                    starting_spend_microusd=exhausted.budget.absolute_spend_microusd,
+                ),
+            )
+            exhausted_replay = run_once(
+                exhausted, store=store, teacher=teacher, now=NOW
+            )
 
             self.assertTrue(first["ready"])
             self.assertIsNone(first["eval_sha256"])
+            self.assertIsNotNone(replay["eval_sha256"])
+            self.assertEqual(exhausted_replay["eval_sha256"], replay["eval_sha256"])
             self.assertEqual(
-                [call[0] for call in teacher.calls], ["classify", "generate_eval"]
+                [call[0] for call in teacher.calls].count("generate_eval"), 2
             )
-            result_key = next(
-                key
+            results = [
+                _load_optional_json(store, key, compressed=True)
                 for key in store.list(config(root).prefix + "/jobs/generate-eval")
                 if key.endswith("/result.json.zst")
-            )
-            result = _load_optional_json(store, result_key, compressed=True)
-            self.assertEqual(result["outcome"], "invalid_provider_response")
-            self.assertEqual(result["failure_stage"], "validation")
+            ]
             self.assertEqual(
-                result["failure_message_sha256"],
+                sorted(result["outcome"] for result in results),
+                ["invalid_provider_response", "succeeded"],
+            )
+            failed = next(
+                result for result in results
+                if result["outcome"] == "invalid_provider_response"
+            )
+            self.assertEqual(failed["failure_stage"], "validation")
+            self.assertEqual(
+                failed["failure_message_sha256"],
                 hashlib.sha256(b"eval input leaks its expected answer").hexdigest(),
             )
-            self.assertNotIn("output", result)
+            self.assertNotIn("output", failed)
             expected_report = {
                 "schema_version": "milk.content-free-job-report.v1",
                 "outcome": "invalid_provider_response",
@@ -1586,9 +1605,12 @@ class RunOnceTests(unittest.TestCase):
                 ).hexdigest(),
             }
             self.assertEqual(first["job_results"]["eval_generation"], expected_report)
-            self.assertEqual(replay["job_results"]["eval_generation"], expected_report)
-            self.assertNotIn(
-                "provider_request_id", replay["job_results"]["eval_generation"]
+            self.assertEqual(
+                replay["job_results"]["eval_generation"],
+                {
+                    "schema_version": "milk.content-free-job-report.v1",
+                    "outcome": "succeeded",
+                },
             )
 
             plan = [
