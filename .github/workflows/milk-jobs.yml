@@ -42,7 +42,6 @@ jobs:
           MILK_MAN_REVISION: ${{ github.sha }}
           MILK_RUN_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'production' }}
           MILK_RUN_ONCE_CONFIG: ${{ format('{0}/milk/jobs.{1}.json', github.workspace, github.event_name == 'workflow_dispatch' && inputs.profile || 'production') }}
-          PYTHONPATH: ${{ github.workspace }}/.prime/agent/skills/milk-jobs/src
         run: |
           set -eu
           command -v zstd >/dev/null
@@ -51,17 +50,4 @@ jobs:
             production|mechanics) ;;
             *) exit 64 ;;
           esac
-          python3 - <<'PY'
-          import asyncio
-          import json
-
-          import milk_jobs
-
-
-          async def main():
-              report = await milk_jobs.reconcile()
-              print(json.dumps(report, sort_keys=True, separators=(",", ":")))
-
-
-          asyncio.run(main())
-          PY
+          ./milk/jobs.sh

@@ -33,7 +33,8 @@ class MilkJobsWorkflowTest(unittest.TestCase):
         self.assertEqual(self.text.count("MILK_MAN_REVISION: ${{ github.sha }}"), 1)
         self.assertIn("/milk/jobs.{1}.json", self.text)
         self.assertIn('test "$(git rev-parse HEAD)" = "$MILK_MAN_REVISION"', self.text)
-        self.assertEqual(self.text.count("await milk_jobs.reconcile()"), 1)
+        self.assertEqual(self.text.count("./milk/jobs.sh"), 1)
+        self.assertNotIn("await milk_jobs.reconcile()", self.text)
         self.assertNotIn("python -m milk_harness", self.text)
         self.assertNotIn("python3 -m milk_harness", self.text)
 
