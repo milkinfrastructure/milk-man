@@ -1043,6 +1043,22 @@ class RunOnceTests(unittest.TestCase):
             self.assertIsNone(first["candidate_score_sha256"])
             self.assertIsNone(first["route_proposal_sha256"])
             self.assertFalse(first["route_activation_attempted"])
+            succeeded = {
+                "schema_version": "milk.content-free-job-report.v1",
+                "outcome": "succeeded",
+            }
+            self.assertEqual(
+                first["job_results"],
+                {
+                    "classifier": succeeded,
+                    "eval_generation": succeeded,
+                    "eval_validation": {
+                        "schema_version": "milk.content-free-job-report.v1",
+                        "outcome": "not_started_budget_or_call_cap",
+                    },
+                    "candidate_score": None,
+                },
+            )
             refs = first["artifact_refs"]
             self.assertEqual(
                 set(refs),
@@ -1125,6 +1141,15 @@ class RunOnceTests(unittest.TestCase):
             self.assertIsNotNone(second["candidate_score_sha256"])
             self.assertIsNotNone(second["route_proposal_sha256"])
             self.assertEqual(second["pending_source"], "advanced")
+            self.assertEqual(
+                second["job_results"],
+                {
+                    "classifier": succeeded,
+                    "eval_generation": succeeded,
+                    "eval_validation": succeeded,
+                    "candidate_score": succeeded,
+                },
+            )
 
             third = run_once(
                 config(root),
@@ -1147,6 +1172,7 @@ class RunOnceTests(unittest.TestCase):
                 third["route_proposal_sha256"],
                 second["route_proposal_sha256"],
             )
+            self.assertEqual(third["job_results"], second["job_results"])
             self.assertEqual(third["artifact_refs"], second["artifact_refs"])
             for name, sha256 in (
                 ("validation", second["eval_validation_sha256"]),
@@ -1510,6 +1536,7 @@ class RunOnceTests(unittest.TestCase):
             store = seed(root)
             teacher = LeakingEvalTeacher()
             first = run_once(config(root), store=store, teacher=teacher, now=NOW)
+            replay = run_once(config(root), store=store, teacher=teacher, now=NOW)
 
             self.assertTrue(first["ready"])
             self.assertIsNone(first["eval_sha256"])
@@ -1529,6 +1556,20 @@ class RunOnceTests(unittest.TestCase):
                 hashlib.sha256(b"eval input leaks its expected answer").hexdigest(),
             )
             self.assertNotIn("output", result)
+            expected_report = {
+                "schema_version": "milk.content-free-job-report.v1",
+                "outcome": "invalid_provider_response",
+                "error_class": "ValueError",
+                "failure_stage": "validation",
+                "failure_message_sha256": hashlib.sha256(
+                    b"eval input leaks its expected answer"
+                ).hexdigest(),
+            }
+            self.assertEqual(first["job_results"]["eval_generation"], expected_report)
+            self.assertEqual(replay["job_results"]["eval_generation"], expected_report)
+            self.assertNotIn(
+                "provider_request_id", replay["job_results"]["eval_generation"]
+            )
 
             plan = [
                 {

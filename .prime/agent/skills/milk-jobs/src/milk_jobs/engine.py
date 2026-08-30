@@ -27,7 +27,7 @@ from .evidence import LocalEvidenceStore, R2EvidenceStore, canonical_json, creat
 
 CONFIG_SCHEMA = "milk.harness-run-config.v1"
 REPORT_SCHEMA = "milk.run-once-report.v2"
-CODE_VERSION = "milk.harness-run-once.v2"
+CODE_VERSION = "milk.harness-run-once.v3"
 TEACHER_RESPONSE_CONTENT_CONTRACT = "milk.teacher-json-string-or-object-stop.v2"
 TAXONOMY_VERSION = "milk.semantic-taxonomy.v1"
 MAX_INCREMENTAL_SPEND_MICROUSD = 25_000_000
@@ -2495,12 +2495,12 @@ def _job_report(result):
     }
 
 
-def _stored_classifier_report(store, prefix, job_id):
+def _stored_job_report(store, prefix, job_type, job_id):
     if job_id is None:
         return None
     result = _load_optional_json(
         store,
-        f"{prefix}/jobs/classify/{job_id}/result.json.zst",
+        f"{prefix}/jobs/{job_type}/{job_id}/result.json.zst",
         compressed=True,
     )
     return _job_report(result)
@@ -2603,9 +2603,24 @@ def _existing_report(store, config, meter, harness_revision):
         "watermark": "existing",
         "pending_source": "existing",
         "job_results": {
-            "classifier": _stored_classifier_report(
-                store, config.prefix, classifier_job_id
-            )
+            "classifier": _stored_job_report(
+                store, config.prefix, "classify", classifier_job_id
+            ),
+            "eval_generation": _stored_job_report(
+                store, config.prefix, "generate-eval", eval_job_id
+            ),
+            "eval_validation": _stored_job_report(
+                store,
+                config.prefix,
+                "validate-eval",
+                eval_validation_job_id,
+            ),
+            "candidate_score": _stored_job_report(
+                store,
+                config.prefix,
+                "score-candidate",
+                candidate_score_job_id,
+            ),
         },
     }
     report["artifact_refs"] = _artifact_refs(config, report)
@@ -5174,7 +5189,10 @@ def _run_once_locked(
         "watermark": watermark_status,
         "pending_source": pending_status,
         "job_results": {
-            "classifier": _job_report(classification)
+            "classifier": _job_report(classification),
+            "eval_generation": _job_report(eval_result),
+            "eval_validation": _job_report(eval_validation_result),
+            "candidate_score": _job_report(candidate_score_result),
         },
     }
     report["artifact_refs"] = _artifact_refs(config, report)
