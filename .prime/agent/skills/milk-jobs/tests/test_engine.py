@@ -275,6 +275,9 @@ def config(root, profile="mechanics", scope_id=SCOPE_ID):
                 "minimum_reference_pass_delta_basis_points": 0,
                 "maximum_candidate_error_basis_points": 0,
                 "maximum_candidate_p95_latency_ms": 1000,
+                "minimum_fallback_reference_pass_basis_points": 9000,
+                "maximum_fallback_error_basis_points": 0,
+                "maximum_fallback_p95_latency_ms": 1000,
             },
         }
     )
@@ -1467,6 +1470,122 @@ class RunOnceTests(unittest.TestCase):
                 route_pointer["version_sha256"],
                 accepted["route_proposal_sha256"],
             )
+
+    def test_candidate_score_config_requires_fallback_thresholds(self):
+        with tempfile.TemporaryDirectory() as root:
+            value = _config_dict(root)
+            del value["candidate_score"]["minimum_fallback_reference_pass_basis_points"]
+            with self.assertRaisesRegex(
+                ValueError, "minimum_fallback_reference_pass_basis_points"
+            ):
+                RunConfig.parse(value)
+
+            value = _config_dict(root)
+            value["candidate_score"]["minimum_fallback_reference_pass_basis_points"] = 0
+            with self.assertRaisesRegex(
+                ValueError, "minimum_fallback_reference_pass_basis_points"
+            ):
+                RunConfig.parse(value)
+
+            value = _config_dict(root)
+            value["candidate_score"]["maximum_fallback_error_basis_points"] = 10_001
+            with self.assertRaisesRegex(
+                ValueError, "maximum_fallback_error_basis_points"
+            ):
+                RunConfig.parse(value)
+
+            value = _config_dict(root)
+            value["candidate_score"]["maximum_fallback_p95_latency_ms"] = 0
+            with self.assertRaisesRegex(
+                ValueError, "maximum_fallback_p95_latency_ms"
+            ):
+                RunConfig.parse(value)
+
+            binding = RunConfig.parse(
+                _config_dict(root)
+            ).candidate_score.public_binding()
+            self.assertEqual(
+                binding["minimum_fallback_reference_pass_basis_points"], 9000
+            )
+            self.assertEqual(binding["maximum_fallback_error_basis_points"], 0)
+            self.assertEqual(binding["maximum_fallback_p95_latency_ms"], 1000)
+
+    def test_incumbent_fallback_failures_block_candidate_score(self):
+        class FailingIncumbentFallback:
+            def __init__(self):
+                self.calls = []
+
+            def invoke(self, *, target_name, target, case, job_id):
+                del target
+                self.calls.append((target_name, case["case_id"], job_id))
+                if target_name == "incumbent":
+                    incumbent_calls = sum(
+                        name == "incumbent" for name, _case_id, _job_id in self.calls
+                    )
+                    if incumbent_calls == 1:
+                        raise TimeoutError("incumbent fallback timed out")
+                    return ScoreResponse(
+                        "unrelated",
+                        f"fallback-incumbent-{case['case_id']}",
+                        8,
+                        4,
+                        1_200,
+                    )
+                return ScoreResponse(
+                    case["expected"],
+                    f"fallback-candidate-{case['case_id']}",
+                    8,
+                    4,
+                    9,
+                )
+
+        with tempfile.TemporaryDirectory() as root:
+            store = seed(root)
+            bounded = config(root)
+            teacher = FakeTeacher()
+            run_once(bounded, store=store, teacher=teacher, now=NOW)
+            run_once(bounded, store=store, teacher=teacher, now=NOW)
+
+            second_hour = HOUR + dt.timedelta(hours=1)
+            seed(root, count=100, hour=second_hour, index_offset=200)
+            run_once(
+                bounded,
+                store=store,
+                teacher=teacher,
+                now=NOW + dt.timedelta(hours=2),
+            )
+            scorer = FailingIncumbentFallback()
+            rejected = run_once(
+                bounded,
+                store=store,
+                teacher=teacher,
+                scorer=scorer,
+                now=NOW + dt.timedelta(hours=2),
+            )
+
+            self.assertIsNotNone(rejected["candidate_score_sha256"])
+            self.assertIsNone(rejected["route_proposal_sha256"])
+            pointer = json.loads(
+                store.get(
+                    bounded.prefix
+                    + "/candidate-scores/mechanics-v1/current.json"
+                )
+            )
+            revision = json.loads(store.get(pointer["version_key"]))
+            result = revision["result"]
+            self.assertFalse(result["qualified"])
+            self.assertFalse(result["checks"]["incumbent_reference_pass_rate"])
+            self.assertFalse(result["checks"]["incumbent_errors"])
+            self.assertFalse(result["checks"]["incumbent_p95_latency"])
+            self.assertTrue(result["checks"]["candidate_reference_pass_rate"])
+            self.assertEqual(
+                result["incumbent"]["reference_pass_basis_points"], 0
+            )
+            route_pointer = json.loads(
+                store.get(bounded.prefix + "/route-proposals/current.json")
+            )
+            blocked = json.loads(store.get(route_pointer["version_key"]))
+            self.assertEqual(blocked["reason"], "candidate_score_rejected")
 
     def test_direct_score_client_is_bounded_and_uses_exact_target(self):
         bounded = config("/tmp")
@@ -3458,6 +3577,9 @@ def _config_dict(root):
             "minimum_reference_pass_delta_basis_points": 0,
             "maximum_candidate_error_basis_points": 0,
             "maximum_candidate_p95_latency_ms": 1000,
+            "minimum_fallback_reference_pass_basis_points": 9000,
+            "maximum_fallback_error_basis_points": 0,
+            "maximum_fallback_p95_latency_ms": 1000,
         },
     }
     return value

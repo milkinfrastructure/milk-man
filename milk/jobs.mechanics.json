@@ -74,6 +74,9 @@
     "minimum_candidate_reference_pass_basis_points": 9000,
     "minimum_reference_pass_delta_basis_points": 0,
     "maximum_candidate_error_basis_points": 0,
-    "maximum_candidate_p95_latency_ms": 10000
+    "maximum_candidate_p95_latency_ms": 10000,
+    "minimum_fallback_reference_pass_basis_points": 9000,
+    "maximum_fallback_error_basis_points": 0,
+    "maximum_fallback_p95_latency_ms": 10000
   }
 }

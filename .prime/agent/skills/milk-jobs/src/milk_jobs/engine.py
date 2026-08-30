@@ -569,6 +569,9 @@ class CandidateScoreConfig:
     minimum_reference_pass_delta_basis_points: int
     maximum_candidate_error_basis_points: int
     maximum_candidate_p95_latency_ms: int
+    minimum_fallback_reference_pass_basis_points: int
+    maximum_fallback_error_basis_points: int
+    maximum_fallback_p95_latency_ms: int
 
     @classmethod
     def parse(cls, value):
@@ -590,6 +593,9 @@ class CandidateScoreConfig:
                 "minimum_reference_pass_delta_basis_points",
                 "maximum_candidate_error_basis_points",
                 "maximum_candidate_p95_latency_ms",
+                "minimum_fallback_reference_pass_basis_points",
+                "maximum_fallback_error_basis_points",
+                "maximum_fallback_p95_latency_ms",
             },
         )
         held_out = _integer(value["held_out_cases"], "candidate_score.held_out_cases", 1, 32)
@@ -641,6 +647,9 @@ class CandidateScoreConfig:
             _integer(value["minimum_reference_pass_delta_basis_points"], "candidate_score.minimum_reference_pass_delta_basis_points", -10_000, 10_000),
             _integer(value["maximum_candidate_error_basis_points"], "candidate_score.maximum_candidate_error_basis_points", 0, 10_000),
             _integer(value["maximum_candidate_p95_latency_ms"], "candidate_score.maximum_candidate_p95_latency_ms", 1, 120_000),
+            _integer(value["minimum_fallback_reference_pass_basis_points"], "candidate_score.minimum_fallback_reference_pass_basis_points", 1, 10_000),
+            _integer(value["maximum_fallback_error_basis_points"], "candidate_score.maximum_fallback_error_basis_points", 0, 10_000),
+            _integer(value["maximum_fallback_p95_latency_ms"], "candidate_score.maximum_fallback_p95_latency_ms", 1, 120_000),
         )
 
     def reserved_cost(self):
@@ -669,6 +678,9 @@ class CandidateScoreConfig:
             "minimum_reference_pass_delta_basis_points": self.minimum_reference_pass_delta_basis_points,
             "maximum_candidate_error_basis_points": self.maximum_candidate_error_basis_points,
             "maximum_candidate_p95_latency_ms": self.maximum_candidate_p95_latency_ms,
+            "minimum_fallback_reference_pass_basis_points": self.minimum_fallback_reference_pass_basis_points,
+            "maximum_fallback_error_basis_points": self.maximum_fallback_error_basis_points,
+            "maximum_fallback_p95_latency_ms": self.maximum_fallback_p95_latency_ms,
         }
 
 
@@ -4504,6 +4516,13 @@ def _candidate_score(
         "candidate_p95_latency": candidate["p95_latency_ms"] is not None
         and candidate["p95_latency_ms"]
         <= score_config.maximum_candidate_p95_latency_ms,
+        "incumbent_reference_pass_rate": incumbent["reference_pass_basis_points"]
+        >= score_config.minimum_fallback_reference_pass_basis_points,
+        "incumbent_errors": incumbent["error_basis_points"]
+        <= score_config.maximum_fallback_error_basis_points,
+        "incumbent_p95_latency": incumbent["p95_latency_ms"] is not None
+        and incumbent["p95_latency_ms"]
+        <= score_config.maximum_fallback_p95_latency_ms,
     }
     result = {
         "schema_version": "milk.candidate-score-job-result.v1",
