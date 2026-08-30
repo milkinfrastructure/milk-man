@@ -9,15 +9,16 @@ die() {
 	exit 2
 }
 
-[[ $# -eq 1 ]] || die "usage: MILK_MAN_STATE_DIR=/private/path OPENAI_API_KEY=... $0 <task>"
-: "${OPENAI_API_KEY:?OPENAI_API_KEY is required}"
+[[ $# -eq 1 ]] || die "usage: MILK_MAN_STATE_DIR=/private/path OPENAI_API_KEY=milk_live_... $0 <task>"
+: "${OPENAI_API_KEY:?OPENAI_API_KEY must contain an operator-issued Milk Carton key}"
 : "${MILK_MAN_STATE_DIR:?MILK_MAN_STATE_DIR is required}"
+[[ "$OPENAI_API_KEY" == milk_live_* ]] || die "OPENAI_API_KEY must contain an operator-issued Milk Carton key"
 [[ "$MILK_MAN_STATE_DIR" == /* ]] || die "MILK_MAN_STATE_DIR must be absolute"
+[[ -d "$MILK_MAN_STATE_DIR" ]] || die "MILK_MAN_STATE_DIR must already exist"
 [[ -x "$ROOT/node_modules/.bin/srt" ]] || die "run npm ci first"
 [[ "$(uname -s)" == Darwin ]] || die "the local launcher currently requires APFS clone support on macOS"
 [[ -z "$(git -C "$ROOT" status --porcelain)" ]] || die "the source checkout must be clean"
 
-mkdir -p "$MILK_MAN_STATE_DIR"
 STATE="$(cd "$MILK_MAN_STATE_DIR" && pwd -P)"
 HOST_HOME="$(cd "$HOME" && pwd -P)"
 case "$STATE" in
@@ -52,6 +53,8 @@ trap report_retained_worktree EXIT
 mkdir -p "$CONTROL" "$CONFIG" "$SESSIONS" "$TMP" "$HOME_DIR" "$ARTIFACTS" "$STATE/worktrees"
 chmod 700 "$STATE" "$CONTROL" "$CONFIG" "$SESSIONS" "$TMP" "$HOME_DIR" "$ARTIFACTS" "$STATE/worktrees"
 install -m 600 "$ROOT/milk/self-improve-settings.json" "$CONFIG/settings.json"
+printf '{"providers":{"milk-carton":{"baseUrl":"https://carton.milkinfrastructure.com/v1","api":"openai-completions","apiKey":"OPENAI_API_KEY","authHeader":true,"headers":{"x-milk-session-id":"milk-man-%s"},"models":[{"id":"zai-org/GLM-5.3-Flash","name":"GLM-5.3-Flash through Milk Carton","reasoning":true,"input":["text"],"contextWindow":131072,"maxTokens":16384}]}}}\n' "$RUN_ID" >"$CONFIG/models.json"
+chmod 600 "$CONFIG/models.json"
 printf '{}\n' >"$CONFIG/auth.json"
 cp -R "$ROOT/packages/coding-agent/skills/refine" "$CONTROL/refine"
 
@@ -114,8 +117,9 @@ fs.writeFileSync(out, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
 NODE
 
 GATE="$CONTROL/check"
-printf '#!/usr/bin/env bash\ncd %q\nexec env -i PATH=%q HOME=%q TMPDIR=%q CLAUDE_CODE_TMPDIR=%q NO_COLOR=1 %q --settings %q npm run check\n' \
-	"$WORKTREE" "${PATH:-/usr/bin:/bin}" "$HOME_DIR" "$TMP" "$TMP" "$ROOT/node_modules/.bin/srt" "$SRT_SETTINGS" >"$GATE"
+printf '#!/usr/bin/env bash\ncd %q\nexec env -i PATH=%q HOME=%q TMPDIR=%q CLAUDE_CODE_TMPDIR=%q NO_COLOR=1 %q --settings %q sh -eu -c %q\n' \
+	"$WORKTREE" "${PATH:-/usr/bin:/bin}" "$HOME_DIR" "$TMP" "$TMP" "$ROOT/node_modules/.bin/srt" "$SRT_SETTINGS" \
+	'node_modules/.bin/biome check --error-on-warnings . && node_modules/.bin/tsgo --noEmit && node scripts/check-installer-render.mjs && node scripts/check-browser-smoke.mjs && bash -n milk/self-improve.sh milk/codex-context.sh' >"$GATE"
 chmod 700 "$GATE"
 
 echo "Retained worktree: $WORKTREE"
@@ -140,7 +144,7 @@ env -i \
 	"$ROOT/prime-agent.sh" \
 	--cwd "$WORKTREE" \
 	--session-dir "$SESSIONS" \
-	--model openai/gpt-5.6-luna \
+	--model milk-carton/zai-org/GLM-5.3-Flash \
 	--thinking low \
 	--tools ipython \
 	--no-extensions \

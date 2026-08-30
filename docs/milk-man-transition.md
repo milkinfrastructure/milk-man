@@ -125,9 +125,13 @@ permissions. A task can admit a bounded agent-model call or one fixed Milk job
 call. Push, deploy, provider calls, object writes, route preparation, signing,
 and publication remain separate permissions and default to false.
 
-Do not migrate the Codex transcript, hidden reasoning, raw credentials,
-browser sessions, shell history, memory folders, production prompts or
-responses, signing keys, implicit approvals, or an unreviewed dirty checkout.
+The task document remains the authority. A run may also receive a reviewed,
+bounded Codex message range through `milk/codex-context.sh` as advisory history.
+The adapter retains only user and assistant text and rejects unbounded or
+oversized input. Do not migrate a full transcript, hidden reasoning, tool calls
+or results, raw credentials, browser sessions, shell history, memory folders,
+production prompts or responses, signing keys, implicit approvals, or an
+unreviewed dirty checkout.
 
 ## Minimum local loop
 
