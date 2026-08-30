@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[5]
 WORKFLOW = ROOT / ".github/workflows/milk-jobs.yml"
-HARNESS_REVISION = "b043e2105068696439e035ad16969a10ee48ca42"
+HARNESS_REVISION = "12fd42d7f039b55ae61a479543b5f4caa182784c"
 
 
 class MilkJobsWorkflowTest(unittest.TestCase):
