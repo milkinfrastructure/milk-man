@@ -19,4 +19,6 @@ report = await milk_jobs.reconcile()
 
 `await milk_jobs()` is equivalent. The call accepts no command, path, provider,
 signing, publication, or routing arguments. It returns the parsed
-`milk.run-once-report.v1` metadata report. It never activates or signs a route.
+`milk.run-once-report.v2` report. Strict `artifact_refs` are derived from the
+admitted config and fixed job children; model-authored keys are rejected. It
+never activates or signs a route.
