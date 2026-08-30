@@ -703,6 +703,26 @@ def add_responses_zstd_trace(root):
 
 
 class RunOnceTests(unittest.TestCase):
+    def test_reasoning_none_is_admitted_and_emitted_exactly(self):
+        with tempfile.TemporaryDirectory() as root:
+            value = _config_dict(root)
+            value["teacher"]["reasoning_effort"] = "none"
+            bounded = RunConfig.parse(value)
+            request = json.loads(
+                _teacher_request_body(
+                    bounded.teacher,
+                    CLASSIFIER_INSTRUCTIONS,
+                    {"rows": [["c", "request", 0, 8]]},
+                    "classify",
+                )
+            )
+            self.assertEqual(bounded.teacher.reasoning_effort, "none")
+            self.assertEqual(request["reasoning_effort"], "none")
+
+            value["teacher"]["reasoning_effort"] = "medium"
+            with self.assertRaisesRegex(ValueError, "none, low, high, or max"):
+                RunConfig.parse(value)
+
     def test_direct_teacher_json_content_contract(self):
         bounded = config("/tmp")
         expected = {"labels": [[0, 0, 1, 0, "en", False]]}

@@ -17,8 +17,9 @@ endpoint does not change Milk Man's software license.
 
 ## GLM-5.3-Flash
 
-The current Milk teacher is the hosted `zai-org/GLM-5.3-Flash` model. Its MIT
-license is preserved at
+The current Milk route candidate and self-improvement model remain hosted
+`zai-org/GLM-5.3-Flash`. Milk jobs use the hosted `zai-org/GLM-5.2-Fast`
+teacher. The GLM-5.3-Flash MIT license is preserved at
 [`licenses/GLM-5.3-Flash-LICENSE`](licenses/GLM-5.3-Flash-LICENSE), copied from
 commit `04c4e9e95c5da8862dced7e5056455116f83a7e0`.
 

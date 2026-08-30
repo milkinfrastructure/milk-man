@@ -350,8 +350,10 @@ class TeacherConfig:
         reasoning_effort = _string(
             value["reasoning_effort"], "teacher.reasoning_effort", maximum=8
         )
-        if reasoning_effort not in {"low", "high", "max"}:
-            raise ValueError("teacher.reasoning_effort must be low, high, or max")
+        if reasoning_effort not in {"none", "low", "high", "max"}:
+            raise ValueError(
+                "teacher.reasoning_effort must be none, low, high, or max"
+            )
         return cls(
             api_url,
             _string(value["model"], "teacher.model", maximum=256),
