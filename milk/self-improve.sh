@@ -185,4 +185,9 @@ env -i \
 STATUS=$?
 set -e
 
+if [[ "$STATUS" -eq 0 && -z "$(git -C "$WORKTREE" status --porcelain --untracked-files=all)" ]]; then
+	echo "self-improve: agent completed without changing the disposable checkout" >&2
+	STATUS=1
+fi
+
 exit "$STATUS"
