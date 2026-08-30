@@ -1431,7 +1431,7 @@ describe("Generate E2E Tests", () => {
 	});
 
 	let ollamaInstalled = false;
-	if (!process.env.PI_NO_LOCAL_LLM) {
+	if (process.env.PI_TEST_LOCAL_LLM === "1") {
 		try {
 			execSync("which ollama", { stdio: "ignore" });
 			ollamaInstalled = true;
