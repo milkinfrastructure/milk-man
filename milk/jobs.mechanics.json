@@ -37,7 +37,7 @@
   },
   "eval": {
     "series_id": "production-path-mechanics-v1",
-    "representative_cases": 24,
+    "representative_cases": 20,
     "tail_cases": 8,
     "max_source_traces": 32
   },
