@@ -27,7 +27,8 @@ from .evidence import LocalEvidenceStore, R2EvidenceStore, canonical_json, creat
 
 CONFIG_SCHEMA = "milk.harness-run-config.v1"
 REPORT_SCHEMA = "milk.run-once-report.v2"
-CODE_VERSION = "milk.harness-run-once.v3"
+CODE_VERSION = "milk.harness-run-once.v2"
+PROVIDER_JOB_CODE_VERSION = "milk.provider-job.v3"
 TEACHER_RESPONSE_CONTENT_CONTRACT = "milk.teacher-json-string-or-object-stop.v2"
 TAXONOMY_VERSION = "milk.semantic-taxonomy.v1"
 MAX_INCREMENTAL_SPEND_MICROUSD = 25_000_000
@@ -3122,7 +3123,7 @@ def _provider_job(
         "response_format_sha256": _digest(response_format),
         "response_content_contract": TEACHER_RESPONSE_CONTENT_CONTRACT,
         "input_sha256": _digest(input_value),
-        "code_version": CODE_VERSION,
+        "code_version": PROVIDER_JOB_CODE_VERSION,
     }
     job_id = _digest(identity)
     result_key = f"{config.prefix}/jobs/{job_type}/{job_id}/result.json.zst"
@@ -4309,7 +4310,7 @@ def _candidate_score(
         "eval_validation_sha256": eval_validation_sha256,
         "score_config": score_config.public_binding(),
         "case_ids": [case["case_id"] for case in selected],
-        "code_version": CODE_VERSION,
+        "code_version": PROVIDER_JOB_CODE_VERSION,
     }
     job_id = _digest(identity)
     result_key = f"{config.prefix}/jobs/score-candidate/{job_id}/result.json.zst"

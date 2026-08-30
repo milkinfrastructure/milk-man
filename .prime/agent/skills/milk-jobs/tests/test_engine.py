@@ -1700,6 +1700,48 @@ class RunOnceTests(unittest.TestCase):
                 "provider_request_id", first["job_results"]["classifier"]
             )
 
+    def test_provider_job_version_does_not_invalidate_pending_source(self):
+        with tempfile.TemporaryDirectory() as root:
+            store = seed(root)
+            teacher = HttpErrorTeacher()
+            with mock.patch(
+                "milk_jobs.engine.PROVIDER_JOB_CODE_VERSION",
+                "milk.harness-run-once.v2",
+            ):
+                previous = run_once(
+                    config(root), store=store, teacher=teacher, now=NOW
+                )
+
+            current = run_once(
+                config(root), store=store, teacher=teacher, now=NOW
+            )
+
+            self.assertEqual(
+                current["source_manifest_sha256"],
+                previous["source_manifest_sha256"],
+            )
+            self.assertNotEqual(
+                current["classifier_job_id"], previous["classifier_job_id"]
+            )
+            self.assertEqual(
+                [task for task, unused_job_id in teacher.calls],
+                ["classify", "classify"],
+            )
+            pointer = json.loads(
+                store.get(config(root).prefix + "/pending-source/current.json")
+            )
+            source = json.loads(store.get(pointer["version_key"]))
+            self.assertEqual(source["code_version"], "milk.harness-run-once.v2")
+            claim_versions = {
+                json.loads(store.get(key))["identity"]["code_version"]
+                for key in store.list(config(root).prefix + "/jobs/classify")
+                if key.endswith("/claim.json")
+            }
+            self.assertEqual(
+                claim_versions,
+                {"milk.harness-run-once.v2", "milk.provider-job.v3"},
+            )
+
     def test_real_zstd_responses_trace_is_parsed_without_rejecting_unknown_items(self):
         with tempfile.TemporaryDirectory() as root:
             store = seed(root, count=99)
