@@ -22,7 +22,7 @@
     "model": "zai-org/GLM-5.3-Flash",
     "reasoning_effort": "low",
     "api_key_env": "BASETEN_API_KEY",
-    "timeout_seconds": 60,
+    "timeout_seconds": 120,
     "max_calls_per_run": 2,
     "max_input_tokens_per_call": 100000,
     "max_output_tokens_per_call": 16384,
