@@ -1,7 +1,7 @@
 [project]
 name = "milk-jobs"
 version = "0.1.0"
-description = "Bounded Milk Harness reconciliation for Milk Man"
+description = "Bounded deterministic Milk reconciliation for Milk Man"
 requires-python = ">=3.10"
 dependencies = []
 

@@ -79,17 +79,16 @@ worktree.
 
 The separate checked-in `milk-jobs` skill exposes
 `await milk_jobs.reconcile()` for one finite reconciliation pass. It accepts no
-arguments. `MILK_HARNESS_ROOT` pins the checkpointed implementation and
-`MILK_RUN_ONCE_CONFIG` pins the reviewed configuration. A schedule may re-enter
-that fixed call; scheduling does not expand its permissions.
+arguments. `MILK_MAN_REVISION` binds the report to the running Milk Man commit,
+and `MILK_RUN_ONCE_CONFIG` pins the reviewed configuration. A schedule may
+re-enter that fixed call; scheduling does not expand its permissions.
 
 The same job runs directly from bash; credentials remain envvars:
 
 ```sh
-export MILK_HARNESS_ROOT=/absolute/path/to/milk-harness
-export MILK_HARNESS_REVISION=<exact-40-character-commit>
+export MILK_MAN_REVISION=<exact-40-character-milk-man-commit>
 export MILK_RUN_PROFILE=production
-export MILK_RUN_ONCE_CONFIG="$MILK_HARNESS_ROOT/deploy/run-once.production.json"
+export MILK_RUN_ONCE_CONFIG=/absolute/path/to/milk-man/milk/jobs.production.json
 export MILK_CONTROL_R2_ACCOUNT_ID=<cloudflare-account-id>
 export MILK_CONTROL_R2_BUCKET=<bucket>
 export MILK_CONTROL_R2_ACCESS_KEY_ID=<access-key-id>

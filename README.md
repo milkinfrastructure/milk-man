@@ -36,12 +36,12 @@ separate operator actions unless the reviewed task explicitly admits the exact
 action.
 
 The hourly [`Milk Jobs Reconcile`](.github/workflows/milk-jobs.yml) workflow
-checks out an exact Milk Harness revision and calls the argument-free
+runs the in-repository deterministic engine through the argument-free
 `milk_jobs.reconcile()` wrapper. Its production and isolated mechanics profiles
 use checked-in configs; object-store and teacher credentials come only from the
 protected `milk-provider-jobs-prod` GitHub environment. The job may write
-summary, readiness, eval, and unsigned route-proposal objects. It cannot sign or
-publish a route.
+summary, readiness, eval, validation, score, and unsigned route-proposal
+objects. It cannot sign or publish a route.
 
 <p align="center">
   <a href="https://github.com/milkinfrastructure/milk-man/actions/workflows/ci.yml">

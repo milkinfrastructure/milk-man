@@ -30,14 +30,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout pinned Milk Harness
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          repository: milkinfrastructure/milk-harness
-          ref: 12fd42d7f039b55ae61a479543b5f4caa182784c
-          path: milk-harness
-          persist-credentials: false
-
       - name: Run fixed Milk job
         env:
           BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
@@ -47,15 +39,14 @@ jobs:
           MILK_CONTROL_R2_ACCESS_KEY_ID: ${{ secrets.MILK_CONTROL_R2_ACCESS_KEY_ID }}
           MILK_CONTROL_R2_SECRET_ACCESS_KEY: ${{ secrets.MILK_CONTROL_R2_SECRET_ACCESS_KEY }}
           MILK_CONTROL_R2_SESSION_TOKEN: ${{ secrets.MILK_CONTROL_R2_SESSION_TOKEN }}
-          MILK_HARNESS_REVISION: 12fd42d7f039b55ae61a479543b5f4caa182784c
-          MILK_HARNESS_ROOT: ${{ github.workspace }}/milk-harness
+          MILK_MAN_REVISION: ${{ github.sha }}
           MILK_RUN_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'production' }}
-          MILK_RUN_ONCE_CONFIG: ${{ format('{0}/milk-harness/deploy/run-once.{1}.json', github.workspace, github.event_name == 'workflow_dispatch' && inputs.profile || 'production') }}
+          MILK_RUN_ONCE_CONFIG: ${{ format('{0}/milk/jobs.{1}.json', github.workspace, github.event_name == 'workflow_dispatch' && inputs.profile || 'production') }}
           PYTHONPATH: ${{ github.workspace }}/.prime/agent/skills/milk-jobs/src
         run: |
           set -eu
           command -v zstd >/dev/null
-          test "$(git -C "$MILK_HARNESS_ROOT" rev-parse HEAD)" = "$MILK_HARNESS_REVISION"
+          test "$(git rev-parse HEAD)" = "$MILK_MAN_REVISION"
           case "$MILK_RUN_PROFILE" in
             production|mechanics) ;;
             *) exit 64 ;;

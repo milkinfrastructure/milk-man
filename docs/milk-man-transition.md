@@ -28,20 +28,18 @@ publication remain operator-only actions outside Milk Man.
 - Milk Carton's routing and capture implementation is checkpointed at
   `8ce45f3daf3d262eaa77e672ece2aa7918033aed`; its Rust workspace tests passed
   150 tests on 2026-08-29.
-- The deterministic Python implementation is checkpointed at
-  `07db7b7e472a87d44e0dd62ee32a878d2874b012`. For this migration it remains a
-  temporary implementation bridge behind Milk Man's fixed job call. It is not a
-  third product, service, scheduler, or authority.
+- The deterministic Python engine from checkpoint
+  `12fd42d7f039b55ae61a479543b5f4caa182784c` is now owned by the checked-in
+  `milk-jobs` package with its production and mechanics configurations. It is
+  not a third product, service, scheduler, or authority.
 - Milk Man's published pre-stitch checkpoint is
   `8e6d875fca9c4e3377e9e8ac9aae85c81e3555e3`; its source check and one bounded
   model-backed disposable-worktree proof passed.
 
-The temporary bridge already performs one finite
-`python -m milk_harness run-once` pass: summary, classification, readiness,
-eval generation, and unsigned proposal. Milk Man calls it with operator-pinned
-configuration and credentials. The bridge can be absorbed after the fixed call
-and object-store contract are proven; its repository is not part of the final
-product boundary.
+`milk_jobs.reconcile()` loads the operator-pinned in-repository configuration
+and performs one finite pass: summary, classification, readiness, eval
+generation, validation, candidate scoring, and unsigned proposal. There is no
+external runtime checkout in the job path.
 
 Baseten's hosted `zai-org/GLM-5.3-Flash` endpoint has passed Chat Completions,
 Responses, and classifier-wire qualification. Observed qualification spend was
