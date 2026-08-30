@@ -24,10 +24,10 @@ to commit `5b6c0e94e11a97fcfdd7a9fc9dc4f7acbda9c853`. It edits and tests trusted
 through fixed Python calls. The executable remains `prime-agent` so upstream
 updates stay reviewable and small.
 
-Milk-specific state is intentionally limited to a project skill, a portable
-task schema, model configuration examples, and documentation. Milk Carton is
-the Rust request and routing data plane. Local or qualified S3-compatible object
-storage is durable system memory; secrets and signing keys never enter it.
+Milk-specific code is limited to two Bash entrypoints, one deterministic job
+skill, and documentation. Milk Carton is the Rust request and routing data
+plane. Local or qualified S3-compatible object storage is durable system
+memory; secrets and signing keys never enter it.
 Existing Prime Agent goals, schedules, subagents, autonomous gates, and session
 storage coordinate the work. A model may select an admitted job call, but it
 cannot change that job's scope, configuration, budget, write target, or signing
