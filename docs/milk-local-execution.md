@@ -35,7 +35,7 @@ calls `zai-org/GLM-5.3-Flash` through
 `https://carton.milkinfrastructure.com/v1`, assigns a unique Milk session ID,
 loads only the checked-in refinement skill,
 disables recursive agents, limits the run to twelve turns, and requires the fixed
-repository gate. Bounded provider and agent retries tolerate transient rate
+repository gate, including the complete Milk Jobs Python suite. Bounded provider and agent retries tolerate transient rate
 limits without changing the task or checkout. Commit, push, merge, and production actions remain
 operator work.
 

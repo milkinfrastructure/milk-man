@@ -135,9 +135,13 @@ NODE
 # The autonomous runner treats the gate as a shell command, so keep its path
 # short and space-free. SRT denies the model write access to this exact file.
 GATE="$RUNTIME_TMP/check"
+printf -v GATE_COMMAND '%s %q %s' \
+	'node_modules/.bin/biome check --error-on-warnings . && node_modules/.bin/tsgo --noEmit && node scripts/check-installer-render.mjs && node scripts/check-browser-smoke.mjs && env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.prime/agent/skills/milk-jobs/src' \
+	"$KERNEL_PYTHON" \
+	"-m unittest discover -s .prime/agent/skills/milk-jobs/tests -p 'test_*.py' && bash -n milk/self-improve.sh milk/codex-context.sh milk/jobs.sh"
 printf '#!/usr/bin/env bash\ncd %q\nif [[ -z "$(git status --porcelain --untracked-files=all)" ]]; then\n\techo "self-improve gate: disposable checkout is unchanged" >&2\n\texit 1\nfi\nexec env -i PATH=%q HOME=%q TMPDIR=%q CLAUDE_CODE_TMPDIR=%q NO_COLOR=1 %q --settings %q sh -eu -c %q\n' \
 	"$WORKTREE" "${PATH:-/usr/bin:/bin}" "$HOME_DIR" "$TMP" "$TMP" "$ROOT/node_modules/.bin/srt" "$SRT_SETTINGS" \
-	'node_modules/.bin/biome check --error-on-warnings . && node_modules/.bin/tsgo --noEmit && node scripts/check-installer-render.mjs && node scripts/check-browser-smoke.mjs && bash -n milk/self-improve.sh milk/codex-context.sh milk/jobs.sh' >"$GATE"
+	"$GATE_COMMAND" >"$GATE"
 chmod 700 "$GATE"
 
 echo "Retained worktree: $WORKTREE"
