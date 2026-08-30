@@ -72,13 +72,21 @@ class FakeTeacher:
                 ]
             }
         elif task == "generate_eval":
+            request_bytes = {row[0]: row[6] for row in payload["traces"]}
             value = {
                 "pairs": [
                     [
-                        f"Add {index} and 1. Return only the number.",
-                        str(index + 1),
+                        f"Scenario {index}: One captured request contains "
+                        f"{request_bytes[row[1]]} bytes. A batch keeps "
+                        f"{2 + (index - 1) % 8} copies and adds {17 + index} metadata "
+                        "bytes. What is the total byte count? Return only the number.",
+                        str(
+                            request_bytes[row[1]] * (2 + (index - 1) % 8)
+                            + 17
+                            + index
+                        ),
                     ]
-                    for index in range(len(payload["case_plan"]))
+                    for index, row in enumerate(payload["case_plan"], 1)
                 ]
             }
         elif task == "validate_eval":
@@ -2188,11 +2196,8 @@ class RunOnceTests(unittest.TestCase):
             )
             self.assertEqual(len(checked), 32)
 
-            numeric_pairs = [
-                [f"Add {index} and 1.", str(index + 1)]
-                for index in range(32)
-            ]
-            with self.assertRaisesRegex(ValueError, "must require a bare number"):
+            numeric_pairs = [["Add 1 and 1.", "2"] for unused in range(32)]
+            with self.assertRaisesRegex(ValueError, "input format is invalid"):
                 _validate_eval_output(
                     _eval_cases_from_pairs({"pairs": numeric_pairs}, first),
                     traces,
@@ -3113,7 +3118,7 @@ class RunOnceTests(unittest.TestCase):
             self.assertIsNotNone(report["eval_sha256"])
             self.assertEqual(
                 teacher.eval_payload["schema_version"],
-                "milk.eval-generation-input.v8",
+                "milk.eval-generation-input.v10",
             )
             self.assertEqual(
                 teacher.eval_payload["expected_format"], "atomic-number"
