@@ -3,6 +3,12 @@
 Milk Man uses Prime Agent's source runner directly. There is no separate Milk
 daemon, queue, scheduler service, or agent framework.
 
+It has two separate Bash execution paths. `milk/self-improve.sh` edits and
+tests Milk Man in a disposable local worktree; it cannot access object storage
+or provider-job credentials. `milk/jobs.sh` runs one fixed reconciliation pass
+against the operator-pinned config and may access R2, Baseten, and Milk Carton;
+it does not run the source-editing agent loop.
+
 ## Build
 
 ```sh
@@ -12,7 +18,7 @@ npm run check
 
 Node 22.8 or newer and Python 3.11 or newer are required.
 
-## Self-improvement
+## Self-improvement Bash path
 
 Start from a clean source checkout on macOS. Supply an operator-issued Milk
 Carton key and a dedicated state directory outside the repository:
@@ -79,7 +85,7 @@ requires a source diff, then runs in a separate key-free SRT process. This
 materially limits the run but is not a virtual machine; use reviewed tasks and
 inspect the retained worktree.
 
-## Deterministic Milk jobs
+## Deterministic Milk jobs Bash path
 
 The separate checked-in `milk-jobs` skill exposes
 `await milk_jobs.reconcile()` for one finite reconciliation pass. It accepts no
@@ -87,9 +93,11 @@ arguments. `MILK_MAN_REVISION` binds the report to the running Milk Man commit,
 and `MILK_RUN_ONCE_CONFIG` pins the reviewed configuration. A schedule may
 re-enter that fixed call; scheduling does not expand its permissions.
 
-The same job runs directly from bash; credentials remain envvars:
+The same job runs directly from Bash. It requires `zstd`; credentials remain
+environment variables:
 
 ```sh
+command -v zstd >/dev/null
 export MILK_MAN_REVISION=<exact-40-character-milk-man-commit>
 export MILK_RUN_PROFILE=production
 export MILK_RUN_ONCE_CONFIG=/absolute/path/to/milk-man/milk/jobs.production.json
@@ -97,6 +105,7 @@ export MILK_CONTROL_R2_ACCOUNT_ID=<cloudflare-account-id>
 export MILK_CONTROL_R2_BUCKET=<bucket>
 export MILK_CONTROL_R2_ACCESS_KEY_ID=<access-key-id>
 export MILK_CONTROL_R2_SECRET_ACCESS_KEY=<secret-access-key>
+export BASETEN_TEACHER_API_KEY=<baseten-teacher-key>
 export BASETEN_API_KEY=<baseten-key>
 export MILK_GATEWAY_API_KEY=<operator-issued-milk-key>
 export MILK_MAN_PYTHON=/absolute/path/to/python3.13
