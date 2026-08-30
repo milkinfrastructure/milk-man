@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[5]
 WORKFLOW = ROOT / ".github/workflows/milk-jobs.yml"
-HARNESS_REVISION = "f3e255e22ead6ed62e5f41c0c275afb43d248ca7"
+HARNESS_REVISION = "920bc69522876d4aa5114d7e53f6e47a5c61d2a4"
 
 
 class MilkJobsWorkflowTest(unittest.TestCase):
@@ -46,6 +46,7 @@ class MilkJobsWorkflowTest(unittest.TestCase):
             set(re.findall(r"secrets\.([A-Z0-9_]+)", self.text)),
             {
                 "BASETEN_API_KEY",
+                "MILK_GATEWAY_API_KEY",
                 "MILK_CONTROL_R2_ACCOUNT_ID",
                 "MILK_CONTROL_R2_ACCESS_KEY_ID",
                 "MILK_CONTROL_R2_BUCKET",
