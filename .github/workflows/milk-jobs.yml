@@ -33,6 +33,7 @@ jobs:
       - name: Run fixed Milk job
         env:
           BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
+          BASETEN_TEACHER_API_KEY: ${{ secrets.BASETEN_TEACHER_API_KEY }}
           MILK_GATEWAY_API_KEY: ${{ secrets.MILK_GATEWAY_API_KEY }}
           MILK_CONTROL_R2_ACCOUNT_ID: ${{ secrets.MILK_CONTROL_R2_ACCOUNT_ID }}
           MILK_CONTROL_R2_BUCKET: ${{ secrets.MILK_CONTROL_R2_BUCKET }}
