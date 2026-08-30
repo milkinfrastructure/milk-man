@@ -1437,6 +1437,22 @@ class RunOnceTests(unittest.TestCase):
                 ).hexdigest(),
             )
             self.assertNotIn("output", result)
+            content_free = first["job_results"]["classifier"]
+            self.assertEqual(content_free, second["job_results"]["classifier"])
+            self.assertEqual(
+                content_free,
+                {
+                    "schema_version": "milk.content-free-job-report.v1",
+                    "outcome": "invalid_provider_response",
+                    "error_class": "ValueError",
+                    "failure_stage": "validation",
+                    "failure_message_sha256": hashlib.sha256(
+                        b"classification output must contain one label per trace"
+                    ).hexdigest(),
+                },
+            )
+            self.assertNotIn("provider_request_id", content_free)
+            self.assertNotIn("output", content_free)
 
     def test_provider_contract_failure_uses_conservative_accounting(self):
         with tempfile.TemporaryDirectory() as root:
@@ -1468,6 +1484,18 @@ class RunOnceTests(unittest.TestCase):
             self.assertEqual(
                 report["accounted_incremental_spend_microusd"],
                 bounded.teacher.reserved_cost(),
+            )
+            self.assertEqual(
+                report["job_results"]["classifier"],
+                {
+                    "schema_version": "milk.content-free-job-report.v1",
+                    "outcome": "invalid_provider_response",
+                    "error_class": "ValueError",
+                    "failure_stage": "provider_contract",
+                    "failure_message_sha256": hashlib.sha256(
+                        b"teacher response content must be a JSON string"
+                    ).hexdigest(),
+                },
             )
             self.assertEqual(
                 result["failure_message_sha256"],
@@ -1620,6 +1648,16 @@ class RunOnceTests(unittest.TestCase):
             self.assertEqual(result["outcome"], "definitive_http_error")
             self.assertEqual(result["http_status"], 429)
             self.assertEqual(result["provider_request_id"], "provider-http-429")
+            content_free = {
+                "schema_version": "milk.content-free-job-report.v1",
+                "outcome": "definitive_http_error",
+                "http_status": 429,
+            }
+            self.assertEqual(first["job_results"]["classifier"], content_free)
+            self.assertEqual(second["job_results"]["classifier"], content_free)
+            self.assertNotIn(
+                "provider_request_id", first["job_results"]["classifier"]
+            )
 
     def test_real_zstd_responses_trace_is_parsed_without_rejecting_unknown_items(self):
         with tempfile.TemporaryDirectory() as root:
