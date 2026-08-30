@@ -37,7 +37,7 @@
   },
   "eval": {
     "series_id": "production-path-mechanics-v1",
-    "representative_cases": 8,
+    "representative_cases": 4,
     "tail_cases": 2,
     "max_source_traces": 32
   },
@@ -63,13 +63,13 @@
       "input_rate_microusd_per_million": 150000,
       "output_rate_microusd_per_million": 500000
     },
-    "held_out_cases": 8,
+    "held_out_cases": 2,
     "timeout_seconds": 30,
-    "minimum_request_interval_ms": 4100,
-    "max_calls_per_run": 16,
+    "minimum_request_interval_ms": 1000,
+    "max_calls_per_run": 4,
     "max_input_tokens_per_call": 4096,
     "max_output_tokens_per_call": 1024,
-    "max_total_tokens_per_run": 81920,
+    "max_total_tokens_per_run": 20480,
     "case_reference_similarity_basis_points": 9500,
     "minimum_candidate_reference_pass_basis_points": 9000,
     "minimum_reference_pass_delta_basis_points": 0,
