@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import tempfile
 import textwrap
@@ -8,6 +9,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 import milk_jobs
+
+
+HARNESS_REVISION = "1" * 40
+CONFIG_SHA256 = hashlib.sha256(b"{}").hexdigest()
+EVAL_SHA256 = "3" * 64
+VALIDATION_SHA256 = "4" * 64
+SCORE_SHA256 = "5" * 64
+PROPOSAL_SHA256 = "6" * 64
 
 
 class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
@@ -22,6 +31,8 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
             os.environ,
             {
                 "MILK_HARNESS_ROOT": str(self.root),
+                "MILK_HARNESS_REVISION": HARNESS_REVISION,
+                "MILK_RUN_PROFILE": "mechanics",
                 "MILK_RUN_ONCE_CONFIG": str(self.config),
             },
             clear=False,
@@ -36,7 +47,14 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
         report = {
             "schema_version": "milk.run-once-report.v1",
             "scope_id": "00000000-0000-0000-0000-000000000001",
+            "profile": "mechanics",
             "trace_count": 12,
+            "harness_revision": HARNESS_REVISION,
+            "config_sha256": CONFIG_SHA256,
+            "eval_sha256": EVAL_SHA256,
+            "eval_validation_sha256": VALIDATION_SHA256,
+            "candidate_score_sha256": SCORE_SHA256,
+            "route_proposal_sha256": PROPOSAL_SHA256,
             "route_activation_attempted": False,
         }
         self._write_main(
@@ -91,20 +109,52 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
                 await milk_jobs.reconcile()
 
     async def test_reconcile_requires_route_activation_to_stay_disabled(self) -> None:
+        report = self._valid_report(route_activation_attempted=True)
         self._write_main(
-            """
+            f"""
             import json
             import sys
 
-            sys.stdout.write(json.dumps({
-                "schema_version": "milk.run-once-report.v1",
-                "route_activation_attempted": True,
-            }))
+            sys.stdout.write(json.dumps({report!r}))
             """
         )
 
         with self.assertRaisesRegex(milk_jobs.MilkJobError, "activation stayed disabled"):
             await milk_jobs.reconcile()
+
+    async def test_reconcile_requires_exact_harness_revision(self) -> None:
+        report = self._valid_report(harness_revision="9" * 40)
+        self._write_report(report)
+
+        with self.assertRaisesRegex(milk_jobs.MilkJobError, "revision does not match"):
+            await milk_jobs.reconcile()
+
+    async def test_reconcile_requires_exact_config_and_profile(self) -> None:
+        self._write_report(self._valid_report(config_sha256="9" * 64))
+        with self.assertRaisesRegex(milk_jobs.MilkJobError, "config does not match"):
+            await milk_jobs.reconcile()
+
+        self._write_report(self._valid_report(profile="production"))
+        with self.assertRaisesRegex(milk_jobs.MilkJobError, "profile does not match"):
+            await milk_jobs.reconcile()
+
+    async def test_reconcile_requires_validation_and_score_before_proposal(self) -> None:
+        report = self._valid_report(candidate_score_sha256=None)
+        self._write_report(report)
+
+        with self.assertRaisesRegex(milk_jobs.MilkJobError, "proposal is missing candidate score"):
+            await milk_jobs.reconcile()
+
+    async def test_reconcile_accepts_an_idle_report_without_eval_artifacts(self) -> None:
+        report = self._valid_report(
+            eval_sha256=None,
+            eval_validation_sha256=None,
+            candidate_score_sha256=None,
+            route_proposal_sha256=None,
+        )
+        self._write_report(report)
+
+        self.assertEqual(await milk_jobs.reconcile(), report)
 
     async def test_reconcile_does_not_return_process_errors(self) -> None:
         self._write_main(
@@ -126,6 +176,34 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
         (self.root / "milk_harness" / "__main__.py").write_text(
             textwrap.dedent(source).lstrip()
         )
+
+    def _write_report(self, report: dict[str, object]) -> None:
+        self._write_main(
+            f"""
+            import json
+            import sys
+
+            sys.stdout.write(json.dumps({report!r}))
+            """
+        )
+
+    @staticmethod
+    def _valid_report(**updates: object) -> dict[str, object]:
+        report: dict[str, object] = {
+            "schema_version": "milk.run-once-report.v1",
+            "scope_id": "00000000-0000-0000-0000-000000000001",
+            "profile": "mechanics",
+            "trace_count": 12,
+            "harness_revision": HARNESS_REVISION,
+            "config_sha256": CONFIG_SHA256,
+            "eval_sha256": EVAL_SHA256,
+            "eval_validation_sha256": VALIDATION_SHA256,
+            "candidate_score_sha256": SCORE_SHA256,
+            "route_proposal_sha256": PROPOSAL_SHA256,
+            "route_activation_attempted": False,
+        }
+        report.update(updates)
+        return report
 
 
 if __name__ == "__main__":
