@@ -66,14 +66,15 @@ activate new code before review.
 The Carton client remains outside the sandbox so it can call the model. The
 model-controlled Python kernel and every process it starts run under SRT with no
 network and no API key. The kernel can write only the disposable worktree,
-temporary files, and its namespace snapshots. Harness configuration, session
-transcripts, runtime control files, the Python environment, `.git`, and
-`node_modules` remain host-owned. Global refinement is a filtered host request,
-so the kernel never needs direct write access to harness state. The real
-checkout and the rest of the user's home directory are unreadable. The fixed
-repository gate runs in a separate key-free SRT process. This materially limits
-the run but is not a virtual machine; use reviewed tasks and inspect the retained
-worktree.
+temporary files, namespace snapshots, and its per-worker child-process orphan
+journal. Harness settings, auth, supplemental state, session transcripts,
+runtime control files, the Python environment, `.git`, and `node_modules` remain
+host-owned. Global refinement is a filtered host request, so the kernel never
+needs direct write access to harness state. The real checkout and the rest of
+the user's home directory are unreadable. The fixed repository gate first
+requires a source diff, then runs in a separate key-free SRT process. This
+materially limits the run but is not a virtual machine; use reviewed tasks and
+inspect the retained worktree.
 
 ## Deterministic Milk jobs
 
