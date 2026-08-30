@@ -25,8 +25,9 @@ mkdir -p "$MILK_MAN_STATE_DIR"
   "Treat empty piped stdin as absent and add the focused regression test."
 ```
 
-The launcher retains a detached worktree at the source checkout's exact `HEAD`
-and APFS-clones its installed `node_modules`, preserving relative symlinks. It
+The launcher retains a disposable `codex/milk-man-self-improve-*` worktree
+branch at the source checkout's exact `HEAD` and APFS-clones its installed
+`node_modules`, preserving relative symlinks. It
 keeps durable state at `MILK_MAN_STATE_DIR` but places Unix sockets in an
 owner-only short-lived `/private/tmp` directory so long state paths work on
 macOS. It
@@ -95,11 +96,8 @@ export MILK_CONTROL_R2_ACCESS_KEY_ID=<access-key-id>
 export MILK_CONTROL_R2_SECRET_ACCESS_KEY=<secret-access-key>
 export BASETEN_API_KEY=<baseten-key>
 export MILK_GATEWAY_API_KEY=<operator-issued-milk-key>
-export PYTHONPATH="$PWD/.prime/agent/skills/milk-jobs/src"
-python3 - <<'PY'
-import asyncio, json, milk_jobs
-print(json.dumps(asyncio.run(milk_jobs.reconcile()), sort_keys=True))
-PY
+export MILK_MAN_PYTHON=/absolute/path/to/python3.13
+./milk/jobs.sh
 ```
 
 Durable job inputs and outputs belong in local or qualified S3-compatible
@@ -109,8 +107,8 @@ object storage.
 
 ## Result
 
-A successful self-improvement run yields a retained detached worktree with an
-uncommitted diff and a passing repository gate. Its path is printed before and
-after the run. A successful Milk job yields bounded object-store artifacts.
-Neither result proves a deployment; production routing remains a separate
-operator action.
+A successful self-improvement run yields a retained disposable worktree branch
+with an uncommitted diff and a passing repository gate. Its path and branch are
+printed before the run. A successful Milk job yields bounded object-store
+artifacts. Neither result proves a deployment; production routing remains a
+separate operator action.

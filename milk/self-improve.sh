@@ -29,7 +29,8 @@ case "$ROOT" in
 esac
 
 HEAD="$(git -C "$ROOT" rev-parse --verify HEAD)"
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-${HEAD:0:12}-$$"
+RUN_ID="$(date -u +%Y%m%dt%H%M%Sz)-${HEAD:0:12}-$$"
+BRANCH="codex/milk-man-self-improve-$RUN_ID"
 CONTROL="$STATE/control/$RUN_ID"
 WORKTREE="$STATE/worktrees/$RUN_ID"
 CONFIG="$STATE/config"
@@ -74,9 +75,10 @@ env -i \
 	"$ROOT/node_modules/.bin/tsx" "$ROOT/packages/coding-agent/src/core/kernel/bootstrap-cli.ts"
 KERNEL_PYTHON="$VENV/bin/python"
 
-git -C "$ROOT" worktree add --detach "$WORKTREE" "$HEAD"
+git -C "$ROOT" worktree add -b "$BRANCH" "$WORKTREE" "$HEAD"
 WORKTREE_CREATED=1
 [[ "$(git -C "$WORKTREE" rev-parse HEAD)" == "$HEAD" ]] || die "worktree HEAD changed"
+[[ "$(git -C "$WORKTREE" branch --show-current)" == "$BRANCH" ]] || die "worktree branch changed"
 cp -cR "$ROOT/node_modules" "$WORKTREE/node_modules"
 [[ -L "$WORKTREE/node_modules/.bin/srt" ]] || die "node_modules clone did not preserve relative symlinks"
 [[ "$(readlink "$WORKTREE/node_modules/.bin/srt")" == "$(readlink "$ROOT/node_modules/.bin/srt")" ]] ||
@@ -134,10 +136,11 @@ NODE
 GATE="$RUNTIME_TMP/check"
 printf '#!/usr/bin/env bash\ncd %q\nexec env -i PATH=%q HOME=%q TMPDIR=%q CLAUDE_CODE_TMPDIR=%q NO_COLOR=1 %q --settings %q sh -eu -c %q\n' \
 	"$WORKTREE" "${PATH:-/usr/bin:/bin}" "$HOME_DIR" "$TMP" "$TMP" "$ROOT/node_modules/.bin/srt" "$SRT_SETTINGS" \
-	'node_modules/.bin/biome check --error-on-warnings . && node_modules/.bin/tsgo --noEmit && node scripts/check-installer-render.mjs && node scripts/check-browser-smoke.mjs && bash -n milk/self-improve.sh milk/codex-context.sh' >"$GATE"
+	'node_modules/.bin/biome check --error-on-warnings . && node_modules/.bin/tsgo --noEmit && node scripts/check-installer-render.mjs && node scripts/check-browser-smoke.mjs && bash -n milk/self-improve.sh milk/codex-context.sh milk/jobs.sh' >"$GATE"
 chmod 700 "$GATE"
 
 echo "Retained worktree: $WORKTREE"
+echo "Retained branch: $BRANCH"
 echo "Persistent state: $STATE"
 
 set +e
@@ -158,6 +161,7 @@ env -i \
 	PI_SKIP_VERSION_CHECK=1 \
 	"$ROOT/prime-agent.sh" \
 	--cwd "$WORKTREE" \
+	--print \
 	--session-dir "$SESSIONS" \
 	--model milk-carton/zai-org/GLM-5.3-Flash \
 	--thinking low \

@@ -90,8 +90,9 @@ mkdir -p "$MILK_MAN_STATE_DIR"
 ./milk/self-improve.sh "Fix one reviewed Milk Man issue and prove it with tests."
 ```
 
-The launcher requires a clean source checkout, creates and retains a detached
-worktree at its exact `HEAD`, and APFS-clones `node_modules`. The OpenAI client
+The launcher requires a clean source checkout, creates and retains a disposable
+`codex/milk-man-self-improve-*` worktree branch at its exact `HEAD`, and
+APFS-clones `node_modules`. The OpenAI client
 uses the operator-issued key to call GLM through the hosted Milk Carton endpoint
 from the trusted parent. The Python tool and its child commands run under SRT
 without network access or API keys; they can write only the disposable worktree,
