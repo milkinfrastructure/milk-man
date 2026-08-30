@@ -1,3 +1,12 @@
 {
-	"rlmMaxDepth": 0
+	"rlmMaxDepth": 0,
+	"retry": {
+		"enabled": true,
+		"maxRetries": 3,
+		"baseDelayMs": 10000,
+		"provider": {
+			"maxRetries": 4,
+			"maxRetryDelayMs": 120000
+		}
+	}
 }
