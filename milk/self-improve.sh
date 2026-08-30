@@ -68,7 +68,7 @@ cp -R "$ROOT/packages/coding-agent/skills/refine" "$CONTROL/refine"
 env -i \
 	PATH="${PATH:-/usr/bin:/bin}" \
 	HOME="$HOME_DIR" \
-	TMPDIR="$TMP" \
+	TMPDIR="$RUNTIME_TMP" \
 	PRIME_AGENT_KERNEL_VENV="$VENV" \
 	DO_NOT_TRACK=1 \
 	PI_SKIP_VERSION_CHECK=1 \

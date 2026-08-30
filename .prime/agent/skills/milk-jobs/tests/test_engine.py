@@ -144,9 +144,10 @@ class TailSupplementTeacher(PayloadTeacher):
 class VagueEvalTeacher(FakeTeacher):
     def complete(self, **kwargs):
         response = super().complete(**kwargs)
-        if kwargs["task"] == "generate_eval":
-            for pair in response.value["pairs"]:
-                pair[1] = "OK"
+        if kwargs["task"] == "validate_eval":
+            response.value["verdicts"] = [
+                [False, "vacuous"] for unused_case in kwargs["payload"]["cases"]
+            ]
         return response
 
 
