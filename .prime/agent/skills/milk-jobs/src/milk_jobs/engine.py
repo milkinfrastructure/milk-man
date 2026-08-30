@@ -2663,17 +2663,15 @@ def _classification_sources(traces, config):
     eligible = [trace for trace in traces if _analysis_eligible(trace)]
     if not eligible:
         return semantic, semantic, None
-    tail_population = eligible
-    if config.profile == "production":
-        tail_population = [
-            trace
-            for trace in eligible
-            if (
-                (analytics := _trace_analytics(trace))["modality"] == "text"
-                and not analytics["has_tools"]
-                and not analytics["has_tool_calls"]
-            )
-        ]
+    tail_population = [
+        trace
+        for trace in eligible
+        if (
+            (analytics := _trace_analytics(trace))["modality"] == "text"
+            and not analytics["has_tools"]
+            and not analytics["has_tool_calls"]
+        )
+    ]
     if not tail_population:
         return semantic, semantic, None
     request_lengths = sorted(len(trace.request_raw) for trace in tail_population)
@@ -2681,34 +2679,15 @@ def _classification_sources(traces, config):
         ((len(request_lengths) - 1) * 9 + 9) // 10
     ]
 
-    def reason_rank(trace):
-        analytics = _trace_analytics(trace)
-        if config.profile == "production":
-            if (
-                analytics["has_tools"]
-                or analytics["has_tool_calls"]
-                or analytics["modality"] != "text"
-            ):
-                return None
-            return 0 if len(trace.request_raw) >= long_context_threshold else None
-        if analytics["has_tools"] or analytics["has_tool_calls"]:
-            return 0
-        if analytics["modality"] not in {"text", "unknown"}:
-            return 1
-        if len(trace.request_raw) >= long_context_threshold:
-            return 2
-        return None
-
     semantic_sha256s = {trace.object_sha256 for trace in semantic}
     supplements = sorted(
         (
             trace
-            for trace in eligible
+            for trace in tail_population
             if trace.object_sha256 not in semantic_sha256s
-            and reason_rank(trace) is not None
+            and len(trace.request_raw) >= long_context_threshold
         ),
         key=lambda trace: (
-            reason_rank(trace),
             hashlib.sha256(
                 ("milk.eval-tail-supplement.v1\0" + trace.object_sha256).encode()
             ).hexdigest(),
