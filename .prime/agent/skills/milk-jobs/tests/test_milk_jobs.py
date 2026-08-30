@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import copy
 import hashlib
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -13,6 +16,7 @@ from unittest.mock import patch
 import milk_jobs
 
 
+ROOT = Path(__file__).parents[5]
 HARNESS_REVISION = "1" * 40
 SCOPE_ID = "01890f1e-2c40-7000-8000-000000000001"
 SERIES_ID = "mechanics-v1"
@@ -128,6 +132,42 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(await milk_jobs.reconcile(), report)
         self.assertEqual(await milk_jobs.run(), report)
+
+    async def test_bash_launcher_runs_from_an_unrelated_directory(self) -> None:
+        if sys.version_info < (3, 10):
+            self.skipTest("launcher requires Python 3.10 or newer")
+        report = self._valid_report()
+        self._write_report(report)
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "MILK_MAN_PYTHON": sys.executable,
+                "MILK_HARNESS_ROOT": str(self.root),
+                "MILK_HARNESS_REVISION": HARNESS_REVISION,
+                "MILK_RUN_PROFILE": "mechanics",
+                "MILK_RUN_ONCE_CONFIG": str(self.config),
+            }
+        )
+        environment.pop("PYTHONHOME", None)
+        environment.pop("PYTHONPATH", None)
+
+        process = await asyncio.to_thread(
+            subprocess.run,
+            [ROOT / "milk" / "jobs.sh"],
+            cwd=self.root,
+            env=environment,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(process.stderr, "")
+        self.assertEqual(
+            process.stdout,
+            json.dumps(report, sort_keys=True, separators=(",", ":")) + "\n",
+        )
 
     async def test_reconcile_rejects_missing_operator_configuration(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
