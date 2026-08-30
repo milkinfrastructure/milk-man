@@ -138,10 +138,11 @@ class MilkJobsTest(unittest.IsolatedAsyncioTestCase):
             self.skipTest("launcher requires Python 3.10 or newer")
         report = self._valid_report()
         self._write_report(report)
+        (self.root / "python").symlink_to(sys.executable)
         environment = os.environ.copy()
         environment.update(
             {
-                "MILK_MAN_PYTHON": sys.executable,
+                "MILK_MAN_PYTHON": "./python",
                 "MILK_HARNESS_ROOT": str(self.root),
                 "MILK_HARNESS_REVISION": HARNESS_REVISION,
                 "MILK_RUN_PROFILE": "mechanics",

@@ -15,6 +15,7 @@ if [[ "$PYTHON" != /* ]]; then
 		echo "milk-jobs: MILK_MAN_PYTHON is not executable" >&2
 		exit 2
 	}
+	PYTHON="$(cd "$(dirname "$PYTHON")" && pwd -P)/$(basename "$PYTHON")"
 fi
 [[ -x "$PYTHON" ]] || {
 	echo "milk-jobs: MILK_MAN_PYTHON is not executable" >&2
