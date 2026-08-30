@@ -25,6 +25,8 @@ from milk_jobs.engine import (
     DOMAIN_VALUES,
     EVAL_INSTRUCTIONS,
     MAX_DECODED_TRACE_BYTES,
+    NON_PRODUCTION_MECHANICS_EVAL_SHA256,
+    NON_PRODUCTION_MECHANICS_SCOPE_ID,
     OPERATION_VALUES,
     ORACLE_VALUES,
     RunConfig,
@@ -32,6 +34,8 @@ from milk_jobs.engine import (
     TeacherResponse,
     _RunMeter,
     _advance_pointer,
+    _candidate_route_denial_reason,
+    _candidate_score,
     _classification_sources,
     _conservative_token_bound,
     _decompress_trace,
@@ -195,11 +199,11 @@ class RecordingOpener:
         return self.response
 
 
-def config(root, profile="mechanics"):
+def config(root, profile="mechanics", scope_id=SCOPE_ID):
     return RunConfig.parse(
         {
             "schema_version": "milk.harness-run-config.v1",
-            "scope_id": SCOPE_ID,
+            "scope_id": scope_id,
             "profile": profile,
             "store": {"kind": "local", "root": str(root)},
             "source": {
@@ -369,11 +373,20 @@ def trace(index, scope_id=SCOPE_ID, hour=HOUR):
     return identifier, value
 
 
-def seed(root, count=100, profile="mechanics", hour=HOUR, index_offset=0):
+def seed(
+    root,
+    count=100,
+    profile="mechanics",
+    hour=HOUR,
+    index_offset=0,
+    scope_id=SCOPE_ID,
+):
     store = LocalEvidenceStore(root)
-    prefix = f"milk/v1/scopes/{SCOPE_ID}"
+    prefix = f"milk/v1/scopes/{scope_id}"
     for index in range(count):
-        identifier, value = trace(index + index_offset, hour=hour)
+        identifier, value = trace(
+            index + index_offset, scope_id=scope_id, hour=hour
+        )
         value["catalog"]["occurred_at"] = (
             hour + dt.timedelta(minutes=index % 60)
         ).isoformat(timespec="seconds").replace("+00:00", "Z")
@@ -400,7 +413,7 @@ def seed(root, count=100, profile="mechanics", hour=HOUR, index_offset=0):
         )
     stats = {
         "schema_version": "milk.stats-shard.v1",
-        "scope_id": SCOPE_ID,
+        "scope_id": scope_id,
         "writer_id": str(uuid.UUID(int=uuid.UUID("01890f1e-2c40-7000-8000-00000000abcd").int + index_offset)),
         "flush_id": str(uuid.UUID(int=uuid.UUID("01890f1e-2c40-7000-8000-00000000dcba").int + index_offset)),
         "hour": hour.isoformat(timespec="seconds").replace("+00:00", "Z"),
@@ -1129,8 +1142,10 @@ class RunOnceTests(unittest.TestCase):
             )
             identity = json.loads(store.get(claim_key))["identity"]
             self.assertEqual(
-                identity["schema_version"], "milk.teacher-job-identity.v3"
+                identity["schema_version"], "milk.teacher-job-identity.v4"
             )
+            self.assertEqual(identity["harness_revision"], _harness_revision())
+            self.assertEqual(identity["config_sha256"], config(root).config_sha256)
             self.assertEqual(len(identity["response_format_sha256"]), 64)
             self.assertEqual(
                 identity["response_content_contract"],
@@ -1143,15 +1158,16 @@ class RunOnceTests(unittest.TestCase):
             )
             eval_identity = json.loads(store.get(eval_claim_key))["identity"]
             self.assertEqual(
-                eval_identity["schema_version"], "milk.teacher-job-identity.v3"
+                eval_identity["schema_version"], "milk.teacher-job-identity.v4"
             )
             self.assertNotEqual(
                 identity["response_format_sha256"],
                 eval_identity["response_format_sha256"],
             )
             prior_identity = dict(identity)
-            prior_identity["schema_version"] = "milk.teacher-job-identity.v2"
-            del prior_identity["response_content_contract"]
+            prior_identity["schema_version"] = "milk.teacher-job-identity.v3"
+            del prior_identity["harness_revision"]
+            del prior_identity["config_sha256"]
             prior_job_id = hashlib.sha256(
                 canonical_json(prior_identity)
             ).hexdigest()
@@ -1241,6 +1257,102 @@ class RunOnceTests(unittest.TestCase):
             self.assertNotIn("activation_authorized", proposal)
             self.assertNotIn("signature", proposal)
             self.assertFalse(store.list(f"{config(root).prefix}/routes"))
+
+    def test_permanent_mechanics_scope_proves_eval_but_never_scores_or_proposes(self):
+        with tempfile.TemporaryDirectory() as root:
+            bounded = config(
+                root, scope_id=NON_PRODUCTION_MECHANICS_SCOPE_ID
+            )
+            store = seed(
+                root, scope_id=NON_PRODUCTION_MECHANICS_SCOPE_ID
+            )
+            teacher = FakeTeacher()
+
+            first = run_once(
+                bounded, store=store, teacher=teacher, now=NOW
+            )
+            second = run_once(
+                bounded,
+                store=store,
+                teacher=teacher,
+                now=NOW + dt.timedelta(days=1),
+            )
+            replay = run_once(
+                bounded,
+                store=store,
+                teacher=teacher,
+                now=NOW + dt.timedelta(days=2),
+            )
+
+            self.assertEqual(first["provider_calls"], 2)
+            self.assertIsNotNone(first["eval_sha256"])
+            self.assertEqual(second["provider_calls"], 1)
+            self.assertIsNotNone(second["eval_validation_sha256"])
+            self.assertIsNone(second["candidate_score_sha256"])
+            self.assertIsNone(second["candidate_score_job_id"])
+            self.assertIsNone(second["route_proposal_sha256"])
+            self.assertEqual(second["pending_source"], "existing")
+            self.assertEqual(
+                second["job_results"]["candidate_score"],
+                {
+                    "schema_version": "milk.content-free-job-report.v1",
+                    "outcome": "not_started_non_production_mechanics_scope",
+                },
+            )
+            self.assertEqual(replay["provider_calls"], 0)
+            self.assertEqual(
+                [call[0] for call in teacher.calls],
+                ["classify", "generate_eval", "validate_eval"],
+            )
+            self.assertFalse(
+                store.list(bounded.prefix + "/jobs/score-candidate")
+            )
+            self.assertFalse(
+                store.list(bounded.prefix + "/route-proposals/versions")
+            )
+            route_pointer = json.loads(
+                store.get(bounded.prefix + "/route-proposals/current.json")
+            )
+            blocked = json.loads(store.get(route_pointer["version_key"]))
+            self.assertEqual(
+                blocked["reason"], "non_production_mechanics_scope"
+            )
+
+    def test_exact_mechanics_eval_is_rejected_before_candidate_dispatch(self):
+        bounded = config("/tmp")
+        result, job_id, called = _candidate_score(
+            None,
+            bounded,
+            None,
+            None,
+            None,
+            NOW,
+            "a" * 40,
+            NON_PRODUCTION_MECHANICS_EVAL_SHA256,
+            "b" * 64,
+            [],
+        )
+
+        self.assertEqual(
+            _candidate_route_denial_reason(
+                bounded, NON_PRODUCTION_MECHANICS_EVAL_SHA256
+            ),
+            "non_production_mechanics_eval",
+        )
+        self.assertEqual(
+            result["outcome"],
+            "not_started_non_production_mechanics_eval",
+        )
+        self.assertFalse(result["qualified"])
+        self.assertEqual(result["accounted_cost_microusd"], 0)
+        self.assertIsNone(job_id)
+        self.assertFalse(called)
+        self.assertIsNone(
+            _candidate_route_denial_reason(
+                bounded,
+                NON_PRODUCTION_MECHANICS_EVAL_SHA256[:-1] + "8",
+            )
+        )
 
     def test_provider_timeout_is_terminal_and_never_retried(self):
         with tempfile.TemporaryDirectory() as root:
@@ -1756,7 +1868,7 @@ class RunOnceTests(unittest.TestCase):
             teacher = HttpErrorTeacher()
             with mock.patch(
                 "milk_jobs.engine.PROVIDER_JOB_CODE_VERSION",
-                "milk.provider-job.v3",
+                "milk.provider-job.v4",
             ):
                 previous = run_once(
                     config(root), store=store, teacher=teacher, now=NOW
@@ -1789,7 +1901,60 @@ class RunOnceTests(unittest.TestCase):
             }
             self.assertEqual(
                 claim_versions,
-                {"milk.provider-job.v3", "milk.provider-job.v4"},
+                {"milk.provider-job.v4", "milk.provider-job.v5"},
+            )
+
+    def test_teacher_job_identity_binds_exact_revision_and_config(self):
+        with tempfile.TemporaryDirectory() as root:
+            store = seed(root)
+            teacher = HttpErrorTeacher()
+            first_config = config(root)
+
+            with mock.patch.dict(os.environ, {"MILK_MAN_REVISION": "a" * 40}):
+                first = run_once(
+                    first_config, store=store, teacher=teacher, now=NOW
+                )
+            with mock.patch.dict(os.environ, {"MILK_MAN_REVISION": "b" * 40}):
+                second = run_once(
+                    first_config, store=store, teacher=teacher, now=NOW
+                )
+
+            changed = _config_dict(root)
+            changed["route_proposal"]["candidate_basis_points"] = 200
+            changed_config = RunConfig.parse(changed)
+            with mock.patch.dict(os.environ, {"MILK_MAN_REVISION": "b" * 40}):
+                third = run_once(
+                    changed_config, store=store, teacher=teacher, now=NOW
+                )
+
+            job_ids = {
+                first["classifier_job_id"],
+                second["classifier_job_id"],
+                third["classifier_job_id"],
+            }
+            self.assertEqual(len(job_ids), 3)
+            self.assertEqual([call[0] for call in teacher.calls], ["classify"] * 3)
+
+            identities = {
+                identity["job_id"]: identity["identity"]
+                for key in store.list(first_config.prefix + "/jobs/classify")
+                if key.endswith("/claim.json")
+                for identity in [json.loads(store.get(key))]
+            }
+            self.assertEqual(
+                {
+                    identities[first["classifier_job_id"]]["harness_revision"],
+                    identities[second["classifier_job_id"]]["harness_revision"],
+                },
+                {"a" * 40, "b" * 40},
+            )
+            self.assertEqual(
+                identities[first["classifier_job_id"]]["config_sha256"],
+                first_config.config_sha256,
+            )
+            self.assertEqual(
+                identities[third["classifier_job_id"]]["config_sha256"],
+                changed_config.config_sha256,
             )
 
     def test_real_zstd_responses_trace_is_parsed_without_rejecting_unknown_items(self):

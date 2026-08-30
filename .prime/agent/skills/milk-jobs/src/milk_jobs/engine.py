@@ -28,9 +28,13 @@ from .evidence import LocalEvidenceStore, R2EvidenceStore, canonical_json, creat
 CONFIG_SCHEMA = "milk.harness-run-config.v1"
 REPORT_SCHEMA = "milk.run-once-report.v2"
 CODE_VERSION = "milk.harness-run-once.v2"
-PROVIDER_JOB_CODE_VERSION = "milk.provider-job.v4"
+PROVIDER_JOB_CODE_VERSION = "milk.provider-job.v5"
 TEACHER_RESPONSE_CONTENT_CONTRACT = "milk.teacher-json-string-or-object-stop.v2"
 TAXONOMY_VERSION = "milk.semantic-taxonomy.v1"
+NON_PRODUCTION_MECHANICS_SCOPE_ID = "f7f88ff0-5947-440c-a661-e4e35f1d04e0"
+NON_PRODUCTION_MECHANICS_EVAL_SHA256 = (
+    "26b09c53937d80b07bc49f42beeca8562eaa4b303023d13033777da472c04499"
+)
 MAX_INCREMENTAL_SPEND_MICROUSD = 25_000_000
 MAX_STOP_NEW_SPEND_MICROUSD = 20_000_000
 MAX_TRACE_OBJECT_BYTES = 16 * 1024 * 1024
@@ -171,6 +175,23 @@ def _utc_text(value):
 
 def _digest(value):
     return hashlib.sha256(canonical_json(value)).hexdigest()
+
+
+def _candidate_route_denial_reason(config, eval_sha256):
+    if config.scope_id == NON_PRODUCTION_MECHANICS_SCOPE_ID:
+        return "non_production_mechanics_scope"
+    if eval_sha256 == NON_PRODUCTION_MECHANICS_EVAL_SHA256:
+        return "non_production_mechanics_eval"
+    return None
+
+
+def _denied_candidate_score(reason):
+    return {
+        "schema_version": "milk.candidate-score-job-result.v1",
+        "outcome": f"not_started_{reason}",
+        "qualified": False,
+        "accounted_cost_microusd": 0,
+    }
 
 
 def _harness_revision():
@@ -2529,12 +2550,14 @@ def _existing_report(store, config, meter, harness_revision):
     ):
         eval_validation_sha256 = None
         eval_validation = None
+    candidate_denial = _candidate_route_denial_reason(config, eval_sha256)
     candidate_score_sha256, candidate_score = _current_version(
         store,
         f"{config.prefix}/candidate-scores/{config.eval.series_id}/current.json",
     )
     if not (
-        candidate_score
+        candidate_denial is None
+        and candidate_score
         and candidate_score.get("eval_sha256") == eval_sha256
         and candidate_score.get("eval_validation_sha256")
         == eval_validation_sha256
@@ -2545,7 +2568,8 @@ def _existing_report(store, config, meter, harness_revision):
         store, f"{config.prefix}/route-proposals/current.json"
     )
     if not (
-        proposal
+        candidate_denial is None
+        and proposal
         and proposal.get("schema_version") == "milk.unsigned-route-proposal.v2"
         and proposal.get("scope_id") == config.scope_id
         and proposal.get("profile") == config.profile
@@ -3079,6 +3103,7 @@ def _provider_job(
     teacher,
     lease,
     now,
+    harness_revision,
     *,
     job_type,
     task,
@@ -3097,9 +3122,11 @@ def _provider_job(
     prompt_sha256 = hashlib.sha256(instructions.encode()).hexdigest()
     response_format = _teacher_response_format(task, input_value)
     identity = {
-        "schema_version": "milk.teacher-job-identity.v3",
+        "schema_version": "milk.teacher-job-identity.v4",
         "scope_id": config.scope_id,
         "profile": config.profile,
+        "harness_revision": harness_revision,
+        "config_sha256": config.config_sha256,
         "job_type": job_type,
         "teacher": config.teacher.public_binding(),
         "prompt_sha256": prompt_sha256,
@@ -3294,7 +3321,15 @@ def _provider_job(
 
 
 def _classification(
-    store, config, meter, teacher, lease, now, traces, source_sha256
+    store,
+    config,
+    meter,
+    teacher,
+    lease,
+    now,
+    harness_revision,
+    traces,
+    source_sha256,
 ):
     semantic_sample, classifier_sample, long_context_threshold = (
         _classification_sources(traces, config)
@@ -3331,6 +3366,7 @@ def _classification(
         teacher,
         lease,
         now,
+        harness_revision,
         job_type="classify",
         task="classify",
         input_value=payload,
@@ -3954,6 +3990,7 @@ def _eval_generation(
     teacher,
     lease,
     now,
+    harness_revision,
     traces,
     labels,
     semantic_labels,
@@ -4022,6 +4059,7 @@ def _eval_generation(
             teacher,
             lease,
             now,
+            harness_revision,
             job_type="generate-eval",
             task="generate_eval",
             input_value=input_value,
@@ -4164,6 +4202,7 @@ def _eval_validation(
     teacher,
     lease,
     now,
+    harness_revision,
     traces,
     eval_sha256,
     cases,
@@ -4189,6 +4228,7 @@ def _eval_validation(
         teacher,
         lease,
         now,
+        harness_revision,
         job_type="validate-eval",
         task="validate_eval",
         input_value=payload,
@@ -4327,6 +4367,9 @@ def _candidate_score(
     eval_validation_sha256,
     cases,
 ):
+    denial_reason = _candidate_route_denial_reason(config, eval_sha256)
+    if denial_reason is not None:
+        return _denied_candidate_score(denial_reason), None, False
     score_config = config.candidate_score
     selected = _score_cases(cases, score_config.held_out_cases)
     identity = {
@@ -4762,7 +4805,15 @@ def _run_once_locked(
             eval_sample,
             long_context_threshold,
         ) = _classification(
-            store, config, meter, teacher, lease, now, traces, source_sha256
+            store,
+            config,
+            meter,
+            teacher,
+            lease,
+            now,
+            harness_revision,
+            traces,
+            source_sha256,
         )
     else:
         (
@@ -4868,6 +4919,7 @@ def _run_once_locked(
             teacher,
             lease,
             now,
+            harness_revision,
             eval_sample,
             classified_labels,
             labels,
@@ -4922,6 +4974,7 @@ def _run_once_locked(
                 teacher,
                 lease,
                 now,
+                harness_revision,
                 eval_sample,
                 eval_sha256,
                 cases,
@@ -4983,23 +5036,32 @@ def _run_once_locked(
                     )
                     del unused_key, unused_value, unused_status
                 if validation_output["accepted"]:
-                    gate_failure = "candidate_score_incomplete"
-                    (
-                        candidate_score_result,
-                        candidate_score_job_id,
-                        score_called,
-                    ) = _candidate_score(
-                        store,
-                        config,
-                        meter,
-                        scorer,
-                        lease,
-                        now,
-                        harness_revision,
-                        eval_sha256,
-                        eval_validation_sha256,
-                        cases,
+                    denial_reason = _candidate_route_denial_reason(
+                        config, eval_sha256
                     )
+                    if denial_reason is not None:
+                        gate_failure = denial_reason
+                        candidate_score_result = _denied_candidate_score(
+                            denial_reason
+                        )
+                    else:
+                        gate_failure = "candidate_score_incomplete"
+                        (
+                            candidate_score_result,
+                            candidate_score_job_id,
+                            score_called,
+                        ) = _candidate_score(
+                            store,
+                            config,
+                            meter,
+                            scorer,
+                            lease,
+                            now,
+                            harness_revision,
+                            eval_sha256,
+                            eval_validation_sha256,
+                            cases,
+                        )
                     if candidate_score_result.get("outcome") == "succeeded":
                         score_pointer = (
                             f"{config.prefix}/candidate-scores/"
