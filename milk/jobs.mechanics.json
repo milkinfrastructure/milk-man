@@ -10,7 +10,7 @@
     "close_delay_seconds": 0,
     "max_windows": 2,
     "max_stats_shards": 999,
-    "max_traces": 400,
+    "max_traces": 999,
     "max_trace_object_bytes": 16777216,
     "max_total_trace_bytes": 67108864,
     "teacher_trace_bytes": 64,
