@@ -887,7 +887,8 @@ Progress 2026-09-01:
 - [x] Verified current Milk Man and Milk Carton revisions and the seven-path M5A4 dirty state.
 - [x] Saved and verified complete Git bundles, the dirty patch, and bounded local state under `/Users/shantanu/milk-release-evidence/milk-v2-bootstrap-20260901`.
 - [x] Installed this file as the sole active repository tracker and removed the previous `GOAL.md`.
-- [ ] Commit Milk Man from an independent clean root, publish the already-created local Milk Parlor, establish final non-fork remotes, remove the stale Prime upstream remote, and record both first verified public commits.
+- [x] Reduced Milk Man to 38 tracked files and 5,851 lines, committed the result as independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171`, and removed the stale Prime upstream remote.
+- [ ] Publish this Milk Man root and the already-created local Milk Parlor, establish final non-fork remotes, and record both first verified public commits.
 
 Objective:
 
@@ -913,7 +914,7 @@ Acceptance:
 
 Progress 2026-09-01:
 
-- [x] Added and locally committed the 1,112-line pinned Headlong subset, Bash entrypoint, exact-workspace state, bounded memory, trajectories, and two Milk skills at `651ae08a27f918cf68d9f3968937e897750d091c`.
+- [x] The independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171` contains the 1,112-line pinned Headlong subset, Bash entrypoint, exact-workspace state, bounded memory, trajectories, and two Milk skills.
 - [x] Replayed two-workspace configuration and exact-workspace resume locally without Docker; a mismatched workspace set fails closed.
 - [x] Proved one complete localhost OpenAI-compatible model loop that read a skill, wrote bounded memory, and retained trajectory records.
 - [x] Retained the post-cut local receipt at `/Users/shantanu/milk-release-evidence/milk-v2-local-postcut-20260901/report.json`, SHA-256 `750c9a8d3c728295184176c514e96393340f265df44420df7247713d584c1571`.
@@ -996,7 +997,7 @@ P1 and P2 proceed in parallel after P0.
 
 Progress 2026-09-01:
 
-- [x] Added and locally committed the strict fixed job registry, direct CLI, local store, and SigV4 S3 implementation at `7d54390cff6eeda075c4c60b49524288982f916a`.
+- [x] The independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171` contains the strict fixed job registry, direct CLI, local store, and SigV4 S3 implementation.
 - [x] Replayed `status`, `operate --once`, and `run summary` against an empty local store; unchanged invocations returned the same identity with zero inference and provider calls.
 - [x] Configuration accepts only ten reviewed handler identifiers and reviewed environment-variable names; it cannot introduce an executable path.
 - [x] Summary and the three controller handlers are implemented; eval, dataset, train, evaluate, route-propose, and gpu-reconcile fail closed as blocked until their milestones land, and `operate --once` currently schedules summary only.
@@ -1030,7 +1031,7 @@ Acceptance:
 
 Progress 2026-09-01:
 
-- [x] Added the fixed Modal controller, immutable local intent/endpoint receipts, CLI wiring, and same-trajectory bootstrap handoff source in commits `e906a485c`, `d50ad48c6`, and `80e8304cd`.
+- [x] The independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171` contains the fixed Modal controller, immutable local intent/endpoint receipts, CLI wiring, and same-trajectory bootstrap handoff source.
 - [x] Replayed deterministic ensure/stop dry runs and read-only provider status; both reported zero provider calls and no active Modal containers.
 - [ ] Hydrate the pinned weights on one real H200, prove authenticated inference and same-trajectory handoff, stop the deployment, and retain the provider receipts plus an independent zero-container observation.
 
