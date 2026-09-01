@@ -955,6 +955,7 @@ Progress 2026-09-01:
 - [x] Created and locally committed the fresh Rust repository at `d089c46c3255b76bbf4ae40774d41aae5681a0bf` with no remote or legacy code.
 - [x] Replayed local Chat Completions SSE and Responses passthrough, invalid-key `401`, exact two-sided compressed capture, and response survival under an injected local-store failure.
 - [x] Added env-selected local/S3 storage and replayed signed create-only PUT plus bounded GET against an independent fake S3 endpoint.
+- [x] Local Parlor wrote two complete captures to the real `milk-prod` R2 bucket with zero drops or storage failures; retained receipt: `/Users/shantanu/milk-release-evidence/milk-v2-r2-20260901/report.json`, SHA-256 `7c96b77a387dbcce75ecbf4c696cebefc28d4f3e1f0d11c685007918f301169f`.
 - [x] Added cached multi-architecture GHCR publication, Cloudflare Registry transfer, and a one-instance Worker deployment config without adding a runtime workflow.
 - [x] The stripped local arm64 release binary is 3,252,912 bytes; Rust format, check, Clippy, and release build passed.
 - [x] Retained the content-free local receipt at `/Users/shantanu/milk-release-evidence/milk-v2-local-postcut-20260901/report.json`, SHA-256 `750c9a8d3c728295184176c514e96393340f265df44420df7247713d584c1571`.
@@ -1001,7 +1002,7 @@ Progress 2026-09-01:
 - [x] Replayed `status`, `operate --once`, and `run summary` against an empty local store; unchanged invocations returned the same identity with zero inference and provider calls.
 - [x] Configuration accepts only ten reviewed handler identifiers and reviewed environment-variable names; it cannot introduce an executable path.
 - [x] Summary and the three controller handlers are implemented; eval, dataset, train, evaluate, route-propose, and gpu-reconcile fail closed as blocked until their milestones land, and `operate --once` currently schedules summary only.
-- [ ] Prove the same runtime against R2 and prove create-same, conditional pointer replacement, and concurrent convergence through the public CLI.
+- [x] Proved the public CLI against R2 through two checkpoints: immutable create-same objects, conditional pointer replacement, one concurrent owner plus one exit-75 duplicate, and an idle zero-call replay. Retained receipt: `/Users/shantanu/milk-release-evidence/milk-v2-r2-20260901/report.json`, SHA-256 `7c96b77a387dbcce75ecbf4c696cebefc28d4f3e1f0d11c685007918f301169f`.
 
 Owned:
 
@@ -1067,7 +1068,8 @@ Progress 2026-09-01:
 - [x] The immediate replay was idle with zero inference/provider calls; cumulative classified count stayed at two and mechanics became ready but not production-qualified.
 - [x] Direct integration found and fixed strict RFC3339 fractional precision and Responses top-level `input` extraction defects.
 - [x] Retained the content-free local lineage receipt at `/Users/shantanu/milk-release-evidence/milk-v2-local-postcut-20260901/report.json`, SHA-256 `750c9a8d3c728295184176c514e96393340f265df44420df7247713d584c1571`.
-- [ ] Repeat the same lineage against R2 and a real env-selected inference endpoint, then prove a below-threshold production scope remains model-free.
+- [x] Repeated the complete capture-to-summary/readiness lineage against real R2 using an environment-selected localhost mechanics inference binding; replay made zero calls and mechanics remained explicitly non-production-qualified.
+- [ ] Repeat semantic inference against a real env-selected endpoint, then prove a below-threshold production scope remains model-free.
 - [ ] Run semantic summary inference through restricted Headlong job mode with only `milk job read`, `milk job commit`, and `milk status`; the current local vertical calls the fixed inference binding directly.
 
 Owned:
