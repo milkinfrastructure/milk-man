@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Modified from Headlong at 24e7ce77404357aef7b3fc87567e7be908258853.
+# Milk retains the local Bash execution loop and append-only conversation.
+
+die() { printf 'shellm: %s\n' "$*" >&2; exit 70; }
+
+system_file=""
+prompt_file=""
+trajectory=""
+workdir=""
+while (( $# )); do
+    case "$1" in
+        --system-file) system_file="${2:?--system-file requires a path}"; shift 2 ;;
+        --prompt-file) prompt_file="${2:?--prompt-file requires a path}"; shift 2 ;;
+        --trajectory) trajectory="${2:?--trajectory requires a path}"; shift 2 ;;
+        --workdir) workdir="${2:?--workdir requires a path}"; shift 2 ;;
+        -h|--help)
+            printf '%s\n' 'Usage: shellm --system-file FILE --prompt-file FILE --trajectory FILE --workdir DIR'
+            exit 0
+            ;;
+        *) die "unknown argument: $1" ;;
+    esac
+done
+
+[[ -r "$system_file" && -r "$prompt_file" && -f "$trajectory" && -d "$workdir" ]] || die "invalid run paths"
+: "${MILK_MAN_STATE_PY:?MILK_MAN_STATE_PY is required}"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
+llm="$root/vendor/headlong/bin/llm"
+context="$root/vendor/headlong/bin/context"
+maximum="${MILK_MAN_MAX_ITERATIONS:-20}"
+[[ "$maximum" =~ ^[1-9][0-9]*$ ]] || die "MILK_MAN_MAX_ITERATIONS must be a positive integer"
+
+append() {
+    python3 "$MILK_MAN_STATE_PY" append --trajectory "$trajectory" "$@"
+}
+
+append --type prompt --content-file "$prompt_file"
+run_dir="$(mktemp -d "${TMPDIR:-/tmp}/milk-shellm.XXXXXX")"
+chmod 700 "$run_dir"
+cleanup() { rm -rf "$run_dir"; }
+trap cleanup EXIT INT TERM
+
+previous_failed_code=""
+repeat_failures=0
+for ((iteration=1; iteration<=maximum; iteration++)); do
+    messages="$run_dir/messages.json"
+    "$context" > "$messages"
+    response="$run_dir/response"
+    printf 'milk-man: reasoning %d/%d with %s\n' "$iteration" "$maximum" "$LLM_MODEL" >&2
+    "$llm" --system-file "$system_file" --messages-file "$messages" > "$response"
+
+    code="$run_dir/code"
+    python3 - "$response" "$code" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1]).read()
+match = re.search(r"(?ms)^```(?:bash|sh|shell)[ \t]*\n(.*?)^```[ \t]*$", text)
+open(sys.argv[2], "w").write(match.group(1) if match else "")
+PY
+    append --type reasoning --content-file "$response"
+
+    if [[ ! -s "$code" ]]; then
+        append --type final --content-file "$response"
+        cat "$response"
+        exit 0
+    fi
+
+    printf 'milk-man: executing Bash in %s\n' "$workdir" >&2
+    sed 's/^/  /' "$code" >&2
+    output="$run_dir/output"
+    final="$run_dir/final"
+    runner="$run_dir/run"
+    {
+        printf '%s\n' 'set -euo pipefail'
+        printf 'source %q\n' "$code"
+        printf '%s\n' '__milk_rc=$?'
+        printf 'if [[ ${FINAL+x} ]]; then printf %%s "$FINAL" > %q; fi\n' "$final"
+        printf 'if [[ ${FINAL_FILE+x} ]]; then cat "$FINAL_FILE" > %q; fi\n' "$final"
+        printf '%s\n' 'exit "$__milk_rc"'
+    } > "$runner"
+
+    set +e
+    (cd "$workdir" && bash "$runner") > "$output" 2>&1
+    exit_code=$?
+    set -e
+    cat "$output" >&2
+    append --type shell-output --content-file "$output" --command-file "$code" --exit-code "$exit_code"
+
+    if [[ -f "$final" ]]; then
+        append --type final --content-file "$final"
+        cat "$final"
+        exit 0
+    fi
+
+    current_code="$(cat "$code")"
+    if (( exit_code != 0 )) && [[ "$current_code" == "$previous_failed_code" ]]; then
+        repeat_failures=$((repeat_failures + 1))
+    else
+        repeat_failures=0
+    fi
+    previous_failed_code="$current_code"
+    (( repeat_failures < 2 )) || die "the model repeated the same failing Bash block three times"
+done
+
+die "maximum iterations reached; resume the trajectory after inspection"

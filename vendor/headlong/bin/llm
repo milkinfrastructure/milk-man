@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Modified from Headlong at 24e7ce77404357aef7b3fc87567e7be908258853.
+# Milk retains only the generic OpenAI-compatible, non-streaming call.
+
+die() { printf 'llm: %s\n' "$*" >&2; exit 70; }
+
+system_file=""
+messages_file=""
+while (( $# )); do
+    case "$1" in
+        --system-file) system_file="${2:?--system-file requires a path}"; shift 2 ;;
+        --messages-file) messages_file="${2:?--messages-file requires a path}"; shift 2 ;;
+        -h|--help)
+            printf '%s\n' 'Usage: llm --system-file FILE --messages-file FILE'
+            exit 0
+            ;;
+        *) die "unknown argument: $1" ;;
+    esac
+done
+
+[[ -r "$system_file" ]] || die "cannot read system prompt: $system_file"
+[[ -r "$messages_file" ]] || die "cannot read messages: $messages_file"
+: "${LLM_API_URL:?LLM_API_URL is required}"
+: "${LLM_MODEL:?LLM_MODEL is required}"
+command -v curl >/dev/null || die "curl is required"
+command -v python3 >/dev/null || die "python3 is required"
+
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/milk-llm.XXXXXX")"
+chmod 700 "$tmp"
+cleanup() { rm -rf "$tmp"; }
+trap cleanup EXIT INT TERM
+
+payload="$tmp/payload.json"
+response="$tmp/response.json"
+auth="$tmp/auth"
+
+LLM_SYSTEM_FILE="$system_file" LLM_MESSAGES_FILE="$messages_file" \
+LLM_PAYLOAD_FILE="$payload" python3 - <<'PY'
+import json
+import os
+
+with open(os.environ["LLM_MESSAGES_FILE"]) as handle:
+    messages = json.load(handle)
+if not isinstance(messages, list):
+    raise SystemExit("llm: messages must be a JSON array")
+with open(os.environ["LLM_SYSTEM_FILE"]) as handle:
+    system = handle.read()
+messages = [{"role": "system", "content": system}, *messages]
+model = os.environ["LLM_MODEL"]
+payload = {"model": model, "messages": messages}
+maximum = int(os.environ.get("LLM_MAX_TOKENS", "16384"))
+payload["max_completion_tokens" if model.startswith(("gpt-5", "o1", "o3", "o4")) else "max_tokens"] = maximum
+with open(os.environ["LLM_PAYLOAD_FILE"], "w") as handle:
+    json.dump(payload, handle, ensure_ascii=False, separators=(",", ":"))
+PY
+
+curl_args=(
+    --silent --show-error
+    --connect-timeout "${LLM_CONNECT_TIMEOUT:-10}"
+    --max-time "${LLM_MAX_TIME:-900}"
+    --header 'Content-Type: application/json'
+    --data-binary "@$payload"
+    --output "$response"
+    --write-out '%{http_code}'
+)
+
+if [[ -n "${LLM_API_KEY:-}" ]]; then
+    [[ "$LLM_API_KEY" != *$'\n'* && "$LLM_API_KEY" != *$'\r'* ]] || die "LLM_API_KEY contains a newline"
+    escaped="${LLM_API_KEY//\\/\\\\}"
+    escaped="${escaped//\"/\\\"}"
+    printf 'header = "Authorization: Bearer %s"\n' "$escaped" > "$auth"
+    chmod 600 "$auth"
+    curl_args+=(--config "$auth")
+fi
+
+http_code="$(curl "${curl_args[@]}" "$LLM_API_URL")" || die "request failed"
+if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+    detail="$(python3 - "$response" <<'PY'
+import json, sys
+try:
+    value = json.load(open(sys.argv[1]))
+    print(str(value.get("error", value))[:1000])
+except Exception:
+    print(open(sys.argv[1], errors="replace").read(1000))
+PY
+)"
+    die "HTTP $http_code: $detail"
+fi
+
+python3 - "$response" <<'PY'
+import json
+import sys
+
+value = json.load(open(sys.argv[1]))
+try:
+    content = value["choices"][0]["message"]["content"]
+except (KeyError, IndexError, TypeError) as error:
+    raise SystemExit(f"llm: invalid OpenAI-compatible response: {error}")
+if isinstance(content, list):
+    content = "".join(
+        part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") in (None, "text", "output_text")
+    )
+if not isinstance(content, str) or not content:
+    raise SystemExit("llm: response contained no assistant text")
+print(content)
+PY

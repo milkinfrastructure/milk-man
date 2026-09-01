@@ -1,0 +1,7 @@
+Milk Man
+Copyright 2026 Milk Infrastructure
+
+This product includes a modified subset of Headlong. Its pinned revision,
+license, and modification notice are recorded under vendor/headlong/.
+
+Model weights are not included in this repository and retain their own licenses.

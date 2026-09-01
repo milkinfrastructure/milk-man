@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+exec env PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}" python3 -m milk_v2.runner "$@"

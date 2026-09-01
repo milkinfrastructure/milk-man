@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Modified from Headlong at 24e7ce77404357aef7b3fc87567e7be908258853.
+: "${MILK_MAN_STATE_PY:?MILK_MAN_STATE_PY is required}"
+: "${MILK_MAN_MEMORY_FILE:?MILK_MAN_MEMORY_FILE is required}"
+
+case "${1:-show}" in
+    show)
+        exec python3 "$MILK_MAN_STATE_PY" memory-render \
+            --memory-file "$MILK_MAN_MEMORY_FILE" \
+            --max-bytes "${MILK_MAN_MEMORY_BYTES:-16384}"
+        ;;
+    add)
+        shift
+        if (( $# )); then
+            printf '%s\n' "$*" | exec python3 "$MILK_MAN_STATE_PY" memory-add --memory-file "$MILK_MAN_MEMORY_FILE"
+        else
+            exec python3 "$MILK_MAN_STATE_PY" memory-add --memory-file "$MILK_MAN_MEMORY_FILE"
+        fi
+        ;;
+    *) printf '%s\n' 'Usage: mem [show|add [TEXT]]' >&2; exit 64 ;;
+esac

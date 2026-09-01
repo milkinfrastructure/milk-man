@@ -1,0 +1,95 @@
+# Milk Man
+
+Milk Man is Milk's local-first agent harness and deterministic jobs runtime.
+It has two entrypoints:
+
+- `bin/man` runs a supervised development session against one or more local
+  repositories using any OpenAI-compatible inference endpoint.
+- `bin/milk` reads and writes Milk's object memory and executes fixed jobs once.
+
+There is no daemon, internal scheduler, database, queue, local GPU requirement,
+or provider framework. An external scheduler may invoke `bin/milk operate
+--once`; an idle run exits without inference or provider calls.
+
+The paired gateway is
+[`milkinfrastructure/milk-parlor`](https://github.com/milkinfrastructure/milk-parlor).
+The complete implementation contract and evidence ledger is
+[`goal_tracker.md`](goal_tracker.md).
+
+## Development harness
+
+Requirements: Bash, Python 3, Git, and `curl`. Docker is not required.
+
+```bash
+export OPENAI_API_KEY=...
+export OPENAI_MODEL=gpt-5.6-sol
+
+bin/man develop \
+  --workspace milk-man="$PWD" \
+  --workspace milk-parlor=/absolute/path/milk-parlor \
+  -- "inspect both repositories and make one bounded correction"
+```
+
+Use `--resume` to continue the latest trajectory for the exact workspace set,
+or `--traj <uuid>` to select one explicitly. State defaults to
+`$HOME/.local/state/milk-man` and can be moved with `MILK_MAN_STATE_DIR`.
+
+Provider selection is environment-only, in this order:
+
+1. `LLM_API_URL`, `LLM_MODEL`, optional `LLM_API_KEY`
+2. `MILK_CONTROLLER_BASE_URL`, `MILK_CONTROLLER_MODEL`, optional
+   `MILK_CONTROLLER_API_KEY`
+3. `MILK_BOOTSTRAP_BASE_URL`, `MILK_BOOTSTRAP_MODEL`, optional
+   `MILK_BOOTSTRAP_API_KEY`
+4. `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` and `OPENAI_MODEL`
+
+Milk Man loads `goal_tracker.md`, the two checked-in Milk skills, bounded memory,
+and the exact trajectory. It may edit and commit locally. Push, deployment, and
+route signing remain operator actions.
+
+## Deterministic jobs
+
+Every invocation prints one `milk.job-result.v2` JSON object to stdout.
+
+```bash
+export MILK_SCOPE_ID=11111111-1111-4111-8111-111111111111
+export MILK_STORE_KIND=local
+export MILK_STORE_ROOT="$PWD/.milk-objects"
+
+bin/milk status
+bin/milk operate --once
+bin/milk run summary
+```
+
+For S3-compatible storage set `MILK_STORE_KIND=s3` and provide:
+
+```text
+MILK_STORE_ENDPOINT
+MILK_STORE_REGION
+MILK_STORE_BUCKET
+MILK_STORE_ACCESS_KEY_ID
+MILK_STORE_SECRET_ACCESS_KEY
+```
+
+`MILK_STORE_SESSION_TOKEN` and `MILK_STORE_PATH_STYLE` are optional. Inference
+and GPU providers use the reviewed environment-variable names in
+[`config/jobs.json`](config/jobs.json); configuration cannot supply executable
+paths.
+
+The object root for one authenticated scope is:
+
+```text
+milk/v2/scopes/<scope_uuid>/
+```
+
+Traffic is `c/`, summary checkpoints are `s/`, classifier metadata is `l/`,
+readiness is `readiness/`, evals are `e/`, datasets are `d/`, model artifacts
+are `m/`, evaluations are `v/`, and unsigned proposals are `p/`. Immutable
+objects hold content; small conditional `current.json` pointers select the
+active revision.
+
+## License
+
+Milk-owned code is Apache-2.0. The reduced Headlong derivative under
+`vendor/headlong` retains its upstream license and modification notice. Model
+weights are not included and keep their own licenses.

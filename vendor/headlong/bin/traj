@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Modified from Headlong at 24e7ce77404357aef7b3fc87567e7be908258853.
+: "${MILK_MAN_TRAJECTORY:?MILK_MAN_TRAJECTORY is required}"
+
+case "${1:-tail}" in
+    tail)
+        count="${2:-10}"
+        [[ "$count" =~ ^[1-9][0-9]*$ ]] || { printf 'traj: count must be positive\n' >&2; exit 64; }
+        exec tail -n "$count" "$MILK_MAN_TRAJECTORY"
+        ;;
+    show) exec cat "$MILK_MAN_TRAJECTORY" ;;
+    id) printf '%s\n' "${MILK_MAN_TRAJECTORY_ID:?}" ;;
+    *) printf '%s\n' 'Usage: traj [tail [N]|show|id]' >&2; exit 64 ;;
+esac

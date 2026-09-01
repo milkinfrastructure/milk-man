@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Modified from Headlong at 24e7ce77404357aef7b3fc87567e7be908258853.
+: "${MILK_MAN_STATE_PY:?MILK_MAN_STATE_PY is required}"
+: "${MILK_MAN_TRAJECTORY:?MILK_MAN_TRAJECTORY is required}"
+exec python3 "$MILK_MAN_STATE_PY" context \
+    --trajectory "$MILK_MAN_TRAJECTORY" \
+    --max-bytes "${MILK_MAN_CONTEXT_BYTES:-131072}"

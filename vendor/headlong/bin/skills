@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Modified from Headlong at 24e7ce77404357aef7b3fc87567e7be908258853.
+: "${MILK_MAN_SKILLS_DIR:?MILK_MAN_SKILLS_DIR is required}"
+
+case "${1:-list}" in
+    list)
+        for path in "$MILK_MAN_SKILLS_DIR"/*/SKILL.md; do
+            [[ -f "$path" ]] || continue
+            name="$(basename "$(dirname "$path")")"
+            description="$(sed -n 's/^description:[[:space:]]*//p' "$path" | head -1)"
+            printf '%s\t%s\t%s\n' "$name" "$description" "$path"
+        done
+        ;;
+    read)
+        name="${2:?Usage: skills read NAME}"
+        [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { printf 'skills: invalid name\n' >&2; exit 64; }
+        path="$MILK_MAN_SKILLS_DIR/$name/SKILL.md"
+        [[ -f "$path" ]] || { printf 'skills: not found: %s\n' "$name" >&2; exit 66; }
+        exec cat "$path"
+        ;;
+    *) printf '%s\n' 'Usage: skills [list|read NAME]' >&2; exit 64 ;;
+esac

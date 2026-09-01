@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Modified from Headlong at 24e7ce77404357aef7b3fc87567e7be908258853.
+force=0
+if [[ "${1:-}" == --force || "${1:-}" == -f ]]; then force=1; shift; fi
+file="${1:?Usage: put [--force] FILE}"
+directory="$(dirname "$file")"
+[[ -d "$directory" ]] || { printf 'put: parent does not exist: %s\n' "$directory" >&2; exit 66; }
+(( force )) || [[ ! -e "$file" ]] || { printf 'put: exists: %s\n' "$file" >&2; exit 73; }
+temporary="$(mktemp "$directory/.put.XXXXXX")"
+trap 'rm -f "$temporary"' EXIT
+cat > "$temporary"
+[[ ! -f "$file" ]] || chmod --reference="$file" "$temporary" 2>/dev/null || true
+mv -f "$temporary" "$file"
+trap - EXIT
