@@ -10,14 +10,10 @@ from . import dataset, summary, train
 from .providers import baseten
 
 
-CODE_VERSION = "milk.evaluate.v2.3"
+CODE_VERSION = "milk.evaluate.v2.5"
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-eval@sha256:[0-9a-f]{64}\Z")
 PROJECT = re.compile(r"[a-z0-9]{5,32}\Z")
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
-BASETEN_BASE_IMAGE = train.BASETEN_BASE_IMAGE
-TRANSFORMERS_SOURCE = train.TRANSFORMERS_SOURCE
-EVALUATE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/ddc04e9f0cf16e2a81a3ef07c0a3d1200b96c9eb/images/eval/evaluate.py"
-EVALUATE_SOURCE_SHA256 = "6df5432e835f70a6e6c2ad68b60895aeef042be08d97beb0a0da5bd45c1cede0"
 
 
 class EvaluateError(ValueError):
@@ -66,8 +62,9 @@ def _policy() -> tuple[dict, str]:
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise EvaluateError(f"cannot read evaluation policy: {error}") from error
     expected = {
-        "schema_version": "milk.evaluation-policy.v2",
+        "schema_version": "milk.evaluation-policy.v3",
         "branches": ["bf16", "dynamic_fp8", "static_fp8"],
+        "production_eligible_branches": ["bf16", "dynamic_fp8"],
         "dev_split": "dev",
         "sealed_split": "sealed",
         "score_order": [
@@ -126,9 +123,6 @@ def _settings(settings, dataset_reference: dict, model_reference: dict, model: d
         "project_id": project_id,
         "source_job_id": provider["job_id"],
         "release_image": image,
-        "baseten_base_image": BASETEN_BASE_IMAGE,
-        "evaluate_source_url": EVALUATE_SOURCE_URL,
-        "evaluate_source_sha256": EVALUATE_SOURCE_SHA256,
         "accelerator": accelerator,
         "availability_model": "dedicated",
         "runtime_secret_map": secret_map,
@@ -176,21 +170,9 @@ def _job_body(settings, plan: dict) -> dict:
         "MILK_EVALUATE_SPLIT": config["split"],
         "MILK_EVALUATE_MAX_NEW_TOKENS": str(config["max_new_tokens"]),
     }
-    packages = f"boto3==1.40.40 {TRANSFORMERS_SOURCE} zstandard==0.25.0"
-    setup = []
-    if config["branch"] != "bf16":
-        environment["CC"] = "/usr/bin/gcc"
-        packages += " torchao==0.15.0"
-        setup.append("apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*")
     environment.update({name: {"name": secret} for name, secret in config["runtime_secret_map"].items()})
-    fetch_source = (
-        "python -c \"import hashlib,urllib.request;"
-        f"u='{config['evaluate_source_url']}';b=urllib.request.urlopen(u,timeout=30).read();"
-        f"assert hashlib.sha256(b).hexdigest()=='{config['evaluate_source_sha256']}';"
-        "open('/tmp/milk-evaluate.py','wb').write(b)\""
-    )
     return {
-        "image": {"base_image": config["baseten_base_image"], "docker_auth": None},
+        "image": {"base_image": config["release_image"], "docker_auth": None},
         "compute": {
             "node_count": 1,
             "cpu_count": 4,
@@ -200,10 +182,7 @@ def _job_body(settings, plan: dict) -> dict:
         },
         "runtime": {
             "start_commands": [
-                *setup,
-                f"python -m pip install --no-cache-dir {packages}",
-                fetch_source,
-                "python /tmp/milk-evaluate.py",
+                "python /opt/milk/evaluate.py",
             ],
             "environment_variables": environment,
             "cache_config": {"enabled": True, "require_cache_affinity": False},
@@ -289,7 +268,7 @@ def _completed(store, settings, runtime, client, plan: dict, provider_job: dict)
         "branch": config["branch"],
         "split": config["split"],
         "provider": {"name": "baseten", "project_id": config["project_id"], "job_id": provider_job["id"], "status": provider_job["current_status"]},
-        "images": {"release": config["release_image"], "provider_base": config["baseten_base_image"]},
+        "images": {"runtime": config["release_image"]},
         "output_sha256": summary.digest(output_body),
         "case_ids": output["case_ids"],
         "quantization": quantization,
@@ -364,7 +343,7 @@ def _load_evaluation(store, reference: dict) -> dict:
     return value
 
 
-def _winner(store, policy: dict, runs: list[dict]) -> tuple[dict, list[dict]]:
+def _winner(store, policy: dict, runs: list[dict], eligible_branches: list[str]) -> tuple[dict, list[dict]]:
     evaluations = [_load_evaluation(store, run["reference"]) for run in runs]
     if any(value["split"] != policy["dev_split"] for value in evaluations):
         raise EvaluateError("winner inputs must be DEV evaluations")
@@ -383,12 +362,15 @@ def _winner(store, policy: dict, runs: list[dict]) -> tuple[dict, list[dict]]:
         values.append(policy["tie_break"].index(value["branch"]))
         return tuple(values)
 
-    winner = min(evaluations, key=key)
+    eligible = [value for value in evaluations if value["branch"] in eligible_branches]
+    if len(eligible) != len(eligible_branches):
+        raise EvaluateError("eligible evaluation branches are incomplete")
+    winner = min(eligible, key=key)
     score = [{"metric": rule["metric"], "direction": rule["direction"], "value": winner["metrics"][rule["metric"]]} for rule in policy["score_order"]]
     return {"branch": winner["branch"], "dev_evaluation_uuid": winner["evaluation_uuid"], "score": score}, evaluations
 
 
-def _finalize(store, settings, base: dict, policy: dict, winner: dict, dev_runs: list[dict], sealed_run: dict) -> dict:
+def _finalize(store, settings, base: dict, policy: dict, eligible_branches: list[str], winner: dict, dev_runs: list[dict], sealed_run: dict) -> dict:
     sealed = _load_evaluation(store, sealed_run["reference"])
     if sealed["branch"] != winner["branch"] or sealed["split"] != policy["sealed_split"]:
         raise EvaluateError("sealed evaluation does not belong to the selected winner")
@@ -400,6 +382,7 @@ def _finalize(store, settings, base: dict, policy: dict, winner: dict, dev_runs:
         "dataset": base["dataset"],
         "model": base["model"],
         "policy_digest": base["policy_digest"],
+        "eligible_branches": eligible_branches,
         "dev": [run["reference"] for run in dev_runs],
         "winner": winner,
         "sealed": sealed_run["reference"],
@@ -428,6 +411,7 @@ def current(store, settings, runtime) -> dict | None:
         reference = status.get("evaluation")
         value, body = _object(store, reference.get("key", "") if isinstance(reference, dict) else "")
         model_reference = train.current(store, settings, runtime)
+        unused_policy, policy_digest = _policy()
     except FileNotFoundError:
         return None
     if (
@@ -439,6 +423,7 @@ def current(store, settings, runtime) -> dict | None:
         or value.get("schema_version") != "milk.evaluation-group.v2"
         or value.get("evaluation_group_uuid") != reference.get("uuid")
         or value.get("model", {}).get("uuid") != model_reference.get("uuid")
+        or value.get("policy_digest") != policy_digest
     ):
         return None
     return reference
@@ -458,7 +443,8 @@ def reconcile(store, settings, runtime) -> dict:
     if any(base["dataset"]["counts"].get(split, 0) < 1 for split in ("dev", "calibration", "sealed")):
         return {"state": "idle", "identity": summary.digest({"dataset": base["dataset"], "reason": "evaluation_split_missing"}), "artifacts": [], "provider_calls": 0, "next": "dataset", "details": {"reason": "evaluation_split_missing"}}
 
-    dev_plans = [_plan(settings, runtime, base, branch, policy["dev_split"]) for branch in policy["branches"]]
+    eligible_branches = policy["production_eligible_branches"] if settings.profile == "production" else policy["branches"]
+    dev_plans = [_plan(settings, runtime, base, branch, policy["dev_split"]) for branch in eligible_branches]
     dev_runs = [_stored(store, plan) for plan in dev_plans]
     client = None
     provider_jobs = None
@@ -477,7 +463,7 @@ def reconcile(store, settings, runtime) -> dict:
     if any(run["state"] != "complete" for run in dev_runs):
         return {"state": "active", "identity": summary.digest({"plans": [plan["job_id"] for plan in dev_plans]}), "artifacts": artifacts, "provider_calls": client.calls if client else 0, "next": "evaluate", "details": {"branches": {plan["config"]["branch"]: run["details"] for plan, run in zip(dev_plans, dev_runs)}}}
 
-    winner, _ = _winner(store, policy, dev_runs)
+    winner, _ = _winner(store, policy, dev_runs, eligible_branches)
     sealed_plan = _plan(settings, runtime, base, winner["branch"], policy["sealed_split"])
     sealed_run = _stored(store, sealed_plan)
     if sealed_run is None:
@@ -495,7 +481,7 @@ def reconcile(store, settings, runtime) -> dict:
     artifacts.extend(sealed_run["artifacts"])
     if sealed_run["state"] != "complete":
         return {"state": "active", "identity": sealed_plan["job_id"], "artifacts": artifacts, "provider_calls": client.calls if client else 0, "next": "evaluate", "details": {"winner": winner, "sealed": sealed_run["details"]}}
-    result = _finalize(store, settings, base, policy, winner, dev_runs, sealed_run)
+    result = _finalize(store, settings, base, policy, eligible_branches, winner, dev_runs, sealed_run)
     result["artifacts"] = artifacts + result["artifacts"]
     result["provider_calls"] = client.calls if client else 0
     return result

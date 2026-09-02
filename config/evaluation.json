@@ -1,6 +1,7 @@
 {
-  "schema_version": "milk.evaluation-policy.v2",
+  "schema_version": "milk.evaluation-policy.v3",
   "branches": ["bf16", "dynamic_fp8", "static_fp8"],
+  "production_eligible_branches": ["bf16", "dynamic_fp8"],
   "dev_split": "dev",
   "sealed_split": "sealed",
   "score_order": [

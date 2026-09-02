@@ -9,14 +9,10 @@ from . import dataset, summary
 from .providers import baseten
 
 
-CODE_VERSION = "milk.train.v2.2"
+CODE_VERSION = "milk.train.v2.3"
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-train@sha256:[0-9a-f]{64}\Z")
 PROJECT = re.compile(r"[a-z0-9]{5,32}\Z")
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
-BASETEN_BASE_IMAGE = "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2"
-TRANSFORMERS_SOURCE = "https://github.com/huggingface/transformers/archive/ac3244569528944b9d5773cafea525cd8a8b63de.zip"
-TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/d06355c282f0c08ec097f738c63f323fd22e7aa7/images/train/train.py"
-TRAIN_SOURCE_SHA256 = "c35c32460ac79b325bf010799fba75e32799fd90b6bba08a60a0fcbb5144e359"
 
 
 class TrainError(ValueError):
@@ -121,9 +117,6 @@ def _settings(settings, reference: dict) -> dict:
         "provider": "baseten",
         "project_id": project_id,
         "release_image": image,
-        "baseten_base_image": BASETEN_BASE_IMAGE,
-        "train_source_url": TRAIN_SOURCE_URL,
-        "train_source_sha256": TRAIN_SOURCE_SHA256,
         "accelerator": accelerator,
         "availability_model": "dedicated",
         "runtime_secret_map": secret_map,
@@ -148,14 +141,8 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
         "MILK_TRAIN_LEARNING_RATE": str(config["learning_rate"]),
     }
     environment.update({name: {"name": secret} for name, secret in config["runtime_secret_map"].items()})
-    fetch_source = (
-        "python -c \"import hashlib,urllib.request;"
-        f"u='{config['train_source_url']}';b=urllib.request.urlopen(u,timeout=30).read();"
-        f"assert hashlib.sha256(b).hexdigest()=='{config['train_source_sha256']}';"
-        "open('/tmp/milk-train.py','wb').write(b)\""
-    )
     return {
-        "image": {"base_image": config["baseten_base_image"], "docker_auth": None},
+        "image": {"base_image": config["release_image"], "docker_auth": None},
         "compute": {
             "node_count": 1,
             "cpu_count": 4,
@@ -165,10 +152,7 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
         },
         "runtime": {
             "start_commands": [
-                f"python -m pip install --no-cache-dir boto3==1.40.40 {TRANSFORMERS_SOURCE} zstandard==0.25.0",
-                fetch_source,
-                "mkdir -p /models && ln -sfn /app/models/qwen3.5-0.8b /models/qwen3.5-0.8b",
-                "python /tmp/milk-train.py",
+                "python /opt/milk/train.py",
             ],
             "environment_variables": environment,
             "cache_config": {"enabled": True, "require_cache_affinity": False},
@@ -177,7 +161,7 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
         "name": "milk-" + job_id[:20],
         "weights": [{
             "source": f"hf://{runtime.student_base.model_repo}@{runtime.student_base.model_revision}",
-            "mount_location": "/app/models/qwen3.5-0.8b",
+            "mount_location": "/models/qwen3.5-0.8b",
         }],
         "enable_baseten_workdir": False,
         "priority": 0,
@@ -188,12 +172,15 @@ def _artifacts(store, keys: list[str]) -> list[dict]:
     return [{"key": key, "sha256": summary.digest(store.get(key).body)} for key in keys]
 
 
-def _advance_status(store, settings, reference: dict) -> str:
+def _advance_status(store, settings, reference: dict, next_action: str = "evaluate") -> str:
     key = settings.scope_prefix + "status/current.json"
     value, unused = _object(store, key)
     if value.get("schema_version") != "milk.status.v2" or value.get("scope_id") != settings.scope_id:
         raise TrainError("current status identity differs")
-    summary._advance(store, key, {**value, "training": reference, "next_action": "evaluate"})
+    updated = {**value, "next_action": next_action}
+    if reference:
+        updated["training"] = reference
+    summary._advance(store, key, updated)
     return key
 
 
@@ -239,7 +226,7 @@ def _completed(store, settings, runtime, client, config: dict, manifest: dict, j
         "student_base": expected_base,
         "training_kind": "full_bf16",
         "provider": {"name": "baseten", "project_id": config["project_id"], "job_id": provider_job["id"], "status": provider_job["current_status"]},
-        "images": {"release": config["release_image"], "provider_base": config["baseten_base_image"]},
+        "images": {"runtime": config["release_image"]},
         "checkpoint_files": [{key: item.get(key) for key in ("relative_file_name", "size_bytes", "last_modified", "node_rank")} for item in files],
         "output_sha256": summary.digest(output_body),
         "output": output,
@@ -259,8 +246,14 @@ def reconcile(store, settings, runtime) -> dict:
     if reference is None:
         return {"state": "idle", "identity": summary.digest({"scope_id": settings.scope_id, "reason": "dataset_missing"}), "artifacts": [], "provider_calls": 0, "next": "dataset", "details": {"reason": "dataset_missing"}}
     manifest, manifest_body = _object(store, reference["key"])
-    if summary.digest(manifest_body) != reference["sha256"]:
+    counts = dataset.split_counts(manifest)
+    if summary.digest(manifest_body) != reference["sha256"] or reference.get("counts") != counts:
         raise TrainError("dataset manifest digest differs")
+    if not dataset.training_ready(counts):
+        status_key = _advance_status(store, settings, {}, "summary")
+        missing = [split for split in dataset.SPLITS if counts[split] == 0]
+        identity = summary.digest({"schema_version": "milk.train-wait.v2", "dataset": reference, "missing_splits": missing})
+        return {"state": "idle", "identity": identity, "artifacts": _artifacts(store, [reference["key"], status_key]), "provider_calls": 0, "next": "summary", "details": {"reason": "evaluation_splits_missing", "missing_splits": missing, "counts": counts}}
     config = _settings(settings, reference)
     identity = {
         "schema_version": "milk.train-job-identity.v2",

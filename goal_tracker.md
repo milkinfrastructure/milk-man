@@ -725,11 +725,13 @@ The full whiteboard sequence is:
 2. Validate and publish one immutable dataset.
 3. Launch one Qwen3.5-0.8B training job.
 4. Merge the resulting adapter with the exact pinned Qwen3.5-0.8B base revision.
-5. Produce three candidates:
+5. In mechanics, produce three candidates:
    - BF16;
    - dynamic FP8;
    - static FP8 using only the calibration split.
-6. Evaluate all three concurrently on the identical ordered DEV set.
+   Production omits the prototype static branch and produces only BF16 and
+   stable dynamic FP8.
+6. Evaluate every eligible branch concurrently on the identical ordered DEV set.
 7. Select the winner in code using the fixed score tuple.
 8. Evaluate only that winner on the sealed set.
 9. Write an unsigned proposal under `p/`.
@@ -951,6 +953,7 @@ Progress 2026-09-01:
 - [x] Proved one complete localhost OpenAI-compatible model loop that read a skill, wrote bounded memory, and retained trajectory records.
 - [x] Retained the post-cut local receipt at `/Users/shantanu/milk-release-evidence/milk-v2-local-postcut-20260901/report.json`, SHA-256 `750c9a8d3c728295184176c514e96393340f265df44420df7247713d584c1571`.
 - [x] Baseten `zai-org/GLM-5.3-Flash` resumed trajectory `d5985d21-2da8-4acb-ae83-93cad42857ff`, read `milk-system`, inspected both repositories, found the unauthenticated platform-readiness probe blocker, changed only `images/serve/server.py`, passed `py_compile`, and retained reviewable commit `2068b4026` with no provider lifecycle, push, deploy, or route action.
+- [x] A later local `gpt-5.6-sol` low-effort Milk Man run loaded this tracker and `milk-system`, inspected both current repositories and their diff, made no speculative edit, and identified P0/P10 as the remaining phases.
 
 Owned:
 
@@ -980,11 +983,11 @@ Excluded:
 
 - Prime, dashboards, persistent thinkers, messaging, deployment, provider jobs and production scheduling.
 
-### [~] P2 — Milk Parlor direct request path
+### [x] P2 — Milk Parlor direct request path
 
 Progress 2026-09-01:
 
-- [x] Created the fresh Rust repository at root `d089c46c3255b76bbf4ae40774d41aae5681a0bf` with no legacy code; current published main is `70dba12f96a12feedf7ed13b605f20d05ebefd23`.
+- [x] Created the fresh Rust repository at root `d089c46c3255b76bbf4ae40774d41aae5681a0bf` with no legacy code; `70dba12f96a12feedf7ed13b605f20d05ebefd23` is the initial published checkpoint and `216c27231dece763aa86812e6105012d88bf3285` is the current deployment commit.
 - [x] Replayed local Chat Completions SSE and Responses passthrough, invalid-key `401`, exact two-sided compressed capture, and response survival under an injected local-store failure.
 - [x] Added env-selected local/S3 storage and replayed signed create-only PUT plus bounded GET against an independent fake S3 endpoint.
 - [x] Local Parlor wrote two complete captures to the real `milk-prod` R2 bucket with zero drops or storage failures; retained receipt: `/Users/shantanu/milk-release-evidence/milk-v2-r2-20260901/report.json`, SHA-256 `7c96b77a387dbcce75ecbf4c696cebefc28d4f3e1f0d11c685007918f301169f`.
@@ -996,7 +999,10 @@ Progress 2026-09-01:
 - [x] A 99-request burst exposed the bounded writer queue without blocking successful customer responses: 23 captures dropped and zero storage writes failed. A follow-up 24-request run at concurrency four returned 24/24 and added zero drops. This is capacity evidence, not a production qualification claim.
 - [x] Retained the content-free live vertical receipt at `/Users/shantanu/milk-release-evidence/milk-v2-live-20260901/report.json`, SHA-256 `cda2ed3e33acea77bef2c710fd64c558e033e3441426e10a245c6a8d45a70caa`.
 - [x] Replaced the single ambiguous upstream binding with native Chat Completions and Responses bindings. Local direct smoke routed Chat to Baseten and Responses to OpenAI without translation; each returned the requested output and advertised only its configured protocol.
-- [ ] Record a controlled warm capture-enabled-versus-disabled timing comparison before claiming a capture overhead bound.
+- [x] Actions run `33597630523` built the locally verified protocol-native source into GHCR index `sha256:6d2726586116de52ce0372aa67d7a1144f9fcd0401ba46f8e563d7d0aeac385d`, Linux AMD64 manifest `sha256:f8caebc7c0bf2d8b24809c72cbba1f97165245022caa9c1e6a9b4c1c0aa5ed39`, and Cloudflare manifest `sha256:50d8901bc8a4a4172bc9dcaa8014d836d6d596d25bfd5b41fbeb340dcc6d510d` with 2,342,654 compressed layer bytes.
+- [x] Deployed that exact Cloudflare manifest. Native streaming Chat reached Baseten and native streaming Responses reached OpenAI through signed zero route revision 5; both completed and persisted without a candidate binding.
+- [x] A fresh scope accepted and asynchronously persisted exactly 100/100 official OpenAI Python SDK Responses exchanges in 23,361 ms with eight clients, zero drops, zero storage failures, and a live writer. This proves the requested small-threshold path; no capture-overhead number is claimed, so an artificial enabled-versus-disabled benchmark is not a completion gate.
+- [x] Retained protocol-native proof at `/Users/shantanu/milk-release-evidence/milk-v2-protocol-native-20260902/report.json`, SHA-256 `7c988ce858176a2cd57a9c846ccb490bfd949b331a1793c3fecf8c627f64503d`.
 
 Owned:
 
@@ -1118,6 +1124,7 @@ Progress 2026-09-01:
 - [x] Crossed the first production threshold at 100 complete R2 captures through local Milk Man using `gpt-5.6-sol`, the OpenAI Responses API, and low reasoning effort. It wrote one summary/readiness checkpoint in two inference turns, replayed with zero calls, and correctly remained below the 1,000-capture readiness threshold.
 - [x] Used the same latest-model/low-effort OpenAI binding to generate a bounded 12-prompt follow-on batch, sent it through hosted Parlor, and reconciled 112 captured / 100 processed with zero new inference or provider calls.
 - [x] Retained the content-free production summary receipt at `/Users/shantanu/milk-release-evidence/milk-v2-production-openai-summary-20260902/report.json`, SHA-256 `fcb786f4c0fd662c8ca27bc15fbfe916e51e117f3f0510709dbf2d553bd1011b`.
+- [x] On fresh scope `c2ab9c16-79cc-4c7f-955d-49871f240919`, local Milk Man read 100 hosted Parlor captures from Cloudflare R2 with `MILK_SUMMARY_THRESHOLDS=100`, used `gpt-5.6-sol` through OpenAI Responses at low reasoning effort, and wrote summary `df553599-5026-507d-b9b5-6d53ea015971` plus readiness `bd464e56-893a-5cac-a94d-b9f4bff170f3`. The two-call run was mechanics-ready, explicitly not statistically qualified, and its replay made zero inference/provider calls.
 
 Owned:
 
@@ -1156,6 +1163,7 @@ Completed 2026-09-01:
 - [x] Authenticated `/api/status` reported the correct mechanics and production scope progress.
 - [x] Mechanics remained non-production and could not qualify a route; the real production scope below threshold made no semantic, GPU, or routing call.
 - [x] Retained `/Users/shantanu/milk-release-evidence/milk-v2-live-20260901/report.json`, SHA-256 `cda2ed3e33acea77bef2c710fd64c558e033e3441426e10a245c6a8d45a70caa`.
+- [x] Repeated the complete hosted-gateway-to-remote-store-to-local-Milk-Man vertical at an explicit threshold of 100 after the coordinated image build. The same environment-selected R2 and OpenAI bindings advanced summary, eval, and dataset pointers; each immediate replay made zero calls.
 
 Integrate P2 through P5:
 
@@ -1189,6 +1197,7 @@ Completed 2026-09-01:
 - [x] A direct mechanics `milk operate --once` smoke traversed capture, summary, readiness, eval, validation, and `e/current.json` in six inference turns; replay made zero calls.
 - [x] A separate rejection smoke proved one validator rejection, one repair, acceptance in ten turns, zero-call replay, and `milk status` advancing to `dataset`.
 - [x] Published `672b58cbe` and `3ec05028f`; the pinned Qwen3.5-0.8B student contract and separate high-intelligence eval/validator bindings remained intact.
+- [x] The fresh threshold-100 R2 scope generated and independently validated eval `eee146fd-d026-59dd-ac6d-4d44a2c04613` through separate OpenAI Responses bindings using `gpt-5.6-sol` at low reasoning effort. It accepted one bounded case in eight inference calls, made zero provider calls, and replayed with zero calls.
 
 Owned:
 
@@ -1228,6 +1237,13 @@ Progress 2026-09-01:
 - [x] Candidate artifact `04f4af2eb8b2596985a4694d1a167ea99c66063b19438425199d76bf1c2e8fbd` received a definite Baseten `custom_base_image_not_enabled` preflight with no Baseten model or deployment, then deterministically fell back to Modal app `ap-pf5pYKvKgMMo5SqEyx9ZF6` and volume `milk-candidate-04f4af2eb8b2596985a4`.
 - [x] Milk Man verified the exact Baseten checkpoint inventory during Modal hydration, completed one authenticated inference smoke, retained candidate `40ee1fff-303c-5a5e-842c-72ee9880638d`, and advanced to corrected unsigned proposal `d86f2910-9ccc-5d56-9aeb-ee7b400f4f8c` at `p/d86f2910-9ccc-5d56-9aeb-ee7b400f4f8c.json`.
 - [x] `milk run gpu-reconcile` stopped the exact Modal app and wrote immutable intent/result objects under `j/gpu-reconcile/04f4af2e...`; independent listings showed that app stopped with zero containers, every other visible Modal app at zero containers, zero Baseten candidate models, and training job `qek7jrq` in `TRAINING_JOB_COMPLETED` with checkpoint sync `COMPLETED`.
+- [x] The fresh threshold-100 scope generated dataset `fe2c3e54-d15c-5c01-ab02-f61b46b9dd93` through the environment-selected OpenAI Responses teacher. Its manifest SHA-256 is `39a8f997e39d4349fb1f7ae5efcd6f1a6c8d11654809315ab510e1ff922603ef`; the bounded mechanics split contains one train and one DEV item, made two inference calls, made zero provider calls, and replayed with zero calls.
+- [x] A pre-provider train invocation read and verified the immutable manifest's exact split counts, detected empty calibration and sealed splits, changed status back to `next: summary`, and returned idle with zero inference/provider calls without requiring Baseten credentials. Direct status reports `training_ready: false`.
+- [x] Coordinated Actions run `33597613364` rebuilt the weight-free train, eval, and serve images from published Milk Man `87376d56096cf39988d6163d5752a7726acfc3a2`. Their immutable digests remain `sha256:93f6a973d2e7b04e3dfc0c9807b5b83cb661601ebfbc1e371659b2530a9dd16f`, `sha256:7d045e6432b2e6222a58b976889b8c0b4f548a55525826932ae3b435cf7f6343`, and `sha256:5d265b975920f049775e16f959b6fe5177c4c5429ab66eca6bf178d0a892f851`; model weights remain outside OCI.
+- [x] Audited all 15 Baseten H100 jobs from provider logs: nine completed, six failed, and none remain active. The resolved failures were one Transformers/Qwen import, one checkpoint-root error, three missing-compiler failures, and one TorchAO inference-tensor failure. `checkpoint_sync: COMPLETED` also appeared on failed jobs and is therefore not treated as job success. The final two-DEV/one-sealed result remains mechanics evidence only.
+- [x] The two successful train jobs used the same short train object but different behavior-affecting configurations (`max_tokens` 512 versus 2048 and different configuration digests). Their identical loss and weights do not justify weakening the idempotency identity; future milestones must freeze reviewed settings rather than deduplicate raw bytes unsafely.
+- [x] Retained the combined threshold-100/101 proof at `/Users/shantanu/milk-release-evidence/milk-v2-threshold100-openai-20260902/report.json`, SHA-256 `4a839fc1ca14b2c29c0fa7f0b357978e781e14299e34aac22f2a229d72efb5ba`, and the content-free Baseten log audit at `/Users/shantanu/milk-release-evidence/milk-v2-baseten-log-audit-20260902/report.json`, SHA-256 `958bf46d4047440670b11527c997138902d6daf26bb8ba8e0062f69312246a54`.
+- [x] Corrected the mechanics default from one eval case, which can never populate every evaluation split, to four deterministic cases. Capture 101 produced a new readiness checkpoint, eval `bc52afeb-ed92-5ead-a899-9c284be20f80`, and training-ready dataset `8ded3d52-267f-5f83-8720-12e7dd994138` with exact counts train 1, DEV 2, calibration 1, sealed 1. The dataset job used two OpenAI teacher calls and zero GPU/provider calls.
 
 Owned:
 
@@ -1265,7 +1281,7 @@ Acceptance:
 - unsigned proposal;
 - termination receipts and independently verified zero capacity on both providers.
 
-### [~] P9 — Signed routing and release
+### [x] P9 — Signed routing and release
 
 Progress 2026-09-01:
 
@@ -1281,7 +1297,9 @@ Progress 2026-09-01:
 - [x] Signed zero revision 4 (`ce2f4d88-0107-429f-89a7-6a9083c14a18`) removed candidate identity and basis points. Capture `01a0606f-feca-7280-a6ec-fd529cea9f00` bound the zero route and returned baseline `200`; Cloudflare version `d1b61ee7-ce8f-47c3-b90e-4c1e61314537` contains no candidate URL, credential, or artifact binding.
 - [x] Retained the content-free candidate, fallback, rollback, provider-drain, and zero-route receipt at `/Users/shantanu/milk-release-evidence/milk-v2-live-candidate-20260901/report.json`, SHA-256 `33f94057a7ae1ef700d4d16cbb335d958c193d4365033cfad1b05836aa6cb889`.
 - [x] Published Parlor `f0b476b1a7c41ae3b0c7739aeadb06e82b3bcb0e` and Milk Man `7b528a60c3137d5c7c7a033691383c043de7bcfd`: route v3 signs protocol-specific upstream bindings, Parlor forwards `/v1/chat/completions` and `/v1/responses` unchanged, and Milk Man proposes only protocols its candidate actually implements. There is no cross-protocol translation or legacy route reader.
-- [ ] Finish the concise public release docs and tagged release metadata; remove old public names, runtime Actions, unused images, fixtures, and transition documents.
+- [x] Signed zero revision 5 (`199226cd-4720-4b8d-9ff3-40f3e32a091e`) is the active production route. Final Cloudflare deployment `becfa07c-be0e-4b71-b431-6ebfc685c38a` runs the coordinated image with separate native Chat and Responses bindings and no candidate credentials.
+- [x] Published concise public READMEs and standard license/security/contribution files. The tracked trees contain no legacy names, fixtures, transition documents, runtime Actions, or model weights; Actions only publish one Parlor image and three Milk Man GPU job images with cache.
+- [x] Tagged Milk Parlor runtime release `v0.1.0` at `642e3a26ebd921bafed5eb3ff26ccd34f0e0ea51` and Milk Man release `v0.1.0` at `87376d56096cf39988d6163d5752a7726acfc3a2`. Parlor deployment commit `216c27231dece763aa86812e6105012d88bf3285` pins the resulting Cloudflare digest without triggering another image build.
 
 Owned:
 
@@ -1302,6 +1320,24 @@ Acceptance:
 - no candidate credential remains after teardown;
 - both public repositories have concise macOS/Linux quickstarts, environment references, object-tree documentation, licenses, security guidance, tagged commits and release digests;
 - old public names, runtime Actions, unused images, fixtures and transition documents are removed.
+
+### [~] P10 — Remove measured provider startup waste
+
+Progress 2026-09-02:
+
+- [x] Provider logs show the current Baseten compatibility path repeatedly installs apt and Python packages before a one-step job. This dominates the useful mechanics work and is the largest measured remaining latency and failure surface.
+- [x] GitHub Actions has already published immutable weight-free train, eval, and serve images; model weights remain separately mounted.
+- [~] The local fixed train/eval job definitions now use the published digest-pinned images directly and contain no per-job apt, pip, or raw-source download commands. The images are anonymously pullable from GHCR; one Baseten run remains blocked on account-level custom-base-image enablement.
+- [x] TorchAO 0.18 still lists dynamic FP8 as stable but keeps static activation FP8 under `prototype`. Do not replace the known mechanics implementation with another unstable API or use its tiny-set result for production; BF16 and stable dynamic FP8 remain production candidates until a stable calibrated static path exists.
+- [x] The reviewed evaluation policy runs all three comparable DEV branches in mechanics but only BF16 and dynamic FP8 in production, so a prototype static job cannot block or win the production path. The chosen branch is bound through the sealed result, candidate artifact, direct-image Baseten config, Modal fallback environment, server health, and smoke identity.
+- [x] Direct local payload smokes verified one-command train/eval startup, external Qwen3.5-0.8B weights, prior-checkpoint loading, zero runtime install commands, dynamic-over-static production selection, all-branch serving environments, and static-only activation-scale propagation.
+
+Acceptance:
+
+- Baseten starts the exact reviewed image without runtime package installation;
+- one bounded train and three-branch evaluation complete from those images;
+- configuration identity, dataset/model provenance, and zero-capacity checks remain unchanged;
+- any static FP8 production candidate uses a stable pinned implementation; otherwise it remains mechanics-only and cannot win a production route.
 
 ## Validation policy
 

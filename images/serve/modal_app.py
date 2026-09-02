@@ -23,7 +23,8 @@ APP_NAME = os.environ["MILK_MODAL_CANDIDATE_APP_NAME"]
 VOLUME_NAME = os.environ["MILK_MODAL_CANDIDATE_VOLUME_NAME"]
 SERVE_IMAGE = os.environ["MILK_SERVE_IMAGE"]
 ARTIFACT_SHA256 = os.environ["MILK_CANDIDATE_ARTIFACT_SHA256"]
-ACTIVATION_SCALE = os.environ["MILK_CANDIDATE_ACTIVATION_SCALE"]
+BRANCH = os.environ["MILK_CANDIDATE_BRANCH"]
+ACTIVATION_SCALE = os.environ.get("MILK_CANDIDATE_ACTIVATION_SCALE")
 LINEAR_COUNT = os.environ["MILK_CANDIDATE_LINEAR_COUNT"]
 GPU = os.environ.get("MILK_CANDIDATE_ACCELERATOR", "H100")
 ROUTING_REGION = os.environ.get("MILK_MODAL_ROUTING_REGION", "us-west")
@@ -35,6 +36,8 @@ if (
     or NAME.fullmatch(VOLUME_NAME) is None
     or IMAGE.fullmatch(SERVE_IMAGE) is None
     or SHA256.fullmatch(ARTIFACT_SHA256) is None
+    or BRANCH not in {"bf16", "dynamic_fp8", "static_fp8"}
+    or (BRANCH == "static_fp8") != (ACTIVATION_SCALE is not None)
     or GPU not in {"H100", "H200"}
 ):
     raise RuntimeError("Modal candidate configuration is invalid")
@@ -49,7 +52,7 @@ candidate_secret = modal.Secret.from_dict(
 runtime_environment = {
     "BT_LOAD_CHECKPOINT_DIR": str(MODEL_ROOT),
     "MILK_CANDIDATE_ARTIFACT_SHA256": ARTIFACT_SHA256,
-    "MILK_CANDIDATE_ACTIVATION_SCALE": ACTIVATION_SCALE,
+    "MILK_CANDIDATE_BRANCH": BRANCH,
     "MILK_CANDIDATE_LINEAR_COUNT": LINEAR_COUNT,
 }
 definition_environment = {
@@ -57,11 +60,14 @@ definition_environment = {
     "MILK_MODAL_CANDIDATE_VOLUME_NAME": VOLUME_NAME,
     "MILK_SERVE_IMAGE": SERVE_IMAGE,
     "MILK_CANDIDATE_ARTIFACT_SHA256": ARTIFACT_SHA256,
-    "MILK_CANDIDATE_ACTIVATION_SCALE": ACTIVATION_SCALE,
+    "MILK_CANDIDATE_BRANCH": BRANCH,
     "MILK_CANDIDATE_LINEAR_COUNT": LINEAR_COUNT,
     "MILK_CANDIDATE_ACCELERATOR": GPU,
     "MILK_MODAL_ROUTING_REGION": ROUTING_REGION,
 }
+if ACTIVATION_SCALE is not None:
+    runtime_environment["MILK_CANDIDATE_ACTIVATION_SCALE"] = ACTIVATION_SCALE
+    definition_environment["MILK_CANDIDATE_ACTIVATION_SCALE"] = ACTIVATION_SCALE
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=False)
 hydrate_image = modal.Image.debian_slim(python_version="3.12").env(definition_environment)
 serve_image = modal.Image.from_registry(SERVE_IMAGE).entrypoint([]).env(

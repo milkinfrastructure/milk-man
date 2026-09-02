@@ -29,6 +29,30 @@ class BusyError(RuntimeError):
         self.identity = identity
 
 
+def training_ready(counts: object) -> bool:
+    if (
+        not isinstance(counts, dict)
+        or set(counts) != set(SPLITS)
+        or any(not isinstance(counts[split], int) or isinstance(counts[split], bool) or counts[split] < 0 for split in SPLITS)
+    ):
+        raise DatasetError("dataset split counts are invalid")
+    return all(counts[split] > 0 for split in SPLITS)
+
+
+def split_counts(manifest: dict) -> dict[str, int]:
+    objects = manifest.get("objects")
+    if not isinstance(objects, dict) or set(objects) != set(SPLITS):
+        raise DatasetError("dataset split objects are invalid")
+    counts = {}
+    for split in SPLITS:
+        item = objects[split]
+        count = item.get("count") if isinstance(item, dict) else None
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+            raise DatasetError("dataset split counts are invalid")
+        counts[split] = count
+    return counts
+
+
 def _integer(name: str, default: int, minimum: int, maximum: int) -> int:
     try:
         value = int(os.environ.get(name, str(default)))
@@ -63,6 +87,10 @@ def current(store, settings, runtime) -> dict | None:
         manifest, manifest_body = _object(store, reference.get("key", ""))
     except FileNotFoundError:
         return None
+    try:
+        counts = split_counts(manifest)
+    except DatasetError:
+        return None
     if (
         reference.get("schema_version") != "milk.dataset-reference.v2"
         or reference.get("scope_id") != settings.scope_id
@@ -79,6 +107,7 @@ def current(store, settings, runtime) -> dict | None:
             "digest": runtime.student_base.digest,
         }
         or eval_pointer.get("uuid") != manifest.get("eval_uuid")
+        or reference.get("counts") != counts
     ):
         return None
     return reference
@@ -215,14 +244,17 @@ def _status(store, settings, reference: dict) -> str:
     value, unused_body = _object(store, key)
     if value.get("schema_version") != "milk.status.v2" or value.get("scope_id") != settings.scope_id or value.get("profile") != settings.profile:
         raise DatasetError("current status identity differs")
-    summary._advance(store, key, {**value, "dataset": reference, "next_action": "train"})
+    next_action = "train" if training_ready(reference.get("counts")) else "summary"
+    summary._advance(store, key, {**value, "dataset": reference, "next_action": next_action})
     return key
 
 
 def reconcile(store, settings, runtime) -> dict:
     existing = current(store, settings, runtime)
     if existing is not None:
-        return {"state": "idle", "identity": existing["uuid"], "artifacts": _artifacts(store, [existing["key"], settings.scope_prefix + "status/current.json"]), "inference_calls": 0, "provider_calls": 0, "next": "train", "details": {"dataset_uuid": existing["uuid"], "counts": existing["counts"]}}
+        ready = training_ready(existing.get("counts"))
+        status_key = _status(store, settings, existing)
+        return {"state": "idle", "identity": existing["uuid"], "artifacts": _artifacts(store, [existing["key"], status_key]), "inference_calls": 0, "provider_calls": 0, "next": "train" if ready else "summary", "details": {"dataset_uuid": existing["uuid"], "counts": existing["counts"], "training_ready": ready}}
 
     eval_pointer, eval_pointer_sha256, eval_cases, split_policy = _eval_context(store, settings)
     requested = _integer("MILK_DATASET_TRAIN_EXAMPLES", 128 if settings.profile == "production" else 1, 1, 256)
@@ -264,7 +296,9 @@ def reconcile(store, settings, runtime) -> dict:
         if not isinstance(reference, dict):
             raise DatasetError("stored dataset result has no dataset reference")
         status_key = _status(store, settings, reference)
-        return {"state": prior["state"], "identity": job_id, "artifacts": _artifacts(store, [*prior.get("artifact_keys", []), status_key]), "inference_calls": 0, "provider_calls": 0, "next": "train", "details": prior["details"]}
+        ready = training_ready(reference.get("counts"))
+        details = {**prior["details"], "training_ready": ready}
+        return {"state": prior["state"], "identity": job_id, "artifacts": _artifacts(store, [*prior.get("artifact_keys", []), status_key]), "inference_calls": 0, "provider_calls": 0, "next": "train" if ready else "summary", "details": details}
     except FileNotFoundError:
         pass
     if not store.create_same(intent_key, summary.canonical({**identity, "job_id": job_id})).created:
@@ -321,6 +355,7 @@ def reconcile(store, settings, runtime) -> dict:
     reference = {"schema_version": "milk.dataset-reference.v2", "scope_id": settings.scope_id, "uuid": dataset_uuid, "key": manifest_key, "sha256": summary.digest(manifest_body), "eval_pointer_sha256": eval_pointer_sha256, "counts": counts}
     status_key = _status(store, settings, reference)
     artifact_keys = [intent_key, receipt_key, *(object_values[split]["key"] for split in SPLITS), manifest_key, status_key, result_key]
-    result = {"schema_version": "milk.dataset-job-result.v2", "job_id": job_id, "state": "progressed", "next": "train", "dataset": reference, "artifact_keys": artifact_keys, "details": {"dataset_uuid": dataset_uuid, "counts": counts}}
+    ready = training_ready(counts)
+    result = {"schema_version": "milk.dataset-job-result.v2", "job_id": job_id, "state": "progressed", "next": "train" if ready else "summary", "dataset": reference, "artifact_keys": artifact_keys, "details": {"dataset_uuid": dataset_uuid, "counts": counts, "training_ready": ready}}
     store.create_same(result_key, summary.canonical(result))
-    return {"state": "progressed", "identity": job_id, "artifacts": _artifacts(store, artifact_keys), "inference_calls": receipt["inference_calls"], "provider_calls": 0, "next": "train", "details": result["details"]}
+    return {"state": "progressed", "identity": job_id, "artifacts": _artifacts(store, artifact_keys), "inference_calls": receipt["inference_calls"], "provider_calls": 0, "next": result["next"], "details": result["details"]}

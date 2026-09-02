@@ -16,9 +16,9 @@ from . import evaluate, summary, train
 from .providers import baseten, modal_gpu
 
 
-CODE_VERSION = "milk.route-propose.v4"
+CODE_VERSION = "milk.route-propose.v5"
 TRUSS_VERSION = "0.18.28"
-SERVED_MODEL = "milk-qwen3.5-0.8b-static-fp8"
+BRANCHES = {"bf16", "dynamic_fp8", "static_fp8"}
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-serve@sha256:[0-9a-f]{64}\Z")
 IDENTIFIER = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
@@ -108,6 +108,25 @@ def _artifacts(store, keys: list[str]) -> list[dict]:
     ]
 
 
+def _served_model(branch: str) -> str:
+    return "milk-qwen3.5-0.8b-" + branch.replace("_", "-")
+
+
+def _validated_quantization(branch: str, value: object) -> dict:
+    if not isinstance(value, dict) or value.get("kind") != branch:
+        raise RouteError("sealed quantization identity differs from the selected branch")
+    count = value.get("quantized_linear_count")
+    if type(count) is not int or count < 0 or (branch == "bf16") != (count == 0):
+        raise RouteError("sealed quantized linear count is invalid")
+    if branch != "bf16" and value.get("torchao_version") != "0.15.0":
+        raise RouteError("sealed FP8 implementation identity differs")
+    if branch == "static_fp8":
+        scale = value.get("activation_scale")
+        if not isinstance(scale, (int, float)) or isinstance(scale, bool) or not 0 < scale < 1:
+            raise RouteError("sealed static-FP8 activation scale is invalid")
+    return value
+
+
 def _inputs(store, settings, runtime) -> tuple[dict, dict, dict, dict, dict]:
     model_reference = train.current(store, settings, runtime)
     evaluation_reference = evaluate.current(store, settings, runtime)
@@ -124,25 +143,20 @@ def _inputs(store, settings, runtime) -> tuple[dict, dict, dict, dict, dict]:
     if not isinstance(sealed_reference, dict):
         raise RouteError("evaluation group has no sealed result")
     sealed, sealed_body = _object(store, sealed_reference.get("key", ""))
+    winner_branch = group.get("winner", {}).get("branch")
     if (
         summary.digest(sealed_body) != sealed_reference.get("sha256")
-        or group.get("winner", {}).get("branch") != "static_fp8"
-        or sealed.get("branch") != "static_fp8"
+        or group.get("profile") != settings.profile
+        or sealed.get("profile") != settings.profile
+        or winner_branch not in BRANCHES
+        or sealed.get("branch") != winner_branch
         or sealed.get("split") != "sealed"
         or sealed.get("model", {}).get("uuid") != model_reference["uuid"]
     ):
-        raise RouteError("sealed evaluation is not the selected static-FP8 winner")
-    quantization = sealed.get("quantization")
-    if (
-        not isinstance(quantization, dict)
-        or quantization.get("kind") != "static_fp8"
-        or quantization.get("torchao_version") != "0.15.0"
-        or not isinstance(quantization.get("activation_scale"), (int, float))
-        or not 0 < quantization["activation_scale"] < 1
-        or type(quantization.get("quantized_linear_count")) is not int
-        or quantization["quantized_linear_count"] < 1
-    ):
-        raise RouteError("sealed static-FP8 configuration is invalid")
+        raise RouteError("sealed evaluation is not the selected winner")
+    if settings.profile == "production" and winner_branch == "static_fp8":
+        raise RouteError("prototype static FP8 cannot produce a production route")
+    _validated_quantization(winner_branch, sealed.get("quantization"))
     return model_reference, model, evaluation_reference, group, sealed
 
 
@@ -172,6 +186,7 @@ def _artifact(
         or IDENTIFIER.fullmatch(provider["job_id"]) is None
     ):
         raise RouteError("model has no exact Baseten checkpoint identity")
+    branch = group["winner"]["branch"]
     identity = {
         "schema_version": "milk.candidate-artifact-identity.v2",
         "code_version": CODE_VERSION,
@@ -190,8 +205,8 @@ def _artifact(
         "serve_image": image,
         "accelerator": accelerator,
         "server": {
-            "model": SERVED_MODEL,
-            "torchao_version": "0.15.0",
+            "model": _served_model(branch),
+            "branch": branch,
             "quantization": sealed["quantization"],
             "credential_env": "MILK_CANDIDATE_API_KEY",
             "baseten_secret": "milk-candidate-api-key",
@@ -212,11 +227,18 @@ def _artifact(
 
 def _names(artifact_sha256: str) -> tuple[str, str]:
     suffix = artifact_sha256[:20]
-    return "milk-qwen35-fp8-" + suffix, "sealed-" + suffix
+    return "milk-qwen35-" + suffix, "sealed-" + suffix
 
 
 def _truss_config(identity: dict, artifact_sha256: str, model_name: str) -> dict:
     quantization = identity["server"]["quantization"]
+    environment = {
+        "MILK_CANDIDATE_ARTIFACT_SHA256": artifact_sha256,
+        "MILK_CANDIDATE_BRANCH": identity["server"]["branch"],
+        "MILK_CANDIDATE_LINEAR_COUNT": str(quantization["quantized_linear_count"]),
+    }
+    if "activation_scale" in quantization:
+        environment["MILK_CANDIDATE_ACTIVATION_SCALE"] = str(quantization["activation_scale"])
     return {
         "model_name": model_name,
         "base_image": {"image": identity["serve_image"]},
@@ -227,11 +249,7 @@ def _truss_config(identity: dict, artifact_sha256: str, model_name: str) -> dict
             "readiness_endpoint": "/health",
             "liveness_endpoint": "/health",
         },
-        "environment_variables": {
-            "MILK_CANDIDATE_ARTIFACT_SHA256": artifact_sha256,
-            "MILK_CANDIDATE_ACTIVATION_SCALE": str(quantization["activation_scale"]),
-            "MILK_CANDIDATE_LINEAR_COUNT": str(quantization["quantized_linear_count"]),
-        },
+        "environment_variables": environment,
         "secrets": {"milk-candidate-api-key": None},
         "resources": {
             "accelerator": identity["accelerator"],
@@ -458,14 +476,16 @@ def _smoke(
     timeout: int,
     authorization: str,
 ) -> tuple[dict, int]:
+    branch = quantization["kind"]
+    served_model = _served_model(branch)
     health, health_body = _http_json(
         "GET", base_url + "/health", api_key, None, timeout, authorization
     )
     if health != {
         "status": "ok",
-        "model": SERVED_MODEL,
+        "model": served_model,
         "artifact_sha256": artifact_sha256,
-        "quantization": "static_fp8",
+        "quantization": branch,
         "quantized_linear_count": quantization["quantized_linear_count"],
     }:
         raise ProviderError("candidate health identity differs", 1)
@@ -474,7 +494,7 @@ def _smoke(
         base_url + "/v1/chat/completions",
         api_key,
         {
-            "model": SERVED_MODEL,
+            "model": served_model,
             "messages": [{"role": "user", "content": "Reply with milk."}],
             "max_tokens": 4,
             "stream": False,
@@ -485,7 +505,7 @@ def _smoke(
     choices = chat.get("choices")
     if (
         chat.get("object") != "chat.completion"
-        or chat.get("model") != SERVED_MODEL
+        or chat.get("model") != served_model
         or not isinstance(choices, list)
         or len(choices) != 1
         or not isinstance(choices[0], dict)
@@ -496,7 +516,7 @@ def _smoke(
         "schema_version": "milk.candidate-smoke.v2",
         "health_sha256": summary.digest(health_body),
         "chat_sha256": summary.digest(chat_body),
-        "model": SERVED_MODEL,
+        "model": served_model,
         "artifact_sha256": artifact_sha256,
     }, 2
 

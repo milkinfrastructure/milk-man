@@ -83,6 +83,12 @@ and GPU providers use the reviewed environment-variable names in
 [`config/jobs.json`](config/jobs.json); configuration cannot supply executable
 paths.
 
+Training reads the immutable dataset manifest before provider discovery. New
+GPU work starts only when train, DEV, calibration, and sealed counts are all
+nonzero. Otherwise the job returns to summary with zero provider calls.
+The mechanics profile therefore defaults to four representative eval cases:
+two DEV, one calibration, and one sealed.
+
 The only fine-tune base is the exact `Qwen/Qwen3.5-0.8B` revision pinned in
 [`config/student.json`](config/student.json). It is an artifact input, not an
 inference fallback. Summary, eval generation, validation, and teacher-data
@@ -97,6 +103,12 @@ included in every semantic job identity.
 Set the role-specific `MILK_SUMMARY_API_MODE`, `MILK_EVAL_API_MODE`,
 `MILK_VALIDATOR_API_MODE`, or `MILK_TEACHER_API_MODE` to `responses` for an
 OpenAI Responses endpoint; each defaults to `chat_completions`.
+
+Mechanics compares BF16, dynamic FP8, and static FP8 on the same DEV cases.
+Production runs and admits only BF16 and stable dynamic FP8 while static
+activation FP8 remains a TorchAO prototype. The
+selected branch is carried unchanged through sealed evaluation, candidate
+identity, provider environment, health, and route proposal.
 
 The object root for one authenticated scope is:
 

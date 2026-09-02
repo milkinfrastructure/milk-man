@@ -218,6 +218,7 @@ def _status(store, settings, runtime):
     details["eval_current"] = details["ready"] and eval_job.current_matches(store, settings)
     dataset_reference = dataset_job.current(store, settings, runtime) if details["eval_current"] else None
     details["dataset_current"] = dataset_reference is not None
+    details["training_ready"] = bool(dataset_reference and dataset_job.training_ready(dataset_reference.get("counts")))
     if dataset_reference is not None:
         artifacts.append({"key": dataset_reference["key"], "sha256": dataset_reference["sha256"]})
     training_reference = train_job.current(store, settings, runtime) if dataset_reference is not None else None
@@ -250,8 +251,10 @@ def _status(store, settings, runtime):
         else "route-propose"
         if details["evaluation_current"]
         else "evaluate"
-        if details["training_current"]
+        if details["training_current"] and details["training_ready"]
         else "train"
+        if details["training_ready"]
+        else "summary"
         if details["dataset_current"]
         else "dataset"
         if details["eval_current"]

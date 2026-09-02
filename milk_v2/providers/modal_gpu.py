@@ -68,7 +68,8 @@ def plan(identity: dict, artifact_sha256: str) -> dict:
         raise ProviderError("Modal candidate configuration is invalid", 0)
     _required("MODAL_TOKEN_ID")
     _required("MODAL_TOKEN_SECRET")
-    return {
+    quantization = identity["server"]["quantization"]
+    result = {
         "schema_version": "milk.modal-candidate-plan.v2",
         "artifact_sha256": artifact_sha256,
         "app_name": app_name,
@@ -77,10 +78,13 @@ def plan(identity: dict, artifact_sha256: str) -> dict:
         "routing_region": routing_region,
         "serve_image": identity["serve_image"],
         "accelerator": identity["accelerator"],
-        "activation_scale": identity["server"]["quantization"]["activation_scale"],
-        "linear_count": identity["server"]["quantization"]["quantized_linear_count"],
+        "branch": identity["server"]["branch"],
+        "linear_count": quantization["quantized_linear_count"],
         "app_source_sha256": hashlib.sha256(APP_FILE.read_bytes()).hexdigest(),
     }
+    if "activation_scale" in quantization:
+        result["activation_scale"] = quantization["activation_scale"]
+    return result
 
 
 def _environment(plan: dict, extra: dict[str, str] | None = None) -> dict[str, str]:
@@ -265,11 +269,13 @@ def ensure(identity: dict, artifact_sha256: str, model: dict, baseten_client) ->
             "MILK_MODAL_ROUTING_REGION": plan_value["routing_region"],
             "MILK_SERVE_IMAGE": plan_value["serve_image"],
             "MILK_CANDIDATE_ARTIFACT_SHA256": artifact_sha256,
-            "MILK_CANDIDATE_ACTIVATION_SCALE": str(plan_value["activation_scale"]),
+            "MILK_CANDIDATE_BRANCH": plan_value["branch"],
             "MILK_CANDIDATE_LINEAR_COUNT": str(plan_value["linear_count"]),
             "MILK_CANDIDATE_ACCELERATOR": plan_value["accelerator"],
             "MILK_CANDIDATE_API_KEY": _required("MILK_CANDIDATE_API_KEY"),
         }
+        if "activation_scale" in plan_value:
+            extra["MILK_CANDIDATE_ACTIVATION_SCALE"] = str(plan_value["activation_scale"])
         observation, used = _mutate(
             plan_value,
             [

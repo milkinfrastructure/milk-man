@@ -30,7 +30,7 @@ def _integer(name: str, default: int, minimum: int, maximum: int) -> int:
 def requested_counts(profile: str) -> tuple[int, int]:
     production = profile == "production"
     return (
-        _integer("MILK_EVAL_REPRESENTATIVE_CASES", 24 if production else 1, 1, 1024),
+        _integer("MILK_EVAL_REPRESENTATIVE_CASES", 24 if production else 4, 1, 1024),
         _integer("MILK_EVAL_TAIL_CASES", 8 if production else 0, 0, 1024),
     )
 

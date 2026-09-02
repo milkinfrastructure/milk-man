@@ -12,12 +12,16 @@ import time
 import uuid
 
 import torch
-from torchao.quantization import Float8StaticActivationFloat8WeightConfig, quantize_
+from torchao.quantization import (
+    Float8DynamicActivationFloat8WeightConfig,
+    Float8StaticActivationFloat8WeightConfig,
+    quantize_,
+)
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
-SERVED_MODEL = "milk-qwen3.5-0.8b-static-fp8"
+QUANTIZATIONS = {"bf16", "dynamic_fp8", "static_fp8"}
 MAX_BODY_BYTES = 4 * 1024 * 1024
 MAX_NEW_TOKENS = 2048
 
@@ -91,13 +95,18 @@ class Runtime:
         self.api_key = candidate_api_key()
         if SHA256.fullmatch(self.artifact_sha256) is None:
             raise ValueError("MILK_CANDIDATE_ARTIFACT_SHA256 must be lowercase SHA-256")
+        self.branch = required("MILK_CANDIDATE_BRANCH")
+        if self.branch not in QUANTIZATIONS:
+            raise ValueError("MILK_CANDIDATE_BRANCH is invalid")
+        self.served_model = "milk-qwen3.5-0.8b-" + self.branch.replace("_", "-")
         try:
-            scale = float(required("MILK_CANDIDATE_ACTIVATION_SCALE"))
+            expected = int(required("MILK_CANDIDATE_LINEAR_COUNT"))
         except ValueError as error:
-            raise ValueError("MILK_CANDIDATE_ACTIVATION_SCALE must be numeric") from error
-        if not 0 < scale < 1:
-            raise ValueError("MILK_CANDIDATE_ACTIVATION_SCALE is invalid")
-        expected = integer(int(required("MILK_CANDIDATE_LINEAR_COUNT")), "MILK_CANDIDATE_LINEAR_COUNT", 187, 10000)
+            raise ValueError("MILK_CANDIDATE_LINEAR_COUNT must be an integer") from error
+        if not 0 <= expected <= 10_000:
+            raise ValueError("MILK_CANDIDATE_LINEAR_COUNT is invalid")
+        if (self.branch == "bf16") != (expected == 0):
+            raise ValueError("MILK_CANDIDATE_LINEAR_COUNT differs from the selected branch")
         checkpoint = model_root()
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, local_files_only=True)
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -105,8 +114,17 @@ class Runtime:
             local_files_only=True,
             torch_dtype=torch.bfloat16,
         ).cuda().eval()
-        scale_tensor = torch.tensor(scale, dtype=torch.float32, device="cuda")
-        quantize_(self.model, Float8StaticActivationFloat8WeightConfig(scale=scale_tensor))
+        if self.branch == "dynamic_fp8":
+            quantize_(self.model, Float8DynamicActivationFloat8WeightConfig())
+        elif self.branch == "static_fp8":
+            try:
+                scale = float(required("MILK_CANDIDATE_ACTIVATION_SCALE"))
+            except ValueError as error:
+                raise ValueError("MILK_CANDIDATE_ACTIVATION_SCALE must be numeric") from error
+            if not 0 < scale < 1:
+                raise ValueError("MILK_CANDIDATE_ACTIVATION_SCALE is invalid")
+            scale_tensor = torch.tensor(scale, dtype=torch.float32, device="cuda")
+            quantize_(self.model, Float8StaticActivationFloat8WeightConfig(scale=scale_tensor))
         self.quantized_linear_count = sum(
             1
             for module in self.model.modules()
@@ -198,14 +216,14 @@ class Handler(BaseHTTPRequestHandler):
                 "id": identifier,
                 "object": "chat.completion.chunk",
                 "created": created,
-                "model": SERVED_MODEL,
+                "model": RUNTIME.served_model,
                 "choices": [{"index": 0, "delta": {"role": "assistant", "content": output}, "finish_reason": None}],
             },
             {
                 "id": identifier,
                 "object": "chat.completion.chunk",
                 "created": created,
-                "model": SERVED_MODEL,
+                "model": RUNTIME.served_model,
                 "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
             },
         ]
@@ -222,16 +240,16 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/health":
             self.send_json(200, {
                 "status": "ok",
-                "model": SERVED_MODEL,
+                "model": RUNTIME.served_model,
                 "artifact_sha256": RUNTIME.artifact_sha256,
-                "quantization": "static_fp8",
+                "quantization": RUNTIME.branch,
                 "quantized_linear_count": RUNTIME.quantized_linear_count,
             })
             return
         if not self.require_authorization():
             return
         if self.path == "/v1/models":
-            self.send_json(200, {"object": "list", "data": [{"id": SERVED_MODEL, "object": "model", "owned_by": "milkinfrastructure"}]})
+            self.send_json(200, {"object": "list", "data": [{"id": RUNTIME.served_model, "object": "model", "owned_by": "milkinfrastructure"}]})
         else:
             self.send_json(404, {"error": {"message": "not found", "type": "invalid_request_error"}})
 
@@ -255,7 +273,7 @@ class Handler(BaseHTTPRequestHandler):
                 "id": identifier,
                 "object": "chat.completion",
                 "created": int(time.time()),
-                "model": SERVED_MODEL,
+                "model": RUNTIME.served_model,
                 "choices": [{"index": 0, "message": {"role": "assistant", "content": output}, "finish_reason": "stop"}],
                 "usage": {
                     "prompt_tokens": prompt_tokens,
@@ -273,8 +291,9 @@ def main() -> None:
     server = ThreadingHTTPServer(("0.0.0.0", 8000), Handler)
     print(json.dumps({
         "event": "ready",
-        "model": SERVED_MODEL,
+        "model": RUNTIME.served_model,
         "artifact_sha256": RUNTIME.artifact_sha256,
+        "quantization": RUNTIME.branch,
         "quantized_linear_count": RUNTIME.quantized_linear_count,
     }, separators=(",", ":")))
     server.serve_forever()
