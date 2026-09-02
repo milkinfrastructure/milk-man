@@ -92,6 +92,8 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] Reconstructed and inspected 1,872 accepted cases from eight deterministic shards. The corpus was dominated by simple transformations, extraction, classification, translation and repeated mechanics templates. The same GLM binding generated and validated the cases and accepted 98.47%; this proves mechanics, not useful eval quality.
 - [x] Retain every v21 object as immutable mechanics evidence. Do not coordinate, publish, train from, repair or resume that revision.
 - [~] Replace the independent 100,000-case target with source-proportional generation: `MILK_CASES_PER_CONVERSATION=100`. `MILK_EVAL_SOURCE_CONVERSATIONS` selects an exact deterministic source count and stops before inference if it is unavailable. One eligible held-out conversation produces exactly 100 creative cases; 100 eligible held-out conversations produce exactly 10,000. Prove one conversation through the complete 100-case path before paid scale-up.
+- [x] The first v22 one-source attempt, revision `12c0e095680e3d2f04ce257dc0e4baed17b7d68bd338a63e86e5857b8bd1d5d4`, made eight OpenAI inference calls and zero provider lifecycle calls. The validator rejected 80 answer-leaking prompts and one incorrect answer; its 19 accepted cases were still trivial. No shard, eval pointer, dataset, training, or GPU work was published. Do not repair this attempt.
+- [~] The next immutable attempt uses the source index as a deterministic 100-slot reasoning, domain and difficulty brief. It must prove creative capability transfer from the deliberately trivial mechanics source rather than restating that source.
 
 ## Non-negotiable architecture
 

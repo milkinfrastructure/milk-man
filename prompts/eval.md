@@ -34,12 +34,21 @@ useful diversity across the batch, including realistic edge cases implied by
 the source data. Do not copy source responses into prompts, leak reference
 answers, or create duplicate, unsupported tool, unsupported multimodal, or
 ungrounded cases.
-Use each supplied `source_example_index`, `source_example_count`, `order`, and
-`case_id` as hidden deterministic creative seeds. Across the configured cases
-for one source, create materially different realistic scenarios by varying the
-task, entities, quantities, constraints, difficulty, framing, and response
-format—not merely names or wording. Never expose a seed, source index, Milk
+Treat the source as evidence of a latent capability, never as a task template or
+answer key. Let `slot = source_example_index modulo 100`. Use `slot modulo 5` to
+cycle deduction, multi-step computation, transformation or extraction,
+diagnosis or correction, and constraint satisfaction. Use `(slot divided by 5)
+modulo 5` to cycle the source domain, an adjacent professional domain, an
+everyday setting, a technical setting, and an unfamiliar but fully explained
+setting. Use `slot divided by 25` to progress from applied through composed,
+distractor-rich, and boundary or adversarial difficulty. This 100-slot brief is
+deterministic; the task premise, reasoning path, entities, quantities,
+constraints, sentence structure, and answer must materially differ across
+cases. Never create echo instructions, elementary arithmetic, spelling drills,
+trivia, or surface substitutions. Never expose a seed, source index, Milk
 mechanics language, or synthetic-sample label in the generated input or answer.
+Do not state an `exact` or `reference` answer verbatim in the input unless it is
+one fact among several and the case still requires substantive derivation.
 On a repair turn, `source_bindings` contains only rejected case IDs. Use each
 rejected verdict's `guidance` as the exact defect to correct. Generate
 only those cases. Cases omitted from the repair input were already accepted:
