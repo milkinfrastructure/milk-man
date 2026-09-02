@@ -1331,6 +1331,7 @@ Progress 2026-09-02:
 - [x] TorchAO 0.18 still lists dynamic FP8 as stable but keeps static activation FP8 under `prototype`. Do not replace the known mechanics implementation with another unstable API or use its tiny-set result for production; BF16 and stable dynamic FP8 remain production candidates until a stable calibrated static path exists.
 - [x] The reviewed evaluation policy runs all three comparable DEV branches in mechanics but only BF16 and dynamic FP8 in production, so a prototype static job cannot block or win the production path. The chosen branch is bound through the sealed result, candidate artifact, direct-image Baseten config, Modal fallback environment, server health, and smoke identity.
 - [x] Direct local payload smokes verified one-command train/eval startup, external Qwen3.5-0.8B weights, prior-checkpoint loading, zero runtime install commands, dynamic-over-static production selection, all-branch serving environments, and static-only activation-scale propagation.
+- [x] Train and evaluate now resolve only store and Baseten bindings. Modal credentials enter only the controller, candidate fallback, and explicit GPU reconciliation jobs that use them.
 
 Acceptance:
 
