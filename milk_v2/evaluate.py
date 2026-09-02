@@ -394,6 +394,7 @@ def _finalize(store, settings, base: dict, policy: dict, winner: dict, dev_runs:
         raise EvaluateError("sealed evaluation does not belong to the selected winner")
     identity = {
         "schema_version": "milk.evaluation-group-identity.v2",
+        "code_version": CODE_VERSION,
         "scope_id": settings.scope_id,
         "profile": settings.profile,
         "dataset": base["dataset"],
@@ -406,7 +407,7 @@ def _finalize(store, settings, base: dict, policy: dict, winner: dict, dev_runs:
     group_identity = summary.digest(identity)
     group_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:evaluation-group:" + group_identity))
     group_key = settings.scope_prefix + f"v/{group_uuid}/manifest.json"
-    group = {"schema_version": "milk.evaluation-group.v2", "evaluation_group_uuid": group_uuid, **identity, "policy": policy}
+    group = {**identity, "schema_version": "milk.evaluation-group.v2", "evaluation_group_uuid": group_uuid, "policy": policy}
     group_body = summary.canonical(group)
     store.create_same(group_key, group_body)
     reference = {"schema_version": "milk.evaluation-group-reference.v2", "scope_id": settings.scope_id, "uuid": group_uuid, "key": group_key, "sha256": summary.digest(group_body), "winner_branch": winner["branch"]}

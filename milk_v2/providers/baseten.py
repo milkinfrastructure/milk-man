@@ -31,7 +31,7 @@ class Client:
             data=raw,
             method=method,
             headers={
-                "Authorization": "Bearer " + self.api_key,
+                "Authorization": "Api-Key " + self.api_key,
                 "Accept": "application/json",
                 **({"Content-Type": "application/json"} if raw is not None else {}),
             },
@@ -83,6 +83,26 @@ class Client:
         if not isinstance(files, list) or any(not isinstance(item, dict) for item in files):
             raise ProviderError("Baseten checkpoint response is invalid")
         return files
+
+    def models(self) -> list[dict]:
+        value = self._request("GET", "/models")
+        models = value.get("models")
+        if not isinstance(models, list) or any(not isinstance(model, dict) for model in models):
+            raise ProviderError("Baseten model response is invalid")
+        return models
+
+    def deployments(self, model_id: str) -> list[dict]:
+        value = self._request("GET", f"/models/{model_id}/deployments")
+        deployments = value.get("deployments")
+        if not isinstance(deployments, list) or any(not isinstance(deployment, dict) for deployment in deployments):
+            raise ProviderError("Baseten deployment response is invalid")
+        return deployments
+
+    def deployment(self, model_id: str, deployment_id: str) -> dict:
+        value = self._request("GET", f"/models/{model_id}/deployments/{deployment_id}")
+        if value.get("id") != deployment_id or value.get("model_id") != model_id:
+            raise ProviderError("Baseten deployment identity differs")
+        return value
 
 
 def fetch_json(url: str, timeout: int, maximum: int = 1024 * 1024) -> tuple[dict, bytes]:

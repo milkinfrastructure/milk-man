@@ -11,6 +11,7 @@ from . import config
 from . import dataset as dataset_job
 from . import eval as eval_job
 from . import evaluate as evaluate_job
+from . import route as route_job
 from . import semantic
 from . import summary
 from . import train as train_job
@@ -135,6 +136,21 @@ def _evaluate_gate(store, settings, runtime, name="evaluate"):
     return _result(name, run["state"], settings.scope_id, run["identity"], run["artifacts"], run["next"], run["details"], provider_calls=run["provider_calls"])
 
 
+def _route_gate(store, settings, runtime, name="route-propose"):
+    run = route_job.reconcile(store, settings, runtime)
+    return _result(
+        name,
+        run["state"],
+        settings.scope_id,
+        run["identity"],
+        run["artifacts"],
+        run["next"],
+        run["details"],
+        inference_calls=run["inference_calls"],
+        provider_calls=run["provider_calls"],
+    )
+
+
 def _operate(store, settings, runtime):
     results = []
     for name, gate, expected_next in (
@@ -143,6 +159,7 @@ def _operate(store, settings, runtime):
         ("dataset", _dataset_gate, "train"),
         ("train", _train_gate, "evaluate"),
         ("evaluate", _evaluate_gate, "route-propose"),
+        ("route-propose", _route_gate, "operator-sign-route"),
     ):
         result = gate(store, settings, runtime)
         results.append((name, result))
@@ -193,6 +210,17 @@ def _status(store, settings, runtime):
     details["training_current"] = training_reference is not None
     if training_reference is not None:
         artifacts.append({"key": training_reference["key"], "sha256": training_reference["sha256"]})
+    evaluation_reference = evaluate_job.current(store, settings, runtime) if training_reference is not None else None
+    details["evaluation_current"] = evaluation_reference is not None
+    if evaluation_reference is not None:
+        artifacts.append({"key": evaluation_reference["key"], "sha256": evaluation_reference["sha256"]})
+    route_reference = route_job.current(store, settings) if evaluation_reference is not None else None
+    details["proposal_current"] = route_reference is not None
+    if route_reference is not None:
+        artifacts.extend(
+            {"key": reference["key"], "sha256": reference["sha256"]}
+            for reference in route_reference.values()
+        )
     identity = _json_digest(
         {
             "schema_version": "milk.status-identity.v2",
@@ -202,7 +230,21 @@ def _status(store, settings, runtime):
             "details": details,
         }
     )
-    next_job = "evaluate" if details["training_current"] else "train" if details["dataset_current"] else "dataset" if details["eval_current"] else "eval" if details["ready"] else "summary"
+    next_job = (
+        "operator-sign-route"
+        if details["proposal_current"]
+        else "route-propose"
+        if details["evaluation_current"]
+        else "evaluate"
+        if details["training_current"]
+        else "train"
+        if details["dataset_current"]
+        else "dataset"
+        if details["eval_current"]
+        else "eval"
+        if details["ready"]
+        else "summary"
+    )
     return _result("status", "complete", settings.scope_id, identity, artifacts, next_job, details)
 
 
@@ -292,6 +334,8 @@ def _run_job(name, store, settings, runtime):
         return _train_gate(store, settings, runtime), 0
     if job.handler == "evaluate":
         return _evaluate_gate(store, settings, runtime), 0
+    if job.handler == "route-propose":
+        return _route_gate(store, settings, runtime), 0
     if job.handler in CONTROLLER_HANDLERS:
         return _controller_job(job.handler, settings)
     identity = _json_digest(
@@ -388,6 +432,13 @@ def main(argv: list[str] | None = None) -> None:
     except evaluate_job.EvaluateError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         _emit(_result(job_name or command, "failed", scope_id, identity, next_job="evaluate", error=str(error)), EXIT_CONFIG)
+    except route_job.ProviderError as error:
+        identity = _json_digest({"command": argv, "error": str(error)})
+        code = EXIT_INTERNAL if error.ambiguous else EXIT_PROVIDER
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="route-propose", error=str(error), provider_calls=error.provider_calls), code)
+    except route_job.RouteError as error:
+        identity = _json_digest({"command": argv, "error": str(error)})
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="route-propose", error=str(error)), EXIT_CONFIG)
     except summary.SummaryError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         _emit(_result(job_name or command, "failed", scope_id, identity, error=str(error)), EXIT_CONFIG)

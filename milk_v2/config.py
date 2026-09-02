@@ -120,6 +120,15 @@ BINDING_ENVIRONMENTS = {
             "MILK_EVALUATE_MAX_NEW_TOKENS",
         ),
     },
+    "candidate": {
+        "required": ("BASETEN_API_KEY", "MILK_SERVE_IMAGE"),
+        "optional": (
+            "BASETEN_TEAM_NAME",
+            "MILK_CANDIDATE_ACCELERATOR",
+            "MILK_ROUTE_CANDIDATE_BPS",
+            "MILK_ROUTE_TIMEOUT_SECONDS",
+        ),
+    },
     "route": {
         "required": (),
         "optional": ("MILK_ROUTE_VERIFY_KEY",),
