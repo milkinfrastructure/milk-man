@@ -24,19 +24,27 @@ MARKER = MODEL_PATH / ".milk-model.json"
 APP_NAME = os.environ["MILK_MODAL_CONTROLLER_APP_NAME"]
 VOLUME_NAME = os.environ["MILK_MODAL_CONTROLLER_VOLUME_NAME"]
 ROUTING_REGION = os.environ.get("MILK_MODAL_ROUTING_REGION", "us-west")
-CONTROLLER_API_KEY = os.environ["MILK_CONTROLLER_API_KEY"]
-if not CONTROLLER_API_KEY or "\n" in CONTROLLER_API_KEY or "\r" in CONTROLLER_API_KEY:
-    raise RuntimeError("MILK_CONTROLLER_API_KEY is invalid")
+RUNTIME_ENV = {
+    "MILK_MODAL_CONTROLLER_APP_NAME": APP_NAME,
+    "MILK_MODAL_CONTROLLER_VOLUME_NAME": VOLUME_NAME,
+    "MILK_MODAL_ROUTING_REGION": ROUTING_REGION,
+}
+
+controller_secrets = []
+if modal.is_local():
+    controller_api_key = os.environ["MILK_CONTROLLER_API_KEY"]
+    if not controller_api_key or "\n" in controller_api_key or "\r" in controller_api_key:
+        raise RuntimeError("MILK_CONTROLLER_API_KEY is invalid")
+    controller_secrets.append(
+        modal.Secret.from_dict({"MILK_CONTROLLER_API_KEY": controller_api_key})
+    )
 
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=False)
 download_image = modal.Image.debian_slim(python_version="3.12").pip_install(
     "huggingface_hub==1.27.0"
-).env({"HF_XET_HIGH_PERFORMANCE": "1"})
+).env({**RUNTIME_ENV, "HF_XET_HIGH_PERFORMANCE": "1"})
 server_image = modal.Image.from_registry(SGLANG_IMAGE).entrypoint([]).env(
-    {"HF_HUB_OFFLINE": "1"}
-)
-controller_secret = modal.Secret.from_dict(
-    {"MILK_CONTROLLER_API_KEY": CONTROLLER_API_KEY}
+    {**RUNTIME_ENV, "HF_HUB_OFFLINE": "1"}
 )
 app = modal.App(APP_NAME)
 
@@ -81,7 +89,7 @@ def hydrate() -> dict:
 
 @app.server(
     image=server_image,
-    secrets=[controller_secret],
+    secrets=controller_secrets,
     gpu="H200",
     cpu=16,
     volumes={"/models": volume.with_mount_options(read_only=True)},
