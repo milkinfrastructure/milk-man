@@ -67,14 +67,12 @@ def _tools(job: str, result_schema: dict, strict_tools: bool = False) -> list[di
         "description": f"Commit the complete result for this {job} job.",
         "parameters": {"type": "object", "properties": {"result": result_schema}, "required": ["result"], "additionalProperties": False},
     }
-    status = {"name": "milk_status", "description": f"Read bounded status for this {job} job.", "parameters": empty}
     if strict_tools:
-        for tool in (read, commit, status):
+        for tool in (read, commit):
             tool["strict"] = True
     return [
         {"type": "function", "function": read},
         {"type": "function", "function": commit},
-        {"type": "function", "function": status},
     ]
 
 
@@ -203,8 +201,6 @@ def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: d
                 elif not arguments and name == "milk_job_read":
                     result = input_value if not read_seen else {"schema_version": "milk.job-input-reference.v2", "input_sha256": input_sha256, "already_read": True}
                     read_seen = True
-                elif not arguments and name == "milk_status":
-                    result = {"schema_version": "milk.job-status.v2", "job": job, "state": "active", "input_sha256": input_sha256, "turn": turn}
                 else:
                     safe_name = name[:128] if isinstance(name, str) else type(name).__name__
                     safe_keys = ",".join(sorted(str(key)[:64] for key in arguments)[:16]) if isinstance(arguments, dict) else type(arguments).__name__
