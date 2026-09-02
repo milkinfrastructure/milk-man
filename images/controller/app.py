@@ -123,7 +123,10 @@ class Controller:
             "--speculative-num-steps", "3",
             "--speculative-eagle-topk", "1",
             "--speculative-num-draft-tokens", "4",
-            "--mem-fraction-static", "0.7",
+            # The pinned weights consume ~101 GiB on a 141 GiB H200. 0.7
+            # leaves the static pool smaller than the weights, so SGLang
+            # exits before allocating its KV cache.
+            "--mem-fraction-static", "0.88",
             "--disable-shared-experts-fusion",
             "--context-length", "32768",
         ]
