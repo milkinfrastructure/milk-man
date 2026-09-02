@@ -1169,7 +1169,15 @@ Acceptance:
 
 Do not continue to eval implementation until this vertical is retained.
 
-### [ ] P7 — Eval generation
+### [x] P7 — Eval generation
+
+Completed 2026-09-01:
+
+- [x] Added exact request/response digests, the fixed request-digest split policy, exact split quotas, and split-aware readiness restricted to locally scoreable exact, reference, and schema oracles.
+- [x] Added deterministic distinct-source representative/tail planning, restricted generator and independent validator sessions, one bounded repair, immutable job/eval artifacts, and guarded `e/current.json` advancement.
+- [x] A direct mechanics `milk operate --once` smoke traversed capture, summary, readiness, eval, validation, and `e/current.json` in six inference turns; replay made zero calls.
+- [x] A separate rejection smoke proved one validator rejection, one repair, acceptance in ten turns, zero-call replay, and `milk status` advancing to `dataset`.
+- [x] Published `672b58cbe` and `3ec05028f`; the pinned Qwen3.5-0.8B student contract and separate high-intelligence eval/validator bindings remained intact.
 
 Owned:
 
@@ -1230,7 +1238,17 @@ Acceptance:
 - unsigned proposal;
 - termination receipts and independently verified zero capacity on both providers.
 
-### [ ] P9 — Signed routing and release
+### [~] P9 — Signed routing and release
+
+Progress 2026-09-01:
+
+- [x] Published the independently reviewed signed canary, pre-byte fallback, rollback, and zero-route implementation at Milk Parlor commit `933b45eac824787cb064b869d93515b75c0c58a8`; requests never wait for R2 route refresh.
+- [x] Fixed macOS Ed25519 one-shot signing at `b1744d79be67e7606c4ba8cb2eac2e693b6436d0` and published one canonical, signature-verified production zero route at revision 1.
+- [x] Built the scratch image in Actions run `33579400572`: GHCR index `sha256:cb625bb33231629d18fea12925d55f5f96397b2492def794c615ed162d72562b`, Linux AMD64 manifest `sha256:6afe8277d9ce1b10b182258fe802f65e3cf1718050a7f4f8d7ca068b808aff7a`, Cloudflare digest `sha256:545ef3a0ccef16b20e0fe689d59fd7dff06651fcb6d00dbd1ecd51be53bde728`, and 2,328,627 compressed layer bytes.
+- [x] Deleted the old Cloudflare Parlor application and created only application `a039d064-0442-45e4-aa31-8dd838c015b6` with the pinned image and `max_instances: 1`.
+- [x] Two live production requests returned 200. The second complete R2 capture bound signed route `8384c78c-bd73-45dd-973b-13dd2a7b20fd` and selected baseline with no candidate or fallback.
+- [x] Retained `/Users/shantanu/milk-release-evidence/milk-v2-signed-zero-20260901/report.json`, SHA-256 `39c13ab4a77662246b37338ea1bdd6b21a903a9a2de90175228080fb394d546b`.
+- [ ] Prove candidate success, forced pre-byte fallback, higher-revision rollback, and credential removal after the P8 winner or an explicitly mechanics-only candidate exists.
 
 Owned:
 
