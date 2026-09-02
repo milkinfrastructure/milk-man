@@ -888,7 +888,8 @@ Progress 2026-09-01:
 - [x] Saved and verified complete Git bundles, the dirty patch, and bounded local state under `/Users/shantanu/milk-release-evidence/milk-v2-bootstrap-20260901`.
 - [x] Installed this file as the sole active repository tracker and removed the previous `GOAL.md`.
 - [x] Reduced Milk Man to 38 tracked files and 5,851 lines, committed the result as independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171`, and removed the stale Prime upstream remote.
-- [x] Published the clean non-fork repositories with default branch `main`: Milk Man `c8597ae5d99c3d02514df262037920adb30516e2` and Milk Parlor `ecdb29cae1c8ccd66a005d5216c360a44458b0f3`. The obsolete public Milk Man history remains recoverable only from the verified local bundle.
+- [x] Published independent-root default histories. Recorded checkpoints include Milk Man `530235a879c3078623ef2f69e3fb830667a9e496` and Milk Parlor `70dba12f96a12feedf7ed13b605f20d05ebefd23`; the verified local bundle preserves the obsolete history.
+- [ ] Detach Milk Man's GitHub fork metadata and remove the 56 legacy remote branches after confirming the retained bundle; GitHub still reports `fork: true` with parent `PrimeIntellect-ai/prime-agent`.
 
 Objective:
 
@@ -952,14 +953,15 @@ Excluded:
 
 Progress 2026-09-01:
 
-- [x] Created the fresh Rust repository at root `d089c46c3255b76bbf4ae40774d41aae5681a0bf` with no legacy code and published default `main` at `ecdb29cae1c8ccd66a005d5216c360a44458b0f3`.
+- [x] Created the fresh Rust repository at root `d089c46c3255b76bbf4ae40774d41aae5681a0bf` with no legacy code; current published main is `70dba12f96a12feedf7ed13b605f20d05ebefd23`.
 - [x] Replayed local Chat Completions SSE and Responses passthrough, invalid-key `401`, exact two-sided compressed capture, and response survival under an injected local-store failure.
 - [x] Added env-selected local/S3 storage and replayed signed create-only PUT plus bounded GET against an independent fake S3 endpoint.
 - [x] Local Parlor wrote two complete captures to the real `milk-prod` R2 bucket with zero drops or storage failures; retained receipt: `/Users/shantanu/milk-release-evidence/milk-v2-r2-20260901/report.json`, SHA-256 `7c96b77a387dbcce75ecbf4c696cebefc28d4f3e1f0d11c685007918f301169f`.
-- [x] Added cached multi-architecture GHCR publication, Cloudflare Registry transfer, and a one-instance Worker deployment config without adding a runtime workflow.
+- [x] Added cached `linux/amd64` GHCR publication, Cloudflare Registry transfer, and a one-instance Worker deployment config without adding a runtime workflow.
+- [x] GitHub Actions image run `33574807455` succeeded for `70dba12f96a12feedf7ed13b605f20d05ebefd23`: GHCR image digest `sha256:c5aab42449834638c3bcd31855ee1e8d68fe21262191b9b78f54e50553ce0138`, `linux/amd64` manifest `sha256:b63c78c67ace7b8f40784f377335777e886642abd026530b933adb4123e0c991`, 2,245,105 compressed layer bytes, and Cloudflare Registry digest `sha256:456a38baf70bd08ab8d10724f8873466b99277d7476dcb1095ae501d08130387`.
 - [x] The stripped local arm64 release binary is 3,252,912 bytes; Rust format, check, Clippy, and release build passed.
 - [x] Retained the content-free local receipt at `/Users/shantanu/milk-release-evidence/milk-v2-local-postcut-20260901/report.json`, SHA-256 `750c9a8d3c728295184176c514e96393340f265df44420df7247713d584c1571`.
-- [ ] Prove official SDK calls, real R2 capture, hosted Parlor, capture-failure telemetry, warm timing, and final Linux image digest and size.
+- [ ] Deploy hosted Parlor and prove official SDK calls, hosted R2 capture, capture-failure telemetry, and warm capture-enabled-versus-disabled timing.
 
 Owned:
 
@@ -1034,6 +1036,7 @@ Progress 2026-09-01:
 
 - [x] The independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171` contains the fixed Modal controller, immutable local intent/endpoint receipts, CLI wiring, and same-trajectory bootstrap handoff source.
 - [x] Replayed deterministic ensure/stop dry runs and read-only provider status; both reported zero provider calls and no active Modal containers.
+- [x] Reconciled the first real deploy attempts without model inference: the first stopped after a pre-deploy tag-length rejection; the second deployed Modal app `ap-FsI3COYpkl1jiOIZXio8vT`, failed during remote hydrate import, and produced termination plus independent zero-container receipts before the import fix at `530235a879c3078623ef2f69e3fb830667a9e496`.
 - [ ] Hydrate the pinned weights on one real H200, prove authenticated inference and same-trajectory handoff, stop the deployment, and retain the provider receipts plus an independent zero-container observation.
 
 Owned:
