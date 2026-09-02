@@ -751,14 +751,14 @@ The first controller is the pinned `zai-org/GLM-4.5-Air-FP8` revision on one H20
 
 `bin/man bootstrap`:
 
-1. Starts Headlong using `MILK_BOOTSTRAP_*`.
-2. Requires the agent to invoke `milk run inference-ensure`.
-3. Stops after the controller result is ready.
-4. Validates `controller/current.json`.
-5. Restarts Headlong on the same trajectory with `MILK_CONTROLLER_*`.
-6. Removes bootstrap and Modal-management variables from the resumed development process.
-7. Requires the resumed agent to call `milk status` before further work.
-8. Proves the next reasoning call reached Modal GLM using the trajectory and Modal request receipt.
+1. Creates one trajectory and appends the operator's original task.
+2. Invokes `milk run inference-status` and `milk run inference-ensure` directly, without a model, and records both commands, results and exit codes in that trajectory.
+3. Exits after a dry-run plan; on failure it aborts with the recorded result and never starts Headlong.
+4. On `ready`, validates the exact `controller/current.json`, intent and endpoint identities before warming the controller.
+5. Removes Modal-management, bootstrap and alternate inference credentials from the development process.
+6. Starts Headlong once, on the same trajectory, with the validated controller as its only reasoning endpoint.
+7. Gives the controller the original task and real job outputs as trajectory context; provider selection and controller creation never depend on model compliance.
+8. Proves the first reasoning call reached Modal GLM using the trajectory and Modal request receipt.
 
 The first implementation does not search serving configurations. Add `inference-benchmark` only after this fixed controller and the data vertical work end to end.
 
@@ -1066,7 +1066,7 @@ Progress 2026-09-01:
 - [x] Replayed deterministic ensure/stop dry runs and read-only provider status; both reported zero provider calls and no active Modal containers.
 - [x] Reconciled the first real deploy attempts without model inference: the first stopped after a pre-deploy tag-length rejection; the second deployed Modal app `ap-FsI3COYpkl1jiOIZXio8vT`, failed during remote hydrate import, and produced termination plus independent zero-container receipts before the import fix at `530235a879c3078623ef2f69e3fb830667a9e496`.
 - [x] Hydrated and served the pinned GLM-4.5-Air-FP8 revision on one H200 as Modal app `ap-dBNCTsA9wu7aUjAmiFYW1a`; authenticated `/models` and Chat Completions smokes passed and immutable intent, deploy, endpoint, smoke, and result receipts were retained in object memory.
-- [x] Fixed H200 KV-cache admission, `.modal.direct` endpoint validation, explicit endpoint warmup before handoff, and a bootstrap prompt defect that allowed a model to describe rather than execute the required tool call.
+- [x] Fixed H200 KV-cache admission and `.modal.direct` endpoint validation; the launcher now warms the endpoint and deterministically records status/ensure before any model call, replacing the prompt-only bootstrap action.
 - [x] The same trajectory switched from the bootstrap binding to `glm-4.5-air-fp8` and completed three controller-backed reasoning turns. The run exposed a 32K-context completion-overreservation; `aa82deb1d942f465457e393d8fcf0e19d91fc90b` fixed the post-handoff ceiling without changing the controller model or endpoint.
 - [x] `milk run inference-stop` stopped the exact app and wrote stop, zero, and termination receipts. A separate Modal app/container listing reported state `stopped`, zero tasks, and zero active containers.
 - [x] Retained `/Users/shantanu/milk-release-evidence/milk-v2-modal-handoff-20260901/report.json`, SHA-256 `3e11f112979876f52ac7df4a8208a869a7361df16900b1e974adfcb6da9345eb`.

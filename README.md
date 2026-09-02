@@ -43,6 +43,13 @@ Provider selection is environment-only, in this order:
    `MILK_BOOTSTRAP_API_KEY`
 4. `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` and `OPENAI_MODEL`
 
+That order applies to `develop`. `bootstrap` does not call a bootstrap model.
+It appends the task to one trajectory, invokes and records the fixed
+`inference-status` and `inference-ensure` jobs itself, and starts Headlong only
+after validating and warming the resulting controller binding. With the
+default `MILK_MODAL_CONTROLLER_APPLY=0`, it records the dry-run plan and exits
+without an inference call or provider mutation.
+
 Milk Man loads `goal_tracker.md`, the two checked-in Milk skills, bounded memory,
 and the exact trajectory. It may edit and commit locally. Push, deployment, and
 route signing remain operator actions.

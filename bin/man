@@ -21,7 +21,9 @@ Provider selection, in order:
   MILK_BOOTSTRAP_BASE_URL + MILK_BOOTSTRAP_MODEL [+ MILK_BOOTSTRAP_API_KEY]
   OPENAI_API_KEY [+ OPENAI_BASE_URL + OPENAI_MODEL]
 
-Controller creation is a dry run unless MILK_MODAL_CONTROLLER_APPLY=1.
+Develop uses the provider order above. Bootstrap deterministically runs the
+fixed controller jobs before its first model call. Controller creation is a
+dry run unless MILK_MODAL_CONTROLLER_APPLY=1.
 EOF
 }
 
@@ -70,7 +72,6 @@ fi
 [[ -r "$ROOT/goal_tracker.md" && -r "$ROOT/prompts/develop.md" && -x "$HEADLONG_BIN/shellm" ]] || {
     die "the Milk Man runtime is incomplete" 70
 }
-[[ "$mode" != bootstrap || -r "$ROOT/prompts/bootstrap.md" ]] || die "the bootstrap prompt is missing" 70
 
 state_root="${MILK_MAN_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/milk-man}"
 [[ "$state_root" == /* && "$state_root" != / && "$state_root" != "$HOME" ]] || {
@@ -91,53 +92,49 @@ normalize_base_url() {
 
 provider_source=""
 if [[ "$mode" == bootstrap ]]; then
-    [[ -n "${MILK_BOOTSTRAP_BASE_URL:-}" && -n "${MILK_BOOTSTRAP_MODEL:-}" ]] || {
-        die "MILK_BOOTSTRAP_BASE_URL and MILK_BOOTSTRAP_MODEL are required for bootstrap"
-    }
-    LLM_API_URL="$(normalize_base_url "$MILK_BOOTSTRAP_BASE_URL")"
-    LLM_MODEL="$MILK_BOOTSTRAP_MODEL"
-    LLM_API_KEY="${MILK_BOOTSTRAP_API_KEY:-}"
-    provider_source="MILK_BOOTSTRAP"
-elif [[ -n "${LLM_API_URL:-}" || -n "${LLM_MODEL:-}" ]]; then
-    [[ -n "${LLM_API_URL:-}" && -n "${LLM_MODEL:-}" ]] || die "LLM_API_URL and LLM_MODEL must be set together"
-    provider_source="LLM"
-elif [[ -n "${MILK_CONTROLLER_BASE_URL:-}" || -n "${MILK_CONTROLLER_MODEL:-}" ]]; then
-    [[ -n "${MILK_CONTROLLER_BASE_URL:-}" && -n "${MILK_CONTROLLER_MODEL:-}" ]] || {
-        die "MILK_CONTROLLER_BASE_URL and MILK_CONTROLLER_MODEL must be set together"
-    }
-    LLM_API_URL="$(normalize_base_url "$MILK_CONTROLLER_BASE_URL")"
-    LLM_MODEL="$MILK_CONTROLLER_MODEL"
-    LLM_API_KEY="${MILK_CONTROLLER_API_KEY:-}"
-    provider_source="MILK_CONTROLLER"
-elif [[ -n "${MILK_BOOTSTRAP_BASE_URL:-}" || -n "${MILK_BOOTSTRAP_MODEL:-}" ]]; then
-    [[ -n "${MILK_BOOTSTRAP_BASE_URL:-}" && -n "${MILK_BOOTSTRAP_MODEL:-}" ]] || {
-        die "MILK_BOOTSTRAP_BASE_URL and MILK_BOOTSTRAP_MODEL must be set together"
-    }
-    LLM_API_URL="$(normalize_base_url "$MILK_BOOTSTRAP_BASE_URL")"
-    LLM_MODEL="$MILK_BOOTSTRAP_MODEL"
-    LLM_API_KEY="${MILK_BOOTSTRAP_API_KEY:-}"
-    provider_source="MILK_BOOTSTRAP"
-elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
-    LLM_API_URL="$(normalize_base_url "${OPENAI_BASE_URL:-https://api.openai.com/v1}")"
-    LLM_MODEL="${OPENAI_MODEL:-gpt-5.6-sol}"
-    LLM_API_KEY="$OPENAI_API_KEY"
-    provider_source="OPENAI"
+    provider_source="CONTROLLER_BOOTSTRAP"
 else
-    die "configure an OpenAI-compatible provider; see bin/man --help"
+    if [[ -n "${LLM_API_URL:-}" || -n "${LLM_MODEL:-}" ]]; then
+        [[ -n "${LLM_API_URL:-}" && -n "${LLM_MODEL:-}" ]] || die "LLM_API_URL and LLM_MODEL must be set together"
+        provider_source="LLM"
+    elif [[ -n "${MILK_CONTROLLER_BASE_URL:-}" || -n "${MILK_CONTROLLER_MODEL:-}" ]]; then
+        [[ -n "${MILK_CONTROLLER_BASE_URL:-}" && -n "${MILK_CONTROLLER_MODEL:-}" ]] || {
+            die "MILK_CONTROLLER_BASE_URL and MILK_CONTROLLER_MODEL must be set together"
+        }
+        LLM_API_URL="$(normalize_base_url "$MILK_CONTROLLER_BASE_URL")"
+        LLM_MODEL="$MILK_CONTROLLER_MODEL"
+        LLM_API_KEY="${MILK_CONTROLLER_API_KEY:-}"
+        provider_source="MILK_CONTROLLER"
+    elif [[ -n "${MILK_BOOTSTRAP_BASE_URL:-}" || -n "${MILK_BOOTSTRAP_MODEL:-}" ]]; then
+        [[ -n "${MILK_BOOTSTRAP_BASE_URL:-}" && -n "${MILK_BOOTSTRAP_MODEL:-}" ]] || {
+            die "MILK_BOOTSTRAP_BASE_URL and MILK_BOOTSTRAP_MODEL must be set together"
+        }
+        LLM_API_URL="$(normalize_base_url "$MILK_BOOTSTRAP_BASE_URL")"
+        LLM_MODEL="$MILK_BOOTSTRAP_MODEL"
+        LLM_API_KEY="${MILK_BOOTSTRAP_API_KEY:-}"
+        provider_source="MILK_BOOTSTRAP"
+    elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
+        LLM_API_URL="$(normalize_base_url "${OPENAI_BASE_URL:-https://api.openai.com/v1}")"
+        LLM_MODEL="${OPENAI_MODEL:-gpt-5.6-sol}"
+        LLM_API_KEY="$OPENAI_API_KEY"
+        provider_source="OPENAI"
+    else
+        die "configure an OpenAI-compatible provider; see bin/man --help"
+    fi
+    export LLM_API_URL LLM_MODEL LLM_API_KEY
 fi
-export LLM_API_URL LLM_MODEL LLM_API_KEY
 
 environment_file="$(mktemp "$state_root/.man-env.XXXXXX")"
 system_file="$(mktemp "$state_root/.system.XXXXXX")"
 prompt_file="$(mktemp "$state_root/.prompt.XXXXXX")"
 controller_file=""
 controller_result=""
-bootstrap_output=""
-bootstrap_bin=""
+controller_status=""
+job_command=""
+job_stderr=""
 cleanup() {
     rm -f "$environment_file" "$system_file" "$prompt_file"
-    [[ -z "$controller_file" ]] || rm -f "$controller_file" "$controller_result" "$bootstrap_output"
-    [[ -z "$bootstrap_bin" ]] || rm -rf "$bootstrap_bin"
+    [[ -z "$controller_file" ]] || rm -f "$controller_file" "$controller_result" "$controller_status" "$job_command" "$job_stderr"
 }
 trap cleanup EXIT INT TERM
 
@@ -197,8 +194,9 @@ fi
 if [[ "$mode" == bootstrap ]]; then
     controller_file="$(mktemp "$state_root/.controller-env.XXXXXX")"
     controller_result="$(mktemp "$state_root/.controller-result.XXXXXX")"
-    bootstrap_output="$(mktemp "$state_root/.bootstrap-output.XXXXXX")"
-    bootstrap_bin="$(mktemp -d "$state_root/.bootstrap-bin.XXXXXX")"
+    controller_status="$(mktemp "$state_root/.controller-status.XXXXXX")"
+    job_command="$(mktemp "$state_root/.controller-command.XXXXXX")"
+    job_stderr="$(mktemp "$state_root/.controller-stderr.XXXXXX")"
 
     controller_apply=0
     case "${MILK_MODAL_CONTROLLER_APPLY:-0}" in
@@ -211,36 +209,39 @@ if [[ "$mode" == bootstrap ]]; then
             ;;
         *) die "MILK_MODAL_CONTROLLER_APPLY must be 0 or 1" ;;
     esac
+    export MILK_MODAL_CONTROLLER_APPLY="$controller_apply"
 
-    cat > "$bootstrap_bin/milk" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-module=(python3 -m milk_v2.providers.modal_controller)
-case "$*" in
-    "run inference-status") exec env PYTHONPATH="$MILK_MAN_ROOT${PYTHONPATH:+:$PYTHONPATH}" "${module[@]}" status ;;
-    "run inference-ensure")
-        [[ ! -s "$MILK_MAN_CONTROLLER_RESULT" ]] || { printf 'milk: inference-ensure already ran\n' >&2; exit 75; }
-        arguments=(ensure)
-        [[ "${MILK_MAN_CONTROLLER_APPLY:-0}" != 1 ]] || arguments+=(--apply)
-        output="$(env PYTHONPATH="$MILK_MAN_ROOT${PYTHONPATH:+:$PYTHONPATH}" "${module[@]}" "${arguments[@]}")"
-        printf '%s\n' "$output" > "$MILK_MAN_CONTROLLER_RESULT"
-        printf '%s\n' "$output"
-        ;;
-    *) printf 'milk: bootstrap permits only inference-status and inference-ensure\n' >&2; exit 64 ;;
-esac
-SH
-    chmod 700 "$bootstrap_bin/milk"
-    export MILK_MAN_ROOT="$ROOT"
-    export MILK_MAN_CONTROLLER_RESULT="$controller_result"
-    export MILK_MAN_CONTROLLER_APPLY="$controller_apply"
-    export PATH="$bootstrap_bin:$normal_path"
+    run_controller_job() {
+        local job="$1" output="$2" code
+        printf 'milk run %s\n' "$job" > "$job_command"
+        : > "$job_stderr"
+        set +e
+        "$ROOT/bin/milk" run "$job" > "$output" 2> "$job_stderr"
+        code=$?
+        set -e
+        python3 "$STATE_PY" append \
+            --trajectory "$MILK_MAN_TRAJECTORY" \
+            --type shell-output \
+            --content-file "$output" \
+            --command-file "$job_command" \
+            --exit-code "$code"
+        [[ ! -s "$job_stderr" ]] || cat "$job_stderr" >&2
+        return "$code"
+    }
 
-    write_system "$ROOT/prompts/bootstrap.md"
-    printf '\nThe launcher requires one `milk run inference-ensure` call, even when status is ready.\n' >> "$system_file"
-    run_headlong "${task_parts[*]}" > "$bootstrap_output"
-    [[ -s "$controller_result" ]] || die "bootstrap did not invoke inference-ensure" 70
+    printf '%s\n' "${task_parts[*]}" > "$prompt_file"
+    python3 "$STATE_PY" append \
+        --trajectory "$MILK_MAN_TRAJECTORY" \
+        --type prompt \
+        --content-file "$prompt_file"
+    if ! run_controller_job inference-status "$controller_status"; then
+        die "inference-status failed; its result remains in the trajectory" 70
+    fi
+    if ! run_controller_job inference-ensure "$controller_result"; then
+        die "inference-ensure failed; its result remains in the trajectory" 70
+    fi
 
-    python3 - "$state_root" "$controller_result" > "$controller_file" <<'PY'
+    python3 - "$state_root" "$controller_status" "$controller_result" "${MILK_SCOPE_ID:-}" > "$controller_file" <<'PY'
 import hashlib
 import json
 from pathlib import Path
@@ -250,16 +251,32 @@ import sys
 from urllib.parse import urlsplit
 
 state = Path(sys.argv[1])
-try:
-    result = json.loads(Path(sys.argv[2]).read_text())
-except (OSError, json.JSONDecodeError) as error:
-    raise SystemExit(f"milk-man: invalid controller result: {error}")
-if result.get("schema_version") != "milk.modal-controller-result.v2":
-    raise SystemExit("milk-man: controller result schema differs")
-if result.get("state") == "planned":
+expected_scope = sys.argv[4]
+
+def job_result(path, job, command):
+    try:
+        outer = json.loads(Path(path).read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise SystemExit(f"milk-man: invalid {job} result: {error}")
+    result = outer.get("details")
+    if outer.get("schema_version") != "milk.job-result.v2" or outer.get("job") != job:
+        raise SystemExit(f"milk-man: {job} envelope differs")
+    if outer.get("scope_id") != expected_scope:
+        raise SystemExit(f"milk-man: {job} scope differs")
+    if not isinstance(result, dict) or result.get("schema_version") != "milk.modal-controller-result.v2":
+        raise SystemExit(f"milk-man: {job} details differ")
+    if result.get("command") != command or result.get("provider") != "modal":
+        raise SystemExit(f"milk-man: {job} operation differs")
+    if outer.get("identity") != result.get("controller_id") or outer.get("provider_calls") != result.get("provider_calls"):
+        raise SystemExit(f"milk-man: {job} identity differs")
+    return outer, result
+
+job_result(sys.argv[2], "inference-status", "status")
+outer, result = job_result(sys.argv[3], "inference-ensure", "ensure")
+if result.get("state") == "planned" and outer.get("state") == "idle":
     print("controller_state=planned")
     raise SystemExit(0)
-if result.get("state") != "ready" or result.get("provider") != "modal":
+if result.get("state") != "ready" or outer.get("state") != "complete":
     raise SystemExit(f"milk-man: controller did not become ready: {result.get('state')}")
 
 controller_id = result.get("controller_id")
@@ -339,9 +356,9 @@ if error or SERVED_MODEL not in {row.get("id") for row in json.loads(body).get("
 PY
     unset "$controller_api_key_env"
     while read -r name; do
-        case "$name" in MILK_BOOTSTRAP_*|MILK_MODAL_*|MODAL_*) unset "$name" ;; esac
+        case "$name" in MILK_BOOTSTRAP_*|MILK_MODAL_*|MODAL_*|OPENAI_*) unset "$name" ;; esac
     done < <(compgen -v)
-    unset HF_TOKEN MILK_MAN_CONTROLLER_APPLY MILK_MAN_CONTROLLER_RESULT MILK_MAN_ROOT
+    unset HF_TOKEN
 
     LLM_API_URL="$(normalize_base_url "$controller_base_url")"
     LLM_MODEL="$controller_model"
@@ -355,7 +372,7 @@ PY
     export MILK_MAN_PROVIDER_SOURCE="$provider_source"
     export PATH="$normal_path"
     write_system "$ROOT/prompts/develop.md"
-    run_headlong "Controller ready. Continue the original task from this trajectory through the controller."
+    run_headlong "The deterministic controller jobs above established the reviewed controller. Continue the original task from this trajectory."
     exit 0
 fi
 
