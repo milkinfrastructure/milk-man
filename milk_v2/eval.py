@@ -10,7 +10,7 @@ import uuid
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.eval.v14"
+CODE_VERSION = "milk.eval.v15"
 CONTEXT_CONVERSATIONS = 100
 GENERATOR_BATCH_CASES = 64
 VALIDATOR_BATCH_CASES = 64
@@ -239,36 +239,33 @@ def _compile_oracle_spec(value: object, oracle: str) -> tuple[dict, dict | None]
     items = value.get("items")
     if kind not in ORACLE_SPEC_TYPES or not isinstance(properties, list) or len(properties) > 16 or items not in ("none", *ORACLE_SCALAR_TYPES):
         raise ValueError("invalid oracle spec")
-    checked_properties = []
-    names = set()
-    for field in properties:
-        if not isinstance(field, dict) or set(field) != {"name", "type", "required"}:
-            raise ValueError("invalid oracle spec")
-        name = field.get("name")
-        field_type = field.get("type")
-        required = field.get("required")
-        if (
-            not isinstance(name, str)
-            or not 1 <= len(name.encode()) <= 128
-            or any(ord(character) < 32 for character in name)
-            or name in names
-            or field_type not in ORACLE_SCALAR_TYPES
-            or type(required) is not bool
-        ):
-            raise ValueError("invalid oracle spec")
-        names.add(name)
-        checked_properties.append({"name": name, "type": field_type, "required": required})
-    checked_properties.sort(key=lambda field: field["name"])
-    normalized = {"type": kind, "properties": checked_properties, "items": items}
     if oracle in {"exact", "reference"}:
-        if normalized != {"type": "none", "properties": [], "items": "none"}:
-            raise ValueError("invalid oracle spec")
-        return normalized, None
+        return {"type": "none", "properties": [], "items": "none"}, None
     if oracle != "schema" or kind == "none":
         raise ValueError("invalid oracle spec")
     if kind == "object":
+        checked_properties = []
+        names = set()
+        for field in properties:
+            if not isinstance(field, dict) or set(field) != {"name", "type", "required"}:
+                raise ValueError("invalid oracle spec")
+            name = field.get("name")
+            field_type = field.get("type")
+            required = field.get("required")
+            if (
+                not isinstance(name, str)
+                or not 1 <= len(name.encode()) <= 128
+                or any(ord(character) < 32 for character in name)
+                or name in names
+                or field_type not in ORACLE_SCALAR_TYPES
+                or type(required) is not bool
+            ):
+                raise ValueError("invalid oracle spec")
+            names.add(name)
+            checked_properties.append({"name": name, "type": field_type, "required": required})
         if not checked_properties:
             raise ValueError("invalid oracle spec")
+        checked_properties.sort(key=lambda field: field["name"])
         normalized = {"type": kind, "properties": checked_properties, "items": "none"}
         schema = {
             "type": "object",
@@ -359,7 +356,12 @@ def _generation_contract(value: dict, shard_plan: dict, *, stored: bool = False)
                 invalid.append((planned["case_id"], "expected"))
                 continue
         else:
-            if (stored and output != compiled) or (not stored and output != "") or compiled is None or len(summary.canonical(compiled)) > 4096:
+            if (
+                compiled is None
+                or (stored and output != compiled)
+                or (not stored and (not isinstance(output, str) or len(output.encode()) > 4096))
+                or len(summary.canonical(compiled)) > 4096
+            ):
                 invalid.append((planned["case_id"], "expected"))
                 continue
             output = compiled
