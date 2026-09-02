@@ -108,13 +108,15 @@ BINDING_ENVIRONMENTS = {
         ),
     },
     "baseten": {
-        "required": ("BASETEN_API_KEY",),
+        "required": ("BASETEN_API_KEY", "BASETEN_TRAINING_PROJECT_ID", "MILK_TRAIN_IMAGE"),
         "optional": (
             "BASETEN_TEAM_NAME",
-            "BASETEN_TRAINING_PROJECT_ID",
             "BASETEN_TRAINING_ACCELERATOR",
             "BASETEN_TRAINING_REGISTRY_SECRET",
             "MILK_BASETEN_RUNTIME_SECRET_MAP_JSON",
+            "MILK_TRAIN_STEPS",
+            "MILK_TRAIN_MAX_TOKENS",
+            "MILK_TRAIN_LEARNING_RATE",
         ),
     },
     "route": {

@@ -12,6 +12,7 @@ from . import dataset as dataset_job
 from . import eval as eval_job
 from . import semantic
 from . import summary
+from . import train as train_job
 from .providers import modal_controller
 from .store import StoreError, open_store, settings_from_environment
 
@@ -123,31 +124,34 @@ def _dataset_gate(store, settings, runtime, name="dataset"):
     return _result(name, run["state"], settings.scope_id, run["identity"], run["artifacts"], run["next"], run["details"], inference_calls=run["inference_calls"], provider_calls=run["provider_calls"])
 
 
+def _train_gate(store, settings, runtime, name="train"):
+    run = train_job.reconcile(store, settings, runtime)
+    return _result(name, run["state"], settings.scope_id, run["identity"], run["artifacts"], run["next"], run["details"], provider_calls=run["provider_calls"])
+
+
 def _operate(store, settings, runtime):
-    summary_result = _summary_gate(store, settings, runtime, "operate")
-    if summary_result["next"] != "eval":
-        return summary_result
-    eval_result = _eval_gate(store, settings, runtime, "operate")
-    if eval_result["next"] != "dataset":
-        return _result(
-            "operate", eval_result["state"], settings.scope_id,
-            _json_digest({"summary": summary_result["identity"], "eval": eval_result["identity"]}),
-            [*summary_result["artifacts"], *eval_result["artifacts"]], eval_result["next"],
-            {"summary": summary_result.get("details", {}), "eval": eval_result.get("details", {})},
-            inference_calls=summary_result["inference_calls"] + eval_result["inference_calls"],
-            provider_calls=summary_result["provider_calls"] + eval_result["provider_calls"],
-        )
-    dataset_result = _dataset_gate(store, settings, runtime, "operate")
+    results = []
+    for name, gate, expected_next in (
+        ("summary", _summary_gate, "eval"),
+        ("eval", _eval_gate, "dataset"),
+        ("dataset", _dataset_gate, "train"),
+        ("train", _train_gate, "evaluate"),
+    ):
+        result = gate(store, settings, runtime)
+        results.append((name, result))
+        if result["next"] != expected_next:
+            break
+    last = results[-1][1]
     return _result(
         "operate",
-        dataset_result["state"],
+        last["state"],
         settings.scope_id,
-        _json_digest({"summary": summary_result["identity"], "eval": eval_result["identity"], "dataset": dataset_result["identity"]}),
-        [*summary_result["artifacts"], *eval_result["artifacts"], *dataset_result["artifacts"]],
-        dataset_result["next"],
-        {"summary": summary_result.get("details", {}), "eval": eval_result.get("details", {}), "dataset": dataset_result.get("details", {})},
-        inference_calls=summary_result["inference_calls"] + eval_result["inference_calls"] + dataset_result["inference_calls"],
-        provider_calls=summary_result["provider_calls"] + eval_result["provider_calls"] + dataset_result["provider_calls"],
+        _json_digest({name: result["identity"] for name, result in results}),
+        [artifact for unused_name, result in results for artifact in result["artifacts"]],
+        last["next"],
+        {name: result.get("details", {}) for name, result in results},
+        inference_calls=sum(result["inference_calls"] for unused_name, result in results),
+        provider_calls=sum(result["provider_calls"] for unused_name, result in results),
     )
 
 
@@ -178,6 +182,10 @@ def _status(store, settings, runtime):
     details["dataset_current"] = dataset_reference is not None
     if dataset_reference is not None:
         artifacts.append({"key": dataset_reference["key"], "sha256": dataset_reference["sha256"]})
+    training_reference = train_job.current(store, settings, runtime) if dataset_reference is not None else None
+    details["training_current"] = training_reference is not None
+    if training_reference is not None:
+        artifacts.append({"key": training_reference["key"], "sha256": training_reference["sha256"]})
     identity = _json_digest(
         {
             "schema_version": "milk.status-identity.v2",
@@ -187,7 +195,7 @@ def _status(store, settings, runtime):
             "details": details,
         }
     )
-    next_job = "train" if details["dataset_current"] else "dataset" if details["eval_current"] else "eval" if details["ready"] else "summary"
+    next_job = "evaluate" if details["training_current"] else "train" if details["dataset_current"] else "dataset" if details["eval_current"] else "eval" if details["ready"] else "summary"
     return _result("status", "complete", settings.scope_id, identity, artifacts, next_job, details)
 
 
@@ -273,6 +281,8 @@ def _run_job(name, store, settings, runtime):
         return _eval_gate(store, settings, runtime), 0
     if job.handler == "dataset":
         return _dataset_gate(store, settings, runtime), 0
+    if job.handler == "train":
+        return _train_gate(store, settings, runtime), 0
     if job.handler in CONTROLLER_HANDLERS:
         return _controller_job(job.handler, settings)
     identity = _json_digest(
@@ -357,6 +367,12 @@ def main(argv: list[str] | None = None) -> None:
     except dataset_job.DatasetError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         _emit(_result(job_name or command, "failed", scope_id, identity, next_job="dataset", error=str(error)), EXIT_CONFIG)
+    except train_job.ProviderError as error:
+        identity = _json_digest({"command": argv, "error": str(error)})
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="train", error=str(error), provider_calls=error.provider_calls), EXIT_PROVIDER)
+    except train_job.TrainError as error:
+        identity = _json_digest({"command": argv, "error": str(error)})
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="train", error=str(error)), EXIT_CONFIG)
     except summary.SummaryError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         _emit(_result(job_name or command, "failed", scope_id, identity, error=str(error)), EXIT_CONFIG)
