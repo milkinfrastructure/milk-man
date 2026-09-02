@@ -406,7 +406,7 @@ def ensure_deployment(controller: dict, run_root: Path, observation: dict) -> tu
     }
     command = [
         modal_binary(), "deploy", str(APP_FILE), "--name", controller["app_name"],
-        "-e", controller["environment"], "--tag", controller["controller_id"],
+        "-e", controller["environment"], "--tag", controller["controller_id"][:50],
     ]
     call = execute(command, environment=controller["environment"], extra_env=child, timeout=1800)
     write_once(receipt_path, receipt_value(controller, "deploy", call))
