@@ -9,7 +9,12 @@ RUN python -m venv --system-site-packages /opt/milk-venv \
 
 FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
 
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends gcc \
+ && rm -rf /var/lib/apt/lists/*
+
 ENV PATH=/opt/milk-venv/bin:$PATH \
+    CC=/usr/bin/gcc \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     TOKENIZERS_PARALLELISM=false
