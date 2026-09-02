@@ -268,7 +268,18 @@ def main(argv: list[str] | None = None) -> None:
         _emit(_result(job_name or command, "failed", scope_id, identity, next_job="inference-status", error=str(error)), EXIT_INTERNAL)
     except summary.ProviderError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
-        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="summary", error=str(error)), EXIT_PROVIDER)
+        _emit(
+            _result(
+                job_name or command,
+                "failed",
+                scope_id,
+                identity,
+                next_job="summary",
+                error=str(error),
+                inference_calls=error.inference_calls,
+            ),
+            EXIT_PROVIDER,
+        )
     except summary.SummaryError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         _emit(_result(job_name or command, "failed", scope_id, identity, error=str(error)), EXIT_CONFIG)

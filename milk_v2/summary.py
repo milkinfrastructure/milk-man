@@ -39,7 +39,9 @@ class SummaryError(ValueError):
 
 
 class ProviderError(RuntimeError):
-    pass
+    def __init__(self, message: str, inference_calls: int = 0):
+        super().__init__(message)
+        self.inference_calls = inference_calls
 
 
 class BusyError(RuntimeError):
@@ -789,7 +791,8 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
                 }
                 return committed, receipt
     raise ProviderError(
-        f"summary provider did not commit within four turns: tools={','.join(last_tools)} rejection={last_rejection}"
+        f"summary provider did not commit within four turns: tools={','.join(last_tools)} rejection={last_rejection}",
+        inference_calls=4,
     )
 
 
