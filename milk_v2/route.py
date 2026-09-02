@@ -956,15 +956,20 @@ def reconcile(store, settings, runtime) -> dict:
 
 
 def reconcile_gpu(store, settings) -> dict:
-    references = current(store, settings)
-    if references is None:
+    status, unused = _object(store, settings.scope_prefix + "status/current.json")
+    candidate_reference = status.get("candidate")
+    if not isinstance(candidate_reference, dict):
         raise RouteError("a current candidate is required for GPU reconciliation")
-    candidate, candidate_body = _object(store, references["candidate"]["key"])
+    candidate, candidate_body = _object(store, candidate_reference.get("key", ""))
     identity = candidate.get("identity")
     provider = candidate.get("provider")
     artifact_sha256 = candidate.get("artifact_sha256")
     if (
-        summary.digest(candidate_body) != references["candidate"]["sha256"]
+        status.get("schema_version") != "milk.status.v2"
+        or status.get("scope_id") != settings.scope_id
+        or candidate_reference.get("schema_version") != "milk.candidate-reference.v2"
+        or candidate_reference.get("scope_id") != settings.scope_id
+        or summary.digest(candidate_body) != candidate_reference.get("sha256")
         or candidate.get("schema_version") != "milk.candidate.v2"
         or candidate.get("scope_id") != settings.scope_id
         or not isinstance(identity, dict)
@@ -989,7 +994,7 @@ def reconcile_gpu(store, settings) -> dict:
         "schema_version": "milk.gpu-reconcile-intent.v2",
         "job_id": artifact_sha256,
         "scope_id": settings.scope_id,
-        "candidate": references["candidate"],
+        "candidate": candidate_reference,
         "provider": provider.get("name"),
         "target": "zero",
     }
