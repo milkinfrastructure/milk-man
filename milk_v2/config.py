@@ -8,6 +8,9 @@ import re
 
 
 SCHEMA = "milk.jobs.v2"
+STUDENT_SCHEMA = "milk.student-base.v2"
+STUDENT_MODEL_REPO = "Qwen/Qwen3.5-0.8B"
+STUDENT_MODEL_REVISION = "2fc06364715b967f1860aea9cf38778875588b17"
 HANDLERS = frozenset(
     {
         "inference-ensure",
@@ -87,10 +90,6 @@ BINDING_ENVIRONMENTS = {
     },
     "teacher": {
         "required": ("MILK_TEACHER_BASE_URL", "MILK_TEACHER_MODEL", "MILK_TEACHER_API_KEY"),
-        "optional": (),
-    },
-    "student": {
-        "required": ("MILK_STUDENT_BASE_URL", "MILK_STUDENT_MODEL", "MILK_STUDENT_API_KEY"),
         "optional": (),
     },
     "modal": {
@@ -202,9 +201,17 @@ class Job:
 
 
 @dataclass(frozen=True)
+class StudentBase:
+    model_repo: str
+    model_revision: str
+    digest: str
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     jobs: dict[str, Job]
     operate_order: tuple[str, ...]
+    student_base: StudentBase
     digest: str
 
     def job(self, name: str) -> Job:
@@ -225,6 +232,39 @@ def load(path: Path | None = None) -> RuntimeConfig:
     value = _object(value, "configuration", {"schema_version", "environment_bindings", "jobs", "operate_order"})
     if value["schema_version"] != SCHEMA:
         raise ConfigError(f"schema_version must be {SCHEMA}")
+
+    student_path = root / "config" / "student.json"
+    try:
+        student_raw = student_path.read_bytes()
+        student_value = json.loads(
+            student_raw,
+            object_pairs_hook=_unique_object,
+            parse_constant=_invalid_constant,
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ConfigError(f"cannot read student configuration: {error}") from error
+    student_value = _object(
+        student_value,
+        "student configuration",
+        {"schema_version", "model_repo", "model_revision"},
+    )
+    if student_value != {
+        "schema_version": STUDENT_SCHEMA,
+        "model_repo": STUDENT_MODEL_REPO,
+        "model_revision": STUDENT_MODEL_REVISION,
+    }:
+        raise ConfigError("student configuration differs from the reviewed fine-tune base")
+    student_canonical = json.dumps(
+        student_value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode()
+    student_base = StudentBase(
+        STUDENT_MODEL_REPO,
+        STUDENT_MODEL_REVISION,
+        hashlib.sha256(student_canonical).hexdigest(),
+    )
 
     bindings = _object(
         value["environment_bindings"],
@@ -307,5 +347,10 @@ def load(path: Path | None = None) -> RuntimeConfig:
     order = _strings(value["operate_order"], "operate_order")
     if order != OPERATE_ORDER:
         raise ConfigError("operate_order differs from the reviewed contract")
-    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
-    return RuntimeConfig(jobs, order, hashlib.sha256(canonical).hexdigest())
+    canonical = json.dumps(
+        {"jobs": value, "student_base": student_value},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode()
+    return RuntimeConfig(jobs, order, student_base, hashlib.sha256(canonical).hexdigest())

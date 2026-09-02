@@ -76,6 +76,12 @@ and GPU providers use the reviewed environment-variable names in
 [`config/jobs.json`](config/jobs.json); configuration cannot supply executable
 paths.
 
+The only fine-tune base is the exact `Qwen/Qwen3.5-0.8B` revision pinned in
+[`config/student.json`](config/student.json). It is an artifact input, not an
+inference fallback. Summary, eval generation, validation, and teacher-data
+generation each require their own OpenAI-compatible environment binding; none
+inherits or falls back to the student base.
+
 The object root for one authenticated scope is:
 
 ```text
