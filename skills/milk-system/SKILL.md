@@ -19,7 +19,10 @@ Use this skill for any Milk code change.
    conditional pointers.
 6. Select object store, inference, Modal, and Baseten bindings only through the
    reviewed environment-variable contract. Never print secret values.
-7. Make one bounded change, run the narrowest real check, inspect the diff, and
+7. Treat Baseten and Modal as separate named jobs. Select exactly one from the
+   system prompt or operator task; never turn one provider's failure into a call
+   to the other provider.
+8. Make one bounded change, run the narrowest real check, inspect the diff, and
    leave a reviewable commit only when the human task permits it.
 
 Do not add Prime, Exo, Docker to the local harness, a database, queue, tick

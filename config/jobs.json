@@ -33,16 +33,20 @@
       "required": ["BASETEN_API_KEY", "BASETEN_TRAINING_PROJECT_ID", "MILK_TRAIN_IMAGE"],
       "optional": ["BASETEN_TEAM_NAME", "BASETEN_TRAINING_ACCELERATOR", "MILK_BASETEN_RUNTIME_SECRET_MAP_JSON", "MILK_TRAIN_STEPS", "MILK_TRAIN_MAX_TOKENS", "MILK_TRAIN_LEARNING_RATE", "MILK_EVAL_IMAGE", "MILK_EVALUATE_MAX_NEW_TOKENS"]
     },
-    "candidate": {
+    "candidate-baseten": {
+      "required": ["BASETEN_API_KEY", "MILK_SERVE_IMAGE", "MILK_CANDIDATE_API_KEY"],
+      "optional": ["BASETEN_TEAM_NAME", "MILK_CANDIDATE_ACCELERATOR", "MILK_ROUTE_CANDIDATE_BPS", "MILK_ROUTE_TIMEOUT_SECONDS"]
+    },
+    "candidate-modal": {
       "required": ["BASETEN_API_KEY", "MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET", "MILK_SERVE_IMAGE", "MILK_CANDIDATE_API_KEY"],
-      "optional": ["BASETEN_TEAM_NAME", "MODAL_ENVIRONMENT", "MILK_CANDIDATE_ACCELERATOR", "MILK_MODAL_CANDIDATE_APP_PREFIX", "MILK_MODAL_CANDIDATE_VOLUME_PREFIX", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_CLI", "MILK_ROUTE_CANDIDATE_BPS", "MILK_ROUTE_TIMEOUT_SECONDS"]
+      "optional": ["MODAL_ENVIRONMENT", "MILK_CANDIDATE_ACCELERATOR", "MILK_MODAL_CANDIDATE_APP_PREFIX", "MILK_MODAL_CANDIDATE_VOLUME_PREFIX", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_CLI", "MILK_ROUTE_CANDIDATE_BPS", "MILK_ROUTE_TIMEOUT_SECONDS"]
     },
     "route": {
       "required": [],
       "optional": ["MILK_ROUTE_VERIFY_KEY"]
     }
   },
-  "operate_order": ["summary", "eval", "dataset", "train", "evaluate", "route-propose", "gpu-reconcile"],
+  "operate_order": ["summary", "eval", "dataset", "train", "evaluate"],
   "jobs": {
     "inference-ensure": {"handler": "inference-ensure", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": "inference-stop"},
     "inference-status": {"handler": "inference-status", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
@@ -50,9 +54,10 @@
     "summary": {"handler": "summary", "trigger": {"kind": "crossed_capture_threshold", "values_env": "MILK_SUMMARY_THRESHOLDS"}, "bindings": ["store", "summary"], "input_prefixes": ["c", "s"], "output_prefixes": ["j", "l", "s", "readiness", "status"], "system_prompt": "prompts/summary.md", "timeout_env": "MILK_SUMMARY_TIMEOUT_SECONDS", "teardown_handler": null},
     "eval": {"handler": "eval", "trigger": {"kind": "readiness"}, "bindings": ["store", "eval", "validator"], "input_prefixes": ["c", "l", "s", "readiness"], "output_prefixes": ["j", "e", "status"], "system_prompt": "prompts/eval.md", "timeout_env": "MILK_EVAL_TIMEOUT_SECONDS", "teardown_handler": null},
     "dataset": {"handler": "dataset", "trigger": {"kind": "eval_ready"}, "bindings": ["store", "teacher"], "input_prefixes": ["c", "e"], "output_prefixes": ["j", "d", "status"], "system_prompt": "prompts/dataset.md", "timeout_env": "MILK_DATASET_TIMEOUT_SECONDS", "teardown_handler": null},
-    "train": {"handler": "train", "trigger": {"kind": "dataset_ready"}, "bindings": ["store", "baseten"], "input_prefixes": ["d"], "output_prefixes": ["j", "t", "m", "status"], "system_prompt": null, "timeout_env": "MILK_TRAIN_TIMEOUT_SECONDS", "teardown_handler": "gpu-reconcile"},
-    "evaluate": {"handler": "evaluate", "trigger": {"kind": "training_ready"}, "bindings": ["store", "baseten"], "input_prefixes": ["d", "m"], "output_prefixes": ["j", "v", "status"], "system_prompt": null, "timeout_env": "MILK_EVALUATE_TIMEOUT_SECONDS", "teardown_handler": "gpu-reconcile"},
-    "route-propose": {"handler": "route-propose", "trigger": {"kind": "evaluation_ready"}, "bindings": ["store", "candidate"], "input_prefixes": ["m", "v"], "output_prefixes": ["j", "m", "p", "status"], "system_prompt": null, "timeout_env": "MILK_ROUTE_TIMEOUT_SECONDS", "teardown_handler": null},
-    "gpu-reconcile": {"handler": "gpu-reconcile", "trigger": {"kind": "provider_frontier"}, "bindings": ["store", "baseten", "modal"], "input_prefixes": ["j", "t", "v"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_GPU_TIMEOUT_SECONDS", "teardown_handler": null}
+    "train": {"handler": "train", "trigger": {"kind": "dataset_ready"}, "bindings": ["store", "baseten"], "input_prefixes": ["d"], "output_prefixes": ["j", "t", "m", "status"], "system_prompt": null, "timeout_env": "MILK_TRAIN_TIMEOUT_SECONDS", "teardown_handler": null},
+    "evaluate": {"handler": "evaluate", "trigger": {"kind": "training_ready"}, "bindings": ["store", "baseten"], "input_prefixes": ["d", "m"], "output_prefixes": ["j", "v", "status"], "system_prompt": null, "timeout_env": "MILK_EVALUATE_TIMEOUT_SECONDS", "teardown_handler": null},
+    "route-propose-baseten": {"handler": "route-propose-baseten", "trigger": {"kind": "evaluation_ready"}, "bindings": ["store", "candidate-baseten"], "input_prefixes": ["m", "v"], "output_prefixes": ["j", "m", "p", "status"], "system_prompt": null, "timeout_env": "MILK_ROUTE_TIMEOUT_SECONDS", "teardown_handler": null},
+    "route-propose-modal": {"handler": "route-propose-modal", "trigger": {"kind": "evaluation_ready"}, "bindings": ["store", "candidate-modal"], "input_prefixes": ["m", "v"], "output_prefixes": ["j", "m", "p", "status"], "system_prompt": null, "timeout_env": "MILK_ROUTE_TIMEOUT_SECONDS", "teardown_handler": "gpu-reconcile-modal"},
+    "gpu-reconcile-modal": {"handler": "gpu-reconcile-modal", "trigger": {"kind": "provider_frontier"}, "bindings": ["store", "modal"], "input_prefixes": ["j", "m"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_GPU_TIMEOUT_SECONDS", "teardown_handler": null}
   }
 }

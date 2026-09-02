@@ -12,10 +12,14 @@ with `milk run <name>` or one reconciliation with `milk operate --once`.
   diagnostics.
 - A model may choose only a reviewed job name. The job definition owns its
   handler, environment bindings, object prefixes, prompt, timeout, and teardown.
+- Baseten and Modal are separate reviewed jobs. Inspect status, then choose
+  exactly one from the system prompt and operator task; its environment binding
+  supplies all provider details and credentials.
 - Never pass credentials, provider accounts, object prefixes, images, GPU
   types, model revisions, signing keys, or shell commands as model arguments.
 - An `idle` result is successful and must not be converted into polling.
-- On an ambiguous provider result, run the fixed reconciliation job. Do not
-  retry creation or select a fallback until the first identity is resolved.
+- On an ambiguous provider result, run that provider's fixed reconciliation
+  job. Do not retry creation or invoke another provider until the first identity
+  is resolved.
 - Before reporting success, inspect the returned artifact keys and digests and
   the authoritative provider or object-store state appropriate to the job.

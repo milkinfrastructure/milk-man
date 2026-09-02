@@ -136,8 +136,8 @@ def _evaluate_gate(store, settings, runtime, name="evaluate"):
     return _result(name, run["state"], settings.scope_id, run["identity"], run["artifacts"], run["next"], run["details"], provider_calls=run["provider_calls"])
 
 
-def _route_gate(store, settings, runtime, name="route-propose"):
-    run = route_job.reconcile(store, settings, runtime)
+def _route_gate(store, settings, runtime, provider: str, name: str):
+    run = route_job.reconcile(store, settings, runtime, provider)
     return _result(
         name,
         run["state"],
@@ -151,8 +151,8 @@ def _route_gate(store, settings, runtime, name="route-propose"):
     )
 
 
-def _gpu_gate(store, settings, name="gpu-reconcile"):
-    run = route_job.reconcile_gpu(store, settings)
+def _gpu_modal_gate(store, settings, name="gpu-reconcile-modal"):
+    run = route_job.reconcile_gpu_modal(store, settings)
     return _result(
         name,
         run["state"],
@@ -173,7 +173,6 @@ def _operate(store, settings, runtime):
         ("dataset", _dataset_gate, "train"),
         ("train", _train_gate, "evaluate"),
         ("evaluate", _evaluate_gate, "route-propose"),
-        ("route-propose", _route_gate, "operator-sign-route"),
     ):
         result = gate(store, settings, runtime)
         results.append((name, result))
@@ -229,6 +228,23 @@ def _status(store, settings, runtime):
     details["evaluation_current"] = evaluation_reference is not None
     if evaluation_reference is not None:
         artifacts.append({"key": evaluation_reference["key"], "sha256": evaluation_reference["sha256"]})
+    details["route_jobs"] = {
+        name: {
+            "available": not missing,
+            "missing_environment": missing,
+        }
+        for name in ("route-propose-baseten", "route-propose-modal")
+        for missing in [
+            sorted(
+                {
+                    variable
+                    for binding in runtime.job(name).bindings
+                    for variable in config.BINDING_ENVIRONMENTS[binding]["required"]
+                    if not os.environ.get(variable)
+                }
+            )
+        ]
+    }
     route_reference = route_job.current(store, settings) if evaluation_reference is not None else None
     details["proposal_current"] = route_reference is not None
     if route_reference is not None:
@@ -351,10 +367,12 @@ def _run_job(name, store, settings, runtime):
         return _train_gate(store, settings, runtime), 0
     if job.handler == "evaluate":
         return _evaluate_gate(store, settings, runtime), 0
-    if job.handler == "route-propose":
-        return _route_gate(store, settings, runtime), 0
-    if job.handler == "gpu-reconcile":
-        return _gpu_gate(store, settings), 0
+    if job.handler == "route-propose-baseten":
+        return _route_gate(store, settings, runtime, "baseten", job.handler), 0
+    if job.handler == "route-propose-modal":
+        return _route_gate(store, settings, runtime, "modal", job.handler), 0
+    if job.handler == "gpu-reconcile-modal":
+        return _gpu_modal_gate(store, settings), 0
     if job.handler in CONTROLLER_HANDLERS:
         return _controller_job(job.handler, settings)
     identity = _json_digest(
@@ -454,10 +472,12 @@ def main(argv: list[str] | None = None) -> None:
     except route_job.ProviderError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         code = EXIT_INTERNAL if error.ambiguous else EXIT_PROVIDER
-        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="route-propose", error=str(error), provider_calls=error.provider_calls), code)
+        next_job = job_name if job_name in {"route-propose-baseten", "route-propose-modal"} else "route-propose"
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job=next_job, error=str(error), provider_calls=error.provider_calls), code)
     except route_job.RouteError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
-        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="route-propose", error=str(error)), EXIT_CONFIG)
+        next_job = job_name if job_name in {"route-propose-baseten", "route-propose-modal", "gpu-reconcile-modal"} else "route-propose"
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job=next_job, error=str(error)), EXIT_CONFIG)
     except summary.SummaryError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         _emit(_result(job_name or command, "failed", scope_id, identity, error=str(error)), EXIT_CONFIG)

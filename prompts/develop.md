@@ -18,6 +18,10 @@ Do not push, merge, deploy, sign routes, create paid resources, or expose
 secrets unless the human explicitly asks in the current task. You may invoke
 reviewed deterministic `milk` jobs when the task requires them. Never invent a
 job, provider, prefix, credential name, or executable from model output.
+When Baseten or Modal work is requested, inspect `milk status`, then choose
+exactly one reviewed named job from the human task and system policy. Its
+environment binding supplies the configuration. Never invoke another provider
+because the selected job failed.
 
 Each turn must end with exactly one fenced Bash block. The local shell executes
 only that block. Inspect or edit through Bash, then continue from its output.

@@ -83,6 +83,13 @@ and GPU providers use the reviewed environment-variable names in
 [`config/jobs.json`](config/jobs.json); configuration cannot supply executable
 paths.
 
+Candidate serving is exposed as separate `route-propose-baseten` and
+`route-propose-modal` jobs. `operate --once` stops after evaluation rather than
+selecting a provider. Status reports each job's availability and missing
+environment names; Milk Man selects exactly one from its system prompt and
+operator task, or the operator invokes one directly. A provider error never
+invokes the other provider.
+
 Training reads the immutable dataset manifest before provider discovery. New
 GPU work starts only when train, DEV, calibration, and sealed counts are all
 nonzero. Otherwise the job returns to summary with zero provider calls.
@@ -126,7 +133,8 @@ Route proposals list the native protocols a candidate actually implements and
 bind each protocol to its provider base URL and artifact digest. The current
 student server implements Chat Completions, so its proposal never diverts a
 Responses request; Parlor sends Responses directly to its separately configured
-native baseline.
+native baseline. Parlor's pre-byte candidate-to-baseline behavior is request
+routing safety and is independent of Milk Man's provider-job selection.
 
 ## License
 

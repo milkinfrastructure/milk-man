@@ -16,7 +16,7 @@ from . import evaluate, summary, train
 from .providers import baseten, modal_gpu
 
 
-CODE_VERSION = "milk.route-propose.v5"
+CODE_VERSION = "milk.route-propose.v6"
 TRUSS_VERSION = "0.18.28"
 BRANCHES = {"bf16", "dynamic_fp8", "static_fp8"}
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-serve@sha256:[0-9a-f]{64}\Z")
@@ -168,6 +168,7 @@ def _artifact(
     evaluation_reference: dict,
     group: dict,
     sealed: dict,
+    serving_provider: str,
 ) -> tuple[dict, str, str]:
     image = _required("MILK_SERVE_IMAGE")
     if IMAGE.fullmatch(image) is None:
@@ -188,7 +189,7 @@ def _artifact(
         raise RouteError("model has no exact Baseten checkpoint identity")
     branch = group["winner"]["branch"]
     identity = {
-        "schema_version": "milk.candidate-artifact-identity.v2",
+        "schema_version": "milk.candidate-artifact-identity.v3",
         "code_version": CODE_VERSION,
         "scope_id": settings.scope_id,
         "profile": settings.profile,
@@ -204,6 +205,7 @@ def _artifact(
         "sealed": group["sealed"],
         "serve_image": image,
         "accelerator": accelerator,
+        "serving_provider": serving_provider,
         "server": {
             "model": _served_model(branch),
             "branch": branch,
@@ -669,26 +671,7 @@ def _finalize(
     }
 
 
-def _baseten_preflight(store, key: str, artifact_sha256: str) -> dict | None:
-    try:
-        value, unused = _object(store, key)
-    except FileNotFoundError:
-        return None
-    if value != {
-        "schema_version": "milk.baseten-preflight.v2",
-        "job_id": artifact_sha256,
-        "provider": "baseten",
-        "code": "custom_base_image_not_enabled",
-        "provider_created": False,
-        "detail_sha256": hashlib.sha256(
-            b"Custom base images not supported for your organization"
-        ).hexdigest(),
-    }:
-        raise RouteError("stored Baseten preflight result is invalid")
-    return value
-
-
-def _modal_fallback(
+def _modal_candidate(
     store,
     settings,
     identity: dict,
@@ -698,7 +681,6 @@ def _modal_fallback(
     sealed: dict,
     prefix: str,
     intent_key: str,
-    preflight_key: str,
     client: baseten.Client,
     timeout: int,
 ) -> dict:
@@ -712,10 +694,10 @@ def _modal_fallback(
         return {
             "state": "active",
             "identity": artifact_sha256,
-            "artifacts": _artifacts(store, [intent_key, preflight_key]),
+            "artifacts": _artifacts(store, [intent_key]),
             "inference_calls": 0,
             "provider_calls": client.calls + ensured["provider_calls"],
-            "next": "route-propose",
+            "next": "route-propose-modal",
             "details": {
                 "provider": "modal",
                 "app_name": ensured["plan"]["app_name"],
@@ -731,7 +713,7 @@ def _modal_fallback(
         "schema_version": "milk.route-provider-receipt.v2",
         "job_id": artifact_sha256,
         "provider": "modal",
-        "provider_app_id": observation["app_id"] or provider.get("app_id"),
+        "provider_app_id": observation["app_id"],
         "provider_app_name": plan["app_name"],
         "provider_volume_name": plan["volume_name"],
         "base_url": base_url,
@@ -776,15 +758,17 @@ def _modal_fallback(
     )
 
 
-def reconcile(store, settings, runtime) -> dict:
+def reconcile(store, settings, runtime, serving_provider: str) -> dict:
+    if serving_provider not in {"baseten", "modal"}:
+        raise RouteError("serving provider is invalid")
     model_reference, model, evaluation_reference, group, sealed = _inputs(store, settings, runtime)
     identity, artifact_sha256, candidate_uuid = _artifact(
-        settings, runtime, model_reference, model, evaluation_reference, group, sealed
+        settings, runtime, model_reference, model, evaluation_reference, group, sealed, serving_provider
     )
-    prefix = settings.scope_prefix + f"j/route-propose/{artifact_sha256}/"
+    job_name = "route-propose-" + serving_provider
+    prefix = settings.scope_prefix + f"j/{job_name}/{artifact_sha256}/"
     intent_key = prefix + "intent.json"
     receipt_key = prefix + "receipt.json"
-    preflight_key = prefix + "baseten-preflight.json"
     result_key = prefix + "result.json"
     try:
         result, unused = _object(store, result_key)
@@ -813,6 +797,30 @@ def reconcile(store, settings, runtime) -> dict:
     except FileNotFoundError:
         pass
 
+    timeout = _integer("MILK_ROUTE_TIMEOUT_SECONDS", 600, 30, 1800)
+    client = baseten.Client(_required("BASETEN_API_KEY"), min(timeout, 120))
+    if serving_provider == "modal":
+        intent = {
+            **identity,
+            "job_id": artifact_sha256,
+            "candidate_uuid": candidate_uuid,
+            "provider": "modal",
+        }
+        store.create_same(intent_key, summary.canonical(intent))
+        return _modal_candidate(
+            store,
+            settings,
+            identity,
+            artifact_sha256,
+            candidate_uuid,
+            model,
+            sealed,
+            prefix,
+            intent_key,
+            client,
+            timeout,
+        )
+
     model_name, deployment_name = _names(artifact_sha256)
     config = _truss_config(identity, artifact_sha256, model_name)
     intent = {
@@ -826,23 +834,6 @@ def reconcile(store, settings, runtime) -> dict:
         "truss_config": config,
     }
     created = store.create_same(intent_key, summary.canonical(intent)).created
-    timeout = _integer("MILK_ROUTE_TIMEOUT_SECONDS", 600, 30, 1800)
-    client = baseten.Client(_required("BASETEN_API_KEY"), min(timeout, 120))
-    if _baseten_preflight(store, preflight_key, artifact_sha256) is not None:
-        return _modal_fallback(
-            store,
-            settings,
-            identity,
-            artifact_sha256,
-            candidate_uuid,
-            model,
-            sealed,
-            prefix,
-            intent_key,
-            preflight_key,
-            client,
-            timeout,
-        )
 
     try:
         receipt, unused = _object(store, receipt_key)
@@ -874,32 +865,6 @@ def reconcile(store, settings, runtime) -> dict:
                 push_calls = error.provider_calls
                 match = _matching_deployment(client, model_name, deployment_name)
                 if match is None:
-                    if error.code == "custom_base_image_not_enabled" and not error.ambiguous:
-                        preflight = {
-                            "schema_version": "milk.baseten-preflight.v2",
-                            "job_id": artifact_sha256,
-                            "provider": "baseten",
-                            "code": error.code,
-                            "provider_created": False,
-                            "detail_sha256": hashlib.sha256(
-                                b"Custom base images not supported for your organization"
-                            ).hexdigest(),
-                        }
-                        store.create_same(preflight_key, summary.canonical(preflight))
-                        return _modal_fallback(
-                            store,
-                            settings,
-                            identity,
-                            artifact_sha256,
-                            candidate_uuid,
-                            model,
-                            sealed,
-                            prefix,
-                            intent_key,
-                            preflight_key,
-                            client,
-                            timeout,
-                        )
                     raise ProviderError(
                         str(error),
                         client.calls + push_calls,
@@ -946,7 +911,7 @@ def reconcile(store, settings, runtime) -> dict:
             "artifacts": _artifacts(store, [intent_key, receipt_key]),
             "inference_calls": 0,
             "provider_calls": client.calls,
-            "next": "route-propose",
+            "next": "route-propose-baseten",
             "details": {
                 "provider": "baseten",
                 "model_id": model_id,
@@ -994,7 +959,7 @@ def reconcile(store, settings, runtime) -> dict:
     )
 
 
-def reconcile_gpu(store, settings) -> dict:
+def reconcile_gpu_modal(store, settings) -> dict:
     status, unused = _object(store, settings.scope_prefix + "status/current.json")
     candidate_reference = status.get("candidate")
     if not isinstance(candidate_reference, dict):
@@ -1012,7 +977,7 @@ def reconcile_gpu(store, settings) -> dict:
         or candidate.get("schema_version") != "milk.candidate.v2"
         or candidate.get("scope_id") != settings.scope_id
         or not isinstance(identity, dict)
-        or identity.get("schema_version") != "milk.candidate-artifact-identity.v2"
+        or identity.get("schema_version") != "milk.candidate-artifact-identity.v3"
         or not isinstance(artifact_sha256, str)
         or SHA256.fullmatch(artifact_sha256) is None
         or summary.digest(identity) != artifact_sha256
@@ -1026,11 +991,14 @@ def reconcile_gpu(store, settings) -> dict:
     if summary.digest(model_body) != model_reference.get("sha256"):
         raise RouteError("current candidate model digest differs")
 
-    prefix = settings.scope_prefix + f"j/gpu-reconcile/{artifact_sha256}/"
+    if provider.get("name") != "modal":
+        raise RouteError("gpu-reconcile-modal requires a Modal candidate")
+
+    prefix = settings.scope_prefix + f"j/gpu-reconcile-modal/{artifact_sha256}/"
     intent_key = prefix + "intent.json"
     result_key = prefix + "result.json"
     intent = {
-        "schema_version": "milk.gpu-reconcile-intent.v2",
+        "schema_version": "milk.gpu-reconcile-modal-intent.v1",
         "job_id": artifact_sha256,
         "scope_id": settings.scope_id,
         "candidate": candidate_reference,
@@ -1041,7 +1009,7 @@ def reconcile_gpu(store, settings) -> dict:
     try:
         result, unused = _object(store, result_key)
         if (
-            result.get("schema_version") != "milk.gpu-reconcile-result.v2"
+            result.get("schema_version") != "milk.gpu-reconcile-modal-result.v1"
             or result.get("job_id") != artifact_sha256
             or result.get("scope_id") != settings.scope_id
             or result.get("provider") != provider.get("name")
@@ -1070,8 +1038,6 @@ def reconcile_gpu(store, settings) -> dict:
     except FileNotFoundError:
         pass
 
-    if provider.get("name") != "modal":
-        raise RouteError("the current candidate has no reviewed GPU teardown implementation")
     timeout = _integer("MILK_GPU_TIMEOUT_SECONDS", 180, 30, 1800)
     try:
         stopped = modal_gpu.stop_candidate(identity, artifact_sha256, model, timeout)
@@ -1082,7 +1048,7 @@ def reconcile_gpu(store, settings) -> dict:
     if not isinstance(provider_app_id, str):
         raise RouteError("the stopped Modal candidate has no provider app identity")
     result = {
-        "schema_version": "milk.gpu-reconcile-result.v2",
+        "schema_version": "milk.gpu-reconcile-modal-result.v1",
         "job_id": artifact_sha256,
         "scope_id": settings.scope_id,
         "provider": "modal",

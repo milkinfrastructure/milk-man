@@ -1,4 +1,4 @@
-"""Explicit Modal fallback for the one sealed Milk candidate."""
+"""Explicit Modal adapter for one sealed Milk candidate."""
 
 from __future__ import annotations
 

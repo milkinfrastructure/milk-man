@@ -21,8 +21,9 @@ HANDLERS = frozenset(
         "dataset",
         "train",
         "evaluate",
-        "route-propose",
-        "gpu-reconcile",
+        "route-propose-baseten",
+        "route-propose-modal",
+        "gpu-reconcile-modal",
     }
 )
 TRIGGERS = frozenset(
@@ -122,7 +123,20 @@ BINDING_ENVIRONMENTS = {
             "MILK_EVALUATE_MAX_NEW_TOKENS",
         ),
     },
-    "candidate": {
+    "candidate-baseten": {
+        "required": (
+            "BASETEN_API_KEY",
+            "MILK_SERVE_IMAGE",
+            "MILK_CANDIDATE_API_KEY",
+        ),
+        "optional": (
+            "BASETEN_TEAM_NAME",
+            "MILK_CANDIDATE_ACCELERATOR",
+            "MILK_ROUTE_CANDIDATE_BPS",
+            "MILK_ROUTE_TIMEOUT_SECONDS",
+        ),
+    },
+    "candidate-modal": {
         "required": (
             "BASETEN_API_KEY",
             "MODAL_TOKEN_ID",
@@ -131,7 +145,6 @@ BINDING_ENVIRONMENTS = {
             "MILK_CANDIDATE_API_KEY",
         ),
         "optional": (
-            "BASETEN_TEAM_NAME",
             "MODAL_ENVIRONMENT",
             "MILK_CANDIDATE_ACCELERATOR",
             "MILK_MODAL_CANDIDATE_APP_PREFIX",
@@ -159,7 +172,7 @@ TIMEOUT_ENVIRONMENTS = frozenset(
         "MILK_GPU_TIMEOUT_SECONDS",
     }
 )
-OPERATE_ORDER = ("summary", "eval", "dataset", "train", "evaluate", "route-propose", "gpu-reconcile")
+OPERATE_ORDER = ("summary", "eval", "dataset", "train", "evaluate")
 ENVIRONMENT_NAME = re.compile(r"[A-Z][A-Z0-9_]{0,127}\Z")
 PREFIX = re.compile(r"[a-z][a-z0-9-]{0,31}\Z")
 

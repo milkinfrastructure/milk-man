@@ -44,7 +44,7 @@ Milk Man: account -> summarize -> classify -> readiness -> evals
      unsigned proposal -> operator-signed route
                          |
                          v
-      canary -> fallback -> rollback -> zero route
+ canary -> pre-byte candidate failure -> baseline -> rollback -> zero
                          |
                          v
                  zero active GPU
@@ -121,6 +121,9 @@ Production mode:
 - An external scheduler invokes `bin/milk operate --once`.
 - It contains no sleeping loop, internal tick, resident manager, or background thinker.
 - It lists object metadata, selects the next ready job deterministically, progresses all immediately ready work, then exits.
+- It stops after evaluation at the provider-selection boundary. Status reports
+  the availability and missing environment names for both provider jobs; the
+  Milk Man system prompt and operator task select exactly one.
 - When nothing changed, it makes zero inference and provider calls.
 - Semantic jobs run a restricted Headlong session with a fixed job-specific system prompt and only `milk job read`, `milk job commit`, and `milk status` available.
 - Production never reads development trajectories, coding memories, workspaces, or editing skills.
@@ -187,8 +190,9 @@ bin/milk run eval
 bin/milk run dataset
 bin/milk run train
 bin/milk run evaluate
-bin/milk run route-propose
-bin/milk run gpu-reconcile
+bin/milk run route-propose-baseten
+bin/milk run route-propose-modal
+bin/milk run gpu-reconcile-modal
 ```
 
 Every `bin/milk` invocation emits one JSON object to stdout; diagnostics go to stderr:
@@ -292,7 +296,22 @@ BASETEN_TRAINING_REGISTRY_SECRET
 MILK_BASETEN_RUNTIME_SECRET_MAP_JSON
 ```
 
+Candidate-serving jobs additionally bind:
+
+```text
+MILK_SERVE_IMAGE
+MILK_CANDIDATE_API_KEY
+MILK_CANDIDATE_ACCELERATOR
+MILK_ROUTE_CANDIDATE_BPS
+MILK_ROUTE_TIMEOUT_SECONDS
+```
+
 Configuration records environment-variable names, never secret values. The same code must work locally, against R2, and against remote inference/GPU providers by changing bindings only.
+
+The Milk Man system prompt and operator task select one reviewed named provider
+job after inspecting status availability. That job resolves only its own
+environment binding; the presence of a credential never triggers a provider,
+and a provider failure never selects a different adapter.
 
 Job-scoped environments reduce accidental credential propagation; they are not presented as cryptographic isolation from a same-user development shell. Do not build a secret broker for the first version.
 
@@ -772,10 +791,18 @@ The first implementation does not search serving configurations. Add `inference-
 
 Use two explicit implementations, not a provider framework:
 
-- Baseten primary for post-training and initial winner serving.
-- Modal fallback only after a definite Baseten pre-create denial.
+- Baseten jobs for post-training, evaluation, and Baseten candidate serving.
+- Modal jobs for Modal controller or candidate serving.
 
-A timeout, disconnect, 429, 5xx, or ambiguous create must reconcile the exact Baseten identity before retry or fallback. Never create a second resource while the first may exist.
+`route-propose-baseten` and `route-propose-modal` are separate tool calls with
+separate reviewed environment bindings. `operate --once` stops after evaluation;
+Milk Man chooses one from its system prompt, operator task, and reported binding
+availability, or the operator invokes one directly. Neither adapter calls the
+other.
+
+A timeout, disconnect, 429, 5xx, or ambiguous create must reconcile the exact
+identity with that same provider before retry. Never create another resource
+while the first may exist.
 
 Every external job records:
 
@@ -1043,8 +1070,8 @@ Progress 2026-09-01:
 
 - [x] The independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171` contains the strict fixed job registry, direct CLI, local store, and SigV4 S3 implementation.
 - [x] Replayed `status`, `operate --once`, and `run summary` against an empty local store; unchanged invocations returned the same identity with zero inference and provider calls.
-- [x] Configuration accepts only ten reviewed handler identifiers and reviewed environment-variable names; it cannot introduce an executable path.
-- [x] All ten reviewed handlers are implemented. `operate --once` deterministically advances through route proposal and stops at the operator-sign boundary; explicit `gpu-reconcile` records provider teardown and zero capacity.
+- [x] Configuration accepts only eleven reviewed handler identifiers and reviewed environment-variable names; it cannot introduce an executable path.
+- [x] All eleven reviewed handlers are implemented. `operate --once` deterministically advances through evaluation and stops; status exposes both provider jobs and their missing environment names, the system prompt or operator selects exactly one, and explicit `gpu-reconcile-modal` records Modal teardown and zero capacity.
 - [x] Proved the public CLI against R2 through two checkpoints: immutable create-same objects, conditional pointer replacement, one concurrent owner plus one exit-75 duplicate, and an idle zero-call replay. Retained receipt: `/Users/shantanu/milk-release-evidence/milk-v2-r2-20260901/report.json`, SHA-256 `7c96b77a387dbcce75ecbf4c696cebefc28d4f3e1f0d11c685007918f301169f`.
 
 Owned:
@@ -1234,9 +1261,9 @@ Progress 2026-09-01:
 - [x] Published the fixed three-branch policy, calibrated static-FP8 evaluator, and concurrent Baseten orchestration. The first runtime attempt exposed a missing C compiler required by TorchAO/Triton; a second isolated an `inference_mode` incompatibility. Commit `ddc04e9f0` replaced it with `no_grad`, and Actions run `33586890548` published `ghcr.io/milkinfrastructure/milk-man-eval@sha256:7d045e6432b2e6222a58b976889b8c0b4f548a55525826932ae3b435cf7f6343`.
 - [x] Final coherent DEV jobs `wp98xz3`, `wlklg03`, and `3yym443` completed on identical ordered cases. Checked-in code selected static FP8 at 10,000/10,000, zero errors, 316 ms p95 and 16.978 tokens/second. Winner-only sealed job `w7x7l63` completed and produced sealed evaluation `689e3c27-d0f1-58cb-8e12-e60dafc008a7`; evaluation group `73837076-9e42-5a8a-ac56-73eac5830a89` finalized under deterministic identity `32aa44d6bc531bc282c8bfdd49c62b5c35e957269745926aceba39c1670b6a0b`. Immediate replay retained the same artifacts with zero inference and provider calls.
 - [x] Actions run `33590675453` published the authenticated serve image `ghcr.io/milkinfrastructure/milk-man-serve@sha256:5d265b975920f049775e16f959b6fe5177c4c5429ab66eca6bf178d0a892f851`; weights remained outside OCI.
-- [x] Candidate artifact `04f4af2eb8b2596985a4694d1a167ea99c66063b19438425199d76bf1c2e8fbd` received a definite Baseten `custom_base_image_not_enabled` preflight with no Baseten model or deployment, then deterministically fell back to Modal app `ap-pf5pYKvKgMMo5SqEyx9ZF6` and volume `milk-candidate-04f4af2eb8b2596985a4`.
+- [x] Historical pre-refactor mechanics: candidate artifact `04f4af2eb8b2596985a4694d1a167ea99c66063b19438425199d76bf1c2e8fbd` received a definite Baseten `custom_base_image_not_enabled` preflight with no Baseten model or deployment, after which the old combined job launched Modal app `ap-pf5pYKvKgMMo5SqEyx9ZF6` and volume `milk-candidate-04f4af2eb8b2596985a4`. This is retained evidence, not the current provider-selection contract.
 - [x] Milk Man verified the exact Baseten checkpoint inventory during Modal hydration, completed one authenticated inference smoke, retained candidate `40ee1fff-303c-5a5e-842c-72ee9880638d`, and advanced to corrected unsigned proposal `d86f2910-9ccc-5d56-9aeb-ee7b400f4f8c` at `p/d86f2910-9ccc-5d56-9aeb-ee7b400f4f8c.json`.
-- [x] `milk run gpu-reconcile` stopped the exact Modal app and wrote immutable intent/result objects under `j/gpu-reconcile/04f4af2e...`; independent listings showed that app stopped with zero containers, every other visible Modal app at zero containers, zero Baseten candidate models, and training job `qek7jrq` in `TRAINING_JOB_COMPLETED` with checkpoint sync `COMPLETED`.
+- [x] The former `milk run gpu-reconcile` command stopped the exact Modal app and wrote immutable intent/result objects under `j/gpu-reconcile/04f4af2e...`; independent listings showed that app stopped with zero containers, every other visible Modal app at zero containers, zero Baseten candidate models, and training job `qek7jrq` in `TRAINING_JOB_COMPLETED` with checkpoint sync `COMPLETED`. The current explicit command is `gpu-reconcile-modal`.
 - [x] The fresh threshold-100 scope generated dataset `fe2c3e54-d15c-5c01-ab02-f61b46b9dd93` through the environment-selected OpenAI Responses teacher. Its manifest SHA-256 is `39a8f997e39d4349fb1f7ae5efcd6f1a6c8d11654809315ab510e1ff922603ef`; the bounded mechanics split contains one train and one DEV item, made two inference calls, made zero provider calls, and replayed with zero calls.
 - [x] A pre-provider train invocation read and verified the immutable manifest's exact split counts, detected empty calibration and sealed splits, changed status back to `next: summary`, and returned idle with zero inference/provider calls without requiring Baseten credentials. Direct status reports `training_ready: false`.
 - [x] Coordinated Actions run `33597613364` rebuilt the weight-free train, eval, and serve images from published Milk Man `87376d56096cf39988d6163d5752a7726acfc3a2`. Their immutable digests remain `sha256:93f6a973d2e7b04e3dfc0c9807b5b83cb661601ebfbc1e371659b2530a9dd16f`, `sha256:7d045e6432b2e6222a58b976889b8c0b4f548a55525826932ae3b435cf7f6343`, and `sha256:5d265b975920f049775e16f959b6fe5177c4c5429ab66eca6bf178d0a892f851`; model weights remain outside OCI.
@@ -1274,7 +1301,7 @@ Acceptance:
 - train, merge and all three candidates bind the exact pinned
   `Qwen/Qwen3.5-0.8B` revision and weight files never enter OCI;
 - one real Baseten train/merge job;
-- separate definite-preflight Modal fallback proof;
+- one separately invoked Modal candidate-serving proof;
 - identical ordered DEV inputs across all branches;
 - code-selected winner;
 - one sealed evaluation;
@@ -1329,9 +1356,9 @@ Progress 2026-09-02:
 - [x] GitHub Actions has already published immutable weight-free train, eval, and serve images; model weights remain separately mounted.
 - [~] The local fixed train/eval job definitions now use the published digest-pinned images directly and contain no per-job apt, pip, or raw-source download commands. The images are anonymously pullable from GHCR; one Baseten run remains blocked on account-level custom-base-image enablement.
 - [x] TorchAO 0.18 still lists dynamic FP8 as stable but keeps static activation FP8 under `prototype`. Do not replace the known mechanics implementation with another unstable API or use its tiny-set result for production; BF16 and stable dynamic FP8 remain production candidates until a stable calibrated static path exists.
-- [x] The reviewed evaluation policy runs all three comparable DEV branches in mechanics but only BF16 and dynamic FP8 in production, so a prototype static job cannot block or win the production path. The chosen branch is bound through the sealed result, candidate artifact, direct-image Baseten config, Modal fallback environment, server health, and smoke identity.
+- [x] The reviewed evaluation policy runs all three comparable DEV branches in mechanics but only BF16 and dynamic FP8 in production, so a prototype static job cannot block or win the production path. The chosen branch is bound through the sealed result, candidate artifact, direct-image Baseten config, separately invoked Modal job environment, server health, and smoke identity.
 - [x] Direct local payload smokes verified one-command train/eval startup, external Qwen3.5-0.8B weights, prior-checkpoint loading, zero runtime install commands, dynamic-over-static production selection, all-branch serving environments, and static-only activation-scale propagation.
-- [x] Train and evaluate now resolve only store and Baseten bindings. Modal credentials enter only the controller, candidate fallback, and explicit GPU reconciliation jobs that use them.
+- [x] Train and evaluate now resolve only store and Baseten bindings. Modal credentials enter only the explicit controller, candidate-serving, and GPU-reconciliation jobs that use them.
 
 Acceptance:
 
