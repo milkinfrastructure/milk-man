@@ -11,9 +11,9 @@ Every output case includes `expected` and `oracle_spec`. For an `exact` or
 `reference` oracle, put the non-empty plain answer in `expected` and use:
 `{"type":"none","properties":[],"items":"none"}`.
 
-For a `schema` oracle, set `expected` to the empty string. Describe the expected
-JSON value with `oracle_spec`; never write JSON or schema text inside
-`expected`. Valid forms are:
+For a `schema` oracle, set `expected` to the empty string and use the exact root
+type supplied as `schema_kind`. Describe the expected JSON value with
+`oracle_spec`; never write JSON or schema text inside `expected`. Valid forms are:
 
 - Object: type `object`, items `none`, and 1..16 uniquely named scalar
   properties. Example: `{"type":"object","properties":[{"name":"city","type":"string","required":true},{"name":"population","type":"integer","required":false}],"items":"none"}`.

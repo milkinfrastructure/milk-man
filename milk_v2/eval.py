@@ -10,7 +10,7 @@ import uuid
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.eval.v15"
+CODE_VERSION = "milk.eval.v16"
 CONTEXT_CONVERSATIONS = 100
 GENERATOR_BATCH_CASES = 64
 VALIDATOR_BATCH_CASES = 64
@@ -188,7 +188,7 @@ def _plan(store, settings, summary_value: dict, readiness: dict) -> dict:
     return value
 
 
-def _generation_schema(count: int) -> dict:
+def _generation_schema(count: int, oracle: str, schema_kind: str) -> dict:
     property_spec = {
         "type": "object",
         "properties": {
@@ -199,12 +199,34 @@ def _generation_schema(count: int) -> dict:
         "required": ["name", "type", "required"],
         "additionalProperties": False,
     }
+    if oracle in {"exact", "reference"}:
+        spec_type = {"type": "string", "enum": ["none"]}
+        spec_properties = {"type": "array", "items": property_spec, "maxItems": 0}
+        spec_items = {"type": "string", "enum": ["none"]}
+        expected = {"type": "string", "minLength": 1, "maxLength": 4096}
+    elif oracle == "schema" and schema_kind == "object":
+        spec_type = {"type": "string", "enum": ["object"]}
+        spec_properties = {"type": "array", "items": property_spec, "minItems": 1, "maxItems": 16}
+        spec_items = {"type": "string", "enum": ["none"]}
+        expected = {"type": "string", "maxLength": 4096}
+    elif oracle == "schema" and schema_kind == "array":
+        spec_type = {"type": "string", "enum": ["array"]}
+        spec_properties = {"type": "array", "items": property_spec, "maxItems": 0}
+        spec_items = {"type": "string", "enum": list(ORACLE_SCALAR_TYPES)}
+        expected = {"type": "string", "maxLength": 4096}
+    elif oracle == "schema" and schema_kind in ORACLE_SCALAR_TYPES:
+        spec_type = {"type": "string", "enum": [schema_kind]}
+        spec_properties = {"type": "array", "items": property_spec, "maxItems": 0}
+        spec_items = {"type": "string", "enum": ["none"]}
+        expected = {"type": "string", "maxLength": 4096}
+    else:
+        raise EvalError("eval generation schema binding is invalid")
     oracle_spec = {
         "type": "object",
         "properties": {
-            "type": {"type": "string", "enum": list(ORACLE_SPEC_TYPES)},
-            "properties": {"type": "array", "items": property_spec, "maxItems": 16},
-            "items": {"type": "string", "enum": ["none", *ORACLE_SCALAR_TYPES]},
+            "type": spec_type,
+            "properties": spec_properties,
+            "items": spec_items,
         },
         "required": ["type", "properties", "items"],
         "additionalProperties": False,
@@ -214,7 +236,7 @@ def _generation_schema(count: int) -> dict:
         "properties": {
             "slot": {"type": "integer", "minimum": 0, "maximum": count - 1},
             "input": {"type": "string", "minLength": 1, "maxLength": 4096},
-            "expected": {"type": "string", "maxLength": 4096},
+            "expected": expected,
             "oracle_spec": oracle_spec,
         },
         "required": ["slot", "input", "expected", "oracle_spec"],
@@ -231,7 +253,7 @@ def _generation_schema(count: int) -> dict:
     }
 
 
-def _compile_oracle_spec(value: object, oracle: str) -> tuple[dict, dict | None]:
+def _compile_oracle_spec(value: object, oracle: str, schema_kind: str | None = None) -> tuple[dict, dict | None]:
     if not isinstance(value, dict) or set(value) != {"type", "properties", "items"}:
         raise ValueError("invalid oracle spec")
     kind = value.get("type")
@@ -242,6 +264,8 @@ def _compile_oracle_spec(value: object, oracle: str) -> tuple[dict, dict | None]
     if oracle in {"exact", "reference"}:
         return {"type": "none", "properties": [], "items": "none"}, None
     if oracle != "schema" or kind == "none":
+        raise ValueError("invalid oracle spec")
+    if schema_kind is not None and kind != schema_kind:
         raise ValueError("invalid oracle spec")
     if kind == "object":
         checked_properties = []
@@ -347,7 +371,9 @@ def _generation_contract(value: dict, shard_plan: dict, *, stored: bool = False)
             invalid.append((planned["case_id"], "input"))
             continue
         try:
-            oracle_spec, compiled = _compile_oracle_spec(generated.get("oracle_spec"), planned["oracle"])
+            oracle_spec, compiled = _compile_oracle_spec(
+                generated.get("oracle_spec"), planned["oracle"], shard_plan.get("schema_kind")
+            )
         except ValueError:
             invalid.append((planned["case_id"], "oracle_spec"))
             continue
@@ -865,20 +891,31 @@ def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha
     generation_batches = []
     generator_inputs = []
     generated_by_id = {}
-    if rejection is None:
-        model_batches = [shard_plan["cases"][offset : offset + GENERATOR_BATCH_CASES] for offset in range(0, len(shard_plan["cases"]), GENERATOR_BATCH_CASES)]
-    else:
-        model_batches = []
-        for oracle in ("exact", "reference", "schema"):
-            oracle_cases = [case for case in shard_plan["cases"] if case["oracle"] == oracle]
-            model_batches.extend(oracle_cases[offset : offset + GENERATOR_BATCH_CASES] for offset in range(0, len(oracle_cases), GENERATOR_BATCH_CASES))
+    model_batches = []
+    for oracle in ("exact", "reference", "schema"):
+        oracle_cases = [case for case in shard_plan["cases"] if case["oracle"] == oracle]
+        model_batches.extend(
+            oracle_cases[offset : offset + GENERATOR_BATCH_CASES]
+            for offset in range(0, len(oracle_cases), GENERATOR_BATCH_CASES)
+        )
     for batch_index, planned_cases in enumerate(model_batches):
         batch_plan = {**shard_plan, "cases": planned_cases}
         batch_case_ids = [case["case_id"] for case in planned_cases]
-        source_bindings = [
-            {"slot": slot, **{key: case[key] for key in ("case_id", "order", "split", "selection", "tail_reason", "operation", "oracle", "source_key", "source_object_sha256", "request_sha256", "response_sha256", "content_sha256")}}
-            for slot, case in enumerate(planned_cases)
-        ]
+        source_bindings = []
+        for slot, case in enumerate(planned_cases):
+            binding = {
+                "slot": slot,
+                **{
+                    key: case[key]
+                    for key in (
+                        "case_id", "order", "split", "selection", "tail_reason", "operation", "oracle",
+                        "source_key", "source_object_sha256", "request_sha256", "response_sha256", "content_sha256",
+                    )
+                },
+            }
+            if case["oracle"] == "schema":
+                binding["schema_kind"] = shard_plan["schema_kind"]
+            source_bindings.append(binding)
         source_keys = list(dict.fromkeys(case["source_key"] for case in planned_cases))
         try:
             distribution_context = [conversations_by_key[key] for key in source_keys]
@@ -924,7 +961,7 @@ def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha
                 "EVAL",
                 eval_prompt,
                 prepared,
-                _generation_schema(len(planned_cases)),
+                _generation_schema(len(planned_cases), planned_cases[0]["oracle"], shard_plan["schema_kind"]),
                 lambda value, expected=batch_plan: _generation_contract(value, expected),
             )
             inference_calls += receipt["inference_calls"]

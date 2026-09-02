@@ -9,6 +9,7 @@ POLICY_VERSION = "milk.eval-plan.v2"
 SPLIT_VERSION = "milk.split.v2"
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 ORACLES = frozenset({"exact", "reference", "schema"})
+SCHEMA_KINDS = ("object", "array", "string", "number", "integer", "boolean")
 SPLITS = ("dev", "calibration", "sealed")
 TAIL_REASONS = ("long_context", "rare", "error", "tool_use", "multimodal", "low_confidence")
 
@@ -264,4 +265,15 @@ def shard(plan: dict, eval_uuid: str, target: int, start: int, end: int) -> dict
                 "case_id": hashlib.sha256(f"{eval_uuid}\0{ordinal}".encode()).hexdigest(),
             }
         )
-    return {"schema_version": "milk.eval-shard-plan.v3", "split": split, "start": start, "end": end, "cases": cases}
+    schema_kind = SCHEMA_KINDS[
+        int.from_bytes(hashlib.sha256(f"{eval_uuid}\0schema\0{split}\0{start}".encode()).digest()[:8], "big")
+        % len(SCHEMA_KINDS)
+    ]
+    return {
+        "schema_version": "milk.eval-shard-plan.v3",
+        "split": split,
+        "start": start,
+        "end": end,
+        "schema_kind": schema_kind,
+        "cases": cases,
+    }
