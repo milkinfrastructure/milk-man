@@ -1,0 +1,15 @@
+{
+  "schema_version": "milk.evaluation-policy.v2",
+  "branches": ["bf16", "dynamic_fp8", "static_fp8"],
+  "dev_split": "dev",
+  "sealed_split": "sealed",
+  "score_order": [
+    {"metric": "mean_score_bps", "direction": "desc"},
+    {"metric": "errors", "direction": "asc"},
+    {"metric": "p95_latency_ms", "direction": "asc"},
+    {"metric": "tokens_per_second", "direction": "desc"}
+  ],
+  "tie_break": ["bf16", "dynamic_fp8", "static_fp8"],
+  "static_calibration_split": "calibration",
+  "torchao_version": "0.15.0"
+}

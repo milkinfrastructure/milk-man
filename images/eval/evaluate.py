@@ -55,7 +55,7 @@ def get(store, key: str, expected: str) -> bytes:
     return body
 
 
-def rows() -> tuple[dict, list[dict]]:
+def rows(split: str) -> tuple[dict, list[dict]]:
     store = client()
     manifest = json.loads(get(store, required("MILK_DATASET_MANIFEST_KEY"), required("MILK_DATASET_MANIFEST_SHA256")))
     if (
@@ -66,7 +66,6 @@ def rows() -> tuple[dict, list[dict]]:
         or manifest.get("student_base", {}).get("model_revision") != MODEL_REVISION
     ):
         raise ValueError("dataset manifest identity differs")
-    split = required("MILK_EVALUATE_SPLIT")
     if split not in {"dev", "calibration", "sealed"}:
         raise ValueError("MILK_EVALUATE_SPLIT is invalid")
     source = manifest.get("objects", {}).get(split)
@@ -93,6 +92,71 @@ def rows() -> tuple[dict, list[dict]]:
         ):
             raise ValueError("dataset contains an invalid eval case")
     return manifest, values
+
+
+def prompt(tokenizer, value: str) -> str:
+    return tokenizer.apply_chat_template(
+        [{"role": "user", "content": value}],
+        tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=False,
+    )
+
+
+def quantize(model, tokenizer, branch: str, manifest: dict) -> dict:
+    if branch == "bf16":
+        return {"kind": "bf16", "quantized_linear_count": 0}
+    from torchao.quantization import (
+        Float8DynamicActivationFloat8WeightConfig,
+        Float8StaticActivationFloat8WeightConfig,
+        quantize_,
+    )
+
+    if branch == "dynamic_fp8":
+        quantize_(model, Float8DynamicActivationFloat8WeightConfig())
+        calibration_ids = []
+        scale = None
+    elif branch == "static_fp8":
+        calibration_manifest, calibration = rows("calibration")
+        if calibration_manifest["dataset_uuid"] != manifest["dataset_uuid"]:
+            raise ValueError("calibration dataset identity differs")
+        maxima = []
+        hooks = [
+            module.register_forward_pre_hook(lambda unused_module, args: maxima.append(args[0].detach().abs().amax().float()))
+            for module in model.modules()
+            if isinstance(module, torch.nn.Linear)
+        ]
+        try:
+            for row in calibration:
+                encoded = tokenizer(prompt(tokenizer, row["input"]), return_tensors="pt").to("cuda")
+                with torch.inference_mode():
+                    model(**encoded, use_cache=False)
+        finally:
+            for hook in hooks:
+                hook.remove()
+        if not maxima:
+            raise ValueError("calibration observed no linear activations")
+        maximum = torch.stack(maxima).amax()
+        scale = torch.clamp(maximum / torch.finfo(torch.float8_e4m3fn).max, min=torch.finfo(torch.float32).eps)
+        quantize_(model, Float8StaticActivationFloat8WeightConfig(scale=scale))
+        calibration_ids = [row["case_id"] for row in calibration]
+    else:
+        raise ValueError("MILK_EVALUATE_BRANCH is invalid")
+
+    quantized = sum(
+        1
+        for module in model.modules()
+        if isinstance(module, torch.nn.Linear) and module.weight.__class__.__module__.startswith("torchao.")
+    )
+    if quantized == 0:
+        raise ValueError(f"{branch} quantized no linear modules")
+    return {
+        "kind": branch,
+        "torchao_version": "0.15.0",
+        "quantized_linear_count": quantized,
+        "calibration_case_ids": calibration_ids,
+        **({"activation_scale": float(scale.item())} if scale is not None else {}),
+    }
 
 
 def model_root() -> Path:
@@ -176,26 +240,24 @@ def main() -> None:
         raise RuntimeError("CUDA is required")
     job_id = required("MILK_EVALUATE_JOB_ID")
     branch = required("MILK_EVALUATE_BRANCH")
-    if branch != "bf16":
-        raise ValueError("this release admits only the BF16 branch")
+    if branch not in {"bf16", "dynamic_fp8", "static_fp8"}:
+        raise ValueError("MILK_EVALUATE_BRANCH is invalid")
     maximum = integer("MILK_EVALUATE_MAX_NEW_TOKENS", 256, 1, 2048)
-    manifest, cases = rows()
+    split = required("MILK_EVALUATE_SPLIT")
+    manifest, cases = rows(split)
     checkpoint = model_root()
     tokenizer = AutoTokenizer.from_pretrained(checkpoint, local_files_only=True)
     model = AutoModelForCausalLM.from_pretrained(checkpoint, local_files_only=True, torch_dtype=torch.bfloat16).cuda().eval()
+    quantization = quantize(model, tokenizer, branch, manifest)
     results = []
     started_all = time.monotonic()
     for row in cases:
-        prompt = tokenizer.apply_chat_template(
-            [{"role": "user", "content": row["input"]}],
-            tokenize=False,
-            add_generation_prompt=True,
-            enable_thinking=False,
-        )
-        encoded = tokenizer(prompt, return_tensors="pt").to("cuda")
+        encoded = tokenizer(prompt(tokenizer, row["input"]), return_tensors="pt").to("cuda")
+        torch.cuda.synchronize()
         started = time.monotonic()
         with torch.inference_mode():
             generated = model.generate(**encoded, do_sample=False, max_new_tokens=maximum, pad_token_id=tokenizer.eos_token_id)
+        torch.cuda.synchronize()
         latency_ms = max(1, int((time.monotonic() - started) * 1000))
         output_tokens = generated.shape[1] - encoded["input_ids"].shape[1]
         candidate = tokenizer.decode(generated[0, encoded["input_ids"].shape[1]:], skip_special_tokens=True)
@@ -221,7 +283,8 @@ def main() -> None:
         "model_uuid": required("MILK_MODEL_UUID"),
         "student_base": {"model_repo": MODEL_REPO, "model_revision": MODEL_REVISION},
         "branch": branch,
-        "split": required("MILK_EVALUATE_SPLIT"),
+        "split": split,
+        "quantization": quantization,
         "case_ids": [row["case_id"] for row in cases],
         "rows": results,
         "metrics": {
