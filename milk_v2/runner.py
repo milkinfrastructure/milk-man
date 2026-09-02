@@ -8,6 +8,8 @@ import sys
 from typing import NoReturn
 
 from . import config
+from . import eval as eval_job
+from . import semantic
 from . import summary
 from .providers import modal_controller
 from .store import StoreError, open_store, settings_from_environment
@@ -100,6 +102,39 @@ def _summary_gate(store, settings, runtime, name="summary"):
     )
 
 
+def _eval_gate(store, settings, runtime, name="eval"):
+    run = eval_job.reconcile(store, settings, runtime)
+    return _result(
+        name,
+        run["state"],
+        settings.scope_id,
+        run["identity"],
+        run["artifacts"],
+        run["next"],
+        run["details"],
+        inference_calls=run["inference_calls"],
+        provider_calls=run["provider_calls"],
+    )
+
+
+def _operate(store, settings, runtime):
+    summary_result = _summary_gate(store, settings, runtime, "operate")
+    if summary_result["next"] != "eval":
+        return summary_result
+    eval_result = _eval_gate(store, settings, runtime, "operate")
+    return _result(
+        "operate",
+        eval_result["state"],
+        settings.scope_id,
+        _json_digest({"summary": summary_result["identity"], "eval": eval_result["identity"]}),
+        [*summary_result["artifacts"], *eval_result["artifacts"]],
+        eval_result["next"],
+        {"summary": summary_result.get("details", {}), "eval": eval_result.get("details", {})},
+        inference_calls=summary_result["inference_calls"] + eval_result["inference_calls"],
+        provider_calls=summary_result["provider_calls"] + eval_result["provider_calls"],
+    )
+
+
 def _status(store, settings, runtime):
     artifacts = []
     pointer_etags = {}
@@ -122,6 +157,7 @@ def _status(store, settings, runtime):
         "ready": bool(observed["readiness_pointer"] and observed["readiness_pointer"].get("ready")),
         "statistically_qualified": bool(observed["readiness_pointer"] and observed["readiness_pointer"].get("statistically_qualified")),
     }
+    details["eval_current"] = details["ready"] and eval_job.current_matches(store, settings)
     identity = _json_digest(
         {
             "schema_version": "milk.status-identity.v2",
@@ -131,7 +167,8 @@ def _status(store, settings, runtime):
             "details": details,
         }
     )
-    return _result("status", "complete", settings.scope_id, identity, artifacts, "eval" if details["ready"] else "summary", details)
+    next_job = "dataset" if details["eval_current"] else "eval" if details["ready"] else "summary"
+    return _result("status", "complete", settings.scope_id, identity, artifacts, next_job, details)
 
 
 def _controller_apply(controller: dict, require_key: bool) -> bool:
@@ -212,6 +249,8 @@ def _run_job(name, store, settings, runtime):
     job = runtime.job(name)
     if job.handler == "summary":
         return _summary_gate(store, settings, runtime), 0
+    if job.handler == "eval":
+        return _eval_gate(store, settings, runtime), 0
     if job.handler in CONTROLLER_HANDLERS:
         return _controller_job(job.handler, settings)
     identity = _json_digest(
@@ -249,7 +288,7 @@ def main(argv: list[str] | None = None) -> None:
         if command == "status":
             _emit(_status(store, settings, runtime))
         if command == "operate":
-            _emit(_summary_gate(store, settings, runtime, "operate"))
+            _emit(_operate(store, settings, runtime))
         result, exit_code = _run_job(job_name or "", store, settings, runtime)
         _emit(result, exit_code)
     except UsageError as error:
@@ -260,6 +299,8 @@ def main(argv: list[str] | None = None) -> None:
         _emit(_result(job_name or command, "failed", scope_id, identity, error=str(error)), EXIT_CONFIG)
     except summary.BusyError as error:
         _emit(_result(job_name or command, "blocked", scope_id, error.identity, next_job="summary", error=str(error)), EXIT_BUSY)
+    except eval_job.BusyError as error:
+        _emit(_result(job_name or command, "blocked", scope_id, error.identity, next_job="eval", error=str(error)), EXIT_BUSY)
     except BlockingIOError as error:
         identity = _json_digest({"job": job_name, "error": type(error).__name__})
         _emit(_result(job_name or command, "blocked", scope_id, identity, next_job="inference-status", error="controller operation is active"), EXIT_BUSY)
@@ -280,6 +321,12 @@ def main(argv: list[str] | None = None) -> None:
             ),
             EXIT_PROVIDER,
         )
+    except semantic.ProviderError as error:
+        identity = _json_digest({"command": argv, "error": str(error)})
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="eval", error=str(error), inference_calls=error.inference_calls), EXIT_PROVIDER)
+    except eval_job.EvalError as error:
+        identity = _json_digest({"command": argv, "error": str(error)})
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="eval", error=str(error)), EXIT_CONFIG)
     except summary.SummaryError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         _emit(_result(job_name or command, "failed", scope_id, identity, error=str(error)), EXIT_CONFIG)

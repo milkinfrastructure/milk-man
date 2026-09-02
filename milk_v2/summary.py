@@ -942,7 +942,6 @@ def _readiness(settings, summary: dict, summary_sha256: str, labels: list[dict])
     maximum_abstain = _integer_environment("MILK_EVAL_MAX_ABSTAIN_WILSON_BPS", 2000 if production else 10000, 0, 10000)
     structural_value = summary["structural"]
     semantic = summary["semantic"]["cumulative"]
-    labels = list({label["request_sha256"]: label for label in labels}.values())
     try:
         plan = eval_plan.build(labels, settings.profile)
     except eval_plan.PlanError as error:
