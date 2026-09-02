@@ -166,6 +166,7 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
             "start_commands": [
                 "python -m pip install --no-cache-dir boto3==1.40.40 transformers==4.57.1 zstandard==0.25.0",
                 fetch_source,
+                "mkdir -p /models && ln -sfn /app/models/qwen3.5-0.8b /models/qwen3.5-0.8b",
                 "python /tmp/milk-train.py",
             ],
             "environment_variables": environment,
@@ -175,7 +176,7 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
         "name": "milk-" + job_id[:20],
         "weights": [{
             "source": f"hf://{runtime.student_base.model_repo}@{runtime.student_base.model_revision}",
-            "mount_location": "/models/qwen3.5-0.8b",
+            "mount_location": "/app/models/qwen3.5-0.8b",
         }],
         "enable_baseten_workdir": False,
         "priority": 0,
