@@ -1038,19 +1038,22 @@ def reconcile_gpu(store, settings) -> dict:
         stopped = modal_gpu.stop_candidate(identity, artifact_sha256, model, timeout)
     except modal_gpu.ProviderError as error:
         raise ProviderError(str(error), error.provider_calls, ambiguous=error.ambiguous) from error
+    observation = stopped["observation"]
+    provider_app_id = observation["app_id"] or provider.get("app_id")
+    if not isinstance(provider_app_id, str):
+        raise RouteError("the stopped Modal candidate has no provider app identity")
     result = {
         "schema_version": "milk.gpu-reconcile-result.v2",
         "job_id": artifact_sha256,
         "scope_id": settings.scope_id,
         "provider": "modal",
-        "provider_app_id": observation["app_id"],
+        "provider_app_id": provider_app_id,
         "provider_app_name": stopped["plan"]["app_name"],
         "app_state": observation["app_state"],
         "active_containers": observation["active_containers"],
         "state": "zero",
     }
     store.create_same(result_key, summary.canonical(result))
-    observation = stopped["observation"]
     return {
         "state": "complete",
         "identity": artifact_sha256,
