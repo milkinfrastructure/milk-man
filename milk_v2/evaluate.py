@@ -15,8 +15,8 @@ PROJECT = re.compile(r"[a-z0-9]{5,32}\Z")
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
 BASETEN_BASE_IMAGE = train.BASETEN_BASE_IMAGE
 TRANSFORMERS_SOURCE = train.TRANSFORMERS_SOURCE
-EVALUATE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/625ef95048cf1a106fef86b8024e6634abbdd0a3/images/eval/evaluate.py"
-EVALUATE_SOURCE_SHA256 = "fc4bef3f9c4137b3c23647658d418b93d4b5a815c4910fa8beed240f04c00d90"
+EVALUATE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/179583df0815b492e63365fe688d0b12d3393cc1/images/eval/evaluate.py"
+EVALUATE_SOURCE_SHA256 = "32648c0ff2a7c75010f7108235d72c5a22cd804df33ec19bb08a4b23a0c321b4"
 
 
 class EvaluateError(ValueError):
