@@ -59,17 +59,16 @@ import sys
 text = open(sys.argv[1]).read()
 match = re.search(r"(?ms)```(?:bash|sh|shell)[ \t]*\r?\n(.*?)(?:```|\Z)", text)
 code = match.group(1) if match else ""
-if not code:
-    call = re.search(r"<tool_call>[ \t]*([^<\r\n]+)", text)
-    code = call.group(1).strip() if call else ""
 open(sys.argv[2], "w").write(code)
 PY
     append --type reasoning --content-file "$response"
 
     if [[ ! -s "$code" ]]; then
-        append --type final --content-file "$response"
-        cat "$response"
-        exit 0
+        output="$run_dir/output"
+        printf '%s\n' 'milk-man protocol error: response must include a fenced Bash block' > "$output"
+        cat "$output" >&2
+        append --type shell-output --content-file "$output" --command-file "$code" --exit-code 65
+        continue
     fi
 
     printf 'milk-man: executing Bash in %s\n' "$workdir" >&2
@@ -77,23 +76,47 @@ PY
     output="$run_dir/output"
     final="$run_dir/final"
     runner="$run_dir/run"
+    rm -f "$final"
     {
         printf '%s\n' 'set -euo pipefail'
+        printf '%s\n' '__milk_capture_final() {'
+        printf '%s\n' '    __milk_rc=$?'
+        printf '%s\n' '    trap - EXIT'
+        printf '%s\n' '    set +e'
+        printf '    if [[ ${FINAL+x} ]]; then printf %%s "$FINAL" > %q; fi\n' "$final"
+        printf '    if [[ ${FINAL_FILE+x} ]]; then cat "$FINAL_FILE" > %q; fi\n' "$final"
+        printf '%s\n' '    exit "$__milk_rc"'
+        printf '%s\n' '}'
+        printf '%s\n' 'trap __milk_capture_final EXIT'
         printf 'source %q\n' "$code"
-        printf '%s\n' '__milk_rc=$?'
-        printf 'if [[ ${FINAL+x} ]]; then printf %%s "$FINAL" > %q; fi\n' "$final"
-        printf 'if [[ ${FINAL_FILE+x} ]]; then cat "$FINAL_FILE" > %q; fi\n' "$final"
-        printf '%s\n' 'exit "$__milk_rc"'
     } > "$runner"
 
     set +e
     (cd "$workdir" && bash "$runner") > "$output" 2>&1
     exit_code=$?
     set -e
+    final_ok=0
+    if [[ -f "$final" ]]; then
+        final_content="$(<"$final")"
+        final_content="${final_content#"${final_content%%[![:space:]]*}"}"
+        final_content="${final_content%"${final_content##*[![:space:]]}"}"
+        if (( exit_code == 0 )); then
+            case "$final_content" in
+                ""|0|1|true|false) ;;
+                *) final_ok=1 ;;
+            esac
+        fi
+        if (( ! final_ok )); then
+            printf '\n%s\n' \
+                'milk-man protocol error: FINAL or FINAL_FILE requires exit zero and nonblank text other than 0, 1, true, or false' \
+                >> "$output"
+        fi
+    fi
+
     cat "$output" >&2
     append --type shell-output --content-file "$output" --command-file "$code" --exit-code "$exit_code"
 
-    if [[ -f "$final" ]]; then
+    if (( final_ok )); then
         append --type final --content-file "$final"
         cat "$final"
         exit 0
