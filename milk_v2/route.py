@@ -16,7 +16,7 @@ from . import evaluate, summary, train
 from .providers import baseten, modal_gpu
 
 
-CODE_VERSION = "milk.route-propose.v3"
+CODE_VERSION = "milk.route-propose.v4"
 TRUSS_VERSION = "0.18.28"
 SERVED_MODEL = "milk-qwen3.5-0.8b-static-fp8"
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-serve@sha256:[0-9a-f]{64}\Z")
@@ -68,6 +68,26 @@ def _integer(name: str, default: int, minimum: int, maximum: int) -> int:
     if not minimum <= value <= maximum:
         raise RouteError(f"{name} must be in {minimum}..{maximum}")
     return value
+
+
+def _candidate_protocols(base_url: str, artifact_sha256: str) -> dict:
+    protocol = "chat_completions"
+    normalized = base_url.rstrip("/")
+    binding_sha256 = hashlib.sha256(
+        summary.canonical(
+            {
+                "artifact_sha256": artifact_sha256,
+                "base_url": normalized,
+                "protocol": protocol,
+            }
+        )
+    ).hexdigest()
+    return {
+        protocol: {
+            "base_url": normalized,
+            "binding_sha256": binding_sha256,
+        }
+    }
 
 
 def _object(store, key: str) -> tuple[dict, bytes]:
@@ -507,17 +527,23 @@ def current(store, settings) -> dict | None:
         return None
     if (
         candidate_reference.get("schema_version") != "milk.candidate-reference.v2"
-        or proposal_reference.get("schema_version") != "milk.route-proposal-reference.v2"
+        or proposal_reference.get("schema_version") != "milk.route-proposal-reference.v3"
         or candidate_reference.get("scope_id") != settings.scope_id
         or proposal_reference.get("scope_id") != settings.scope_id
         or candidate_reference.get("sha256") != summary.digest(candidate_body)
         or proposal_reference.get("sha256") != summary.digest(proposal_body)
         or candidate.get("schema_version") != "milk.candidate.v2"
-        or proposal.get("schema_version") != "milk.route-proposal.v2"
+        or proposal.get("schema_version") != "milk.route-proposal.v3"
         or candidate.get("candidate_uuid") != candidate_reference.get("uuid")
         or proposal.get("proposal_uuid") != proposal_reference.get("uuid")
         or proposal.get("candidate") != candidate_reference
         or proposal.get("candidate_artifact_sha256") != candidate.get("artifact_sha256")
+        or not isinstance(candidate.get("provider"), dict)
+        or not isinstance(candidate["provider"].get("base_url"), str)
+        or proposal.get("candidate_protocols")
+        != _candidate_protocols(
+            candidate["provider"]["base_url"], candidate["artifact_sha256"]
+        )
     ):
         return None
     return {"candidate": candidate_reference, "proposal": proposal_reference}
@@ -557,24 +583,17 @@ def _finalize(
         "sha256": summary.digest(candidate_body),
         "artifact_sha256": artifact_sha256,
     }
-    binding_sha256 = hashlib.sha256(
-        json.dumps(
-            {"base_url": base_url, "artifact_sha256": artifact_sha256},
-            ensure_ascii=False,
-            separators=(",", ":"),
-        ).encode()
-    ).hexdigest()
+    candidate_protocols = _candidate_protocols(base_url, artifact_sha256)
     candidate_basis_points = _integer(
         "MILK_ROUTE_CANDIDATE_BPS", 10_000 if settings.profile == "mechanics" else 100, 1, 10_000
     )
     proposal_identity = {
-        "schema_version": "milk.route-proposal-identity.v3",
+        "schema_version": "milk.route-proposal-identity.v4",
         "scope_id": settings.scope_id,
         "profile": settings.profile,
         "candidate": candidate_reference,
-        "candidate_base_url": base_url,
         "candidate_artifact_sha256": artifact_sha256,
-        "candidate_binding_sha256": binding_sha256,
+        "candidate_protocols": candidate_protocols,
         "candidate_basis_points": candidate_basis_points,
         "fallback": "before_first_byte",
     }
@@ -583,7 +602,7 @@ def _finalize(
     proposal_key = settings.scope_prefix + f"p/{proposal_uuid}.json"
     proposal = {
         **proposal_identity,
-        "schema_version": "milk.route-proposal.v2",
+        "schema_version": "milk.route-proposal.v3",
         "proposal_uuid": proposal_uuid,
         "proposal_sha256": proposal_sha256,
         "candidate_api_key_env": candidate_api_key_env,
@@ -592,7 +611,7 @@ def _finalize(
     proposal_body = summary.canonical(proposal)
     store.create_same(proposal_key, proposal_body)
     proposal_reference = {
-        "schema_version": "milk.route-proposal-reference.v2",
+        "schema_version": "milk.route-proposal-reference.v3",
         "scope_id": settings.scope_id,
         "uuid": proposal_uuid,
         "key": proposal_key,
@@ -603,7 +622,7 @@ def _finalize(
     status_key = _advance_status(store, settings, candidate_reference, proposal_reference)
     result_key = prefix + "result.json"
     result = {
-        "schema_version": "milk.route-propose-result.v2",
+        "schema_version": "milk.route-propose-result.v3",
         "job_id": artifact_sha256,
         "state": "progressed",
         "next": "operator-sign-route",
@@ -625,7 +644,7 @@ def _finalize(
             "proposal_uuid": proposal_uuid,
             "provider": provider,
             "artifact_sha256": artifact_sha256,
-            "candidate_binding_sha256": binding_sha256,
+            "candidate_protocols": candidate_protocols,
         },
     }
 
@@ -750,7 +769,7 @@ def reconcile(store, settings, runtime) -> dict:
     try:
         result, unused = _object(store, result_key)
         if (
-            result.get("schema_version") != "milk.route-propose-result.v2"
+            result.get("schema_version") != "milk.route-propose-result.v3"
             or result.get("job_id") != artifact_sha256
             or not isinstance(result.get("candidate"), dict)
             or not isinstance(result.get("proposal"), dict)

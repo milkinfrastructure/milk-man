@@ -110,6 +110,12 @@ are `m/`, evaluations are `v/`, and unsigned proposals are `p/`. Immutable
 objects hold content; small conditional `current.json` pointers select the
 active revision.
 
+Route proposals list the native protocols a candidate actually implements and
+bind each protocol to its provider base URL and artifact digest. The current
+student server implements Chat Completions, so its proposal never diverts a
+Responses request; Parlor sends Responses directly to its separately configured
+native baseline.
+
 ## License
 
 Milk-owned code is Apache-2.0. The reduced Headlong derivative under

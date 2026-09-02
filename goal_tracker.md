@@ -794,26 +794,27 @@ The shared `$1,000` figure is only the supervised build-validation allowance. Do
 
 ## Signed routing
 
-Milk Man creates unsigned proposals only. An operator-run signer in `milk-parlor/scripts/sign-route` holds the private key outside both runtimes.
+Milk Man creates unsigned proposals only. The operator-run `milk-parlor/ops/publish-route.py` holds the private key outside both runtimes.
 
 A signed route contains:
 
 ```json
 {
-  "schema_version": "milk.route.v2",
+  "schema_version": "milk.route.v3",
   "route_id": "<uuidv7>",
   "scope_id": "<uuid>",
   "revision": 4,
-  "previous_route_id": "<uuid-or-null>",
-  "proposal_digest": "<sha256>",
-  "candidate_artifact_digest": "<sha256>",
-  "baseline_binding": "baseline",
-  "candidate_binding": "candidate-a",
-  "candidate_basis_points": 100,
-  "fallback": "before_first_byte",
-  "not_before": "<UTC>",
+  "baseline": "baseline",
+  "candidate": {
+    "target": "candidate-a",
+    "artifact_sha256": "<sha256>",
+    "basis_points": 100,
+    "protocols": {
+      "chat_completions": "<binding-sha256>"
+    }
+  },
+  "valid_from": "<UTC>",
   "expires_at": "<UTC>",
-  "signer_key_id": "<id>",
   "signature": "<ed25519>"
 }
 ```
@@ -824,6 +825,8 @@ Parlor:
 - caches routes independently per scope;
 - ignores an invalid or stale replacement;
 - routes baseline when no valid manifest exists;
+- tunnels Chat Completions and Responses to separate protocol-native baseline bindings;
+- considers a candidate only for protocols named and signed in the route;
 - selects the candidate deterministically from route ID and exchange UUID;
 - retries baseline only before any candidate headers or bytes reach the client;
 - never replays after streaming begins;
