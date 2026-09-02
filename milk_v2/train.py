@@ -201,7 +201,20 @@ def _completed(store, settings, runtime, client, config: dict, manifest: dict, j
     files = client.checkpoint_files(config["project_id"], provider_job["id"])
     result_file = next((item for item in files if item.get("relative_file_name", "").endswith("merged/milk-result.json")), None)
     if not result_file or not isinstance(result_file.get("url"), str):
-        raise ProviderError("completed Baseten job has no Milk result", client.calls)
+        return {
+            "state": "active",
+            "identity": job_id,
+            "artifacts": _artifacts(store, [prefix + "intent.json", prefix + "receipt.json"]),
+            "provider_calls": client.calls,
+            "next": "train",
+            "details": {
+                "provider": "baseten",
+                "project_id": config["project_id"],
+                "provider_job_id": provider_job["id"],
+                "status": "CHECKPOINT_SYNCING",
+                "visible_checkpoint_files": len(files),
+            },
+        }
     output, output_body = baseten.fetch_json(result_file["url"], client.timeout)
     expected_base = {"model_repo": runtime.student_base.model_repo, "model_revision": runtime.student_base.model_revision}
     if (
