@@ -346,12 +346,16 @@ PY
     LLM_API_URL="$(normalize_base_url "$controller_base_url")"
     LLM_MODEL="$controller_model"
     LLM_API_KEY="$controller_token"
+    # The controller is served with a 32K context. Leave room for the goal,
+    # skills, trajectory, and tool output instead of requesting Headlong's
+    # generic 16K completion ceiling.
+    LLM_MAX_TOKENS=4096
     provider_source="MILK_CONTROLLER"
-    export LLM_API_URL LLM_MODEL LLM_API_KEY
+    export LLM_API_URL LLM_MODEL LLM_API_KEY LLM_MAX_TOKENS
     export MILK_MAN_PROVIDER_SOURCE="$provider_source"
     export PATH="$normal_path"
     write_system "$ROOT/prompts/develop.md"
-    run_headlong "Controller ready. Continue the original task. First run milk status and inspect its result."
+    run_headlong "Controller ready. Continue the original task from this trajectory through the controller."
     exit 0
 fi
 
