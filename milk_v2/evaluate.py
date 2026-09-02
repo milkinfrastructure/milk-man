@@ -10,14 +10,14 @@ from . import dataset, summary, train
 from .providers import baseten
 
 
-CODE_VERSION = "milk.evaluate.v2.2"
+CODE_VERSION = "milk.evaluate.v2.3"
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-eval@sha256:[0-9a-f]{64}\Z")
 PROJECT = re.compile(r"[a-z0-9]{5,32}\Z")
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
 BASETEN_BASE_IMAGE = train.BASETEN_BASE_IMAGE
 TRANSFORMERS_SOURCE = train.TRANSFORMERS_SOURCE
-EVALUATE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/cdab2b85d0e2e008fa1f758fcd56a98ebc8c481b/images/eval/evaluate.py"
-EVALUATE_SOURCE_SHA256 = "e255a1f86e464697ab3e9d83809b310f77f2ed1feb8e957aa6837725041f085f"
+EVALUATE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/ddc04e9f0cf16e2a81a3ef07c0a3d1200b96c9eb/images/eval/evaluate.py"
+EVALUATE_SOURCE_SHA256 = "6df5432e835f70a6e6c2ad68b60895aeef042be08d97beb0a0da5bd45c1cede0"
 
 
 class EvaluateError(ValueError):
