@@ -322,6 +322,21 @@ PY
 
     controller_token="${!controller_api_key_env-}"
     [[ -n "$controller_token" ]] || die "$controller_api_key_env is required for the controller handoff"
+    MILK_MAN_CONTROLLER_URL="$controller_base_url" MILK_MAN_CONTROLLER_TOKEN="$controller_token" \
+    MILK_MAN_CONTROLLER_TIMEOUT="${MILK_MODAL_CONTROLLER_STARTUP_TIMEOUT:-1800}" \
+    PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
+import json, os, time
+from milk_v2.providers.modal_controller import request_until_ready, SERVED_MODEL
+
+body, error = request_until_ready(
+    os.environ["MILK_MAN_CONTROLLER_URL"].rstrip("/") + "/models",
+    os.environ["MILK_MAN_CONTROLLER_TOKEN"],
+    None,
+    time.monotonic() + int(os.environ["MILK_MAN_CONTROLLER_TIMEOUT"]),
+)
+if error or SERVED_MODEL not in {row.get("id") for row in json.loads(body).get("data", []) if isinstance(row, dict)}:
+    raise SystemExit("milk-man: controller did not become ready for handoff")
+PY
     unset "$controller_api_key_env"
     while read -r name; do
         case "$name" in MILK_BOOTSTRAP_*|MILK_MODAL_*|MODAL_*) unset "$name" ;; esac
