@@ -919,7 +919,8 @@ Progress 2026-09-01:
 - [x] Installed this file as the sole active repository tracker and removed the previous `GOAL.md`.
 - [x] Reduced Milk Man to 38 tracked files and 5,851 lines, committed the result as independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171`, and removed the stale Prime upstream remote.
 - [x] Published independent-root default histories. Recorded checkpoints include Milk Man `530235a879c3078623ef2f69e3fb830667a9e496` and Milk Parlor `70dba12f96a12feedf7ed13b605f20d05ebefd23`; the verified local bundle preserves the obsolete history.
-- [ ] Detach Milk Man's GitHub fork metadata and remove the 56 legacy remote branches after confirming the retained bundle; GitHub still reports `fork: true` with parent `PrimeIntellect-ai/prime-agent`.
+- [x] After verifying the retained all-history bundle, removed all 55 obsolete `origin/codex/*` branches; `origin/main` is now the only remote branch.
+- [ ] Detach Milk Man's GitHub fork metadata; GitHub still reports `fork: true` with parent `PrimeIntellect-ai/prime-agent` and the signed-in detach flow is waiting for passkey confirmation.
 
 Objective:
 
@@ -994,6 +995,7 @@ Progress 2026-09-01:
 - [x] Deployed immutable Cloudflare Registry image digest `sha256:456a38baf70bd08ab8d10724f8873466b99277d7476dcb1095ae501d08130387` at `parlor.milkinfrastructure.com`; official OpenAI Python SDK authentication, baseline inference, asynchronous R2 persistence, and exact sent/returned body identity passed.
 - [x] A 99-request burst exposed the bounded writer queue without blocking successful customer responses: 23 captures dropped and zero storage writes failed. A follow-up 24-request run at concurrency four returned 24/24 and added zero drops. This is capacity evidence, not a production qualification claim.
 - [x] Retained the content-free live vertical receipt at `/Users/shantanu/milk-release-evidence/milk-v2-live-20260901/report.json`, SHA-256 `cda2ed3e33acea77bef2c710fd64c558e033e3441426e10a245c6a8d45a70caa`.
+- [x] Replaced the single ambiguous upstream binding with native Chat Completions and Responses bindings. Local direct smoke routed Chat to Baseten and Responses to OpenAI without translation; each returned the requested output and advertised only its configured protocol.
 - [ ] Record a controlled warm capture-enabled-versus-disabled timing comparison before claiming a capture overhead bound.
 
 Owned:
@@ -1278,6 +1280,7 @@ Progress 2026-09-01:
 - [x] Higher revision 3 (`c4668940-9131-4b67-a434-a834844b4e8c`) rolled exposure back from 100% to a 1% canary; capture `01a0606f-4638-7772-8fcc-c80e9175984b` bound that route and selected baseline with no fallback.
 - [x] Signed zero revision 4 (`ce2f4d88-0107-429f-89a7-6a9083c14a18`) removed candidate identity and basis points. Capture `01a0606f-feca-7280-a6ec-fd529cea9f00` bound the zero route and returned baseline `200`; Cloudflare version `d1b61ee7-ce8f-47c3-b90e-4c1e61314537` contains no candidate URL, credential, or artifact binding.
 - [x] Retained the content-free candidate, fallback, rollback, provider-drain, and zero-route receipt at `/Users/shantanu/milk-release-evidence/milk-v2-live-candidate-20260901/report.json`, SHA-256 `33f94057a7ae1ef700d4d16cbb335d958c193d4365033cfad1b05836aa6cb889`.
+- [x] Published Parlor `f0b476b1a7c41ae3b0c7739aeadb06e82b3bcb0e` and Milk Man `7b528a60c3137d5c7c7a033691383c043de7bcfd`: route v3 signs protocol-specific upstream bindings, Parlor forwards `/v1/chat/completions` and `/v1/responses` unchanged, and Milk Man proposes only protocols its candidate actually implements. There is no cross-protocol translation or legacy route reader.
 - [ ] Finish the concise public release docs and tagged release metadata; remove old public names, runtime Actions, unused images, fixtures, and transition documents.
 
 Owned:
