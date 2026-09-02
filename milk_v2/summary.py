@@ -671,6 +671,8 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
     request_ids = []
     tool_calls_seen = 0
     read_seen = False
+    last_tools: list[str] = []
+    last_rejection = "none"
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="milk-summary-") as directory:
         root = Path(directory)
@@ -733,6 +735,7 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
             messages.append(assistant_message)
             committed = None
             can_commit = read_seen
+            last_tools = []
             for call in tool_calls:
                 try:
                     call_id = call["id"]
@@ -743,15 +746,18 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
                     raise ProviderError("summary provider returned an invalid Milk tool call") from error
                 if not isinstance(call_id, str) or not call_id or call.get("type") != "function" or not isinstance(arguments, dict):
                     raise ProviderError("summary provider returned an invalid Milk tool call")
+                last_tools.append(name)
                 if name == "milk_job_commit":
                     if set(arguments) != {"result"} or not isinstance(arguments["result"], dict) or committed is not None:
                         raise ProviderError("summary provider returned an invalid Milk commit")
                     if not can_commit:
+                        last_rejection = "commit_before_read"
                         messages.append({"role": "tool", "tool_call_id": call_id, "name": name, "content": canonical({"accepted": False, "error": "read the prepared input before committing"}).decode()})
                         continue
                     try:
                         labels = _label_contract(arguments["result"], expected_sample)
                     except ProviderError as error:
+                        last_rejection = str(error)
                         messages.append({"role": "tool", "tool_call_id": call_id, "name": name, "content": canonical({"accepted": False, "error": str(error)}).decode()})
                         continue
                     committed = {"schema_version": "milk.semantic-labels.v2", "labels": labels}
@@ -782,7 +788,9 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
                     "output_sha256": digest(committed),
                 }
                 return committed, receipt
-    raise ProviderError("summary provider did not commit within four turns")
+    raise ProviderError(
+        f"summary provider did not commit within four turns: tools={','.join(last_tools)} rejection={last_rejection}"
+    )
 
 
 def _semantic_counts(labels: list[dict], previous: dict | None) -> dict:
