@@ -494,8 +494,9 @@ readiness/<readiness_uuid>.json
 readiness/current.json
 
 e/<eval_uuid>/source.json.zst
-e/<eval_uuid>/eval.jsonl.zst
-e/<eval_uuid>/validation.json
+e/<eval_uuid>/manifest.json
+e/<eval_uuid>/cases/<first_case_ordinal>-<last_case_ordinal>.jsonl.zst
+e/<eval_uuid>/validation/<first_case_ordinal>-<last_case_ordinal>.json
 e/current.json
 
 d/<dataset_uuid>/manifest.json
@@ -680,6 +681,43 @@ Mechanics scopes can become mechanics-ready but can never produce a production-q
 
 A ready summary triggers a fixed teacher job selected through `MILK_EVAL_*`.
 
+The first scale target is explicit:
+
+```text
+100 complete two-sided gateway exchanges
+-> one summary/classification checkpoint
+-> 100,000 validated eval cases
+```
+
+The 100 exchanges define the source distribution, not a one-case-per-exchange
+limit. The versioned split policy first assigns source digests; only held-out
+eval source seeds expand into eval cases, while train sources remain isolated.
+`MILK_EVAL_TARGET_CASES` selects the reviewed corpus size and is `100000` for
+this target. Milk Man creates a deterministic ordinal/source plan, generates
+cases in bounded batches, and writes compressed immutable shards.
+`MILK_EVAL_SHARD_CASES` is fixed in the eval revision identity; changing it
+creates a new revision. Case IDs, order, and source assignment remain
+deterministic within that revision.
+
+Each shard identity binds the immutable eval revision, ordinal range, selected
+source digests, and prompt/model/config digests. A repeated `bin/milk operate
+--once` resumes at the first absent shard. It never regenerates a completed
+shard and never loads or rewrites the full corpus. The final manifest binds the
+ordered shard keys, digests, ranges, and counts.
+`e/current.json` advances only after the manifest accounts for exactly 100,000
+unique validated cases and every referenced shard digest exists. Generation
+and independent validation are batched model calls; there is no requirement or
+design for one inference request per eval case.
+
+The existing four-case mechanics path proves orchestration, training splits,
+and GPU execution quickly. It is not evidence that the 100,000-case corpus has
+been generated. Production traffic and generated mechanics traffic remain
+separate scopes.
+
+The first 100-to-100,000 proof is an explicit mechanics run with
+`MILK_EVAL_MIN_CAPTURES=100`; it does not change the production default of
+1,000 independent captures and cannot qualify a production route.
+
 The deterministic plan selects:
 
 - 24 representative cases by cycling through populated operation categories and choosing the lowest deterministic hash;
@@ -697,6 +735,12 @@ The generated eval must bind source digests without copying raw source text into
 - no unsupported tool or multimodal requirement;
 - source separation from training data;
 - one independent validator verdict per case.
+
+At the 100,000-case target the representative/tail selection above allocates
+source coverage; deterministic expansion supplies multiple cases per source
+while retaining each source digest and category cell. Case IDs are derived
+from the eval revision and ordinal so sharding and retries cannot duplicate or
+renumber them.
 
 Invalid output receives one bounded repair prompt. A still-invalid revision remains an unreferenced job result and does not advance `e/current.json`.
 
@@ -1216,7 +1260,7 @@ Acceptance:
 
 Do not continue to eval implementation until this vertical is retained.
 
-### [x] P7 — Eval generation
+### [~] P7 — Eval generation
 
 Completed 2026-09-01:
 
@@ -1226,6 +1270,7 @@ Completed 2026-09-01:
 - [x] A separate rejection smoke proved one validator rejection, one repair, acceptance in ten turns, zero-call replay, and `milk status` advancing to `dataset`.
 - [x] Published `672b58cbe` and `3ec05028f`; the pinned Qwen3.5-0.8B student contract and separate high-intelligence eval/validator bindings remained intact.
 - [x] The fresh threshold-100 R2 scope generated and independently validated eval `eee146fd-d026-59dd-ac6d-4d44a2c04613` through separate OpenAI Responses bindings using `gpt-5.6-sol` at low reasoning effort. It accepted one bounded case in eight inference calls, made zero provider calls, and replayed with zero calls.
+- [ ] Expand one 100-exchange summary checkpoint into exactly 100,000 validated eval cases using deterministic, resumable R2 shards. A small mechanics corpus proves the job graph but does not satisfy this scale target.
 
 Owned:
 
@@ -1272,6 +1317,7 @@ Progress 2026-09-01:
 - [x] The two successful train jobs used the same short train object but different behavior-affecting configurations (`max_tokens` 512 versus 2048 and different configuration digests). Their identical loss and weights do not justify weakening the idempotency identity; future milestones must freeze reviewed settings rather than deduplicate raw bytes unsafely.
 - [x] Retained the combined threshold-100/101 proof at `/Users/shantanu/milk-release-evidence/milk-v2-threshold100-openai-20260902/report.json`, SHA-256 `4a839fc1ca14b2c29c0fa7f0b357978e781e14299e34aac22f2a229d72efb5ba`, and the content-free Baseten log audit at `/Users/shantanu/milk-release-evidence/milk-v2-baseten-log-audit-20260902/report.json`, SHA-256 `958bf46d4047440670b11527c997138902d6daf26bb8ba8e0062f69312246a54`.
 - [x] Corrected the mechanics default from one eval case, which can never populate every evaluation split, to four deterministic cases. Capture 101 produced a new readiness checkpoint, eval `bc52afeb-ed92-5ead-a899-9c284be20f80`, and training-ready dataset `8ded3d52-267f-5f83-8720-12e7dd994138` with exact counts train 1, DEV 2, calibration 1, sealed 1. The dataset job used two OpenAI teacher calls and zero GPU/provider calls.
+- [x] Continued that exact 101-exchange R2 lineage through Baseten training job `31e2jgw`, model `4a71ef5f-41d7-5d6f-ae70-1eabc539313b`, three concurrent DEV jobs `q4zo293`, `3m7l8k3`, and `q89opd3`, BF16 winner, sealed job `32v2d9q`, and evaluation group `e379512d-2a32-5ac1-93b8-1bcd607e6213`. The explicit Modal job reused app `ap-7rNqluqdixBxzCzGhiIkwY`, passed authenticated candidate inference, wrote candidate `a27a19e7-54fd-511f-a6b3-8924a7287484` and unsigned proposal `09588041-f3a2-5d56-9f3c-cf8419cd904f`, then stopped with zero containers. A fresh Baseten listing also reported zero active jobs. This remains mechanics evidence.
 
 Owned:
 
@@ -1355,7 +1401,7 @@ Progress 2026-09-02:
 
 - [x] Provider logs show the current Baseten compatibility path repeatedly installs apt and Python packages before a one-step job. This dominates the useful mechanics work and is the largest measured remaining latency and failure surface.
 - [x] GitHub Actions has already published immutable weight-free train, eval, and serve images; model weights remain separately mounted.
-- [~] The local fixed train/eval job definitions now use the published digest-pinned images directly and contain no per-job apt, pip, or raw-source download commands. The images are anonymously pullable from GHCR; one Baseten run remains blocked on account-level custom-base-image enablement.
+- [~] The published digest-pinned images are anonymously pullable from GHCR, but Baseten still rejects them because account-level custom-base-image access is disabled. To continue the requested happy-path mechanics execution, the local fixed Baseten jobs temporarily use the previously proven pinned CUDA base plus digest-verified source; this reintroduces per-job package startup and does not satisfy this optimization milestone.
 - [x] TorchAO 0.18 still lists dynamic FP8 as stable but keeps static activation FP8 under `prototype`. Do not replace the known mechanics implementation with another unstable API or use its tiny-set result for production; BF16 and stable dynamic FP8 remain production candidates until a stable calibrated static path exists.
 - [x] The reviewed evaluation policy runs all three comparable DEV branches in mechanics but only BF16 and dynamic FP8 in production, so a prototype static job cannot block or win the production path. The chosen branch is bound through the sealed result, candidate artifact, direct-image Baseten config, separately invoked Modal job environment, server health, and smoke identity.
 - [x] Direct local payload smokes verified one-command train/eval startup, external Qwen3.5-0.8B weights, prior-checkpoint loading, zero runtime install commands, dynamic-over-static production selection, all-branch serving environments, and static-only activation-scale propagation.
@@ -1428,6 +1474,7 @@ The goal is complete only when:
 - `parlor.milkinfrastructure.com` accepts an operator-issued key through the official SDK and asynchronously writes exact two-sided traffic into R2.
 - Local and scheduled Milk Man consume the same remote store through environment bindings.
 - Production-like traffic progresses through summary, classification, readiness and validated eval generation.
+- One 100-exchange source scope produces a resumable, independently validated 100,000-case eval corpus without rewriting completed shards.
 - The full whiteboard model loop produces a trained Qwen3.5-0.8B student from
   maximum-intelligence teacher data, three comparable branches, deterministic
   winner, sealed result and unsigned proposal.

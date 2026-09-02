@@ -10,10 +10,14 @@ from . import dataset, summary, train
 from .providers import baseten
 
 
-CODE_VERSION = "milk.evaluate.v2.5"
+CODE_VERSION = "milk.evaluate.v2.6"
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-eval@sha256:[0-9a-f]{64}\Z")
 PROJECT = re.compile(r"[a-z0-9]{5,32}\Z")
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
+BASETEN_BASE_IMAGE = train.BASETEN_BASE_IMAGE
+TRANSFORMERS_SOURCE = train.TRANSFORMERS_SOURCE
+EVALUATE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/ddc04e9f0cf16e2a81a3ef07c0a3d1200b96c9eb/images/eval/evaluate.py"
+EVALUATE_SOURCE_SHA256 = "6df5432e835f70a6e6c2ad68b60895aeef042be08d97beb0a0da5bd45c1cede0"
 
 
 class EvaluateError(ValueError):
@@ -123,6 +127,9 @@ def _settings(settings, dataset_reference: dict, model_reference: dict, model: d
         "project_id": project_id,
         "source_job_id": provider["job_id"],
         "release_image": image,
+        "baseten_base_image": BASETEN_BASE_IMAGE,
+        "evaluate_source_url": EVALUATE_SOURCE_URL,
+        "evaluate_source_sha256": EVALUATE_SOURCE_SHA256,
         "accelerator": accelerator,
         "availability_model": "dedicated",
         "runtime_secret_map": secret_map,
@@ -170,9 +177,21 @@ def _job_body(settings, plan: dict) -> dict:
         "MILK_EVALUATE_SPLIT": config["split"],
         "MILK_EVALUATE_MAX_NEW_TOKENS": str(config["max_new_tokens"]),
     }
+    packages = f"boto3==1.40.40 {TRANSFORMERS_SOURCE} zstandard==0.25.0"
+    setup = []
+    if config["branch"] != "bf16":
+        environment["CC"] = "/usr/bin/gcc"
+        packages += " torchao==0.15.0"
+        setup.append("apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*")
     environment.update({name: {"name": secret} for name, secret in config["runtime_secret_map"].items()})
+    fetch_source = (
+        "python -c \"import hashlib,urllib.request;"
+        f"u='{config['evaluate_source_url']}';b=urllib.request.urlopen(u,timeout=30).read();"
+        f"assert hashlib.sha256(b).hexdigest()=='{config['evaluate_source_sha256']}';"
+        "open('/tmp/milk-evaluate.py','wb').write(b)\""
+    )
     return {
-        "image": {"base_image": config["release_image"], "docker_auth": None},
+        "image": {"base_image": config["baseten_base_image"], "docker_auth": None},
         "compute": {
             "node_count": 1,
             "cpu_count": 4,
@@ -182,7 +201,10 @@ def _job_body(settings, plan: dict) -> dict:
         },
         "runtime": {
             "start_commands": [
-                "python /opt/milk/evaluate.py",
+                *setup,
+                f"python -m pip install --no-cache-dir {packages}",
+                fetch_source,
+                "python /tmp/milk-evaluate.py",
             ],
             "environment_variables": environment,
             "cache_config": {"enabled": True, "require_cache_affinity": False},
@@ -268,7 +290,7 @@ def _completed(store, settings, runtime, client, plan: dict, provider_job: dict)
         "branch": config["branch"],
         "split": config["split"],
         "provider": {"name": "baseten", "project_id": config["project_id"], "job_id": provider_job["id"], "status": provider_job["current_status"]},
-        "images": {"runtime": config["release_image"]},
+        "images": {"release": config["release_image"], "provider_base": config["baseten_base_image"]},
         "output_sha256": summary.digest(output_body),
         "case_ids": output["case_ids"],
         "quantization": quantization,
