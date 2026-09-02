@@ -97,7 +97,6 @@ def _eligible(label: dict) -> bool:
         label.get("abstain") is False
         and label.get("answerable") is True
         and label.get("safety") == "benign"
-        and label.get("oracle") in ORACLES
         and modalities == ["text"]
         and label.get("tool_definitions") == 0
         and label.get("tool_calls") == 0
@@ -145,7 +144,8 @@ def build(labels: list[dict], profile: str) -> dict:
             continue
         if split == "train":
             continue
-        candidate = {**label, "split": split}
+        oracle = label.get("oracle")
+        candidate = {**label, "oracle": oracle if oracle in ORACLES else "reference", "split": split}
         prior = distinct.get(request_sha256)
         if prior is None or content_sha256 < prior["content_sha256"]:
             distinct[request_sha256] = candidate
