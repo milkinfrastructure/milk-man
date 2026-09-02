@@ -34,13 +34,13 @@ def _endpoint(prefix: str) -> tuple[str, str, str]:
     return base + ("" if parsed.path.rstrip("/") == "/v1" else "/v1") + "/chat/completions", model, api_key
 
 
-def _timeout() -> int:
+def _timeout(name: str) -> int:
     try:
-        value = int(os.environ.get("MILK_EVAL_TIMEOUT_SECONDS", "180"))
+        value = int(os.environ.get(name, "180"))
     except ValueError as error:
-        raise ProviderError("MILK_EVAL_TIMEOUT_SECONDS must be an integer") from error
+        raise ProviderError(f"{name} must be an integer") from error
     if not 1 <= value <= 3600:
-        raise ProviderError("MILK_EVAL_TIMEOUT_SECONDS must be in 1..3600")
+        raise ProviderError(f"{name} must be in 1..3600")
     return value
 
 
@@ -60,9 +60,14 @@ def _tools(job: str, result_schema: dict) -> list[dict]:
     ]
 
 
-def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: dict, validate) -> tuple[dict, dict]:
+def binding(prefix: str) -> dict:
+    endpoint, model, unused_api_key = _endpoint(prefix)
+    return {"endpoint": endpoint, "model": model}
+
+
+def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: dict, validate, timeout_env="MILK_EVAL_TIMEOUT_SECONDS") -> tuple[dict, dict]:
     endpoint, model, api_key = _endpoint(prefix)
-    timeout = _timeout()
+    timeout = _timeout(timeout_env)
     input_sha256 = digest(input_value)
     messages = [{
         "role": "user",

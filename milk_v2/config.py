@@ -90,7 +90,7 @@ BINDING_ENVIRONMENTS = {
     },
     "teacher": {
         "required": ("MILK_TEACHER_BASE_URL", "MILK_TEACHER_MODEL", "MILK_TEACHER_API_KEY"),
-        "optional": (),
+        "optional": ("MILK_DATASET_TRAIN_EXAMPLES", "MILK_DATASET_TEXT_BYTES"),
     },
     "modal": {
         "required": ("MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"),
