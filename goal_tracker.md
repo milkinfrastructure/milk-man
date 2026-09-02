@@ -123,7 +123,8 @@ Production mode:
 - It lists object metadata, selects the next ready job deterministically, progresses all immediately ready work, then exits.
 - It stops after evaluation at the provider-selection boundary. Status reports
   the availability and missing environment names for both provider jobs; the
-  Milk Man system prompt and operator task select exactly one.
+  result says `next: select-route-provider`, and the Milk Man system prompt and
+  operator task select exactly one named job.
 - When nothing changed, it makes zero inference and provider calls.
 - Semantic jobs run a restricted Headlong session with a fixed job-specific system prompt and only `milk job read`, `milk job commit`, and `milk status` available.
 - Production never reads development trajectories, coding memories, workspaces, or editing skills.
@@ -1359,6 +1360,10 @@ Progress 2026-09-02:
 - [x] The reviewed evaluation policy runs all three comparable DEV branches in mechanics but only BF16 and dynamic FP8 in production, so a prototype static job cannot block or win the production path. The chosen branch is bound through the sealed result, candidate artifact, direct-image Baseten config, separately invoked Modal job environment, server health, and smoke identity.
 - [x] Direct local payload smokes verified one-command train/eval startup, external Qwen3.5-0.8B weights, prior-checkpoint loading, zero runtime install commands, dynamic-over-static production selection, all-branch serving environments, and static-only activation-scale propagation.
 - [x] Train and evaluate now resolve only store and Baseten bindings. Modal credentials enter only the explicit controller, candidate-serving, and GPU-reconciliation jobs that use them.
+- [x] Actions run `33604701119` completed successfully for source `a3cd3c24c7924ebe3d0d35e7fc8c1754288a8925` and published the coordinated train, eval, and serve images at digests `sha256:93f6a973d2e7b04e3dfc0c9807b5b83cb661601ebfbc1e371659b2530a9dd16f`, `sha256:04f337317515b94972273534491cbd533bbeebb399a13386ec2bb9aae4acf4e0`, and `sha256:e0e0afae1f70cc0a0f7e920440a27a40a364f5279196c5af34de471101d95524`.
+- [x] A direct Baseten invocation bound the exact training image and ready dataset `8ded3d52-267f-5f83-8720-12e7dd994138`, then failed before provider-job creation because custom base images are not enabled for the organization. A fresh provider listing found zero active training jobs; do not retry until Baseten changes the account capability.
+- [x] Published `3aaf1dd22e86ea8fc11d7512c92dd5070af7e83c`: Baseten and Modal candidate serving are separate env-bound jobs selected by Milk Man or the operator. Neither job invokes the other, and `operate --once` stops at `select-route-provider`.
+- [x] Retained the content-free build/provider receipt at `/Users/shantanu/milk-release-evidence/milk-v2-direct-images-20260902/report.json`, SHA-256 `0824cbe24ca069b06bee966dae8dc8271f203aa8daa7e900c18b592e52d43386`.
 
 Acceptance:
 

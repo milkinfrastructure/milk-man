@@ -560,7 +560,11 @@ def current(store, settings) -> dict | None:
         or proposal.get("proposal_uuid") != proposal_reference.get("uuid")
         or proposal.get("candidate") != candidate_reference
         or proposal.get("candidate_artifact_sha256") != candidate.get("artifact_sha256")
+        or not isinstance(candidate.get("identity"), dict)
+        or candidate["identity"].get("schema_version") != "milk.candidate-artifact-identity.v3"
+        or candidate.get("artifact_sha256") != summary.digest(candidate["identity"])
         or not isinstance(candidate.get("provider"), dict)
+        or candidate["identity"].get("serving_provider") != candidate["provider"].get("name")
         or not isinstance(candidate["provider"].get("base_url"), str)
         or proposal.get("candidate_protocols")
         != _candidate_protocols(

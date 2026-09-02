@@ -398,11 +398,11 @@ def _finalize(store, settings, base: dict, policy: dict, eligible_branches: list
     status, unused = _object(store, status_key)
     if status.get("schema_version") != "milk.status.v2" or status.get("scope_id") != settings.scope_id:
         raise EvaluateError("current status identity differs")
-    summary._advance(store, status_key, {**status, "evaluation": reference, "next_action": "route-propose"})
+    summary._advance(store, status_key, {**status, "evaluation": reference, "next_action": "select-route-provider"})
     result_key = settings.scope_prefix + f"j/evaluate-group/{group_identity}/result.json"
-    result = {"schema_version": "milk.evaluate-group-result.v2", "evaluation": reference, "state": "progressed", "next": "route-propose", "artifact_keys": [group_key, status_key, result_key]}
+    result = {"schema_version": "milk.evaluate-group-result.v2", "evaluation": reference, "state": "progressed", "next": "select-route-provider", "artifact_keys": [group_key, status_key, result_key]}
     store.create_same(result_key, summary.canonical(result))
-    return {"state": "progressed", "identity": group_identity, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": 0, "next": "route-propose", "details": {"evaluation_group_uuid": group_uuid, "winner": winner, "sealed_evaluation_uuid": sealed["evaluation_uuid"]}}
+    return {"state": "progressed", "identity": group_identity, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": 0, "next": "select-route-provider", "details": {"evaluation_group_uuid": group_uuid, "winner": winner, "sealed_evaluation_uuid": sealed["evaluation_uuid"]}}
 
 
 def current(store, settings, runtime) -> dict | None:

@@ -172,7 +172,7 @@ def _operate(store, settings, runtime):
         ("eval", _eval_gate, "dataset"),
         ("dataset", _dataset_gate, "train"),
         ("train", _train_gate, "evaluate"),
-        ("evaluate", _evaluate_gate, "route-propose"),
+        ("evaluate", _evaluate_gate, "select-route-provider"),
     ):
         result = gate(store, settings, runtime)
         results.append((name, result))
@@ -264,7 +264,7 @@ def _status(store, settings, runtime):
     next_job = (
         "operator-sign-route"
         if details["proposal_current"]
-        else "route-propose"
+        else "select-route-provider"
         if details["evaluation_current"]
         else "evaluate"
         if details["training_current"] and details["training_ready"]
@@ -472,11 +472,11 @@ def main(argv: list[str] | None = None) -> None:
     except route_job.ProviderError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         code = EXIT_INTERNAL if error.ambiguous else EXIT_PROVIDER
-        next_job = job_name if job_name in {"route-propose-baseten", "route-propose-modal"} else "route-propose"
+        next_job = job_name if job_name in {"route-propose-baseten", "route-propose-modal"} else "select-route-provider"
         _emit(_result(job_name or command, "failed", scope_id, identity, next_job=next_job, error=str(error), provider_calls=error.provider_calls), code)
     except route_job.RouteError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
-        next_job = job_name if job_name in {"route-propose-baseten", "route-propose-modal", "gpu-reconcile-modal"} else "route-propose"
+        next_job = job_name if job_name in {"route-propose-baseten", "route-propose-modal", "gpu-reconcile-modal"} else "select-route-provider"
         _emit(_result(job_name or command, "failed", scope_id, identity, next_job=next_job, error=str(error)), EXIT_CONFIG)
     except summary.SummaryError as error:
         identity = _json_digest({"command": argv, "error": str(error)})

@@ -84,8 +84,8 @@ and GPU providers use the reviewed environment-variable names in
 paths.
 
 Candidate serving is exposed as separate `route-propose-baseten` and
-`route-propose-modal` jobs. `operate --once` stops after evaluation rather than
-selecting a provider. Status reports each job's availability and missing
+`route-propose-modal` jobs. `operate --once` stops after evaluation with
+`next: select-route-provider`. Status reports each job's availability and missing
 environment names; Milk Man selects exactly one from its system prompt and
 operator task, or the operator invokes one directly. A provider error never
 invokes the other provider.
