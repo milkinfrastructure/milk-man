@@ -936,7 +936,7 @@ Acceptance:
 - new repositories contain only minimal source plus concise license, notice, security, contribution, tracker, and image-release metadata;
 - progress uses `[x]`, `[~]`, and `[ ]`, with evidence required for `[x]`.
 
-### [~] P1 — Minimal Milk Man development harness
+### [x] P1 — Minimal Milk Man development harness
 
 Progress 2026-09-01:
 
@@ -944,7 +944,7 @@ Progress 2026-09-01:
 - [x] Replayed two-workspace configuration and exact-workspace resume locally without Docker; a mismatched workspace set fails closed.
 - [x] Proved one complete localhost OpenAI-compatible model loop that read a skill, wrote bounded memory, and retained trajectory records.
 - [x] Retained the post-cut local receipt at `/Users/shantanu/milk-release-evidence/milk-v2-local-postcut-20260901/report.json`, SHA-256 `750c9a8d3c728295184176c514e96393340f265df44420df7247713d584c1571`.
-- [ ] Run one retained bounded edit and reviewable commit against the actual Milk repositories using the configured bootstrap provider.
+- [x] Baseten `zai-org/GLM-5.3-Flash` resumed trajectory `d5985d21-2da8-4acb-ae83-93cad42857ff`, read `milk-system`, inspected both repositories, found the unauthenticated platform-readiness probe blocker, changed only `images/serve/server.py`, passed `py_compile`, and retained reviewable commit `2068b4026` with no provider lifecycle, push, deploy, or route action.
 
 Owned:
 
@@ -1024,7 +1024,7 @@ Excluded:
 
 P1 and P2 proceed in parallel after P0.
 
-### [~] P3 — Deterministic Milk job runtime
+### [x] P3 — Deterministic Milk job runtime
 
 Progress 2026-09-01:
 
@@ -1094,7 +1094,7 @@ Acceptance:
 
 P4 may implement against the P3 CLI contract while P3 is finishing.
 
-### [~] P5 — Summary, classification and readiness
+### [x] P5 — Summary, classification and readiness
 
 Progress 2026-09-01:
 
