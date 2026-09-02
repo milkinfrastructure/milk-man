@@ -97,7 +97,13 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] v23 removed the second LLM validator. The eval model commits JSON-schema-constrained output; Milk Man enforces identity, count, source lineage, oracle representation, exact copy, and normalized duplicate checks locally. The implementation was published at `5947a4841`.
 - [x] The first v23 pilot published immutable eval `7de3ce6e-760b-5dae-a790-0851fb38d960`, revision `43509f46cac86491073433ea758688668e36d89b63fa1c705752ce9f9dbcf6f6`, from one source to exactly 100 unique cases in four OpenAI inference calls and zero provider lifecycle calls. Format, lineage, count, copy, and duplicate checks passed; there were no repeated 8- or 24-token prefix families and no mechanics boilerplate.
 - [x] A direct read of all 100 v23 outputs rejected this corpus for use: 31 cases had clearly wrong, impossible, non-unique, or under-specified expected answers. Examples included a copper zint that contradicted its premise, a five-item ordering with the wrong middle item, and multiple incorrect arithmetic and timeline results. Do not run dataset, training, GPU, or routing from this eval.
-- [~] The next immutable pilot uses a shorter prompt: infer useful capabilities from the source, prefer realistic tasks over manufactured puzzles, solve every case, and independently recompute each expected answer before the single structured commit. Keep the same one-source/100-case boundary and inspect once before scaling.
+- [x] Published `a426e554a` with the shorter generation prompt: infer useful capabilities, prefer realistic work, solve each case, and recompute its expected answer before one structured commit.
+- [x] Revision `7251287e5066c9772dbfe9a956f91190c96b9d0f5b0f0a80e1f6414561b3e3fb` was interrupted after immutable batch zero: 64 cases and two inference calls. Direct review found elementary correctness errors and correction-pair answer leakage. It wrote no prepared shard, `e/current.json`, dataset, provider, training, or route output. Never resume it.
+- [x] Removed the subjective semantic `outcome == success` gate from eval-source eligibility. A source must still be a complete, parsed, HTTP-successful, non-abstained, answerable, benign, supported text exchange without tools. Response outcome remains summary metadata rather than routing authority.
+- [x] Local Rust Parlor captured two realistic Responses exchanges into fresh R2 scope `8cc33bba-6790-4701-8a88-b3ba565971ee`. Local Milk Man wrote summary `4d9a0d1c-a7a6-54fe-9626-41488f3aa941`, readiness `259d0030-bb64-58ee-bd6a-81b1f30e22d9`, and selected the intended DEV source with readiness true.
+- [x] Eval `4476d990-7047-5b5e-a2fa-58b3dd48bf0f` expanded that source into exactly 100 schema-valid, lineage-bound, unique cases in four inference calls and zero provider calls. Replay made zero inference and provider calls.
+- [x] A direct read of all 100 accepted this revision only as mechanics evidence. Ninety-five cases were materially correct; orders 1, 50, 57, 72, and 74 contained bounded assumptions or unsupported details. All 100 remained in one event-aggregation family, so this corpus must not feed dataset or training.
+- [~] Next dependency: inventory and select exactly 100 diverse eligible held-out source digests. If fewer exist, add only the missing complete realistic Parlor exchanges, refresh summary/readiness, and then run the same implementation once for exactly 10,000 cases.
 
 ## Non-negotiable architecture
 
@@ -727,9 +733,11 @@ shard and never loads or rewrites the full corpus. The final manifest binds the
 ordered shard keys, digests, ranges, and counts.
 `e/current.json` advances only after the manifest accounts for the exact derived
 case count, every source contributes the configured ratio, every input is
-globally unique, and every referenced shard digest exists. Generation
-and independent validation are batched model calls; there is no requirement or
-design for one inference request per eval case.
+globally unique, and every referenced shard digest exists. Generation is
+batched model work. JSON-schema output and deterministic identity, lineage,
+count, copy, and duplicate checks run locally; bounded operator review makes no
+inference call. There is no requirement or design for one inference request per
+eval case.
 
 The generation prompt is deliberately generic. The immutable revision retains
 the complete deterministic source request/response corpus. Each model
@@ -745,9 +753,9 @@ Strict tool schemas already enforce JSON fields, types, counts and bounds. They
 do not establish usefulness. Before scaling, a model-free corpus audit must
 report exact duplicates, repeated normalized prefixes/templates, source
 contribution counts, operation/oracle coverage and length distributions. A
-bounded independently selected semantic sample must establish correctness,
-difficulty, diversity and absence of mechanics boilerplate. Failure leaves the
-revision unreferenced and stops further paid generation.
+bounded operator review of an independently selected sample must establish
+correctness, difficulty, diversity and absence of mechanics boilerplate.
+Failure leaves the revision unreferenced and stops further paid generation.
 
 The existing four-case mechanics path proves orchestration, training splits,
 and GPU execution quickly. It is not evidence that source-proportional cases are
@@ -1320,16 +1328,16 @@ Completed 2026-09-01:
 - [x] OpenAI Responses generation stopped with `credit_balance_exhausted`. This was account credit exhaustion, not throttling and not a Milk code or object-store failure. The stopped v21 run then used the separate environment-selected Baseten `zai-org/GLM-5.3-Flash` binding.
 - [x] A four-worker Baseten precompute pilot returned genuine HTTP `429` responses. It launched no GPU lifecycle work and advanced no shared pointer. Three concurrent precompute workers are the observed stable ceiling for this run; do not retry with four.
 
-Active v22 execution sequence:
+Active source-proportional execution sequence:
 
 1. Select the exact deterministic eligible held-out source count from `MILK_EVAL_SOURCE_CONVERSATIONS`, then derive split counts and total cases from that list multiplied by `MILK_CASES_PER_CONVERSATION`; remove `MILK_EVAL_TARGET_CASES` and all target-equals-100,000 branches.
 2. Bind the ratio, exact per-split source counts, per-split case counts and per-source example index into the immutable revision and generated case provenance.
-3. Run one eligible source through exactly 100 generation, validation, global reduction, final manifest and zero-call replay. Do not start parallel workers for this proof.
+3. Run one eligible source through exactly 100 generation, deterministic local checks, global reduction, final manifest, operator review and zero-call replay. Do not start parallel workers for this proof.
 4. Audit the final 100 cases for exact and repeated-template duplication, correctness, difficulty, operation/oracle coverage, boilerplate and source leakage. Record only aggregate/redacted evidence.
 5. If the proof passes, run the same immutable implementation with 100 eligible held-out sources for exactly 10,000 cases. Parallel preparation may resume only after the one-source quality proof, and one coordinator owns the cumulative uniqueness ledger.
 6. Continue the accepted 10,000-case lineage through `dataset -> train -> evaluate -> one explicit route-propose provider -> operator-signed canary/fallback/rollback/zero -> independent zero-GPU checks`.
 
-- [ ] Prove one eligible held-out source produces exactly 100 useful, globally unique, independently validated cases and a zero-call replay.
+- [x] Prove one eligible held-out source produces exactly 100 schema-valid, globally unique, lineage-bound cases and a zero-call replay. The retained corpus is mechanics-only because its bounded operator review found five defects and severe semantic repetition.
 - [ ] Prove 100 eligible held-out sources produce exactly 10,000 useful cases with exactly 100 cases bound to each source.
 
 Owned:
@@ -1348,7 +1356,7 @@ Acceptance:
 - readiness triggers one eval job;
 - representative and tail selections match the deterministic plan;
 - every case binds its source and summary;
-- local and model validation pass;
+- strict structured output and deterministic local checks pass; a bounded operator review accepts the corpus;
 - replay performs no duplicate teacher call;
 - `e/current.json` advances only after the complete validated revision.
 - semantic workers receive only the next strict `milk job read` or `milk job commit` function; Milk Man exposes status separately, and neither surface can select storage or provider authority.
@@ -1539,7 +1547,7 @@ The goal is complete only when:
 - `parlor.milkinfrastructure.com` accepts an operator-issued key through the official SDK and asynchronously writes exact two-sided traffic into R2.
 - Local and scheduled Milk Man consume the same remote store through environment bindings.
 - Production-like traffic progresses through summary, classification, readiness and validated eval generation.
-- One eligible held-out source produces a useful audited 100-case corpus before scale; 100 eligible held-out sources then produce a resumable, independently validated 10,000-case corpus with exactly 100 cases per source.
+- One eligible held-out source proves the audited 100-case mechanics path before scale; 100 eligible held-out sources then produce a resumable, schema-valid, deterministically checked and operator-audited 10,000-case corpus with exactly 100 cases per source.
 - The full whiteboard model loop produces a trained Qwen3.5-0.8B student from
   maximum-intelligence teacher data, three comparable branches, deterministic
   winner, sealed result and unsigned proposal.

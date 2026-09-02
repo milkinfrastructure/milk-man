@@ -97,7 +97,6 @@ def _eligible(label: dict) -> bool:
         label.get("abstain") is False
         and label.get("answerable") is True
         and label.get("safety") == "benign"
-        and label.get("outcome") == "success"
         and label.get("oracle") in ORACLES
         and modalities == ["text"]
         and label.get("tool_definitions") == 0

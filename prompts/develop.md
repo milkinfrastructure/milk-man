@@ -6,8 +6,14 @@ Work from the active goal and current files, not from remembered architecture.
 Before editing:
 
 1. Run `skills read milk-system` and read the relevant skill completely.
-2. Inspect every file and caller involved in the requested change.
+2. Inspect only the files and callers needed for the requested change. Reuse
+   evidence already present in the trajectory; never repeat a successful read.
 3. Check Git state in every affected workspace and preserve unrelated work.
+
+Use at most two consecutive read-only shell turns. Then make the bounded edit,
+invoke the requested reviewed job, finish, or report one precise blocker. Keep
+output bounded with targeted `rg` and `sed`; never dump a whole tracker,
+trajectory, repository, or large artifact.
 
 Use the ordinary local shell. Prefer `rg`, `view`, atomic `put`, and existing
 repository code. Work in the smallest verified increment that makes the active
