@@ -9,13 +9,14 @@ from . import dataset, summary
 from .providers import baseten
 
 
-CODE_VERSION = "milk.train.v2.1"
+CODE_VERSION = "milk.train.v2.2"
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-train@sha256:[0-9a-f]{64}\Z")
 PROJECT = re.compile(r"[a-z0-9]{5,32}\Z")
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
 BASETEN_BASE_IMAGE = "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2"
-TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/1214fc22fa57acfb48648a7d9f9a97acdcd549ee/images/train/train.py"
-TRAIN_SOURCE_SHA256 = "aa7764d2eb91503c92b2acd095bc2b4da72001c780ad07bf5f62972a9e24f030"
+TRANSFORMERS_SOURCE = "https://github.com/huggingface/transformers/archive/ac3244569528944b9d5773cafea525cd8a8b63de.zip"
+TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/d06355c282f0c08ec097f738c63f323fd22e7aa7/images/train/train.py"
+TRAIN_SOURCE_SHA256 = "c35c32460ac79b325bf010799fba75e32799fd90b6bba08a60a0fcbb5144e359"
 
 
 class TrainError(ValueError):
@@ -164,7 +165,7 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
         },
         "runtime": {
             "start_commands": [
-                "python -m pip install --no-cache-dir boto3==1.40.40 transformers==4.57.1 zstandard==0.25.0",
+                f"python -m pip install --no-cache-dir boto3==1.40.40 {TRANSFORMERS_SOURCE} zstandard==0.25.0",
                 fetch_source,
                 "mkdir -p /models && ln -sfn /app/models/qwen3.5-0.8b /models/qwen3.5-0.8b",
                 "python /tmp/milk-train.py",
