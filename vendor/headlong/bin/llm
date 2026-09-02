@@ -53,20 +53,43 @@ if not isinstance(messages, list):
     raise SystemExit("llm: messages must be a JSON array")
 with open(os.environ["LLM_SYSTEM_FILE"]) as handle:
     system = handle.read()
-messages = [{"role": "system", "content": system}, *messages]
 model = os.environ["LLM_MODEL"]
-payload = {"model": model, "messages": messages}
+mode = os.environ.get("LLM_API_MODE", "chat_completions")
+if mode not in {"chat_completions", "responses"}:
+    raise SystemExit("llm: LLM_API_MODE is invalid")
+if mode == "responses":
+    items = []
+    for message in messages:
+        role = message.get("role")
+        content = message.get("content")
+        if role in {"user", "assistant"} and isinstance(content, str) and content:
+            items.append({"role": role, "content": content})
+        if role == "assistant":
+            for call in message.get("tool_calls", []):
+                function = call["function"]
+                items.append({"type": "function_call", "call_id": call["id"], "name": function["name"], "arguments": function["arguments"]})
+        elif role == "tool":
+            items.append({"type": "function_call_output", "call_id": message["tool_call_id"], "output": content})
+    payload = {"model": model, "instructions": system, "input": items}
+else:
+    payload = {"model": model, "messages": [{"role": "system", "content": system}, *messages]}
+effort = os.environ.get("LLM_REASONING_EFFORT", "")
+if effort:
+    if effort not in {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}:
+        raise SystemExit("llm: LLM_REASONING_EFFORT is invalid")
+    payload["reasoning" if mode == "responses" else "reasoning_effort"] = {"effort": effort} if mode == "responses" else effort
 tools_file = os.environ.get("LLM_TOOLS_FILE")
 if tools_file:
     with open(tools_file) as handle:
         tools = json.load(handle)
     if not isinstance(tools, list) or not tools:
         raise SystemExit("llm: tools must be a non-empty JSON array")
-    payload["tools"] = tools
+    payload["tools"] = ([{"type": "function", **tool["function"]} for tool in tools] if mode == "responses" else tools)
     payload["tool_choice"] = "required"
-    payload["temperature"] = 0
+    if mode == "chat_completions":
+        payload["temperature"] = 0
 maximum = int(os.environ.get("LLM_MAX_TOKENS", "16384"))
-payload["max_completion_tokens" if model.startswith(("gpt-5", "o1", "o3", "o4")) else "max_tokens"] = maximum
+payload["max_output_tokens" if mode == "responses" else ("max_completion_tokens" if model.startswith(("gpt-5", "o1", "o3", "o4")) else "max_tokens")] = maximum
 with open(os.environ["LLM_PAYLOAD_FILE"], "w") as handle:
     json.dump(payload, handle, ensure_ascii=False, separators=(",", ":"))
 PY
@@ -110,13 +133,25 @@ fi
 
 python3 - "$response" "$headers" "$json_response" <<'PY'
 import json
+import os
 import sys
 
 value = json.load(open(sys.argv[1]))
-try:
-    message = value["choices"][0]["message"]
-except (KeyError, IndexError, TypeError) as error:
-    raise SystemExit(f"llm: invalid OpenAI-compatible response: {error}")
+if os.environ.get("LLM_API_MODE", "chat_completions") == "responses":
+    tool_calls, texts = [], []
+    for item in value.get("output", []):
+        if item.get("type") == "function_call":
+            tool_calls.append({"id": item["call_id"], "type": "function", "function": {"name": item["name"], "arguments": item["arguments"]}})
+        elif item.get("type") == "message":
+            texts.extend(part.get("text", "") for part in item.get("content", []) if part.get("type") == "output_text")
+    message = {"role": "assistant", "content": "".join(texts) or None}
+    if tool_calls:
+        message["tool_calls"] = tool_calls
+else:
+    try:
+        message = value["choices"][0]["message"]
+    except (KeyError, IndexError, TypeError) as error:
+        raise SystemExit(f"llm: invalid OpenAI-compatible response: {error}")
 if sys.argv[3] == "1":
     if not isinstance(message, dict) or message.get("role") != "assistant":
         raise SystemExit("llm: response contained no assistant message")

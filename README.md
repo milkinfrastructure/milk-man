@@ -92,6 +92,11 @@ inherits or falls back to the student base.
 OpenAI may supply any or all teacher roles by pointing each role's reviewed
 `BASE_URL`, `MODEL`, and `API_KEY` variables at the same OpenAI account. The
 bindings remain separate so changing one job never silently changes another.
+Set `MILK_REASONING_EFFORT` when the selected endpoint supports it; the value is
+included in every semantic job identity.
+Set the role-specific `MILK_SUMMARY_API_MODE`, `MILK_EVAL_API_MODE`,
+`MILK_VALIDATOR_API_MODE`, or `MILK_TEACHER_API_MODE` to `responses` for an
+OpenAI Responses endpoint; each defaults to `chat_completions`.
 
 The object root for one authenticated scope is:
 

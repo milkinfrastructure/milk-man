@@ -18,7 +18,7 @@ class ProviderError(RuntimeError):
         self.inference_calls = inference_calls
 
 
-def _endpoint(prefix: str) -> tuple[str, str, str]:
+def _endpoint(prefix: str) -> tuple[str, str, str, str]:
     base = os.environ.get(f"MILK_{prefix}_BASE_URL", "").rstrip("/")
     model = os.environ.get(f"MILK_{prefix}_MODEL", "")
     api_key = os.environ.get(f"MILK_{prefix}_API_KEY", "")
@@ -31,7 +31,11 @@ def _endpoint(prefix: str) -> tuple[str, str, str]:
         raise ProviderError(f"MILK_{prefix}_BASE_URL must use HTTPS outside localhost")
     if parsed.path.rstrip("/") not in {"", "/v1"}:
         raise ProviderError(f"MILK_{prefix}_BASE_URL must be an origin or end in /v1")
-    return base + ("" if parsed.path.rstrip("/") == "/v1" else "/v1") + "/chat/completions", model, api_key
+    api_mode = os.environ.get(f"MILK_{prefix}_API_MODE", "chat_completions")
+    if api_mode not in {"chat_completions", "responses"}:
+        raise ProviderError(f"MILK_{prefix}_API_MODE must be chat_completions or responses")
+    endpoint = base + ("" if parsed.path.rstrip("/") == "/v1" else "/v1") + ("/responses" if api_mode == "responses" else "/chat/completions")
+    return endpoint, model, api_key, api_mode
 
 
 def _timeout(name: str) -> int:
@@ -61,12 +65,12 @@ def _tools(job: str, result_schema: dict) -> list[dict]:
 
 
 def binding(prefix: str) -> dict:
-    endpoint, model, unused_api_key = _endpoint(prefix)
-    return {"endpoint": endpoint, "model": model}
+    endpoint, model, unused_api_key, api_mode = _endpoint(prefix)
+    return {"endpoint": endpoint, "model": model, "api_mode": api_mode, "reasoning_effort": os.environ.get("MILK_REASONING_EFFORT", "")}
 
 
 def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: dict, validate, timeout_env="MILK_EVAL_TIMEOUT_SECONDS") -> tuple[dict, dict]:
-    endpoint, model, api_key = _endpoint(prefix)
+    endpoint, model, api_key, api_mode = _endpoint(prefix)
     timeout = _timeout(timeout_env)
     input_sha256 = digest(input_value)
     messages = [{
@@ -105,9 +109,12 @@ def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: d
                 "LLM_API_URL": endpoint,
                 "LLM_MODEL": model,
                 "LLM_API_KEY": api_key,
+                "LLM_API_MODE": api_mode,
                 "LLM_CONNECT_TIMEOUT": str(min(10, remaining)),
                 "LLM_MAX_TIME": str(remaining),
             }
+            if os.environ.get("MILK_REASONING_EFFORT"):
+                environment["LLM_REASONING_EFFORT"] = os.environ["MILK_REASONING_EFFORT"]
             if os.environ.get("TMPDIR"):
                 environment["TMPDIR"] = os.environ["TMPDIR"]
             try:
@@ -186,6 +193,8 @@ def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: d
                     "provider_request_id": request_ids[-1] if request_ids else None,
                     "provider_request_ids": request_ids,
                     "model": model,
+                    "api_mode": api_mode,
+                    "reasoning_effort": os.environ.get("MILK_REASONING_EFFORT", ""),
                     "usage": dict(usage),
                     "inference_calls": turn,
                     "input_sha256": input_sha256,

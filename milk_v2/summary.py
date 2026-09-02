@@ -654,7 +654,10 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
         raise SummaryError("MILK_SUMMARY_BASE_URL must use HTTPS outside localhost")
     if parsed.path.rstrip("/") not in {"", "/v1"}:
         raise SummaryError("MILK_SUMMARY_BASE_URL must be an origin or end in /v1")
-    endpoint = base + ("" if parsed.path.rstrip("/") == "/v1" else "/v1") + "/chat/completions"
+    api_mode = os.environ.get("MILK_SUMMARY_API_MODE", "chat_completions")
+    if api_mode not in {"chat_completions", "responses"}:
+        raise SummaryError("MILK_SUMMARY_API_MODE must be chat_completions or responses")
+    endpoint = base + ("" if parsed.path.rstrip("/") == "/v1" else "/v1") + ("/responses" if api_mode == "responses" else "/chat/completions")
     timeout = _integer_environment("MILK_SUMMARY_TIMEOUT_SECONDS", 120, 1, 3600)
     input_sha256 = digest(input_value)
     rows = input_value.get("rows")
@@ -700,9 +703,12 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
                 "LLM_API_URL": endpoint,
                 "LLM_MODEL": model,
                 "LLM_API_KEY": api_key,
+                "LLM_API_MODE": api_mode,
                 "LLM_CONNECT_TIMEOUT": str(min(10, remaining)),
                 "LLM_MAX_TIME": str(remaining),
             }
+            if os.environ.get("MILK_REASONING_EFFORT"):
+                environment["LLM_REASONING_EFFORT"] = os.environ["MILK_REASONING_EFFORT"]
             if os.environ.get("TMPDIR"):
                 environment["TMPDIR"] = os.environ["TMPDIR"]
             try:
@@ -790,6 +796,8 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
                     "provider_request_id": request_ids[-1] if request_ids else None,
                     "provider_request_ids": request_ids,
                     "model": model,
+                    "api_mode": api_mode,
+                    "reasoning_effort": os.environ.get("MILK_REASONING_EFFORT", ""),
                     "usage": dict(usage),
                     "inference_calls": turn,
                     "output": committed,
@@ -993,7 +1001,7 @@ def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_
     prompt_sha256 = digest(prompt.encode())
     base = os.environ.get("MILK_SUMMARY_BASE_URL", "")
     model = os.environ.get("MILK_SUMMARY_MODEL", "")
-    model_binding_sha256 = digest({"base_url": base, "model": model})
+    model_binding_sha256 = digest({"base_url": base, "model": model, "api_mode": os.environ.get("MILK_SUMMARY_API_MODE", "chat_completions"), "reasoning_effort": os.environ.get("MILK_REASONING_EFFORT", "")})
     classifier_config_sha256 = digest({"taxonomy": TAXONOMY_VERSION, "prompt_sha256": prompt_sha256, "model_binding_sha256": model_binding_sha256, "code_version": CODE_VERSION})
     sampled = _sampling(all_rows)
     parsed_by_key = {row["key"]: row for row in rows}

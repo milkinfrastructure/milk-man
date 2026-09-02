@@ -273,6 +273,8 @@ MILK_SUMMARY_BASE_URL / MODEL / API_KEY
 MILK_EVAL_BASE_URL / MODEL / API_KEY
 MILK_VALIDATOR_BASE_URL / MODEL / API_KEY
 MILK_TEACHER_BASE_URL / MODEL / API_KEY
+MILK_SUMMARY_API_MODE / MILK_EVAL_API_MODE / MILK_VALIDATOR_API_MODE / MILK_TEACHER_API_MODE
+MILK_REASONING_EFFORT
 ```
 
 GPU variables remain explicit:
@@ -1108,6 +1110,8 @@ Progress 2026-09-01:
 - [x] Processed 100 complete mechanics captures into a second real R2 summary/readiness checkpoint in two inference turns; the result remained explicitly non-production-qualified.
 - [x] Proved a production scope below its first threshold remained model-free with zero inference calls, zero provider calls, and no route attempt.
 - [x] Exposed bounded content-free structural quality, performance distributions, and semantic classifier totals in `status/current.json`; the dashboard still reads one object and never reads customer text.
+- [x] Crossed the first production threshold at 100 complete R2 captures through local Milk Man using `gpt-5.6-sol`, the OpenAI Responses API, and low reasoning effort. It wrote one summary/readiness checkpoint in two inference turns, replayed with zero calls, and correctly remained below the 1,000-capture readiness threshold.
+- [x] Used the same latest-model/low-effort OpenAI binding to generate a bounded 12-prompt follow-on batch, sent it through hosted Parlor, and reconciled 112 captured / 100 processed with zero new inference or provider calls.
 
 Owned:
 

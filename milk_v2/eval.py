@@ -260,7 +260,7 @@ def _verdict_contract(value: dict, cases: list[dict]) -> dict:
 
 
 def _binding(prefix: str) -> dict:
-    return {"base_url": os.environ.get(f"MILK_{prefix}_BASE_URL", ""), "model": os.environ.get(f"MILK_{prefix}_MODEL", "")}
+    return {"base_url": os.environ.get(f"MILK_{prefix}_BASE_URL", ""), "model": os.environ.get(f"MILK_{prefix}_MODEL", ""), "api_mode": os.environ.get(f"MILK_{prefix}_API_MODE", "chat_completions"), "reasoning_effort": os.environ.get("MILK_REASONING_EFFORT", "")}
 
 
 def _artifacts(store, keys: list[str]) -> list[dict]:
