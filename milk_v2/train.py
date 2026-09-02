@@ -9,7 +9,7 @@ from . import dataset, summary
 from .providers import baseten
 
 
-CODE_VERSION = "milk.train.v2"
+CODE_VERSION = "milk.train.v2.1"
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-train@sha256:[0-9a-f]{64}\Z")
 PROJECT = re.compile(r"[a-z0-9]{5,32}\Z")
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
