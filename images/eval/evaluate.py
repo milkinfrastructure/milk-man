@@ -129,7 +129,7 @@ def quantize(model, tokenizer, branch: str, manifest: dict) -> dict:
         try:
             for row in calibration:
                 encoded = tokenizer(prompt(tokenizer, row["input"]), return_tensors="pt").to("cuda")
-                with torch.inference_mode():
+                with torch.no_grad():
                     model(**encoded, use_cache=False)
         finally:
             for hook in hooks:
@@ -255,7 +255,7 @@ def main() -> None:
         encoded = tokenizer(prompt(tokenizer, row["input"]), return_tensors="pt").to("cuda")
         torch.cuda.synchronize()
         started = time.monotonic()
-        with torch.inference_mode():
+        with torch.no_grad():
             generated = model.generate(**encoded, do_sample=False, max_new_tokens=maximum, pad_token_id=tokenizer.eos_token_id)
         torch.cuda.synchronize()
         latency_ms = max(1, int((time.monotonic() - started) * 1000))
