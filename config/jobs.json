@@ -17,10 +17,6 @@
       "required": ["MILK_EVAL_BASE_URL", "MILK_EVAL_MODEL", "MILK_EVAL_API_KEY"],
       "optional": ["MILK_EVAL_API_MODE", "MILK_REASONING_EFFORT", "MILK_CASES_PER_CONVERSATION", "MILK_EVAL_SOURCE_CONVERSATIONS", "MILK_EVAL_SHARD_CASES", "MILK_EVAL_PRECOMPUTE_SHARD", "MILK_EVAL_MAX_OUTPUT_TOKENS"]
     },
-    "validator": {
-      "required": ["MILK_VALIDATOR_BASE_URL", "MILK_VALIDATOR_MODEL", "MILK_VALIDATOR_API_KEY"],
-      "optional": ["MILK_VALIDATOR_API_MODE", "MILK_REASONING_EFFORT", "MILK_VALIDATOR_MAX_OUTPUT_TOKENS"]
-    },
     "teacher": {
       "required": ["MILK_TEACHER_BASE_URL", "MILK_TEACHER_MODEL", "MILK_TEACHER_API_KEY"],
       "optional": ["MILK_TEACHER_API_MODE", "MILK_REASONING_EFFORT", "MILK_TEACHER_MAX_OUTPUT_TOKENS", "MILK_DATASET_TRAIN_EXAMPLES", "MILK_DATASET_TEXT_BYTES"]
@@ -52,7 +48,7 @@
     "inference-status": {"handler": "inference-status", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
     "inference-stop": {"handler": "inference-stop", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
     "summary": {"handler": "summary", "trigger": {"kind": "crossed_capture_threshold", "values_env": "MILK_SUMMARY_THRESHOLDS"}, "bindings": ["store", "summary"], "input_prefixes": ["c", "s"], "output_prefixes": ["j", "l", "s", "readiness", "status"], "system_prompt": "prompts/summary.md", "timeout_env": "MILK_SUMMARY_TIMEOUT_SECONDS", "teardown_handler": null},
-    "eval": {"handler": "eval", "trigger": {"kind": "readiness"}, "bindings": ["store", "eval", "validator"], "input_prefixes": ["c", "l", "s", "readiness"], "output_prefixes": ["j", "e", "status"], "system_prompt": "prompts/eval.md", "timeout_env": "MILK_EVAL_TIMEOUT_SECONDS", "teardown_handler": null},
+    "eval": {"handler": "eval", "trigger": {"kind": "readiness"}, "bindings": ["store", "eval"], "input_prefixes": ["c", "l", "s", "readiness"], "output_prefixes": ["j", "e", "status"], "system_prompt": "prompts/eval.md", "timeout_env": "MILK_EVAL_TIMEOUT_SECONDS", "teardown_handler": null},
     "dataset": {"handler": "dataset", "trigger": {"kind": "eval_ready"}, "bindings": ["store", "teacher"], "input_prefixes": ["c", "e"], "output_prefixes": ["j", "d", "status"], "system_prompt": "prompts/dataset.md", "timeout_env": "MILK_DATASET_TIMEOUT_SECONDS", "teardown_handler": null},
     "train": {"handler": "train", "trigger": {"kind": "dataset_ready"}, "bindings": ["store", "baseten"], "input_prefixes": ["d"], "output_prefixes": ["j", "t", "m", "status"], "system_prompt": null, "timeout_env": "MILK_TRAIN_TIMEOUT_SECONDS", "teardown_handler": null},
     "evaluate": {"handler": "evaluate", "trigger": {"kind": "training_ready"}, "bindings": ["store", "baseten"], "input_prefixes": ["d", "m"], "output_prefixes": ["j", "v", "status"], "system_prompt": null, "timeout_env": "MILK_EVALUATE_TIMEOUT_SECONDS", "teardown_handler": null},

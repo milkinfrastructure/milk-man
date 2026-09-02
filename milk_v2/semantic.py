@@ -87,7 +87,7 @@ def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: d
     endpoint, model, api_key, api_mode = _endpoint(prefix)
     timeout = _timeout(timeout_env)
     maximum = _maximum(prefix)
-    strict_tools = job in {"eval", "eval-validator"}
+    strict_tools = job == "eval"
     input_sha256 = digest(input_value)
     messages = [{
         "role": "user",

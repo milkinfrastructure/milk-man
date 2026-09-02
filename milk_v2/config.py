@@ -91,14 +91,6 @@ BINDING_ENVIRONMENTS = {
             "MILK_EVAL_MAX_OUTPUT_TOKENS",
         ),
     },
-    "validator": {
-        "required": (
-            "MILK_VALIDATOR_BASE_URL",
-            "MILK_VALIDATOR_MODEL",
-            "MILK_VALIDATOR_API_KEY",
-        ),
-        "optional": ("MILK_VALIDATOR_API_MODE", "MILK_REASONING_EFFORT", "MILK_VALIDATOR_MAX_OUTPUT_TOKENS"),
-    },
     "teacher": {
         "required": ("MILK_TEACHER_BASE_URL", "MILK_TEACHER_MODEL", "MILK_TEACHER_API_KEY"),
         "optional": ("MILK_TEACHER_API_MODE", "MILK_REASONING_EFFORT", "MILK_TEACHER_MAX_OUTPUT_TOKENS", "MILK_DATASET_TRAIN_EXAMPLES", "MILK_DATASET_TEXT_BYTES"),

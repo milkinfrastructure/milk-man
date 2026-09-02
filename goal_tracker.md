@@ -93,7 +93,8 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] Retain every v21 object as immutable mechanics evidence. Do not coordinate, publish, train from, repair or resume that revision.
 - [~] Replace the independent 100,000-case target with source-proportional generation: `MILK_CASES_PER_CONVERSATION=100`. `MILK_EVAL_SOURCE_CONVERSATIONS` selects an exact deterministic source count and stops before inference if it is unavailable. One eligible held-out conversation produces exactly 100 creative cases; 100 eligible held-out conversations produce exactly 10,000. Prove one conversation through the complete 100-case path before paid scale-up.
 - [x] The first v22 one-source attempt, revision `12c0e095680e3d2f04ce257dc0e4baed17b7d68bd338a63e86e5857b8bd1d5d4`, made eight OpenAI inference calls and zero provider lifecycle calls. The validator rejected 80 answer-leaking prompts and one incorrect answer; its 19 accepted cases were still trivial. No shard, eval pointer, dataset, training, or GPU work was published. Do not repair this attempt.
-- [~] The next immutable attempt uses the source index as a deterministic 100-slot reasoning, domain and difficulty brief. It must prove creative capability transfer from the deliberately trivial mechanics source rather than restating that source.
+- [x] The second v22 attempt, revision `38a22326fae84d6557067d52c58ebd59f5815d7613a983a4a898e90d0acdc7f3`, used the deterministic 100-slot reasoning, setting, and difficulty brief. It produced substantially more varied multi-step work with no repeated 8- or 24-token prefix families. The semantic validator accepted 42 and rejected 58; its repair was stopped during validation. No shard, eval pointer, dataset, training, or GPU work was published.
+- [~] v23 removes the second LLM validator. The eval model must commit the exact JSON-schema-constrained corpus once; Milk Man then enforces identity, count, source lineage, oracle representation, exact copy, and normalized duplicate checks locally. The operator and Codex inspect a bounded 100-case corpus before any dataset, training, GPU, or route work. First run exactly one fresh one-source to 100-case pilot, inspect it, and scale only if useful.
 
 ## Non-negotiable architecture
 
@@ -286,9 +287,8 @@ MILK_BOOTSTRAP_BASE_URL / MODEL / API_KEY
 MILK_CONTROLLER_BASE_URL / MODEL / API_KEY
 MILK_SUMMARY_BASE_URL / MODEL / API_KEY
 MILK_EVAL_BASE_URL / MODEL / API_KEY
-MILK_VALIDATOR_BASE_URL / MODEL / API_KEY
 MILK_TEACHER_BASE_URL / MODEL / API_KEY
-MILK_SUMMARY_API_MODE / MILK_EVAL_API_MODE / MILK_VALIDATOR_API_MODE / MILK_TEACHER_API_MODE
+MILK_SUMMARY_API_MODE / MILK_EVAL_API_MODE / MILK_TEACHER_API_MODE
 MILK_REASONING_EFFORT
 ```
 
@@ -772,7 +772,7 @@ The generated eval must bind source digests without copying raw source text into
 - no duplicate or near-duplicate cases;
 - no unsupported tool or multimodal requirement;
 - source separation from training data;
-- one independent validator verdict per case.
+- bounded operator review of the first complete 100-case corpus before downstream work.
 
 The representative/tail selection above determines eligible held-out sources.
 Deterministic expansion supplies exactly the configured number of cases per
@@ -812,10 +812,10 @@ Model roles are deliberately asymmetric:
   `config/student.json`, enters every dataset/training/evaluation job digest,
   and cannot be overridden by an environment variable.
 - Data generation uses the strongest reviewed OpenAI-compatible binding
-  available through `MILK_TEACHER_*`. Eval generation and independent
-  validation use their own reviewed `MILK_EVAL_*` bindings. These roles may
+  available through `MILK_TEACHER_*`. Eval generation uses its own reviewed
+  `MILK_EVAL_*` binding. These roles may
   select GLM or another approved high-intelligence model without code changes.
-- Teacher, eval, and validator calls never fall back to the 0.8B student or to
+- Teacher and eval calls never fall back to the 0.8B student or to
   a student-derived endpoint. A missing or failed high-intelligence binding
   blocks that semantic job; it does not silently lower generation quality.
 - The cheaper `MILK_SUMMARY_*` binding remains isolated to bounded traffic
@@ -1403,7 +1403,7 @@ Acceptance:
 
 - one bounded mechanics dataset;
 - all generated training targets come from the separately configured strongest
-  teacher binding; no teacher/eval/validator call falls back to the student;
+  teacher binding; no teacher or eval call falls back to the student;
 - train, merge and all three candidates bind the exact pinned
   `Qwen/Qwen3.5-0.8B` revision and weight files never enter OCI;
 - one real Baseten train/merge job;

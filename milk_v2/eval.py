@@ -10,19 +10,11 @@ import uuid
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.eval.v22"
+CODE_VERSION = "milk.eval.v23"
 GENERATOR_BATCH_CASES = 64
-VALIDATOR_BATCH_CASES = 64
 MAX_GENERATION_ATTEMPTS = 8
-VALIDATOR_POLICY = {
-    "schema_version": "milk.eval-validator-policy.v1",
-    "assessment": "standalone",
-    "source_role": "provenance_only",
-    "duplicate": "exact_normalized_input_only",
-    "unsupported": "unavailable_state_tool_or_multimodal_input_only",
-}
 VERDICT_SCHEMA = "milk.eval-verdicts.v3"
-VERDICTS = ("accepted", "incorrect", "unanswerable", "vacuous", "unsupported", "copied", "leaked", "duplicate")
+VERDICTS = ("accepted", "vacuous", "copied", "duplicate")
 ORACLE_SCALAR_TYPES = ("string", "number", "integer", "boolean", "null")
 ORACLE_SPEC_TYPES = ("none", "object", "array", *ORACLE_SCALAR_TYPES)
 
@@ -459,57 +451,15 @@ def _cases(generation: dict, shard_plan: dict, corpus: dict, summary_sha256: str
     return cases, hashes, rejected
 
 
-def _verdict_schema(count: int) -> dict:
-    item = {
-        "type": "object",
-        "properties": {
-            "accepted": {"type": "boolean"},
-            "reason": {"type": "string", "enum": list(VERDICTS)},
-            "guidance": {"type": "string", "maxLength": 512},
-        },
-        "required": ["accepted", "reason", "guidance"],
-        "additionalProperties": False,
-    }
-    return {
-        "type": "object",
-        "properties": {"schema_version": {"type": "string", "enum": ["milk.eval-decisions.v1"]}, "decisions": {"type": "array", "items": item, "minItems": count, "maxItems": count}},
-        "required": ["schema_version", "decisions"],
-        "additionalProperties": False,
-    }
-
-
-def _decision_contract(value: dict, cases: list[dict]) -> dict:
-    if not isinstance(value, dict) or set(value) != {"schema_version", "decisions"} or value.get("schema_version") != "milk.eval-decisions.v1" or not isinstance(value.get("decisions"), list):
-        raise ValueError("eval validator has invalid fields")
-    if len(value["decisions"]) != len(cases):
-        raise ValueError("eval validator has the wrong verdict count")
-    verdicts = []
-    for case, decision in zip(cases, value["decisions"]):
-        if not isinstance(decision, dict) or set(decision) != {"accepted", "reason", "guidance"}:
-            raise ValueError("eval validator returned an invalid verdict")
-        guidance = decision.get("guidance")
-        if (
-            type(decision.get("accepted")) is not bool
-            or decision.get("reason") not in VERDICTS
-            or decision["accepted"] != (decision["reason"] == "accepted")
-            or not isinstance(guidance, str)
-            or len(guidance.encode()) > 512
-            or (not decision["accepted"] and not guidance.strip())
-        ):
-            raise ValueError("eval validator returned an invalid verdict")
-        verdicts.append({"case_id": case["case_id"], **decision, "guidance": "" if decision["accepted"] else guidance.strip()})
-    return {"schema_version": VERDICT_SCHEMA, "verdicts": verdicts}
-
-
 def _verdict_contract(value: dict, cases: list[dict]) -> dict:
     if not isinstance(value, dict) or set(value) != {"schema_version", "verdicts"} or value.get("schema_version") != VERDICT_SCHEMA or not isinstance(value.get("verdicts"), list):
-        raise ValueError("eval validator has invalid fields")
+        raise ValueError("eval validation has invalid fields")
     if len(value["verdicts"]) != len(cases):
-        raise ValueError("eval validator has the wrong verdict count")
+        raise ValueError("eval validation has the wrong verdict count")
     checked = []
     for case, verdict in zip(cases, value["verdicts"]):
         if not isinstance(verdict, dict) or set(verdict) != {"case_id", "accepted", "reason", "guidance"} or verdict.get("case_id") != case["case_id"]:
-            raise ValueError("eval validator changed case identity or order")
+            raise ValueError("eval validation changed case identity or order")
         guidance = verdict.get("guidance")
         if (
             type(verdict.get("accepted")) is not bool
@@ -519,7 +469,7 @@ def _verdict_contract(value: dict, cases: list[dict]) -> dict:
             or len(guidance.encode()) > 512
             or verdict["accepted"] != (guidance == "")
         ):
-            raise ValueError("eval validator returned an invalid verdict")
+            raise ValueError("eval validation returned an invalid verdict")
         checked.append(verdict)
     return {"schema_version": VERDICT_SCHEMA, "verdicts": checked}
 
@@ -630,7 +580,7 @@ def _generation_source_identity(plan: dict) -> list[dict]:
     return [{key: source[key] for key in fields} for source in plan["sources"]]
 
 
-def _revision_identity(settings, runtime, summary_pointer: dict, readiness_pointer: dict, readiness_pointer_sha256: str, plan: dict, eval_prompt: str, validator_prompt: str, target: int, shard_cases: int) -> dict:
+def _revision_identity(settings, runtime, summary_pointer: dict, readiness_pointer: dict, readiness_pointer_sha256: str, plan: dict, eval_prompt: str, target: int, shard_cases: int) -> dict:
     generation_sources = plan["sources"]
     target_splits = eval_plan.target_allocation(plan, target)
     source_splits = Counter(source["split"] for source in generation_sources)
@@ -655,9 +605,8 @@ def _revision_identity(settings, runtime, summary_pointer: dict, readiness_point
         "target_split_counts": target_splits,
         "shard_case_count": shard_cases,
         "eval_prompt_sha256": summary.digest(eval_prompt.encode()),
-        "validator_prompt_sha256": summary.digest(validator_prompt.encode()),
         "eval_binding_sha256": summary.digest(_binding("EVAL")),
-        "validator_binding_sha256": summary.digest(_binding("VALIDATOR")),
+        "validation": "deterministic-local.v1",
     }
 
 
@@ -886,8 +835,8 @@ def _write_shard(store, revision: dict, split: str, start: int, end: int, cases:
     return shard, list(keys.values())
 
 
-def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha256: str, eval_prompt: str, validator_prompt: str, attempt: int, rejection: dict | None, accepted_hashes: set[str], job_prefix: str) -> tuple[list[dict], list[dict], dict, dict, int, list[str]]:
-    validation_key = job_prefix + f"validation-batched-v7-{attempt}.json"
+def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha256: str, eval_prompt: str, attempt: int, rejection: dict | None, accepted_hashes: set[str], job_prefix: str) -> tuple[list[dict], list[dict], dict, dict, int, list[str]]:
+    validation_key = job_prefix + f"validation-local-v1-{attempt}.json"
     revision_sha256 = summary.digest(revision)
     case_ids = [case["case_id"] for case in shard_plan["cases"]]
     oracle_by_id = {case["case_id"]: case["oracle"] for case in shard_plan["cases"]}
@@ -1005,106 +954,53 @@ def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha
     })
     cases, hashes, local_rejections = _cases(generation, shard_plan, context, summary_sha256, accepted_hashes)
     candidate_ids = [case["case_id"] for case in cases]
-    validator_input = {"schema_version": "milk.eval-validation-input.v4", "policy": VALIDATOR_POLICY, "cases": cases}
-    validator_input_sha256 = summary.digest(validator_input) if cases else None
-    validator_batches = []
-    model_verdicts = []
-    for batch_index, offset in enumerate(range(0, len(cases), VALIDATOR_BATCH_CASES)):
-        batch_cases = cases[offset : offset + VALIDATOR_BATCH_CASES]
-        batch_case_ids = [case["case_id"] for case in batch_cases]
-        batch_input = {"schema_version": "milk.eval-validation-input.v4", "policy": VALIDATOR_POLICY, "cases": batch_cases}
-        batch_input_sha256 = summary.digest(batch_input)
-        batch_key = job_prefix + f"validation-v8-{attempt}-batch-{batch_index}.json"
-        try:
-            batch_validation, batch_body = _object(store, batch_key)
-            if (
-                batch_validation.get("schema_version") != "milk.eval-validator-batch-receipt.v8"
-                or batch_validation.get("eval_uuid") != revision["eval_uuid"]
-                or batch_validation.get("revision_sha256") != revision_sha256
-                or batch_validation.get("attempt") != attempt
-                or batch_validation.get("batch_index") != batch_index
-                or batch_validation.get("case_ids") != batch_case_ids
-                or batch_validation.get("generator_input_sha256") != generator_input_sha256
-                or batch_validation.get("validator_input_sha256") != batch_input_sha256
-            ):
-                raise EvalError("stored eval validator batch receipt differs")
-            batch_verdicts = _verdict_contract(batch_validation.get("verdicts"), batch_cases)
-            _provider_receipt(batch_validation.get("validator_receipt"), "eval-validator", "VALIDATOR", batch_input, batch_verdicts)
-        except FileNotFoundError:
-            batch_verdicts, validator_receipt = semantic.call(
-                "eval-validator",
-                "VALIDATOR",
-                validator_prompt,
-                batch_input,
-                _verdict_schema(len(batch_cases)),
-                lambda value, expected=batch_cases: _decision_contract(value, expected),
-            )
-            inference_calls += validator_receipt["inference_calls"]
-            batch_body = summary.canonical({
-                "schema_version": "milk.eval-validator-batch-receipt.v8",
-                "eval_uuid": revision["eval_uuid"],
-                "revision_sha256": revision_sha256,
-                "attempt": attempt,
-                "batch_index": batch_index,
-                "case_ids": batch_case_ids,
-                "generator_input_sha256": generator_input_sha256,
-                "validator_input_sha256": batch_input_sha256,
-                "validator_receipt": validator_receipt,
-                "verdicts": batch_verdicts,
-            })
-            store.create_same(batch_key, batch_body)
-        validator_batches.append({"key": batch_key, "sha256": summary.digest(batch_body)})
-        model_verdicts.extend(batch_verdicts["verdicts"])
-        artifacts.append(batch_key)
-    verdicts = None if not cases else _verdict_contract({"schema_version": VERDICT_SCHEMA, "verdicts": model_verdicts}, cases)
+    verdicts = _verdict_contract({
+        "schema_version": VERDICT_SCHEMA,
+        "verdicts": [
+            {"case_id": case["case_id"], "accepted": True, "reason": "accepted", "guidance": ""}
+            for case in cases
+        ],
+    }, cases)
     try:
         validation, unused_body = _object(store, validation_key)
         if (
-            validation.get("schema_version") != "milk.eval-attempt-validation.v8"
+            validation.get("schema_version") != "milk.eval-attempt-validation.v9"
             or validation.get("eval_uuid") != revision["eval_uuid"]
             or validation.get("revision_sha256") != revision_sha256
             or validation.get("attempt") != attempt
             or validation.get("generator_scheme") != "fixed-ordered-batches.v1"
             or validation.get("generator_batch_cases") != GENERATOR_BATCH_CASES
             or validation.get("generator_batches") != generation_batches
-            or validation.get("validator_scheme") != "standalone-fixed-ordered-batches.v1"
-            or validation.get("validator_batch_cases") != VALIDATOR_BATCH_CASES
+            or validation.get("validation_scheme") != "deterministic-local.v1"
             or validation.get("case_ids") != case_ids
             or validation.get("candidate_case_ids") != candidate_ids
             or validation.get("generator_input_sha256") != generator_input_sha256
-            or validation.get("validator_input_sha256") != validator_input_sha256
             or validation.get("local_rejections") != local_rejections
-            or validation.get("validator_batches") != validator_batches
         ):
             raise EvalError("stored eval attempt validation differs")
-        stored_verdicts = validation.get("verdicts")
-        if stored_verdicts is not None:
-            stored_verdicts = _verdict_contract(stored_verdicts, cases)
+        stored_verdicts = _verdict_contract(validation.get("verdicts"), cases)
         if stored_verdicts != verdicts:
             raise EvalError("stored eval attempt validation differs")
     except FileNotFoundError:
         validation = {
-            "schema_version": "milk.eval-attempt-validation.v8",
+            "schema_version": "milk.eval-attempt-validation.v9",
             "eval_uuid": revision["eval_uuid"],
             "revision_sha256": revision_sha256,
             "attempt": attempt,
             "generator_scheme": "fixed-ordered-batches.v1",
             "generator_batch_cases": GENERATOR_BATCH_CASES,
             "generator_batches": generation_batches,
-            "validator_scheme": "standalone-fixed-ordered-batches.v1",
-            "validator_batch_cases": VALIDATOR_BATCH_CASES,
+            "validation_scheme": "deterministic-local.v1",
             "case_ids": case_ids,
             "candidate_case_ids": candidate_ids,
             "generator_input_sha256": generator_input_sha256,
-            "validator_input_sha256": validator_input_sha256,
             "local_rejections": local_rejections,
-            "validator_batches": validator_batches,
             "verdicts": verdicts,
         }
         store.create_same(validation_key, summary.canonical(validation))
     artifacts.append(validation_key)
-    model_verdicts = [] if verdicts is None else verdicts["verdicts"]
-    rejected_by_id = {item["case_id"]: item for item in (*local_rejections, *(item for item in model_verdicts if not item["accepted"]))}
+    model_verdicts = verdicts["verdicts"]
+    rejected_by_id = {item["case_id"]: item for item in local_rejections}
     rejected = [rejected_by_id[case_id] for case_id in case_ids if case_id in rejected_by_id]
     accepted_ids = {item["case_id"] for item in model_verdicts if item["accepted"]}
     accepted_cases = [case for case in cases if case["case_id"] in accepted_ids]
@@ -1125,7 +1021,7 @@ def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha
     return accepted_cases, accepted_case_hashes, accepted_verdicts, repair, inference_calls, artifacts
 
 
-def _collect_attempts(store, revision: dict, context: dict, shard_plan: dict, summary_sha256: str, eval_prompt: str, validator_prompt: str, pending: list[dict], rejection: dict | None, base_hashes: set[str], job_prefix: str, accepted=None, max_attempts: int = MAX_GENERATION_ATTEMPTS) -> tuple:
+def _collect_attempts(store, revision: dict, context: dict, shard_plan: dict, summary_sha256: str, eval_prompt: str, pending: list[dict], rejection: dict | None, base_hashes: set[str], job_prefix: str, accepted=None, max_attempts: int = MAX_GENERATION_ATTEMPTS) -> tuple:
     initial_cases, initial_hashes, initial_verdicts = accepted or ([], [], {"verdicts": []})
     cases_by_id = {case["case_id"]: case for case in initial_cases}
     hashes_by_id = {item["case_id"]: item for item in initial_hashes}
@@ -1144,7 +1040,6 @@ def _collect_attempts(store, revision: dict, context: dict, shard_plan: dict, su
             attempt_plan,
             summary_sha256,
             eval_prompt,
-            validator_prompt,
             attempt,
             rejection,
             base_hashes | {item["input_sha256"] for item in hashes_by_id.values()},
@@ -1162,10 +1057,10 @@ def _collect_attempts(store, revision: dict, context: dict, shard_plan: dict, su
     return pending, cases_by_id, hashes_by_id, verdicts_by_id, rejection, attempts, inference_calls, artifacts
 
 
-def _prepare_range(store, revision: dict, context: dict, shard_plan: dict, summary_sha256: str, eval_prompt: str, validator_prompt: str, job_prefix: str) -> tuple:
+def _prepare_range(store, revision: dict, context: dict, shard_plan: dict, summary_sha256: str, eval_prompt: str, job_prefix: str) -> tuple:
     case_ids = [case["case_id"] for case in shard_plan["cases"]]
     pending, cases_by_id, hashes_by_id, verdicts_by_id, rejection, attempts, calls, artifacts = _collect_attempts(
-        store, revision, context, shard_plan, summary_sha256, eval_prompt, validator_prompt,
+        store, revision, context, shard_plan, summary_sha256, eval_prompt,
         shard_plan["cases"], None, set(), job_prefix,
     )
     if pending:
@@ -1356,8 +1251,7 @@ def reconcile(store, settings, runtime) -> dict:
         raise EvalError(str(error)) from error
     root = Path(__file__).resolve().parents[1]
     eval_prompt = (root / runtime.job("eval").system_prompt).read_text()
-    validator_prompt = (root / "prompts" / "eval-validator.md").read_text()
-    identity = _revision_identity(settings, runtime, summary_pointer, readiness_pointer, readiness_pointer_sha256, plan, eval_prompt, validator_prompt, target, shard_cases)
+    identity = _revision_identity(settings, runtime, summary_pointer, readiness_pointer, readiness_pointer_sha256, plan, eval_prompt, target, shard_cases)
     if selected is None and current_matches(store, settings, target, shard_cases, summary.digest(identity)):
         pointer, pointer_body = _object(store, settings.scope_prefix + "e/current.json")
         status_key = _complete_status(store, settings, pointer)
@@ -1369,7 +1263,7 @@ def reconcile(store, settings, runtime) -> dict:
         shard_plan = eval_plan.shard(plan, revision["eval_uuid"], target, start, end)
         job_prefix = settings.scope_prefix + f"j/eval/{revision['revision_id']}/{split}/{_range_name(start, end)}/"
         prepared, rejection, attempts, calls, artifacts, created = _prepare_range(
-            store, revision, context, shard_plan, summary_pointer["sha256"], eval_prompt, validator_prompt, job_prefix,
+            store, revision, context, shard_plan, summary_pointer["sha256"], eval_prompt, job_prefix,
         )
         details = {
             "eval_uuid": revision["eval_uuid"],
@@ -1413,7 +1307,7 @@ def reconcile(store, settings, runtime) -> dict:
     result_key = job_prefix + "result.json"
 
     prepared, rejection, attempts, inference_calls, prepared_artifacts, unused_created = _prepare_range(
-        store, revision, context, shard_plan, summary_pointer["sha256"], eval_prompt, validator_prompt, job_prefix,
+        store, revision, context, shard_plan, summary_pointer["sha256"], eval_prompt, job_prefix,
     )
     artifacts = base_artifacts + prepared_artifacts
     if prepared is None:
@@ -1447,7 +1341,7 @@ def reconcile(store, settings, runtime) -> dict:
         }
         pending_plan = [case for case in shard_plan["cases"] if case["case_id"] in duplicate_id_set]
         pending, cases_by_id, hash_by_id, verdicts_by_id, rejection, reduce_attempts, calls, reduce_artifacts = _collect_attempts(
-            store, revision, context, shard_plan, summary_pointer["sha256"], eval_prompt, validator_prompt,
+            store, revision, context, shard_plan, summary_pointer["sha256"], eval_prompt,
             pending_plan, rejection, prior_hashes, job_prefix + "reduce/", retained,
         )
         inference_calls += calls

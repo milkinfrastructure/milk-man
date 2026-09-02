@@ -104,18 +104,20 @@ Training sources remain separate.
 
 The only fine-tune base is the exact `Qwen/Qwen3.5-0.8B` revision pinned in
 [`config/student.json`](config/student.json). It is an artifact input, not an
-inference fallback. Summary, eval generation, validation, and teacher-data
-generation each require their own OpenAI-compatible environment binding; none
-inherits or falls back to the student base.
+inference fallback. Summary, eval generation, and teacher-data generation each
+require their own OpenAI-compatible environment binding; none inherits or falls
+back to the student base. Eval format, identity, copy, and duplicate checks are
+deterministic; the operator reviews a bounded corpus sample before downstream
+work.
 
 OpenAI may supply any or all teacher roles by pointing each role's reviewed
 `BASE_URL`, `MODEL`, and `API_KEY` variables at the same OpenAI account. The
 bindings remain separate so changing one job never silently changes another.
 Set `MILK_REASONING_EFFORT` when the selected endpoint supports it; the value is
 included in every semantic job identity.
-Set the role-specific `MILK_SUMMARY_API_MODE`, `MILK_EVAL_API_MODE`,
-`MILK_VALIDATOR_API_MODE`, or `MILK_TEACHER_API_MODE` to `responses` for an
-OpenAI Responses endpoint; each defaults to `chat_completions`.
+Set the role-specific `MILK_SUMMARY_API_MODE`, `MILK_EVAL_API_MODE`, or
+`MILK_TEACHER_API_MODE` to `responses` for an OpenAI Responses endpoint; each
+defaults to `chat_completions`.
 
 Mechanics compares BF16, dynamic FP8, and static FP8 on the same DEV cases.
 Production runs and admits only BF16 and stable dynamic FP8 while static
