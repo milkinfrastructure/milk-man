@@ -9,7 +9,7 @@ import random
 import boto3
 import torch
 import zstandard
-from transformers import AutoModelForMultimodalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 MODEL_REPO = "Qwen/Qwen3.5-0.8B"
@@ -138,7 +138,7 @@ def main() -> None:
     torch.cuda.manual_seed_all(seed)
     manifest, rows = dataset()
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ROOT, local_files_only=True)
-    model = AutoModelForMultimodalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(
         MODEL_ROOT,
         local_files_only=True,
         torch_dtype=torch.bfloat16,
