@@ -1293,12 +1293,13 @@ Active v21 execution sequence:
 
 1. Freeze the published v21 source and run at most three precompute workers, with exactly one owner for each shard ordinal.
 2. Never run the shared coordinator while any precompute worker is active.
-3. After workers exit, inventory ordinals `0..391` and run only missing or incomplete shards; replay every prepared shard with zero inference calls.
+3. After workers exit, inventory ordinals `0..391` and classify every missing shard. Replay transient provider/tool-call holes unchanged. For attempt-exhausted holes, retain all immutable attempts and accepted cases, then continue only the remaining rejected cases at the next unused attempt index under the exact v21 prompts, bindings, case IDs, and validation policy. Bind a repair-executor version and a bounded additional-attempt count to that continuation; never delete or overwrite an attempt.
 4. Run one coordinator invocation at a time. It consumes prepared shards in ordinal order, writes shared progress, and regenerates only exact cross-shard collisions.
 5. Finalize `e/current.json` only at exactly 100,000 unique validated cases, then run `dataset -> train -> evaluate -> one explicit route-propose provider -> operator-signed canary/fallback/rollback/zero -> independent zero-GPU checks`.
 6. Never restart a completed shard, run two coordinators, mix eval revisions, interpret historical dashboard progress as v21 progress, or select a second provider after a failure.
 
 - [ ] Expand one 100-exchange summary checkpoint into exactly 100,000 validated eval cases using deterministic, resumable R2 shards. A small mechanics corpus proves the job graph but does not satisfy this scale target.
+- [ ] After the bulk feed exits, prove every missing shard recovers without regenerating a completed shard. A prepared-shard replay must make zero inference calls, and an exhausted-shard continuation must preserve the v21 revision while recording only new immutable attempt artifacts.
 
 Owned:
 
