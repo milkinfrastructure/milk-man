@@ -22,8 +22,8 @@ SCHEMA_MAX_DEPTH = 16
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
 BASETEN_BASE_IMAGE = train.BASETEN_BASE_IMAGE
 TRANSFORMERS_SOURCE = train.TRANSFORMERS_SOURCE
-EVALUATE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/ddc04e9f0cf16e2a81a3ef07c0a3d1200b96c9eb/images/eval/evaluate.py"
-EVALUATE_SOURCE_SHA256 = "6df5432e835f70a6e6c2ad68b60895aeef042be08d97beb0a0da5bd45c1cede0"
+EVALUATE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/a454beba54075d4910c9ff776c0411f3cda1429c/images/eval/evaluate.py"
+EVALUATE_SOURCE_SHA256 = "24aca48fdf38cee035193305817000cc28f84875d4eb007af37136621090d4b7"
 
 
 class EvaluateError(ValueError):

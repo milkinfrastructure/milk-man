@@ -15,8 +15,8 @@ PROJECT = re.compile(r"[a-z0-9]{5,32}\Z")
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
 BASETEN_BASE_IMAGE = "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2"
 TRANSFORMERS_SOURCE = "https://github.com/huggingface/transformers/archive/ac3244569528944b9d5773cafea525cd8a8b63de.zip"
-TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/d06355c282f0c08ec097f738c63f323fd22e7aa7/images/train/train.py"
-TRAIN_SOURCE_SHA256 = "c35c32460ac79b325bf010799fba75e32799fd90b6bba08a60a0fcbb5144e359"
+TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/a454beba54075d4910c9ff776c0411f3cda1429c/images/train/train.py"
+TRAIN_SOURCE_SHA256 = "238e1d710529e209e700995839ee6fcc5c587f0d89ea6095befee248af54ac68"
 
 
 class TrainError(ValueError):
