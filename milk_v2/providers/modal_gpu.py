@@ -258,7 +258,7 @@ def ensure(identity: dict, artifact_sha256: str, model: dict, baseten_client) ->
         if not observation["volume_exists"]:
             raise ProviderError("Modal volume create is unresolved", calls, ambiguous=True)
 
-    if observation["app_state"] != "deployed":
+    if observation["app_state"] != "deployed" or not observation["cache_ready"]:
         extra = {
             "MILK_MODAL_CANDIDATE_APP_NAME": plan_value["app_name"],
             "MILK_MODAL_CANDIDATE_VOLUME_NAME": plan_value["volume_name"],

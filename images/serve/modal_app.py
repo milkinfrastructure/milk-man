@@ -52,9 +52,21 @@ runtime_environment = {
     "MILK_CANDIDATE_ACTIVATION_SCALE": ACTIVATION_SCALE,
     "MILK_CANDIDATE_LINEAR_COUNT": LINEAR_COUNT,
 }
+definition_environment = {
+    "MILK_MODAL_CANDIDATE_APP_NAME": APP_NAME,
+    "MILK_MODAL_CANDIDATE_VOLUME_NAME": VOLUME_NAME,
+    "MILK_SERVE_IMAGE": SERVE_IMAGE,
+    "MILK_CANDIDATE_ARTIFACT_SHA256": ARTIFACT_SHA256,
+    "MILK_CANDIDATE_ACTIVATION_SCALE": ACTIVATION_SCALE,
+    "MILK_CANDIDATE_LINEAR_COUNT": LINEAR_COUNT,
+    "MILK_CANDIDATE_ACCELERATOR": GPU,
+    "MILK_MODAL_ROUTING_REGION": ROUTING_REGION,
+}
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=False)
-hydrate_image = modal.Image.debian_slim(python_version="3.12")
-serve_image = modal.Image.from_registry(SERVE_IMAGE).entrypoint([]).env(runtime_environment)
+hydrate_image = modal.Image.debian_slim(python_version="3.12").env(definition_environment)
+serve_image = modal.Image.from_registry(SERVE_IMAGE).entrypoint([]).env(
+    {**definition_environment, **runtime_environment}
+)
 app = modal.App(APP_NAME)
 
 
