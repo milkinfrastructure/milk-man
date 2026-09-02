@@ -58,7 +58,13 @@ import sys
 
 text = open(sys.argv[1]).read()
 match = re.search(r"(?ms)^```(?:bash|sh|shell)[ \t]*\n(.*?)^```[ \t]*$", text)
-open(sys.argv[2], "w").write(match.group(1) if match else "")
+code = match.group(1) if match else ""
+if not code:
+    for line in text.splitlines():
+        if line.startswith("<tool_call>"):
+            code = line.removeprefix("<tool_call>").removesuffix("</tool_call>").strip()
+            break
+open(sys.argv[2], "w").write(code)
 PY
     append --type reasoning --content-file "$response"
 
