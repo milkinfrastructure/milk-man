@@ -9,6 +9,7 @@ HEADLONG_BIN="$ROOT/vendor/headlong/bin"
 usage() {
     cat <<'EOF'
 Usage:
+  bin/man dashboard
   bin/man develop --workspace NAME=/absolute/path [--workspace ...] -- TASK
   bin/man develop --resume --workspace NAME=/absolute/path [--workspace ...] -- TASK
   bin/man develop --traj UUID --workspace NAME=/absolute/path [--workspace ...] -- TASK
@@ -32,6 +33,9 @@ die() { printf 'milk-man: %s\n' "$*" >&2; exit "${2:-64}"; }
 mode="${1:-}"
 case "$mode" in
     -h|--help|help) usage; exit 0 ;;
+    dashboard)
+        exec env PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 -m milk_v2.dashboard
+        ;;
     develop|bootstrap) shift ;;
     "") usage >&2; exit 64 ;;
     *) die "unknown command: $1" ;;
