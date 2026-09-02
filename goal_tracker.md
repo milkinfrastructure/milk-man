@@ -106,7 +106,7 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] Scope `8cc33bba-6790-4701-8a88-b3ba565971ee` reconciled 103/103 captures into summary `69cf59a3-d9aa-5a25-b3c0-f500b1aadbee` and readiness `484d8224-971c-541a-b571-a1dc8ede9d2f`, with exactly 50 DEV, 25 calibration, and 25 sealed held-out sources. Replay made zero inference/provider calls.
 - [x] Revisions `ed4c84eda5fb1498d1a1f3a9a1c8bfb5b7fe5406027baedef08d121347d3c68b` and `3586f34b4e42156edd2a53ca12a63fa105878a2bc85559374b4fbc575f5d4f56` are rejected low-reasoning pilots: both passed format checks but retained source task templates and contained unacceptable semantic errors. Never coordinate, train, or route them.
 - [x] Eval v24 revision `ab5f9fbc02664d5e03eebb97e664e1ae883c3fbeeae21facda1ce6553e860c3d`, eval `d2742262-68ae-5ca9-8728-ab0a5baf3acf`, used `gpt-5.6-sol` at maximum reasoning to prepare exactly 100 cases from one source in four inference calls and zero provider calls. Direct review found 98/100 materially correct and 96/100 clean including minor wording issues; all 100 followed their deterministic operation and structured-output contract with no duplicates, source copying, or improper answer leakage. Replay made zero calls. This is generation proof only and is not a training corpus.
-- [~] Freeze the verified v24 prompt/model/config identity and precompute exactly 10,000 cases from the 100 held-out sources. Inspect a bounded source/operation/split sample before one serial coordinator publishes the eval; do not run dataset, training, GPU, or routing from an unreviewed precompute.
+- [ ] Scaling the verified v24 prompt/model/config identity to 10,000 cases is deferred while Milk Man engineering proceeds. When resumed, precompute from the 100 held-out sources and inspect a bounded source/operation/split sample before one serial coordinator publishes the eval; do not run dataset, training, GPU, or routing from an unreviewed precompute.
 
 ## Non-negotiable architecture
 
@@ -149,7 +149,7 @@ Production mode:
   result says `next: select-route-provider`, and the Milk Man system prompt and
   operator task select exactly one named job.
 - When nothing changed, it makes zero inference and provider calls.
-- Semantic jobs run a restricted Headlong session with a fixed job-specific system prompt and only `milk job read`, `milk job commit`, and `milk status` available.
+- Semantic jobs run a restricted Headlong session with a fixed job-specific system prompt and only `milk job read` and `milk job commit` available.
 - Production never reads development trajectories, coding memories, workspaces, or editing skills.
 - After local proof, the same `operate --once` command may run as a scheduled scale-to-zero CPU Modal job. GitHub Actions never runs Milk jobs.
 
@@ -683,16 +683,16 @@ MILK_EVAL_MIN_PARSE_WILSON_BPS=9500
 MILK_EVAL_MAX_ABSTAIN_WILSON_BPS=2000
 ```
 
-Eligibility requires:
+Individual eval-source admission is deterministic and requires:
 
-- complete production-profile capture;
-- supported request and returned response parsing;
-- successful response;
-- unique request-response content digest;
-- benign text case;
-- non-abstained classification;
-- an executable, exact, schema, reference, pairwise, or human oracle;
-- sufficient representative and tail coverage.
+- parsed text from an HTTP-successful response;
+- no tool calls in the source interaction; and
+- a request digest unique among admitted sources.
+
+Answerability, safety, outcome, and oracle labels are retained only as metadata
+and never gate source admission. An unsupported source oracle is normalized to
+a generated reference while preserving the source oracle and its provenance in
+metadata.
 
 Do not reintroduce session identity. The threshold unit is one complete gateway exchange containing whatever prior conversation context the client supplied.
 
@@ -776,17 +776,21 @@ The deterministic plan selects:
 - 8 tails from long, rare, error-prone, tool, multimodal, and low-confidence cells;
 - unique source exchanges only.
 
-The generated eval must bind source digests without copying raw source text into its manifest. Validation requires:
+The generated eval must bind source digests without copying raw source text into
+its manifest. Deterministic format and identity checks require:
 
 - exact schema and planned order;
 - unique case IDs and inputs;
-- source and summary provenance;
-- answerability and appropriate oracle;
-- no answer leakage;
-- no duplicate or near-duplicate cases;
-- no unsupported tool or multimodal requirement;
-- source separation from training data;
-- bounded operator review of the first complete 100-case corpus before downstream work.
+- valid source and summary provenance bindings;
+- no exact duplicate cases;
+- no unsupported tool or multimodal requirement; and
+- source separation from training data.
+
+Separately, bounded human semantic review of the first complete 100-case corpus
+judges material correctness, answerability and reference quality, answer
+leakage, and semantic near-duplication before downstream work. Human review is
+recorded as review evidence; it is not a deterministic format or identity
+check.
 
 The representative/tail selection above determines eligible held-out sources.
 Deterministic expansion supplies exactly the configured number of cases per
@@ -1325,13 +1329,15 @@ Completed 2026-09-01:
 - [x] Published `672b58cbe` and `3ec05028f`; the pinned Qwen3.5-0.8B student contract and separate high-intelligence eval/validator bindings remained intact.
 - [x] The fresh threshold-100 R2 scope generated and independently validated eval `eee146fd-d026-59dd-ac6d-4d44a2c04613` through separate OpenAI Responses bindings using `gpt-5.6-sol` at low reasoning effort. It accepted one bounded case in eight inference calls, made zero provider calls, and replayed with zero calls.
 - [x] The sharded implementation generated and validated eval `bdc67d24-36e5-5e9a-a90c-1d5a28c30013` against the same live R2 scope: exactly eight cases in three split-pure shards, resumable accepted-only repair, an immutable cumulative uniqueness ledger, and guarded current-pointer publication. Dataset `e9b7f5c7-9fac-56cd-b247-feb64b5e092c` then referenced exact held-out counts DEV 4, calibration 2 and sealed 2 while writing one train row; it used two teacher calls and zero provider calls.
-- [~] Started explicit 100,000-case eval `d388a759-f5b2-5927-966e-bcf4ad974469` from a deterministic 100-conversation subset of the 101-capture checkpoint. A live oversized-validator failure exposed that source bindings had been treated as answer keys; the corrected contract treats them as provenance/distribution, keeps exact copy and global duplicate checks deterministic, and judges standalone answerability and oracle quality in independently replayable 64-case batches. The first 256-case DEV shard completed with ten OpenAI inference turns, zero provider calls, immutable cases/validation/ledger objects, and next range 256–512.
+- [x] The abandoned v21 100,000-case eval `d388a759-f5b2-5927-966e-bcf4ad974469` is stopped historical evidence, not current work. Its first 256-case DEV shard had completed with ten OpenAI inference turns, zero provider calls, and immutable cases, validation, and ledger objects before the run was abandoned.
 - [x] Proved production-scale parallel generation against the same live R2/OpenAI bindings. Distinct precompute workers prepared ordinals `0..255` and `256..511` for eval `23faf45b-13a8-5d06-bffd-c8fbf7735374` without touching shared progress; the ordinal coordinator committed both shards, advanced the cumulative ledger to 512 unique cases, reused the first shard with zero inference, and regenerated only two real cross-shard collisions on the second. Generation and validation made zero GPU/provider calls.
-- [x] Extended that immutable scale proof to a contiguous 2,560-case DEV prefix across ten shards. Four-way precompute was stable after adding bounded SigV4 transport retries; the coordinator never skipped an ordinal, reused globally unique prepared shards with zero inference, and regenerated 47 exact normalized collisions across seven shard reductions. The measured repair cost now uses only the pending cases' source conversations. A separate ordinal-diversity prompt experiment was rejected after producing 96 vacuous cases in one shard; it never advanced shared progress, and the proven v7 generation prompt remains authoritative.
+- [x] Extended that immutable historical scale proof to a contiguous 2,560-case DEV prefix across ten shards. Four-way precompute was stable after adding bounded SigV4 transport retries; the coordinator never skipped an ordinal, reused globally unique prepared shards with zero inference, and regenerated 47 exact normalized collisions across seven shard reductions. The measured repair cost used only the pending cases' source conversations. A separate ordinal-diversity prompt experiment was rejected after producing 96 vacuous cases in one shard and never advanced shared progress. Eval v7 is historical and not authoritative; rejected v22 artifacts are not the current lineage; Eval v24 is current.
 - [x] Historical v14 scale proof `c9f2d98a696bb40493d4d5de324ee9b0b7e5f2ab5583f18d474d3222e75e207e`, eval UUID `454efa61-1f99-5133-950e-75009bcde6e5`, prepared and coordinated the first 512 cases. Its retained receipts contain 1,723,691 input and 92,512 output tokens across 63 inference requests; at current uncached list rates this completed proof is approximately $0.31. It remains the visible 512-case pointer until the current revision is coordinated.
 - [x] Stopped v21 revision `4087cdace336000e95e61ca1cdfdd6313a280c4d6f14b2e43c882e780f051596`, eval UUID `0940bb40-3cc0-5aea-b0c1-f5244ccadf65`, after the quality audit above. It remains immutable mechanics evidence and must not be resumed or promoted.
 - [x] OpenAI Responses generation stopped with `credit_balance_exhausted`. This was account credit exhaustion, not throttling and not a Milk code or object-store failure. The stopped v21 run then used the separate environment-selected Baseten `zai-org/GLM-5.3-Flash` binding.
 - [x] A four-worker Baseten precompute pilot returned genuine HTTP `429` responses. It launched no GPU lifecycle work and advanced no shared pointer. Three concurrent precompute workers are the observed stable ceiling for this run; do not retry with four.
+
+- [x] Retained Milk Man commits `0458a82b9` and `056cc1143` as the self-recovery/completion-protocol proof: the former hardens agent completion and the latter keeps task context bounded across recovery.
 
 Active source-proportional execution sequence:
 
@@ -1342,8 +1348,10 @@ Active source-proportional execution sequence:
 5. If the proof passes, run the same immutable implementation with 100 eligible held-out sources for exactly 10,000 cases. Parallel preparation may resume only after the one-source quality proof, and one coordinator owns the cumulative uniqueness ledger.
 6. Continue the accepted 10,000-case lineage through `dataset -> train -> evaluate -> one explicit route-propose provider -> operator-signed canary/fallback/rollback/zero -> independent zero-GPU checks`.
 
-- [x] Prove one eligible held-out source produces exactly 100 schema-valid, globally unique, lineage-bound cases and a zero-call replay. The retained corpus is mechanics-only because its bounded operator review found five defects and severe semantic repetition.
+- [x] Prove one eligible held-out source produces exactly 100 schema-valid, globally unique, lineage-bound cases and a zero-call replay. The current one-source v24 maximum-reasoning proof produced 100 structured cases with four inference calls, zero provider lifecycle calls and a zero-call replay; bounded human semantic review found 98 materially correct cases and two known semantic errors.
 - [ ] Prove 100 eligible held-out sources produce exactly 10,000 useful cases with exactly 100 cases bound to each source.
+
+Operator decision: scaling v24 to 10,000 cases is deferred while Milk Man engineering proceeds; v24 remains the current lineage.
 
 Owned:
 
@@ -1368,9 +1376,9 @@ Acceptance:
 
 ### [~] P8 — Dataset, training and three evaluation branches
 
-Historical bounded-mechanics capability proof — not current v22 completion:
+Historical bounded-mechanics capability proof — not current v24 completion:
 
-All checked items below prove the job code and provider path on earlier small mechanics datasets. P8 remains active until the accepted source-proportional v22 manifest produces its own dataset, Qwen3.5-0.8B training result, comparable branches, deterministic winner, and sealed result.
+All checked items below prove the job code and provider path on earlier small mechanics datasets. The current v24 lineage is only the one-source proof; P8 remains active until operator-authorized scaling produces an accepted manifest with its own dataset, Qwen3.5-0.8B training result, comparable branches, deterministic winner, and sealed result.
 
 - [x] Generated live R2 dataset `f59d59b7-9992-5f6c-bad0-9842afeec31a` from the accepted eval with disjoint train/DEV/calibration/sealed objects; creation used the teacher binding and immediate replay made zero inference or provider calls.
 - [x] Expanded the mechanics vertical to eval revision `6dcc2cb3-087a-55a9-8791-b96d9359034a` with four validated cases, then generated dataset `a7376834-b241-5d8d-850b-105624d4550c` with exact counts train 1, DEV 2, calibration 1 and sealed 1. Eval and dataset replays made zero inference calls.
@@ -1432,9 +1440,9 @@ Acceptance:
 
 ### [~] P9 — Signed routing and release
 
-Historical routing/release capability proof — not current v22 completion:
+Historical routing/release capability proof — not current v24 completion:
 
-All checked items below prove Parlor's signed-routing implementation and an earlier bounded mechanics candidate. P9 remains active for the current lineage until the v22-derived winner produces a new unsigned proposal and the operator proves candidate success, pre-byte fallback, rollback, signed zero, credential removal, and zero GPU capacity.
+All checked items below prove Parlor's signed-routing implementation and an earlier bounded mechanics candidate. P9 remains active until an operator-authorized scaled successor to the current v24 proof produces a new unsigned proposal and the operator proves candidate success, pre-byte fallback, rollback, signed zero, credential removal, and zero GPU capacity.
 
 - [x] Published the independently reviewed signed canary, pre-byte fallback, rollback, and zero-route implementation at Milk Parlor commit `933b45eac824787cb064b869d93515b75c0c58a8`; requests never wait for R2 route refresh.
 - [x] Fixed macOS Ed25519 one-shot signing at `b1744d79be67e7606c4ba8cb2eac2e693b6436d0` and published one canonical, signature-verified production zero route at revision 1.
