@@ -835,10 +835,22 @@ Candidate credentials remain deployment environment bindings. Do not implement h
 Embed one raw HTML/CSS/JavaScript page in Milk Parlor:
 
 - reuse the owned pixel milk-carton asset from `/Users/shantanu/milk-ide/milkCarton.png`;
-- black terminal background and monospace/typewriter styling;
+- reuse the original Milk HTML, CSS, and typewriter text-execution code as the
+  donor instead of recreating its interaction;
+- apply Susan Kare's design discipline: immediate legibility, crisp pixel
+  iconography, a restrained system palette, strong information hierarchy,
+  memorable direct metaphors, and small moments of delight without ornament;
+- keep the black terminal background and monospace/typewriter voice, but use
+  motion only to reveal live execution; honor reduced-motion and provide the
+  same information without animation;
 - no frontend framework, package manager, build step, database, or analytics;
 - enter the same operator API key client-side and retain it only in `sessionStorage`;
 - fetch only `/api/status`.
+
+This dashboard is deferred until the data and route loop works. It remains one
+hyper-minimal, dependency-free document and a read-only view of the UUID's
+object-memory progress; it cannot launch jobs, mutate routes, expose secrets,
+or display raw customer traffic.
 
 Show:
 
