@@ -89,6 +89,10 @@ inference fallback. Summary, eval generation, validation, and teacher-data
 generation each require their own OpenAI-compatible environment binding; none
 inherits or falls back to the student base.
 
+OpenAI may supply any or all teacher roles by pointing each role's reviewed
+`BASE_URL`, `MODEL`, and `API_KEY` variables at the same OpenAI account. The
+bindings remain separate so changing one job never silently changes another.
+
 The object root for one authenticated scope is:
 
 ```text

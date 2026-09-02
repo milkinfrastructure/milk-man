@@ -919,6 +919,29 @@ def _advance(store, key: str, value: dict) -> tuple[str, str]:
 
 
 def _status(store, settings, state: dict) -> dict:
+    summary = state.get("summary")
+    metrics = None
+    if summary is not None:
+        structural = summary["structural"]
+        series = structural["series"]
+        metrics = {
+            "quality": structural["quality"],
+            "counters": structural["counters"],
+            "distributions": structural["distributions"],
+            "series": {
+                name: series[name]
+                for name in (
+                    "total_ms",
+                    "ttft_ms",
+                    "tps_milli",
+                    "input_tokens",
+                    "output_tokens",
+                    "message_count",
+                    "tool_calls",
+                )
+            },
+            "semantic": summary["semantic"]["cumulative"],
+        }
     value = {
         "schema_version": "milk.status.v2",
         "scope_id": settings.scope_id,
@@ -927,6 +950,7 @@ def _status(store, settings, state: dict) -> dict:
         "processed_count": state["processed_count"],
         "next_summary_threshold": state["next_threshold"],
         "summary": state.get("summary_pointer"),
+        "summary_metrics": metrics,
         "readiness": state.get("readiness_pointer"),
         "next_action": state.get("next_action", "summary"),
     }
@@ -1168,7 +1192,7 @@ def reconcile(store, settings, runtime) -> dict:
         readiness_pointer = _json(store.get(settings.scope_prefix + "readiness/current.json").body, "readiness/current.json")
     except FileNotFoundError:
         readiness_pointer = None
-    final_state = {"capture_count": len(all_keys), "processed_count": len(processed), "next_threshold": next_threshold, "summary_pointer": parent_pointer, "readiness_pointer": readiness_pointer, "next_action": "eval" if readiness_pointer and readiness_pointer.get("ready") else "summary"}
+    final_state = {"capture_count": len(all_keys), "processed_count": len(processed), "next_threshold": next_threshold, "summary_pointer": parent_pointer, "summary": parent_summary, "readiness_pointer": readiness_pointer, "next_action": "eval" if readiness_pointer and readiness_pointer.get("ready") else "summary"}
     status_value = _status(store, settings, final_state)
     status_key = settings.scope_prefix + "status/current.json"
     artifacts.append({"key": status_key, "sha256": digest(status_value)})

@@ -1107,6 +1107,7 @@ Progress 2026-09-01:
 - [x] Repeated semantic inference against the real Baseten OpenAI-compatible binding through restricted Headlong job mode with only `milk_job_read`, `milk_job_commit`, and `milk_status`; one threshold-one checkpoint completed in two inference turns and its immediate replay made zero calls.
 - [x] Processed 100 complete mechanics captures into a second real R2 summary/readiness checkpoint in two inference turns; the result remained explicitly non-production-qualified.
 - [x] Proved a production scope below its first threshold remained model-free with zero inference calls, zero provider calls, and no route attempt.
+- [x] Exposed bounded content-free structural quality, performance distributions, and semantic classifier totals in `status/current.json`; the dashboard still reads one object and never reads customer text.
 
 Owned:
 
@@ -1268,6 +1269,8 @@ Progress 2026-09-01:
 - [x] R2 capture `01a0606d-e155-7932-902c-aab870d951d9` retained a forced cold-start fallback from the same signed route with `fallback_reason: candidate_status_503`, baseline `200`, and no candidate bytes exposed.
 - [x] Higher revision 3 (`c4668940-9131-4b67-a434-a834844b4e8c`) rolled exposure back from 100% to a 1% canary; capture `01a0606f-4638-7772-8fcc-c80e9175984b` bound that route and selected baseline with no fallback.
 - [x] Signed zero revision 4 (`ce2f4d88-0107-429f-89a7-6a9083c14a18`) removed candidate identity and basis points. Capture `01a0606f-feca-7280-a6ec-fd529cea9f00` bound the zero route and returned baseline `200`; Cloudflare version `d1b61ee7-ce8f-47c3-b90e-4c1e61314537` contains no candidate URL, credential, or artifact binding.
+- [x] Retained the content-free candidate, fallback, rollback, provider-drain, and zero-route receipt at `/Users/shantanu/milk-release-evidence/milk-v2-live-candidate-20260901/report.json`, SHA-256 `33f94057a7ae1ef700d4d16cbb335d958c193d4365033cfad1b05836aa6cb889`.
+- [ ] Finish the concise public release docs and tagged release metadata; remove old public names, runtime Actions, unused images, fixtures, and transition documents.
 
 Owned:
 
