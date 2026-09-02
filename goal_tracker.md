@@ -1286,6 +1286,18 @@ Completed 2026-09-01:
 - [x] Extended that immutable scale proof to a contiguous 2,560-case DEV prefix across ten shards. Four-way precompute was stable after adding bounded SigV4 transport retries; the coordinator never skipped an ordinal, reused globally unique prepared shards with zero inference, and regenerated 47 exact normalized collisions across seven shard reductions. The measured repair cost now uses only the pending cases' source conversations. A separate ordinal-diversity prompt experiment was rejected after producing 96 vacuous cases in one shard; it never advanced shared progress, and the proven v7 generation prompt remains authoritative.
 - [x] Historical v14 scale proof `c9f2d98a696bb40493d4d5de324ee9b0b7e5f2ab5583f18d474d3222e75e207e`, eval UUID `454efa61-1f99-5133-950e-75009bcde6e5`, prepared and coordinated the first 512 cases. Its retained receipts contain 1,723,691 input and 92,512 output tokens across 63 inference requests; at current uncached list rates this completed proof is approximately $0.31. It remains the visible 512-case pointer until the current revision is coordinated.
 - [~] The current v21 revision is `4087cdace336000e95e61ca1cdfdd6313a280c4d6f14b2e43c882e780f051596`, eval UUID `0940bb40-3cc0-5aea-b0c1-f5244ccadf65`. The 4-case readiness sample only admits work; generation deterministically uses all 17 eligible held-out conversations from the 100-conversation checkpoint while 78 train conversations remain isolated for teacher targets. Oracle-homogeneous batches bind schema roots in strict tools, results bind to plan order without model-authored IDs, and rejected verdicts carry bounded repair guidance. The first 256-case shard retained 236 cases on its initial pass, repaired all 20 incorrect cases in one guided pass, became prepared in 28 inference turns, and replayed with zero calls. No GPU/provider lifecycle call or route action occurred.
+- [x] OpenAI Responses generation stopped with `credit_balance_exhausted`. This is account credit exhaustion, not throttling and not a Milk code or object-store failure. The current v21 run therefore uses the separate environment-selected Baseten `zai-org/GLM-5.3-Flash` binding.
+- [x] A four-worker Baseten precompute pilot returned genuine HTTP `429` responses. It launched no GPU lifecycle work and advanced no shared pointer. Three concurrent precompute workers are the observed stable ceiling for this run; do not retry with four.
+
+Active v21 execution sequence:
+
+1. Freeze the published v21 source and run at most three precompute workers, with exactly one owner for each shard ordinal.
+2. Never run the shared coordinator while any precompute worker is active.
+3. After workers exit, inventory ordinals `0..391` and run only missing or incomplete shards; replay every prepared shard with zero inference calls.
+4. Run one coordinator invocation at a time. It consumes prepared shards in ordinal order, writes shared progress, and regenerates only exact cross-shard collisions.
+5. Finalize `e/current.json` only at exactly 100,000 unique validated cases, then run `dataset -> train -> evaluate -> one explicit route-propose provider -> operator-signed canary/fallback/rollback/zero -> independent zero-GPU checks`.
+6. Never restart a completed shard, run two coordinators, mix eval revisions, interpret historical dashboard progress as v21 progress, or select a second provider after a failure.
+
 - [ ] Expand one 100-exchange summary checkpoint into exactly 100,000 validated eval cases using deterministic, resumable R2 shards. A small mechanics corpus proves the job graph but does not satisfy this scale target.
 
 Owned:
@@ -1309,9 +1321,11 @@ Acceptance:
 - `e/current.json` advances only after the complete validated revision.
 - semantic workers receive only the next strict `milk job read` or `milk job commit` function; Milk Man exposes status separately, and neither surface can select storage or provider authority.
 
-### [x] P8 — Dataset, training and three evaluation branches
+### [~] P8 — Dataset, training and three evaluation branches
 
-Progress 2026-09-01:
+Historical bounded-mechanics capability proof — not current v21 completion:
+
+All checked items below prove the job code and provider path on earlier small mechanics datasets. P8 remains active until the finalized 100,000-case v21 manifest produces its own dataset, Qwen3.5-0.8B training result, comparable branches, deterministic winner, and sealed result.
 
 - [x] Generated live R2 dataset `f59d59b7-9992-5f6c-bad0-9842afeec31a` from the accepted eval with disjoint train/DEV/calibration/sealed objects; creation used the teacher binding and immediate replay made zero inference or provider calls.
 - [x] Expanded the mechanics vertical to eval revision `6dcc2cb3-087a-55a9-8791-b96d9359034a` with four validated cases, then generated dataset `a7376834-b241-5d8d-850b-105624d4550c` with exact counts train 1, DEV 2, calibration 1 and sealed 1. Eval and dataset replays made zero inference calls.
@@ -1371,9 +1385,11 @@ Acceptance:
 - unsigned proposal;
 - termination receipts and independently verified zero capacity on both providers.
 
-### [x] P9 — Signed routing and release
+### [~] P9 — Signed routing and release
 
-Progress 2026-09-01:
+Historical routing/release capability proof — not current v21 completion:
+
+All checked items below prove Parlor's signed-routing implementation and an earlier bounded mechanics candidate. P9 remains active for the current lineage until the v21-derived winner produces a new unsigned proposal and the operator proves candidate success, pre-byte fallback, rollback, signed zero, credential removal, and zero GPU capacity.
 
 - [x] Published the independently reviewed signed canary, pre-byte fallback, rollback, and zero-route implementation at Milk Parlor commit `933b45eac824787cb064b869d93515b75c0c58a8`; requests never wait for R2 route refresh.
 - [x] Fixed macOS Ed25519 one-shot signing at `b1744d79be67e7606c4ba8cb2eac2e693b6436d0` and published one canonical, signature-verified production zero route at revision 1.
