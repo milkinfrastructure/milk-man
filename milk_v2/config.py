@@ -121,10 +121,21 @@ BINDING_ENVIRONMENTS = {
         ),
     },
     "candidate": {
-        "required": ("BASETEN_API_KEY", "MILK_SERVE_IMAGE"),
+        "required": (
+            "BASETEN_API_KEY",
+            "MODAL_TOKEN_ID",
+            "MODAL_TOKEN_SECRET",
+            "MILK_SERVE_IMAGE",
+            "MILK_CANDIDATE_API_KEY",
+        ),
         "optional": (
             "BASETEN_TEAM_NAME",
+            "MODAL_ENVIRONMENT",
             "MILK_CANDIDATE_ACCELERATOR",
+            "MILK_MODAL_CANDIDATE_APP_PREFIX",
+            "MILK_MODAL_CANDIDATE_VOLUME_PREFIX",
+            "MILK_MODAL_ROUTING_REGION",
+            "MILK_MODAL_CLI",
             "MILK_ROUTE_CANDIDATE_BPS",
             "MILK_ROUTE_TIMEOUT_SECONDS",
         ),

@@ -13,10 +13,10 @@ import urllib.request
 import uuid
 
 from . import evaluate, summary, train
-from .providers import baseten
+from .providers import baseten, modal_gpu
 
 
-CODE_VERSION = "milk.route-propose.v2"
+CODE_VERSION = "milk.route-propose.v3"
 TRUSS_VERSION = "0.18.28"
 SERVED_MODEL = "milk-qwen3.5-0.8b-static-fp8"
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-serve@sha256:[0-9a-f]{64}\Z")
@@ -39,10 +39,18 @@ class RouteError(ValueError):
 
 
 class ProviderError(RuntimeError):
-    def __init__(self, message: str, provider_calls: int, *, ambiguous: bool = False):
+    def __init__(
+        self,
+        message: str,
+        provider_calls: int,
+        *,
+        ambiguous: bool = False,
+        code: str | None = None,
+    ):
         super().__init__(message)
         self.provider_calls = provider_calls
         self.ambiguous = ambiguous
+        self.code = code
 
 
 def _required(name: str) -> str:
@@ -165,6 +173,8 @@ def _artifact(
             "model": SERVED_MODEL,
             "torchao_version": "0.15.0",
             "quantization": sealed["quantization"],
+            "credential_env": "MILK_CANDIDATE_API_KEY",
+            "baseten_secret": "milk-candidate-api-key",
         },
         "student_base": {
             "model_repo": runtime.student_base.model_repo,
@@ -202,6 +212,7 @@ def _truss_config(identity: dict, artifact_sha256: str, model_name: str) -> dict
             "MILK_CANDIDATE_ACTIVATION_SCALE": str(quantization["activation_scale"]),
             "MILK_CANDIDATE_LINEAR_COUNT": str(quantization["quantized_linear_count"]),
         },
+        "secrets": {"milk-candidate-api-key": None},
         "resources": {
             "accelerator": identity["accelerator"],
             "cpu": "4",
@@ -309,6 +320,12 @@ def _push(config: dict, model_name: str, deployment_name: str) -> dict:
             value = None
         if completed.returncode != 0:
             detail = _safe_detail(completed.stderr)
+            if "Custom base images not supported for your organization" in detail:
+                raise ProviderError(
+                    "Baseten custom base images are not enabled for this organization",
+                    1,
+                    code="custom_base_image_not_enabled",
+                )
             raise ProviderError(
                 f"Truss submission failed: {detail or 'no detail'}", 1, ambiguous=True
             )
@@ -364,7 +381,12 @@ def _ids_from_push(value: dict) -> tuple[str, str] | None:
 
 
 def _http_json(
-    method: str, url: str, api_key: str, body: dict | None, timeout: int
+    method: str,
+    url: str,
+    api_key: str,
+    body: dict | None,
+    timeout: int,
+    authorization: str,
 ) -> tuple[dict, bytes]:
     parsed = urllib.parse.urlsplit(url)
     if (
@@ -382,7 +404,7 @@ def _http_json(
         data=raw,
         method=method,
         headers={
-            "Authorization": "Api-Key " + api_key,
+            "Authorization": authorization + " " + api_key,
             "Accept": "application/json",
             **({"Content-Type": "application/json"} if raw is not None else {}),
         },
@@ -414,8 +436,11 @@ def _smoke(
     artifact_sha256: str,
     quantization: dict,
     timeout: int,
+    authorization: str,
 ) -> tuple[dict, int]:
-    health, health_body = _http_json("GET", base_url + "/health", api_key, None, timeout)
+    health, health_body = _http_json(
+        "GET", base_url + "/health", api_key, None, timeout, authorization
+    )
     if health != {
         "status": "ok",
         "model": SERVED_MODEL,
@@ -435,6 +460,7 @@ def _smoke(
             "stream": False,
         },
         timeout,
+        authorization,
     )
     choices = chat.get("choices")
     if (
@@ -503,16 +529,13 @@ def _finalize(
     identity: dict,
     artifact_sha256: str,
     candidate_uuid: str,
-    model_name: str,
-    deployment_name: str,
-    model_id: str,
-    deployment: dict,
+    provider: dict,
+    base_url: str,
+    candidate_api_key_env: str,
     smoke: dict,
     prefix: str,
     provider_calls: int,
 ) -> dict:
-    deployment_id = deployment["id"]
-    base_url = f"https://model-{model_id}.api.baseten.co/environments/production/sync"
     candidate_key = settings.scope_prefix + f"m/{candidate_uuid}/serve.json"
     candidate = {
         "schema_version": "milk.candidate.v2",
@@ -521,15 +544,7 @@ def _finalize(
         "profile": settings.profile,
         "artifact_sha256": artifact_sha256,
         "identity": identity,
-        "provider": {
-            "name": "baseten",
-            "model_id": model_id,
-            "model_name": model_name,
-            "deployment_id": deployment_id,
-            "deployment_name": deployment_name,
-            "status": deployment.get("status"),
-            "base_url": base_url,
-        },
+        "provider": provider,
         "smoke": smoke,
     }
     candidate_body = summary.canonical(candidate)
@@ -571,7 +586,7 @@ def _finalize(
         "proposal_uuid": proposal_uuid,
         "proposal_sha256": proposal_sha256,
         **proposal_identity,
-        "candidate_api_key_env": "BASETEN_API_KEY",
+        "candidate_api_key_env": candidate_api_key_env,
         "operator_action": "sign-and-publish-with-milk-parlor",
     }
     proposal_body = summary.canonical(proposal)
@@ -594,12 +609,7 @@ def _finalize(
         "next": "operator-sign-route",
         "candidate": candidate_reference,
         "proposal": proposal_reference,
-        "provider": {
-            "name": "baseten",
-            "model_id": model_id,
-            "deployment_id": deployment_id,
-            "status": deployment.get("status"),
-        },
+        "provider": provider,
         "artifact_keys": [candidate_key, proposal_key, smoke_key, status_key, result_key],
     }
     store.create_same(result_key, summary.canonical(result))
@@ -613,14 +623,118 @@ def _finalize(
         "details": {
             "candidate_uuid": candidate_uuid,
             "proposal_uuid": proposal_uuid,
-            "provider": "baseten",
-            "model_id": model_id,
-            "deployment_id": deployment_id,
-            "status": deployment.get("status"),
+            "provider": provider,
             "artifact_sha256": artifact_sha256,
             "candidate_binding_sha256": binding_sha256,
         },
     }
+
+
+def _baseten_preflight(store, key: str, artifact_sha256: str) -> dict | None:
+    try:
+        value, unused = _object(store, key)
+    except FileNotFoundError:
+        return None
+    if value != {
+        "schema_version": "milk.baseten-preflight.v2",
+        "job_id": artifact_sha256,
+        "provider": "baseten",
+        "code": "custom_base_image_not_enabled",
+        "provider_created": False,
+        "detail_sha256": hashlib.sha256(
+            b"Custom base images not supported for your organization"
+        ).hexdigest(),
+    }:
+        raise RouteError("stored Baseten preflight result is invalid")
+    return value
+
+
+def _modal_fallback(
+    store,
+    settings,
+    identity: dict,
+    artifact_sha256: str,
+    candidate_uuid: str,
+    model: dict,
+    sealed: dict,
+    prefix: str,
+    intent_key: str,
+    preflight_key: str,
+    client: baseten.Client,
+    timeout: int,
+) -> dict:
+    try:
+        ensured = modal_gpu.ensure(identity, artifact_sha256, model, client)
+    except modal_gpu.ProviderError as error:
+        raise ProviderError(
+            str(error), client.calls + error.provider_calls, ambiguous=error.ambiguous
+        ) from error
+    if ensured["state"] != "ready":
+        return {
+            "state": "active",
+            "identity": artifact_sha256,
+            "artifacts": _artifacts(store, [intent_key, preflight_key]),
+            "inference_calls": 0,
+            "provider_calls": client.calls + ensured["provider_calls"],
+            "next": "route-propose",
+            "details": {
+                "provider": "modal",
+                "app_name": ensured["plan"]["app_name"],
+                "status": ensured["observation"]["app_state"],
+                "artifact_sha256": artifact_sha256,
+            },
+        }
+    plan = ensured["plan"]
+    observation = ensured["observation"]
+    base_url = observation["endpoint_url"].rstrip("/")
+    receipt_key = prefix + "modal-receipt.json"
+    receipt = {
+        "schema_version": "milk.route-provider-receipt.v2",
+        "job_id": artifact_sha256,
+        "provider": "modal",
+        "provider_app_id": observation["app_id"],
+        "provider_app_name": plan["app_name"],
+        "provider_volume_name": plan["volume_name"],
+        "base_url": base_url,
+        "request_sha256": summary.digest(plan),
+    }
+    store.create_same(receipt_key, summary.canonical(receipt))
+    try:
+        smoke, smoke_calls = _smoke(
+            _required("MILK_CANDIDATE_API_KEY"),
+            base_url,
+            artifact_sha256,
+            sealed["quantization"],
+            timeout,
+            "Bearer",
+        )
+    except ProviderError as error:
+        raise ProviderError(
+            str(error),
+            client.calls + ensured["provider_calls"] + error.provider_calls,
+            ambiguous=error.ambiguous,
+        ) from error
+    provider = {
+        "name": "modal",
+        "app_id": observation["app_id"],
+        "app_name": plan["app_name"],
+        "volume_name": plan["volume_name"],
+        "status": observation["app_state"],
+        "base_url": base_url,
+    }
+    return _finalize(
+        store,
+        settings,
+        identity,
+        artifact_sha256,
+        candidate_uuid,
+        provider,
+        base_url,
+        "MILK_CANDIDATE_API_KEY",
+        smoke,
+        prefix,
+        client.calls + ensured["provider_calls"] + smoke_calls,
+    )
 
 
 def reconcile(store, settings, runtime) -> dict:
@@ -631,6 +745,7 @@ def reconcile(store, settings, runtime) -> dict:
     prefix = settings.scope_prefix + f"j/route-propose/{artifact_sha256}/"
     intent_key = prefix + "intent.json"
     receipt_key = prefix + "receipt.json"
+    preflight_key = prefix + "baseten-preflight.json"
     result_key = prefix + "result.json"
     try:
         result, unused = _object(store, result_key)
@@ -674,6 +789,21 @@ def reconcile(store, settings, runtime) -> dict:
     created = store.create_same(intent_key, summary.canonical(intent)).created
     timeout = _integer("MILK_ROUTE_TIMEOUT_SECONDS", 600, 30, 1800)
     client = baseten.Client(_required("BASETEN_API_KEY"), min(timeout, 120))
+    if _baseten_preflight(store, preflight_key, artifact_sha256) is not None:
+        return _modal_fallback(
+            store,
+            settings,
+            identity,
+            artifact_sha256,
+            candidate_uuid,
+            model,
+            sealed,
+            prefix,
+            intent_key,
+            preflight_key,
+            client,
+            timeout,
+        )
 
     try:
         receipt, unused = _object(store, receipt_key)
@@ -705,7 +835,37 @@ def reconcile(store, settings, runtime) -> dict:
                 push_calls = error.provider_calls
                 match = _matching_deployment(client, model_name, deployment_name)
                 if match is None:
-                    raise ProviderError(str(error), client.calls + push_calls, ambiguous=True) from error
+                    if error.code == "custom_base_image_not_enabled" and not error.ambiguous:
+                        preflight = {
+                            "schema_version": "milk.baseten-preflight.v2",
+                            "job_id": artifact_sha256,
+                            "provider": "baseten",
+                            "code": error.code,
+                            "provider_created": False,
+                            "detail_sha256": hashlib.sha256(
+                                b"Custom base images not supported for your organization"
+                            ).hexdigest(),
+                        }
+                        store.create_same(preflight_key, summary.canonical(preflight))
+                        return _modal_fallback(
+                            store,
+                            settings,
+                            identity,
+                            artifact_sha256,
+                            candidate_uuid,
+                            model,
+                            sealed,
+                            prefix,
+                            intent_key,
+                            preflight_key,
+                            client,
+                            timeout,
+                        )
+                    raise ProviderError(
+                        str(error),
+                        client.calls + push_calls,
+                        ambiguous=error.ambiguous,
+                    ) from error
             if match is None:
                 pushed_ids = _ids_from_push(pushed)
                 if pushed_ids is None:
@@ -760,22 +920,35 @@ def reconcile(store, settings, runtime) -> dict:
     base_url = f"https://model-{model_id}.api.baseten.co/environments/production/sync"
     try:
         smoke, smoke_calls = _smoke(
-            _required("BASETEN_API_KEY"), base_url, artifact_sha256, sealed["quantization"], timeout
+            _required("MILK_CANDIDATE_API_KEY"),
+            base_url,
+            artifact_sha256,
+            sealed["quantization"],
+            timeout,
+            "Api-Key",
         )
     except ProviderError as error:
         raise ProviderError(
             str(error), client.calls + error.provider_calls, ambiguous=error.ambiguous
         ) from error
+    provider = {
+        "name": "baseten",
+        "model_id": model_id,
+        "model_name": model_name,
+        "deployment_id": deployment_id,
+        "deployment_name": deployment_name,
+        "status": deployment.get("status"),
+        "base_url": base_url,
+    }
     return _finalize(
         store,
         settings,
         identity,
         artifact_sha256,
         candidate_uuid,
-        model_name,
-        deployment_name,
-        model_id,
-        deployment,
+        provider,
+        base_url,
+        "MILK_CANDIDATE_API_KEY",
         smoke,
         prefix,
         client.calls + smoke_calls,

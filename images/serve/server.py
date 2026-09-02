@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hashlib
+import hmac
 import json
 import os
 from pathlib import Path
@@ -25,6 +26,17 @@ def required(name: str) -> str:
     value = os.environ.get(name, "")
     if not value:
         raise ValueError(f"{name} is required")
+    return value
+
+
+def candidate_api_key() -> str:
+    value = os.environ.get("MILK_CANDIDATE_API_KEY", "")
+    if not value:
+        path = Path("/secrets/milk-candidate-api-key")
+        if path.is_file():
+            value = path.read_text().strip()
+    if not value or "\n" in value or "\r" in value:
+        raise ValueError("candidate API key is required")
     return value
 
 
@@ -76,6 +88,7 @@ class Runtime:
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA is required")
         self.artifact_sha256 = required("MILK_CANDIDATE_ARTIFACT_SHA256")
+        self.api_key = candidate_api_key()
         if SHA256.fullmatch(self.artifact_sha256) is None:
             raise ValueError("MILK_CANDIDATE_ARTIFACT_SHA256 must be lowercase SHA-256")
         try:
@@ -159,6 +172,25 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def authorized(self) -> bool:
+        supplied = self.headers.get("authorization", "")
+        for prefix in ("Bearer ", "Api-Key "):
+            if supplied.startswith(prefix):
+                return hmac.compare_digest(supplied[len(prefix):], RUNTIME.api_key)
+        return False
+
+    def require_authorization(self) -> bool:
+        if self.authorized():
+            return True
+        body = b'{"error":{"message":"invalid API key","type":"authentication_error"}}'
+        self.send_response(401)
+        self.send_header("content-type", "application/json")
+        self.send_header("www-authenticate", "Bearer")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        return False
+
     def send_chat_stream(self, identifier: str, output: str):
         created = int(time.time())
         chunks = [
@@ -187,6 +219,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if not self.require_authorization():
+            return
         if self.path == "/health":
             self.send_json(200, {
                 "status": "ok",
@@ -201,6 +235,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": {"message": "not found", "type": "invalid_request_error"}})
 
     def do_POST(self):
+        if not self.require_authorization():
+            return
         if self.path != "/v1/chat/completions":
             self.send_json(404, {"error": {"message": "not found", "type": "invalid_request_error"}})
             return
