@@ -112,7 +112,6 @@ BINDING_ENVIRONMENTS = {
         "optional": (
             "BASETEN_TEAM_NAME",
             "BASETEN_TRAINING_ACCELERATOR",
-            "BASETEN_TRAINING_REGISTRY_SECRET",
             "MILK_BASETEN_RUNTIME_SECRET_MAP_JSON",
             "MILK_TRAIN_STEPS",
             "MILK_TRAIN_MAX_TOKENS",

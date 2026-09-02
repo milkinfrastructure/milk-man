@@ -13,6 +13,9 @@ CODE_VERSION = "milk.train.v2"
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-train@sha256:[0-9a-f]{64}\Z")
 PROJECT = re.compile(r"[a-z0-9]{5,32}\Z")
 TERMINAL_FAILURE = {"TRAINING_JOB_FAILED", "TRAINING_JOB_STOPPED", "TRAINING_JOB_CANCELED"}
+BASETEN_BASE_IMAGE = "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4c749e2d9e96878875cdf6cc45cddda1d1a36fddd371dd6f2360f1b6e2a2"
+TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/1214fc22fa57acfb48648a7d9f9a97acdcd549ee/images/train/train.py"
+TRAIN_SOURCE_SHA256 = "aa7764d2eb91503c92b2acd095bc2b4da72001c780ad07bf5f62972a9e24f030"
 
 
 class TrainError(ValueError):
@@ -116,10 +119,12 @@ def _settings(settings, reference: dict) -> dict:
     return {
         "provider": "baseten",
         "project_id": project_id,
-        "image": image,
+        "release_image": image,
+        "baseten_base_image": BASETEN_BASE_IMAGE,
+        "train_source_url": TRAIN_SOURCE_URL,
+        "train_source_sha256": TRAIN_SOURCE_SHA256,
         "accelerator": accelerator,
         "availability_model": "dedicated",
-        "registry_secret": os.environ.get("BASETEN_TRAINING_REGISTRY_SECRET", "") or None,
         "runtime_secret_map": secret_map,
         "steps": _integer("MILK_TRAIN_STEPS", 1 if settings.profile == "mechanics" else 64, 1, 1024),
         "max_tokens": _integer("MILK_TRAIN_MAX_TOKENS", 2048, 128, 8192),
@@ -142,15 +147,14 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
         "MILK_TRAIN_LEARNING_RATE": str(config["learning_rate"]),
     }
     environment.update({name: {"name": secret} for name, secret in config["runtime_secret_map"].items()})
-    docker_auth = None
-    if config["registry_secret"]:
-        docker_auth = {
-            "registry": "ghcr.io",
-            "auth_method": "REGISTRY_SECRET",
-            "registry_secret_docker_auth": {"secret_ref": {"name": config["registry_secret"]}},
-        }
+    fetch_source = (
+        "python -c \"import hashlib,urllib.request;"
+        f"u='{config['train_source_url']}';b=urllib.request.urlopen(u,timeout=30).read();"
+        f"assert hashlib.sha256(b).hexdigest()=='{config['train_source_sha256']}';"
+        "open('/tmp/milk-train.py','wb').write(b)\""
+    )
     return {
-        "image": {"base_image": config["image"], "docker_auth": docker_auth},
+        "image": {"base_image": config["baseten_base_image"], "docker_auth": None},
         "compute": {
             "node_count": 1,
             "cpu_count": 4,
@@ -159,7 +163,11 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
             "availability_model": config["availability_model"],
         },
         "runtime": {
-            "start_commands": ["python /opt/milk/train.py"],
+            "start_commands": [
+                "python -m pip install --no-cache-dir boto3==1.40.40 transformers==4.57.1 zstandard==0.25.0",
+                fetch_source,
+                "python /tmp/milk-train.py",
+            ],
             "environment_variables": environment,
             "cache_config": {"enabled": True, "require_cache_affinity": False},
             "checkpointing_config": {"enabled": True, "checkpoint_path": "/mnt/ckpts", "volume_size_gib": 10},
@@ -216,7 +224,7 @@ def _completed(store, settings, runtime, client, config: dict, manifest: dict, j
         "student_base": expected_base,
         "training_kind": "full_bf16",
         "provider": {"name": "baseten", "project_id": config["project_id"], "job_id": provider_job["id"], "status": provider_job["current_status"]},
-        "image": config["image"],
+        "images": {"release": config["release_image"], "provider_base": config["baseten_base_image"]},
         "checkpoint_files": [{key: item.get(key) for key in ("relative_file_name", "size_bytes", "last_modified", "node_rank")} for item in files],
         "output_sha256": summary.digest(output_body),
         "output": output,
