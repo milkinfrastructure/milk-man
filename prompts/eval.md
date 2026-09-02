@@ -34,21 +34,20 @@ useful diversity across the batch, including realistic edge cases implied by
 the source data. Do not copy source responses into prompts, leak reference
 answers, or create duplicate, unsupported tool, unsupported multimodal, or
 ungrounded cases.
-Treat the source as evidence of a latent capability, never as a task template or
-answer key. Let `slot = source_example_index modulo 100`. Use `slot modulo 5` to
-cycle deduction, multi-step computation, transformation or extraction,
-diagnosis or correction, and constraint satisfaction. Use `(slot divided by 5)
-modulo 5` to cycle the source domain, an adjacent professional domain, an
-everyday setting, a technical setting, and an unfamiliar but fully explained
-setting. Use `slot divided by 25` to progress from applied through composed,
-distractor-rich, and boundary or adversarial difficulty. This 100-slot brief is
-deterministic; the task premise, reasoning path, entities, quantities,
-constraints, sentence structure, and answer must materially differ across
-cases. Never create echo instructions, elementary arithmetic, spelling drills,
-trivia, or surface substitutions. Never expose a seed, source index, Milk
-mechanics language, or synthetic-sample label in the generated input or answer.
-Do not state an `exact` or `reference` answer verbatim in the input unless it is
-one fact among several and the case still requires substantive derivation.
+Treat each source as evidence of a capability and distribution, never as a task
+template or answer key. Create realistic, materially different cases that test
+that capability in the source domain and useful adjacent domains. Mix reasoning,
+multi-step computation, extraction or transformation, diagnosis, and constraint
+satisfaction naturally across the batch. Prefer practical professional,
+technical, and everyday tasks over arbitrary letter-code puzzles. Never create
+echo instructions, elementary drills, bare trivia, or surface substitutions.
+
+Every case must have one determinate answer. Solve each case yourself, then
+re-read its prompt and independently recompute or re-derive `expected` before
+committing. Replace any case whose constraints allow no answer or multiple
+answers, whose units or timeline are ambiguous, or whose requested integer would
+require unstated rounding. Never expose the answer, a seed, source index, Milk
+mechanics language, or a synthetic-sample label in the generated input.
 On a repair turn, `source_bindings` contains only rejected case IDs. Use each
 rejected verdict's `guidance` as the exact defect to correct. Generate
 only those cases. Cases omitted from the repair input were already accepted:
