@@ -81,7 +81,14 @@ BINDING_ENVIRONMENTS = {
     },
     "eval": {
         "required": ("MILK_EVAL_BASE_URL", "MILK_EVAL_MODEL", "MILK_EVAL_API_KEY"),
-        "optional": ("MILK_EVAL_API_MODE", "MILK_REASONING_EFFORT"),
+        "optional": (
+            "MILK_EVAL_API_MODE",
+            "MILK_REASONING_EFFORT",
+            "MILK_EVAL_TARGET_CASES",
+            "MILK_EVAL_SHARD_CASES",
+            "MILK_EVAL_PRECOMPUTE_SHARD",
+            "MILK_EVAL_MAX_OUTPUT_TOKENS",
+        ),
     },
     "validator": {
         "required": (
@@ -89,11 +96,11 @@ BINDING_ENVIRONMENTS = {
             "MILK_VALIDATOR_MODEL",
             "MILK_VALIDATOR_API_KEY",
         ),
-        "optional": ("MILK_VALIDATOR_API_MODE", "MILK_REASONING_EFFORT"),
+        "optional": ("MILK_VALIDATOR_API_MODE", "MILK_REASONING_EFFORT", "MILK_VALIDATOR_MAX_OUTPUT_TOKENS"),
     },
     "teacher": {
         "required": ("MILK_TEACHER_BASE_URL", "MILK_TEACHER_MODEL", "MILK_TEACHER_API_KEY"),
-        "optional": ("MILK_TEACHER_API_MODE", "MILK_REASONING_EFFORT", "MILK_DATASET_TRAIN_EXAMPLES", "MILK_DATASET_TEXT_BYTES"),
+        "optional": ("MILK_TEACHER_API_MODE", "MILK_REASONING_EFFORT", "MILK_TEACHER_MAX_OUTPUT_TOKENS", "MILK_DATASET_TRAIN_EXAMPLES", "MILK_DATASET_TEXT_BYTES"),
     },
     "modal": {
         "required": ("MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"),

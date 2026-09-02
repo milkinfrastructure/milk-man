@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hashlib
 import hmac
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -121,7 +122,7 @@ class Runtime:
                 scale = float(required("MILK_CANDIDATE_ACTIVATION_SCALE"))
             except ValueError as error:
                 raise ValueError("MILK_CANDIDATE_ACTIVATION_SCALE must be numeric") from error
-            if not 0 < scale < 1:
+            if not math.isfinite(scale) or scale <= 0:
                 raise ValueError("MILK_CANDIDATE_ACTIVATION_SCALE is invalid")
             scale_tensor = torch.tensor(scale, dtype=torch.float32, device="cuda")
             quantize_(self.model, Float8StaticActivationFloat8WeightConfig(scale=scale_tensor))

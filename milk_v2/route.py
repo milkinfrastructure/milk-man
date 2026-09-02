@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -122,7 +123,7 @@ def _validated_quantization(branch: str, value: object) -> dict:
         raise RouteError("sealed FP8 implementation identity differs")
     if branch == "static_fp8":
         scale = value.get("activation_scale")
-        if not isinstance(scale, (int, float)) or isinstance(scale, bool) or not 0 < scale < 1:
+        if not isinstance(scale, (int, float)) or isinstance(scale, bool) or not math.isfinite(scale) or scale <= 0:
             raise RouteError("sealed static-FP8 activation scale is invalid")
     return value
 

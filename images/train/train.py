@@ -63,7 +63,7 @@ def dataset() -> tuple[dict, list[dict]]:
     )
     if (
         not isinstance(manifest, dict)
-        or manifest.get("schema_version") != "milk.dataset.v2"
+        or manifest.get("schema_version") not in {"milk.dataset.v2", "milk.dataset.v3"}
         or manifest.get("scope_id") != required("MILK_SCOPE_ID")
         or manifest.get("student_base", {}).get("model_repo") != MODEL_REPO
         or manifest.get("student_base", {}).get("model_revision") != MODEL_REVISION

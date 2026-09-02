@@ -35,6 +35,13 @@ def requested_counts(profile: str) -> tuple[int, int]:
     )
 
 
+def generation_counts(profile: str) -> tuple[int, int]:
+    representative, tail = requested_counts(profile)
+    target = _integer("MILK_EVAL_TARGET_CASES", representative + tail, 1, 1_000_000)
+    shard = _integer("MILK_EVAL_SHARD_CASES", min(target, 256), 1, 256)
+    return target, min(target, shard)
+
+
 def split_for(request_sha256: str) -> str:
     try:
         source = bytes.fromhex(request_sha256)
@@ -186,3 +193,75 @@ def build(labels: list[dict], profile: str) -> dict:
         "missing": missing,
         "ready": not missing and len(cases) == policy["total"],
     }
+
+
+def target_allocation(target: int) -> dict[str, int]:
+    return _allocation(target)
+
+
+def range_for(start: int, target: int, shard_cases: int) -> tuple[str, int]:
+    allocation = target_allocation(target)
+    cursor = 0
+    for split in SPLITS:
+        boundary = cursor + allocation[split]
+        if start < boundary:
+            return split, min(start + shard_cases, boundary)
+        cursor = boundary
+    raise PlanError("eval shard start is outside the target")
+
+
+def precompute_range(target: int, shard_cases: int) -> tuple[int, str, int, int] | None:
+    raw = os.environ.get("MILK_EVAL_PRECOMPUTE_SHARD")
+    if raw is None:
+        return None
+    try:
+        selected = int(raw)
+    except ValueError as error:
+        raise PlanError("MILK_EVAL_PRECOMPUTE_SHARD must be a non-negative integer") from error
+    if selected < 0:
+        raise PlanError("MILK_EVAL_PRECOMPUTE_SHARD must be a non-negative integer")
+    if selected >= target:
+        raise PlanError("MILK_EVAL_PRECOMPUTE_SHARD is outside the eval target")
+    start = 0
+    for index in range(selected + 1):
+        if start >= target:
+            raise PlanError("MILK_EVAL_PRECOMPUTE_SHARD is outside the eval target")
+        split, end = range_for(start, target, shard_cases)
+        if index == selected:
+            return index, split, start, end
+        start = end
+    raise AssertionError("unreachable")
+
+
+def shard(plan: dict, eval_uuid: str, target: int, start: int, end: int) -> dict:
+    seeds = plan.get("cases")
+    if (
+        not isinstance(seeds, list)
+        or not seeds
+        or not isinstance(eval_uuid, str)
+        or not eval_uuid
+        or type(start) is not int
+        or type(end) is not int
+        or not 0 <= start < end <= target
+    ):
+        raise PlanError("eval shard arguments are invalid")
+    split, expected_end = range_for(start, target, end - start)
+    if end != expected_end:
+        raise PlanError("eval shard crosses a split boundary")
+    seeds = [seed for seed in seeds if seed.get("split") == split]
+    if not seeds:
+        raise PlanError(f"eval shard has no {split} source seeds")
+    offset = int.from_bytes(hashlib.sha256((eval_uuid + "\0" + split).encode()).digest()[:8], "big") % len(seeds)
+    split_start = sum(target_allocation(target)[name] for name in SPLITS[:SPLITS.index(split)])
+    cases = []
+    for ordinal in range(start, end):
+        seed = seeds[(offset + ordinal - split_start) % len(seeds)]
+        cases.append(
+            {
+                **seed,
+                "seed_case_id": seed["case_id"],
+                "order": ordinal,
+                "case_id": hashlib.sha256(f"{eval_uuid}\0{ordinal}".encode()).hexdigest(),
+            }
+        )
+    return {"schema_version": "milk.eval-shard-plan.v3", "split": split, "start": start, "end": end, "cases": cases}

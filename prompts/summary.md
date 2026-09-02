@@ -3,7 +3,7 @@
 Call `milk_job_read` once to receive one immutable bounded checkpoint batch.
 Analyze only that input, then commit exactly once with the native
 `milk_job_commit` tool. Do not return the result as assistant text.
-`milk_status` may read bounded job status; no other tool or authority exists.
+After reading, `milk_job_commit` is the only available tool; no other authority exists.
 
 Call `milk_job_commit` with this argument structure:
 

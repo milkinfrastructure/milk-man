@@ -5,11 +5,13 @@ import datetime as dt
 import fcntl
 import hashlib
 import hmac
+import http.client
 import ipaddress
 import os
 from pathlib import Path
 import re
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -20,6 +22,10 @@ import xml.etree.ElementTree as ET
 MAX_OBJECT_BYTES = 64 * 1024 * 1024
 MAX_LIST_KEYS = 1000
 SAFE_KEY = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,2047}\Z")
+S3_RETRY_DELAYS_SECONDS = (0.1, 0.25, 0.5)
+S3_RETRYABLE_HTTP_STATUS = frozenset(
+    {408, 409, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524}
+)
 
 
 class StoreError(ValueError):
@@ -148,6 +154,11 @@ def _body(value: bytes) -> bytes:
 
 def _etag(body: bytes) -> str:
     return '"' + hashlib.sha256(body).hexdigest() + '"'
+
+
+def _close_http_error(error: urllib.error.HTTPError) -> None:
+    if error.fp is not None:
+        error.close()
 
 
 class LocalStore:
@@ -321,6 +332,19 @@ class S3Store:
         self.opener = opener or urllib.request.build_opener(_NoRedirect)
         self.now = now or (lambda: dt.datetime.now(dt.timezone.utc))
 
+    def _idempotent(self, operation):
+        for attempt in range(len(S3_RETRY_DELAYS_SECONDS) + 1):
+            try:
+                return operation()
+            except urllib.error.HTTPError as error:
+                if error.code not in S3_RETRYABLE_HTTP_STATUS or attempt == len(S3_RETRY_DELAYS_SECONDS):
+                    raise
+                _close_http_error(error)
+            except (urllib.error.URLError, http.client.HTTPException, OSError):
+                if attempt == len(S3_RETRY_DELAYS_SECONDS):
+                    raise
+            time.sleep(S3_RETRY_DELAYS_SECONDS[attempt])
+
     def _request(self, method: str, key: str | None = None, body: bytes = b"", query=(), headers=()):
         body = _body(body)
         current = self.now()
@@ -385,13 +409,16 @@ class S3Store:
         )
 
     def get(self, key: str) -> Object:
-        request = self._request("GET", key)
-        try:
+        def fetch():
+            request = self._request("GET", key)
             with self.opener.open(request, timeout=self.settings.timeout_seconds) as response:
-                body = response.read(MAX_OBJECT_BYTES + 1)
-                etag = response.headers.get("ETag")
+                return response.read(MAX_OBJECT_BYTES + 1), response.headers.get("ETag")
+
+        try:
+            body, etag = self._idempotent(fetch)
         except urllib.error.HTTPError as error:
             if error.code == 404:
+                _close_http_error(error)
                 raise FileNotFoundError(key) from error
             raise
         if len(body) > MAX_OBJECT_BYTES:
@@ -402,20 +429,39 @@ class S3Store:
 
     def create_same(self, key: str, body: bytes) -> Put:
         body = _body(body)
-        request = self._request(
-            "PUT", key, body, headers=(("content-type", "application/octet-stream"), ("if-none-match", "*"))
-        )
-        try:
+
+        def create():
+            request = self._request(
+                "PUT", key, body, headers=(("content-type", "application/octet-stream"), ("if-none-match", "*"))
+            )
             with self.opener.open(request, timeout=self.settings.timeout_seconds) as response:
                 response.read(1)
-                etag = response.headers.get("ETag") or _etag(body)
-            return Put(True, etag)
+                return response.headers.get("ETag") or _etag(body)
+
+        try:
+            return Put(True, self._idempotent(create))
         except urllib.error.HTTPError as error:
-            if error.code != 412:
+            if error.code == 412:
+                _close_http_error(error)
+            elif error.code not in S3_RETRYABLE_HTTP_STATUS:
                 raise
+            else:
+                _close_http_error(error)
+                return self._reconcile_create(key, body, error)
+        except (urllib.error.URLError, http.client.HTTPException, OSError) as error:
+            return self._reconcile_create(key, body, error)
         current = self.get(key)
         if current.body != body:
             raise StoreError("existing object differs")
+        return Put(False, current.etag)
+
+    def _reconcile_create(self, key: str, body: bytes, error: Exception) -> Put:
+        try:
+            current = self.get(key)
+        except FileNotFoundError:
+            raise error
+        if current.body != body:
+            raise StoreError("existing object differs") from error
         return Put(False, current.etag)
 
     def replace_if_match(self, key: str, expected_etag: str, body: bytes) -> Put | None:
@@ -444,9 +490,12 @@ class S3Store:
         query = [("list-type", "2"), ("max-keys", str(limit)), ("prefix", prefix)]
         if cursor is not None:
             query.append(("start-after", cursor))
-        request = self._request("GET", query=query)
-        with self.opener.open(request, timeout=self.settings.timeout_seconds) as response:
-            raw = response.read(1024 * 1024 + 1)
+        def fetch():
+            request = self._request("GET", query=query)
+            with self.opener.open(request, timeout=self.settings.timeout_seconds) as response:
+                return response.read(1024 * 1024 + 1)
+
+        raw = self._idempotent(fetch)
         if len(raw) > 1024 * 1024:
             raise StoreError("S3 list response is oversized")
         try:

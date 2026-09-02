@@ -61,7 +61,10 @@ def _object(store, key: str) -> tuple[dict, bytes]:
 def current(store, settings, runtime) -> dict | None:
     try:
         status, unused_status = _object(store, settings.scope_prefix + "status/current.json")
+        dataset_reference = dataset.current(store, settings, runtime)
     except FileNotFoundError:
+        return None
+    if dataset_reference is None:
         return None
     reference = status.get("training")
     if not isinstance(reference, dict):
@@ -79,6 +82,7 @@ def current(store, settings, runtime) -> dict | None:
         or model.get("scope_id") != settings.scope_id
         or model.get("profile") != settings.profile
         or model.get("job_id") != reference.get("training_job_id")
+        or model.get("dataset_uuid") != dataset_reference.get("uuid")
         or model.get("student_base") != {
             "model_repo": runtime.student_base.model_repo,
             "model_revision": runtime.student_base.model_revision,

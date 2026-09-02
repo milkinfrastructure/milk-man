@@ -493,10 +493,11 @@ s/current.json
 readiness/<readiness_uuid>.json
 readiness/current.json
 
-e/<eval_uuid>/source.json.zst
+e/<eval_uuid>/revision.json
+e/<eval_uuid>/context.json.zst
 e/<eval_uuid>/manifest.json
-e/<eval_uuid>/cases/<first_case_ordinal>-<last_case_ordinal>.jsonl.zst
-e/<eval_uuid>/validation/<first_case_ordinal>-<last_case_ordinal>.json
+e/<eval_uuid>/shards/<split>/<first_case_ordinal>-<last_case_ordinal>/cases.jsonl.zst
+e/<eval_uuid>/shards/<split>/<first_case_ordinal>-<last_case_ordinal>/validation.json
 e/current.json
 
 d/<dataset_uuid>/manifest.json
@@ -708,6 +709,15 @@ ordered shard keys, digests, ranges, and counts.
 unique validated cases and every referenced shard digest exists. Generation
 and independent validation are batched model calls; there is no requirement or
 design for one inference request per eval case.
+
+The generation prompt is deliberately generic. The immutable revision retains
+the complete deterministic 100-exchange request/response corpus. Each model
+batch receives the current summary checkpoint, its assigned ordinal/source
+descriptors, and only the source conversations bound to those assignments. The
+selected high-intelligence model spends its output tokens producing synthetic
+examples that reproduce the observed task distribution, formats, difficulty,
+and failure modes without copying traffic. Code does not encode a
+synthetic-data DSL or hand-authored mutation catalog.
 
 The existing four-case mechanics path proves orchestration, training splits,
 and GPU execution quickly. It is not evidence that the 100,000-case corpus has
@@ -1265,11 +1275,16 @@ Do not continue to eval implementation until this vertical is retained.
 Completed 2026-09-01:
 
 - [x] Added exact request/response digests, the fixed request-digest split policy, exact split quotas, and split-aware readiness restricted to locally scoreable exact, reference, and schema oracles.
-- [x] Added deterministic distinct-source representative/tail planning, restricted generator and independent validator sessions, one bounded repair, immutable job/eval artifacts, and guarded `e/current.json` advancement.
+- [x] Added deterministic distinct-source representative/tail planning, restricted generator and independent validator sessions, bounded resumable top-up, immutable job/eval artifacts, and guarded `e/current.json` advancement.
 - [x] A direct mechanics `milk operate --once` smoke traversed capture, summary, readiness, eval, validation, and `e/current.json` in six inference turns; replay made zero calls.
 - [x] A separate rejection smoke proved one validator rejection, one repair, acceptance in ten turns, zero-call replay, and `milk status` advancing to `dataset`.
 - [x] Published `672b58cbe` and `3ec05028f`; the pinned Qwen3.5-0.8B student contract and separate high-intelligence eval/validator bindings remained intact.
 - [x] The fresh threshold-100 R2 scope generated and independently validated eval `eee146fd-d026-59dd-ac6d-4d44a2c04613` through separate OpenAI Responses bindings using `gpt-5.6-sol` at low reasoning effort. It accepted one bounded case in eight inference calls, made zero provider calls, and replayed with zero calls.
+- [x] The sharded implementation generated and validated eval `bdc67d24-36e5-5e9a-a90c-1d5a28c30013` against the same live R2 scope: exactly eight cases in three split-pure shards, resumable accepted-only repair, an immutable cumulative uniqueness ledger, and guarded current-pointer publication. Dataset `e9b7f5c7-9fac-56cd-b247-feb64b5e092c` then referenced exact held-out counts DEV 4, calibration 2 and sealed 2 while writing one train row; it used two teacher calls and zero provider calls.
+- [~] Started explicit 100,000-case eval `d388a759-f5b2-5927-966e-bcf4ad974469` from a deterministic 100-conversation subset of the 101-capture checkpoint. A live oversized-validator failure exposed that source bindings had been treated as answer keys; the corrected contract treats them as provenance/distribution, keeps exact copy and global duplicate checks deterministic, and judges standalone answerability and oracle quality in independently replayable 64-case batches. The first 256-case DEV shard completed with ten OpenAI inference turns, zero provider calls, immutable cases/validation/ledger objects, and next range 256–512.
+- [x] Proved production-scale parallel generation against the same live R2/OpenAI bindings. Distinct precompute workers prepared ordinals `0..255` and `256..511` for eval `23faf45b-13a8-5d06-bffd-c8fbf7735374` without touching shared progress; the ordinal coordinator committed both shards, advanced the cumulative ledger to 512 unique cases, reused the first shard with zero inference, and regenerated only two real cross-shard collisions on the second. Generation and validation made zero GPU/provider calls.
+- [x] Extended that immutable scale proof to a contiguous 2,560-case DEV prefix across ten shards. Four-way precompute was stable after adding bounded SigV4 transport retries; the coordinator never skipped an ordinal, reused globally unique prepared shards with zero inference, and regenerated 47 exact normalized collisions across seven shard reductions. The measured repair cost now uses only the pending cases' source conversations. A separate ordinal-diversity prompt experiment was rejected after producing 96 vacuous cases in one shard; it never advanced shared progress, and the proven v7 generation prompt remains authoritative.
+- [~] The current v14 production-scale revision is `c9f2d98a696bb40493d4d5de324ee9b0b7e5f2ab5583f18d474d3222e75e207e`, eval UUID `454efa61-1f99-5133-950e-75009bcde6e5`. Strict typed oracle DTOs compile locally into closed schemas; generator bodies and validator decisions carry only batch-local slots while Milk Man binds immutable case IDs. Two live Baseten GLM-5.3-Flash workers prepared the first 512 cases, replayed shard 0 with zero inference, and the coordinator advanced a globally unique R2 ledger to 512 after regenerating only real cross-shard collisions. The retained v14 receipts contain 1,723,691 input and 92,512 output tokens across 63 inference requests; at current uncached list rates this completed proof is approximately $0.31. No GPU/provider lifecycle call or route action occurred.
 - [ ] Expand one 100-exchange summary checkpoint into exactly 100,000 validated eval cases using deterministic, resumable R2 shards. A small mechanics corpus proves the job graph but does not satisfy this scale target.
 
 Owned:
@@ -1291,7 +1306,7 @@ Acceptance:
 - local and model validation pass;
 - replay performs no duplicate teacher call;
 - `e/current.json` advances only after the complete validated revision.
-- the eval model runs through the same restricted `milk job read`, `milk job commit`, and `milk status` interface and cannot select storage or provider authority.
+- semantic workers receive only the next strict `milk job read` or `milk job commit` function; Milk Man exposes status separately, and neither surface can select storage or provider authority.
 
 ### [x] P8 — Dataset, training and three evaluation branches
 
@@ -1374,6 +1389,7 @@ Progress 2026-09-01:
 - [x] Signed zero revision 5 (`199226cd-4720-4b8d-9ff3-40f3e32a091e`) is the active production route. Final Cloudflare deployment `becfa07c-be0e-4b71-b431-6ebfc685c38a` runs the coordinated image with separate native Chat and Responses bindings and no candidate credentials.
 - [x] Published concise public READMEs and standard license/security/contribution files. The tracked trees contain no legacy names, fixtures, transition documents, runtime Actions, or model weights; Actions only publish one Parlor image and three Milk Man GPU job images with cache.
 - [x] Tagged Milk Parlor runtime release `v0.1.0` at `642e3a26ebd921bafed5eb3ff26ccd34f0e0ea51` and Milk Man release `v0.1.0` at `87376d56096cf39988d6163d5752a7726acfc3a2`. Parlor deployment commit `216c27231dece763aa86812e6105012d88bf3285` pins the resulting Cloudflare digest without triggering another image build.
+- [x] Published the corrected dashboard image from Milk Parlor `f8752b8c4621e9a4b785acc808de6f575267b343`, pinned Cloudflare digest `sha256:7311ba8e6021f9c24277ad35ee5e6aeddc78e944e859ca4df0e933518a0e335e` at deployment commit `9b59d173d8ffa39e1d480315e03b59039fb90fe8`, and cut over to instance generation `parlor-20260902-f875`. Live health reports 101/101 captures persisted with zero drops; the dashboard key authenticates scope `c2ab9c16-79cc-4c7f-955d-49871f240919`, and the live dashboard now labels the unsigned artifact as a route proposal.
 
 Owned:
 

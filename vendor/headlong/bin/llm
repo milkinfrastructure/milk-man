@@ -86,6 +86,7 @@ if tools_file:
         raise SystemExit("llm: tools must be a non-empty JSON array")
     payload["tools"] = ([{"type": "function", **tool["function"]} for tool in tools] if mode == "responses" else tools)
     payload["tool_choice"] = "required"
+    payload["parallel_tool_calls"] = False
     if mode == "chat_completions":
         payload["temperature"] = 0
 maximum = int(os.environ.get("LLM_MAX_TOKENS", "16384"))
