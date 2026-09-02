@@ -1046,7 +1046,7 @@ Acceptance:
 - concurrent identical jobs converge on one identity;
 - no arbitrary executable can enter through config.
 
-### [~] P4 — Modal GLM controller and handoff
+### [x] P4 — Modal GLM controller and handoff
 
 Progress 2026-09-01:
 
@@ -1055,7 +1055,9 @@ Progress 2026-09-01:
 - [x] Reconciled the first real deploy attempts without model inference: the first stopped after a pre-deploy tag-length rejection; the second deployed Modal app `ap-FsI3COYpkl1jiOIZXio8vT`, failed during remote hydrate import, and produced termination plus independent zero-container receipts before the import fix at `530235a879c3078623ef2f69e3fb830667a9e496`.
 - [x] Hydrated and served the pinned GLM-4.5-Air-FP8 revision on one H200 as Modal app `ap-dBNCTsA9wu7aUjAmiFYW1a`; authenticated `/models` and Chat Completions smokes passed and immutable intent, deploy, endpoint, smoke, and result receipts were retained in object memory.
 - [x] Fixed H200 KV-cache admission, `.modal.direct` endpoint validation, explicit endpoint warmup before handoff, and a bootstrap prompt defect that allowed a model to describe rather than execute the required tool call.
-- [ ] Prove the corrected same-trajectory handoff reaches the Modal GLM, stop the deployment, and retain an independent zero-container observation.
+- [x] The same trajectory switched from the bootstrap binding to `glm-4.5-air-fp8` and completed three controller-backed reasoning turns. The run exposed a 32K-context completion-overreservation; `aa82deb1d942f465457e393d8fcf0e19d91fc90b` fixed the post-handoff ceiling without changing the controller model or endpoint.
+- [x] `milk run inference-stop` stopped the exact app and wrote stop, zero, and termination receipts. A separate Modal app/container listing reported state `stopped`, zero tasks, and zero active containers.
+- [x] Retained `/Users/shantanu/milk-release-evidence/milk-v2-modal-handoff-20260901/report.json`, SHA-256 `3e11f112979876f52ac7df4a8208a869a7361df16900b1e974adfcb6da9345eb`.
 
 Owned:
 
