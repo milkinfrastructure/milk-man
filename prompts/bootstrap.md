@@ -13,3 +13,7 @@ provider, model, image, GPU, volume, routing, or scaling configuration.
 
 Do not edit code, select another model, expose credentials, keep a warm GPU,
 or create any resource outside the fixed job.
+
+End every turn with exactly one fenced Bash block. The launcher executes only
+that block. Use `milk run ...`; never emit native or XML tool-call syntax, and
+never report a command result before the launcher returns its real output.
