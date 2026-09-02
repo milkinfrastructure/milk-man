@@ -10,6 +10,7 @@ from typing import NoReturn
 from . import config
 from . import dataset as dataset_job
 from . import eval as eval_job
+from . import evaluate as evaluate_job
 from . import semantic
 from . import summary
 from . import train as train_job
@@ -129,6 +130,11 @@ def _train_gate(store, settings, runtime, name="train"):
     return _result(name, run["state"], settings.scope_id, run["identity"], run["artifacts"], run["next"], run["details"], provider_calls=run["provider_calls"])
 
 
+def _evaluate_gate(store, settings, runtime, name="evaluate"):
+    run = evaluate_job.reconcile(store, settings, runtime)
+    return _result(name, run["state"], settings.scope_id, run["identity"], run["artifacts"], run["next"], run["details"], provider_calls=run["provider_calls"])
+
+
 def _operate(store, settings, runtime):
     results = []
     for name, gate, expected_next in (
@@ -136,6 +142,7 @@ def _operate(store, settings, runtime):
         ("eval", _eval_gate, "dataset"),
         ("dataset", _dataset_gate, "train"),
         ("train", _train_gate, "evaluate"),
+        ("evaluate", _evaluate_gate, "route-propose"),
     ):
         result = gate(store, settings, runtime)
         results.append((name, result))
@@ -283,6 +290,8 @@ def _run_job(name, store, settings, runtime):
         return _dataset_gate(store, settings, runtime), 0
     if job.handler == "train":
         return _train_gate(store, settings, runtime), 0
+    if job.handler == "evaluate":
+        return _evaluate_gate(store, settings, runtime), 0
     if job.handler in CONTROLLER_HANDLERS:
         return _controller_job(job.handler, settings)
     identity = _json_digest(
@@ -373,6 +382,12 @@ def main(argv: list[str] | None = None) -> None:
     except train_job.TrainError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         _emit(_result(job_name or command, "failed", scope_id, identity, next_job="train", error=str(error)), EXIT_CONFIG)
+    except evaluate_job.ProviderError as error:
+        identity = _json_digest({"command": argv, "error": str(error)})
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="evaluate", error=str(error), provider_calls=error.provider_calls), EXIT_PROVIDER)
+    except evaluate_job.EvaluateError as error:
+        identity = _json_digest({"command": argv, "error": str(error)})
+        _emit(_result(job_name or command, "failed", scope_id, identity, next_job="evaluate", error=str(error)), EXIT_CONFIG)
     except summary.SummaryError as error:
         identity = _json_digest({"command": argv, "error": str(error)})
         _emit(_result(job_name or command, "failed", scope_id, identity, error=str(error)), EXIT_CONFIG)

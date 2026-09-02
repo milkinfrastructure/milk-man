@@ -116,6 +116,8 @@ BINDING_ENVIRONMENTS = {
             "MILK_TRAIN_STEPS",
             "MILK_TRAIN_MAX_TOKENS",
             "MILK_TRAIN_LEARNING_RATE",
+            "MILK_EVAL_IMAGE",
+            "MILK_EVALUATE_MAX_NEW_TOKENS",
         ),
     },
     "route": {
