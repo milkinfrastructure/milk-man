@@ -11,9 +11,9 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
-import urllib.error
 import urllib.parse
-import urllib.request
+import tempfile
+import time
 import uuid
 
 
@@ -27,6 +27,7 @@ SENTIMENTS = ("positive", "neutral", "negative", "mixed", "unknown")
 OUTCOMES = ("success", "refusal", "partial", "upstream_failure", "malformed", "unknown")
 COMPLEXITIES = ("low", "medium", "high", "unknown")
 SAFETY = ("benign", "sensitive", "unsafe", "unknown")
+SUMMARY_BATCH_BYTES = 64 * 1024
 UTC_RFC3339 = re.compile(
     r"(?P<seconds>[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"
     r"(?:\.(?P<fraction>[0-9]{1,9}))?(?:Z|\+00:00)\Z"
@@ -494,7 +495,145 @@ def _label_contract(value, sampled: list[dict]) -> list[dict]:
     return sorted(checked, key=lambda label: label["row_id"])
 
 
-def _provider_call(prompt: str, input_value: dict) -> tuple[list[dict], dict]:
+def _utf8_prefix(value: str, maximum: int) -> str:
+    return value.encode("utf-8")[:maximum].decode("utf-8", "ignore")
+
+
+def _prepared_batches(fixed: dict, rows: list[tuple[dict, dict]]) -> list[tuple[dict, list[dict]]]:
+    batches = []
+    current_rows: list[dict] = []
+    current_entries: list[dict] = []
+    for row, entry in rows:
+        candidate = {**fixed, "rows": current_rows + [row]}
+        if len(canonical(candidate)) > SUMMARY_BATCH_BYTES:
+            if not current_rows:
+                raise SummaryError("summary fixed metadata plus one row exceeds 64 KiB")
+            batches.append(({**fixed, "rows": current_rows}, current_entries))
+            candidate = {**fixed, "rows": [row]}
+            if len(canonical(candidate)) > SUMMARY_BATCH_BYTES:
+                raise SummaryError("summary fixed metadata plus one row exceeds 64 KiB")
+            current_rows, current_entries = [row], [entry]
+        else:
+            current_rows.append(row)
+            current_entries.append(entry)
+    if current_rows:
+        batches.append(({**fixed, "rows": current_rows}, current_entries))
+    return batches
+
+
+def _batch_claim(store, key: str, job_id: str, batch_id: str, input_sha256: str, timeout: int) -> tuple[str, int]:
+    empty = {
+        "schema_version": "milk.summary-batch-claim.v2",
+        "job_id": job_id,
+        "batch_id": batch_id,
+        "input_sha256": input_sha256,
+        "state": "retryable",
+        "generation": 0,
+    }
+    try:
+        current = store.get(key)
+    except FileNotFoundError:
+        try:
+            store.create_same(key, canonical(empty))
+        except ValueError:
+            pass
+        current = store.get(key)
+    value = _json(current.body, key)
+    required = {"schema_version", "job_id", "batch_id", "input_sha256", "state", "generation"}
+    if (
+        not isinstance(value, dict)
+        or not required <= value.keys()
+        or value.get("schema_version") != empty["schema_version"]
+        or value.get("job_id") != job_id
+        or value.get("batch_id") != batch_id
+        or value.get("input_sha256") != input_sha256
+        or value.get("state") not in {"active", "retryable"}
+        or type(value.get("generation")) is not int
+        or value["generation"] < 0
+    ):
+        raise SummaryError("summary batch claim is invalid")
+    now = dt.datetime.now(dt.timezone.utc)
+    if value["state"] == "active" and _utc(value.get("expires_at"), "batch claim expires_at") > now:
+        raise BusyError(digest({"job_id": job_id, "batch_id": batch_id}))
+    owner = uuid.uuid4().hex
+    generation = value["generation"] + 1
+    active = {
+        **empty,
+        "state": "active",
+        "generation": generation,
+        "owner": owner,
+        "acquired_at": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "expires_at": (now + dt.timedelta(seconds=timeout + 30)).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    }
+    if store.replace_if_match(key, current.etag, canonical(active)) is None:
+        raise BusyError(digest({"job_id": job_id, "batch_id": batch_id}))
+    return owner, generation
+
+
+def _release_batch_claim(store, key: str, owner: str) -> None:
+    try:
+        current = store.get(key)
+        value = _json(current.body, key)
+        if not isinstance(value, dict) or value.get("state") != "active" or value.get("owner") != owner:
+            return
+        retryable = {name: value[name] for name in ("schema_version", "job_id", "batch_id", "input_sha256", "generation")}
+        retryable["state"] = "retryable"
+        store.replace_if_match(key, current.etag, canonical(retryable))
+    except Exception:
+        return
+
+
+def _session_tools(row_count: int) -> list[dict]:
+    empty = {"type": "object", "properties": {}, "additionalProperties": False}
+    label_properties = {
+        "row_id": {"type": "string"},
+        "operation": {"type": "string", "enum": list(OPERATIONS)},
+        "domain": {"type": "string", "enum": list(DOMAINS)},
+        "capabilities": {"type": "array", "items": {"type": "string", "enum": list(CAPABILITIES)}, "uniqueItems": True},
+        "oracle": {"type": "string", "enum": list(ORACLES)},
+        "sentiment": {"type": "string", "enum": list(SENTIMENTS)},
+        "outcome": {"type": "string", "enum": list(OUTCOMES)},
+        "language": {"type": "string", "minLength": 1, "maxLength": 32},
+        "complexity": {"type": "string", "enum": list(COMPLEXITIES)},
+        "answerable": {"type": "boolean"},
+        "safety": {"type": "string", "enum": list(SAFETY)},
+        "confidence_basis_points": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "abstain": {"type": "boolean"},
+    }
+    result = {
+        "type": "object",
+        "properties": {
+            "schema_version": {"type": "string", "enum": ["milk.semantic-labels.v2"]},
+            "labels": {
+                "type": "array",
+                "items": {"type": "object", "properties": label_properties, "required": list(label_properties), "additionalProperties": False},
+                "minItems": row_count,
+                "maxItems": row_count,
+            },
+        },
+        "required": ["schema_version", "labels"],
+        "additionalProperties": False,
+    }
+    return [
+        {"type": "function", "function": {"name": "milk_job_read", "description": "Read the immutable prepared input for this summary job.", "parameters": empty}},
+        {
+            "type": "function",
+            "function": {
+                "name": "milk_job_commit",
+                "description": "Commit the complete semantic-label result for this summary job.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"result": result},
+                    "required": ["result"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        {"type": "function", "function": {"name": "milk_status", "description": "Read bounded status for this summary job.", "parameters": empty}},
+    ]
+
+
+def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
     base = os.environ.get("MILK_SUMMARY_BASE_URL", "").rstrip("/")
     model = os.environ.get("MILK_SUMMARY_MODEL", "")
     api_key = os.environ.get("MILK_SUMMARY_API_KEY", "")
@@ -508,33 +647,142 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[list[dict], dict]:
     if parsed.path.rstrip("/") not in {"", "/v1"}:
         raise SummaryError("MILK_SUMMARY_BASE_URL must be an origin or end in /v1")
     endpoint = base + ("" if parsed.path.rstrip("/") == "/v1" else "/v1") + "/chat/completions"
-    body = canonical({"model": model, "stream": False, "messages": [{"role": "system", "content": prompt}, {"role": "user", "content": canonical(input_value).decode()}]})
-    request = urllib.request.Request(endpoint, data=body, method="POST", headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
     timeout = _integer_environment("MILK_SUMMARY_TIMEOUT_SECONDS", 120, 1, 3600)
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw = response.read(4 * 1024 * 1024 + 1)
-            request_id = response.headers.get("x-request-id")
-    except (urllib.error.URLError, TimeoutError) as error:
-        raise ProviderError("summary provider request failed definitively") from error
-    if len(raw) > 4 * 1024 * 1024:
-        raise ProviderError("summary provider response is oversized")
-    response = _json(raw, "summary provider response")
-    try:
-        content = response["choices"][0]["message"]["content"]
-        output = json.loads(content)
-    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as error:
-        raise ProviderError("summary provider response has no JSON message") from error
-    usage = response.get("usage") if isinstance(response.get("usage"), dict) else {}
-    receipt = {
-        "schema_version": "milk.summary-provider-receipt.v2",
-        "provider_request_id": request_id if isinstance(request_id, str) and len(request_id) <= 256 else None,
-        "model": model,
-        "usage": {key: value for key, value in usage.items() if type(value) is int and value >= 0},
-        "output": output,
-        "output_sha256": digest(output),
-    }
-    return output, receipt
+    input_sha256 = digest(input_value)
+    rows = input_value.get("rows")
+    if (
+        not isinstance(rows, list)
+        or any(not isinstance(row, dict) or not isinstance(row.get("row_id"), str) for row in rows)
+        or len({row["row_id"] for row in rows}) != len(rows)
+    ):
+        raise SummaryError("summary session input has invalid rows")
+    expected_sample = [{"row": {"content_sha256": row["row_id"]}} for row in rows]
+    messages = [{
+        "role": "user",
+        "content": canonical({
+            "schema_version": "milk.summary-session-turn.v2",
+            "job": "summary",
+            "input_sha256": input_sha256,
+            "next": "milk_job_read",
+        }).decode(),
+    }]
+    llm = Path(__file__).resolve().parents[1] / "vendor" / "headlong" / "bin" / "llm"
+    usage = Counter()
+    request_ids = []
+    tool_calls_seen = 0
+    read_seen = False
+    started = time.monotonic()
+    with tempfile.TemporaryDirectory(prefix="milk-summary-") as directory:
+        root = Path(directory)
+        system_file, messages_file, tools_file = (root / name for name in ("system", "messages.json", "tools.json"))
+        system_file.write_text(prompt)
+        tools_file.write_bytes(canonical(_session_tools(len(rows))))
+        os.chmod(system_file, 0o600)
+        os.chmod(tools_file, 0o600)
+        for turn in range(1, 5):
+            remaining = timeout - int(time.monotonic() - started)
+            if remaining < 1:
+                raise ProviderError("summary provider session timed out")
+            messages_file.write_bytes(canonical(messages))
+            os.chmod(messages_file, 0o600)
+            environment = {
+                "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+                "LLM_API_URL": endpoint,
+                "LLM_MODEL": model,
+                "LLM_API_KEY": api_key,
+                "LLM_CONNECT_TIMEOUT": str(min(10, remaining)),
+                "LLM_MAX_TIME": str(remaining),
+            }
+            if os.environ.get("TMPDIR"):
+                environment["TMPDIR"] = os.environ["TMPDIR"]
+            try:
+                process = subprocess.run(
+                    [str(llm), "--system-file", str(system_file), "--messages-file", str(messages_file), "--tools-file", str(tools_file), "--json-response"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=environment,
+                    timeout=remaining + 2,
+                    check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired) as error:
+                raise ProviderError("summary provider request failed") from error
+            if process.returncode != 0:
+                raise ProviderError("summary provider request failed")
+            if len(process.stdout) > 4 * 1024 * 1024:
+                raise ProviderError("summary provider response is oversized")
+            try:
+                response = json.loads(process.stdout)
+                message = response["message"]
+                tool_calls = message["tool_calls"]
+            except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError) as error:
+                raise ProviderError("summary provider returned no Milk tool call") from error
+            if not isinstance(message, dict) or message.get("role") != "assistant" or not isinstance(tool_calls, list) or not tool_calls:
+                raise ProviderError("summary provider returned no Milk tool call")
+            request_id = response.get("provider_request_id")
+            if isinstance(request_id, str) and len(request_id) <= 256:
+                request_ids.append(request_id)
+            response_usage = response.get("usage")
+            if isinstance(response_usage, dict):
+                usage.update({key: value for key, value in response_usage.items() if type(value) is int and value >= 0})
+            tool_calls_seen += len(tool_calls)
+            if tool_calls_seen > 16:
+                raise ProviderError("summary provider exceeded the Milk tool-call limit")
+            assistant_message = {"role": "assistant", "content": message.get("content"), "tool_calls": tool_calls}
+            if isinstance(message.get("reasoning_content"), str):
+                assistant_message["reasoning_content"] = message["reasoning_content"]
+            messages.append(assistant_message)
+            committed = None
+            can_commit = read_seen
+            for call in tool_calls:
+                try:
+                    call_id = call["id"]
+                    function = call["function"]
+                    name = function["name"]
+                    arguments = json.loads(function["arguments"])
+                except (KeyError, TypeError, json.JSONDecodeError) as error:
+                    raise ProviderError("summary provider returned an invalid Milk tool call") from error
+                if not isinstance(call_id, str) or not call_id or call.get("type") != "function" or not isinstance(arguments, dict):
+                    raise ProviderError("summary provider returned an invalid Milk tool call")
+                if name == "milk_job_commit":
+                    if set(arguments) != {"result"} or not isinstance(arguments["result"], dict) or committed is not None:
+                        raise ProviderError("summary provider returned an invalid Milk commit")
+                    if not can_commit:
+                        messages.append({"role": "tool", "tool_call_id": call_id, "name": name, "content": canonical({"accepted": False, "error": "read the prepared input before committing"}).decode()})
+                        continue
+                    try:
+                        labels = _label_contract(arguments["result"], expected_sample)
+                    except ProviderError as error:
+                        messages.append({"role": "tool", "tool_call_id": call_id, "name": name, "content": canonical({"accepted": False, "error": str(error)}).decode()})
+                        continue
+                    committed = {"schema_version": "milk.semantic-labels.v2", "labels": labels}
+                    continue
+                if arguments or name not in {"milk_job_read", "milk_status"}:
+                    raise ProviderError("summary provider requested an unavailable tool")
+                if name == "milk_job_read":
+                    result = input_value if not read_seen else {"schema_version": "milk.job-input-reference.v2", "input_sha256": input_sha256, "already_read": True}
+                    read_seen = True
+                else:
+                    result = {
+                        "schema_version": "milk.job-status.v2",
+                        "job": "summary",
+                        "state": "active",
+                        "input_sha256": input_sha256,
+                        "turn": turn,
+                    }
+                messages.append({"role": "tool", "tool_call_id": call_id, "name": name, "content": canonical(result).decode()})
+            if committed is not None:
+                receipt = {
+                    "schema_version": "milk.summary-provider-receipt.v2",
+                    "provider_request_id": request_ids[-1] if request_ids else None,
+                    "provider_request_ids": request_ids,
+                    "model": model,
+                    "usage": dict(usage),
+                    "inference_calls": turn,
+                    "output": committed,
+                    "output_sha256": digest(committed),
+                }
+                return committed, receipt
+    raise ProviderError("summary provider did not commit within four turns")
 
 
 def _semantic_counts(labels: list[dict], previous: dict | None) -> dict:
@@ -737,39 +985,104 @@ def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_
     job_id = digest(identity_value)
     job_prefix = settings.scope_prefix + f"j/summary/{job_id}/"
     labels = list(cached_labels)
-    called = False
+    inference_calls = 0
     if missing:
         intent = {**identity_value, "job_id": job_id}
-        created = store.create_same(job_prefix + "intent.json", canonical(intent)).created
+        store.create_same(job_prefix + "intent.json", canonical(intent))
         try:
             result = _json(store.get(job_prefix + "result.json").body, "stored summary result")
-            labels.extend(result["labels"])
+            if not isinstance(result, dict) or result.get("schema_version") != "milk.summary-job-result.v2" or result.get("job_id") != job_id:
+                raise SummaryError("stored summary result is invalid")
+            labels.extend(_label_contract({"schema_version": "milk.semantic-labels.v2", "labels": result.get("labels")}, missing))
         except FileNotFoundError:
-            try:
-                receipt = _json(store.get(job_prefix + "receipt.json").body, "stored summary receipt")
-                if receipt.get("outcome") == "definitive_failure":
-                    raise ProviderError(receipt.get("error", "summary provider failed definitively"))
-                output = receipt["output"]
-            except FileNotFoundError:
-                if not created:
-                    raise BusyError(job_id)
-                limit = _integer_environment("MILK_CLASSIFIER_TEXT_BYTES", 2048, 128, 16384)
-                input_value = {
-                    "schema_version": "milk.summary-input.v2",
-                    "taxonomy_version": TAXONOMY_VERSION,
-                    "prior_checkpoint": None if parent_summary is None else {"capture_count": parent_summary["capture_count"], "structural_quality": parent_summary["structural"]["quality"], "semantic": parent_summary["semantic"]["cumulative"]},
-                    "structural": merge_structural(parent_summary.get("structural") if parent_summary else None, structural(rows), all_rows),
-                    "rows": [{"row_id": entry["row"]["content_sha256"], "endpoint": entry["row"]["endpoint"], "model": entry["row"]["model"], "status": entry["row"]["status"], "modalities": entry["row"]["modalities"], "selection_reasons": entry["reasons"], "request_text": entry["row"]["request_text"][:limit], "response_text": entry["row"]["response_text"][:limit]} for entry in missing],
-                }
+            limit = _integer_environment("MILK_CLASSIFIER_TEXT_BYTES", 2048, 128, 16384)
+            fixed = {
+                "schema_version": "milk.summary-input.v2",
+                "taxonomy_version": TAXONOMY_VERSION,
+                "prior_checkpoint": None if parent_summary is None else {"capture_count": parent_summary["capture_count"], "structural_quality": parent_summary["structural"]["quality"], "semantic": parent_summary["semantic"]["cumulative"]},
+                "structural": merge_structural(parent_summary.get("structural") if parent_summary else None, structural(rows), all_rows),
+            }
+            prepared = []
+            for entry in missing:
+                row = entry["row"]
+                prepared.append(({
+                    "row_id": row["content_sha256"],
+                    "endpoint": row["endpoint"],
+                    "model": row["model"],
+                    "status": row["status"],
+                    "modalities": row["modalities"],
+                    "selection_reasons": entry["reasons"],
+                    "request_text": _utf8_prefix(row["request_text"], limit),
+                    "response_text": _utf8_prefix(row["response_text"], limit),
+                }, entry))
+            batch_results = []
+            completed_labels = []
+            timeout = _integer_environment("MILK_SUMMARY_TIMEOUT_SECONDS", 120, 1, 3600)
+            for index, (input_value, batch_entries) in enumerate(_prepared_batches(fixed, prepared)):
+                input_sha256 = digest(input_value)
+                batch_id = digest({"job_id": job_id, "index": index, "input_sha256": input_sha256})
+                batch_prefix = job_prefix + f"b/{index:04d}-{batch_id}/"
+                result_key = batch_prefix + "result.json"
+                receipt_key = batch_prefix + "receipt.json"
                 try:
-                    output, receipt = _provider_call(prompt, input_value)
-                except ProviderError as error:
-                    store.create_same(job_prefix + "receipt.json", canonical({"schema_version": "milk.summary-provider-receipt.v2", "outcome": "definitive_failure", "error": str(error)}))
-                    raise
-                store.create_same(job_prefix + "receipt.json", canonical(receipt))
-                called = True
-            checked = _label_contract(output, missing)
-            result = {"schema_version": "milk.summary-job-result.v2", "job_id": job_id, "labels": checked, "receipt_sha256": digest(receipt)}
+                    batch_result_body = store.get(result_key).body
+                    batch_result = _json(batch_result_body, result_key)
+                    if (
+                        not isinstance(batch_result, dict)
+                        or batch_result.get("schema_version") != "milk.summary-batch-result.v2"
+                        or batch_result.get("job_id") != job_id
+                        or batch_result.get("batch_id") != batch_id
+                        or batch_result.get("input_sha256") != input_sha256
+                    ):
+                        raise SummaryError("stored summary batch result is invalid")
+                    checked = _label_contract({"schema_version": "milk.semantic-labels.v2", "labels": batch_result.get("labels")}, batch_entries)
+                except FileNotFoundError:
+                    try:
+                        receipt_body = store.get(receipt_key).body
+                        receipt = _json(receipt_body, receipt_key)
+                    except FileNotFoundError:
+                        claim_key = batch_prefix + "claim.json"
+                        owner, generation = _batch_claim(store, claim_key, job_id, batch_id, input_sha256, timeout)
+                        try:
+                            receipt_body = store.get(receipt_key).body
+                            receipt = _json(receipt_body, receipt_key)
+                        except FileNotFoundError:
+                            try:
+                                output, provider_receipt = _provider_call(prompt, input_value)
+                            except (ProviderError, SummaryError):
+                                _release_batch_claim(store, claim_key, owner)
+                                raise
+                            calls = provider_receipt.get("inference_calls")
+                            if type(calls) is not int or calls < 1:
+                                _release_batch_claim(store, claim_key, owner)
+                                raise SummaryError("summary provider receipt has invalid inference calls")
+                            receipt = {**provider_receipt, "job_id": job_id, "batch_id": batch_id, "input_sha256": input_sha256, "generation": generation}
+                            receipt_body = canonical(receipt)
+                            store.create_same(receipt_key, receipt_body)
+                            inference_calls += calls
+                    if (
+                        not isinstance(receipt, dict)
+                        or receipt.get("schema_version") != "milk.summary-provider-receipt.v2"
+                        or receipt.get("job_id") != job_id
+                        or receipt.get("batch_id") != batch_id
+                        or receipt.get("input_sha256") != input_sha256
+                    ):
+                        raise SummaryError("stored summary batch receipt is invalid")
+                    checked = _label_contract(receipt.get("output"), batch_entries)
+                    batch_result = {
+                        "schema_version": "milk.summary-batch-result.v2",
+                        "job_id": job_id,
+                        "batch_id": batch_id,
+                        "input_sha256": input_sha256,
+                        "labels": checked,
+                        "receipt_sha256": digest(receipt_body),
+                    }
+                    batch_result_body = canonical(batch_result)
+                    store.create_same(result_key, batch_result_body)
+                completed_labels.extend(checked)
+                batch_results.append({"batch_id": batch_id, "input_sha256": input_sha256, "key": result_key, "sha256": digest(batch_result_body)})
+            checked = _label_contract({"schema_version": "milk.semantic-labels.v2", "labels": completed_labels}, missing)
+            result = {"schema_version": "milk.summary-job-result.v2", "job_id": job_id, "labels": checked, "batches": batch_results}
             store.create_same(job_prefix + "result.json", canonical(result))
             labels.extend(checked)
     labels = _label_contract({"schema_version": "milk.semantic-labels.v2", "labels": labels}, classification_sample)
@@ -812,7 +1125,7 @@ def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_
     _advance(store, settings.scope_prefix + "s/current.json", summary_pointer)
     _advance(store, settings.scope_prefix + "readiness/current.json", readiness_pointer)
     artifacts = [{"key": key, "sha256": sha} for key, sha in ((source_key, digest(source_body)), (summary_key, summary_sha256), (readiness_key, readiness_sha256), (settings.scope_prefix + "s/current.json", digest(summary_pointer)), (settings.scope_prefix + "readiness/current.json", digest(readiness_pointer)))]
-    return summary_pointer, summary_value, readiness_pointer, all_rows, processed | set(selected_keys), artifacts, called, job_id
+    return summary_pointer, summary_value, readiness_pointer, all_rows, processed | set(selected_keys), artifacts, inference_calls, job_id
 
 
 def reconcile(store, settings, runtime) -> dict:
@@ -830,9 +1143,9 @@ def reconcile(store, settings, runtime) -> dict:
         if len(unprocessed) < needed:
             break
         selected = unprocessed[:needed]
-        parent_pointer, parent_summary, readiness_pointer, prior_rows, processed, checkpoint_artifacts, called, job_id = _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_rows, processed, selected)
+        parent_pointer, parent_summary, readiness_pointer, prior_rows, processed, checkpoint_artifacts, inference_calls, job_id = _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_rows, processed, selected)
         artifacts.extend(checkpoint_artifacts)
-        calls += int(called)
+        calls += inference_calls
         job_ids.append(job_id)
     next_threshold = next((value for value in thresholds(settings.profile) if value > len(processed)), None)
     try:

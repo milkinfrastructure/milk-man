@@ -8,12 +8,16 @@ die() { printf 'llm: %s\n' "$*" >&2; exit 70; }
 
 system_file=""
 messages_file=""
+tools_file=""
+json_response=0
 while (( $# )); do
     case "$1" in
         --system-file) system_file="${2:?--system-file requires a path}"; shift 2 ;;
         --messages-file) messages_file="${2:?--messages-file requires a path}"; shift 2 ;;
+        --tools-file) tools_file="${2:?--tools-file requires a path}"; shift 2 ;;
+        --json-response) json_response=1; shift ;;
         -h|--help)
-            printf '%s\n' 'Usage: llm --system-file FILE --messages-file FILE'
+            printf '%s\n' 'Usage: llm --system-file FILE --messages-file FILE [--tools-file FILE --json-response]'
             exit 0
             ;;
         *) die "unknown argument: $1" ;;
@@ -22,6 +26,7 @@ done
 
 [[ -r "$system_file" ]] || die "cannot read system prompt: $system_file"
 [[ -r "$messages_file" ]] || die "cannot read messages: $messages_file"
+[[ -z "$tools_file" || -r "$tools_file" ]] || die "cannot read tools: $tools_file"
 : "${LLM_API_URL:?LLM_API_URL is required}"
 : "${LLM_MODEL:?LLM_MODEL is required}"
 command -v curl >/dev/null || die "curl is required"
@@ -34,10 +39,11 @@ trap cleanup EXIT INT TERM
 
 payload="$tmp/payload.json"
 response="$tmp/response.json"
+headers="$tmp/headers"
 auth="$tmp/auth"
 
 LLM_SYSTEM_FILE="$system_file" LLM_MESSAGES_FILE="$messages_file" \
-LLM_PAYLOAD_FILE="$payload" python3 - <<'PY'
+LLM_TOOLS_FILE="$tools_file" LLM_PAYLOAD_FILE="$payload" python3 - <<'PY'
 import json
 import os
 
@@ -50,6 +56,15 @@ with open(os.environ["LLM_SYSTEM_FILE"]) as handle:
 messages = [{"role": "system", "content": system}, *messages]
 model = os.environ["LLM_MODEL"]
 payload = {"model": model, "messages": messages}
+tools_file = os.environ.get("LLM_TOOLS_FILE")
+if tools_file:
+    with open(tools_file) as handle:
+        tools = json.load(handle)
+    if not isinstance(tools, list) or not tools:
+        raise SystemExit("llm: tools must be a non-empty JSON array")
+    payload["tools"] = tools
+    payload["tool_choice"] = "required"
+    payload["temperature"] = 0
 maximum = int(os.environ.get("LLM_MAX_TOKENS", "16384"))
 payload["max_completion_tokens" if model.startswith(("gpt-5", "o1", "o3", "o4")) else "max_tokens"] = maximum
 with open(os.environ["LLM_PAYLOAD_FILE"], "w") as handle:
@@ -57,11 +72,14 @@ with open(os.environ["LLM_PAYLOAD_FILE"], "w") as handle:
 PY
 
 curl_args=(
+    --disable
     --silent --show-error
     --connect-timeout "${LLM_CONNECT_TIMEOUT:-10}"
     --max-time "${LLM_MAX_TIME:-900}"
+    --max-filesize 4194304
     --header 'Content-Type: application/json'
     --data-binary "@$payload"
+    --dump-header "$headers"
     --output "$response"
     --write-out '%{http_code}'
 )
@@ -76,6 +94,7 @@ if [[ -n "${LLM_API_KEY:-}" ]]; then
 fi
 
 http_code="$(curl "${curl_args[@]}" "$LLM_API_URL")" || die "request failed"
+(( $(wc -c < "$response") <= 4194304 )) || die "response exceeded 4 MiB"
 if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
     detail="$(python3 - "$response" <<'PY'
 import json, sys
@@ -89,15 +108,30 @@ PY
     die "HTTP $http_code: $detail"
 fi
 
-python3 - "$response" <<'PY'
+python3 - "$response" "$headers" "$json_response" <<'PY'
 import json
 import sys
 
 value = json.load(open(sys.argv[1]))
 try:
-    content = value["choices"][0]["message"]["content"]
+    message = value["choices"][0]["message"]
 except (KeyError, IndexError, TypeError) as error:
     raise SystemExit(f"llm: invalid OpenAI-compatible response: {error}")
+if sys.argv[3] == "1":
+    if not isinstance(message, dict) or message.get("role") != "assistant":
+        raise SystemExit("llm: response contained no assistant message")
+    request_id = None
+    for line in open(sys.argv[2], errors="replace"):
+        name, separator, header_value = line.partition(":")
+        if separator and name.lower() == "x-request-id":
+            request_id = header_value.strip()
+    print(json.dumps({
+        "message": message,
+        "provider_request_id": request_id,
+        "usage": value.get("usage", {}),
+    }, ensure_ascii=False, separators=(",", ":")))
+    raise SystemExit(0)
+content = message.get("content") if isinstance(message, dict) else None
 if isinstance(content, list):
     content = "".join(
         part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") in (None, "text", "output_text")
