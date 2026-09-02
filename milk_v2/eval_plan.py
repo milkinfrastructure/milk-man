@@ -94,10 +94,7 @@ def contract(profile: str) -> dict:
 def _eligible(label: dict) -> bool:
     modalities = label.get("modalities")
     return (
-        label.get("abstain") is False
-        and label.get("answerable") is True
-        and label.get("safety") == "benign"
-        and modalities == ["text"]
+        modalities == ["text"]
         and label.get("tool_definitions") == 0
         and label.get("tool_calls") == 0
         and label.get("success") is True

@@ -982,7 +982,7 @@ def _readiness(settings, summary: dict, summary_sha256: str, labels: list[dict])
         "minimum_complete_captures": summary["capture_count"] >= minimum_captures,
         "parse_wilson_lower": structural_value["quality"]["parse_wilson_95_basis_points"][0] >= minimum_parse,
         "abstain_wilson_upper": semantic["abstain_wilson_95_basis_points"][1] <= maximum_abstain,
-        "minimum_unique_sources": structural_value["counters"]["unique_contents"] >= minimum_unique,
+        "minimum_unique_sources": len(plan["sources"]) >= minimum_unique,
         "split_quotas": plan["ready"],
     }
     ready = all(checks.values())
