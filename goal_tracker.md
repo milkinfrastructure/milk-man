@@ -85,6 +85,14 @@ These are donor facts, not completion claims for the new system:
 
 Execution begins by re-verifying these revisions and preserving one local bundle. Do not spend a milestone reconciling the old 32 traces or reproducing old behavior.
 
+## Current execution decision — 2026-09-02
+
+- [x] Stopped the v21 100,000-case mechanics feed and removed its restart heartbeat. No local eval runner remains active.
+- [x] Audited a 53,584-case prepared snapshot. Object schemas, identities, source bindings, digests, case IDs and accepted verdicts were valid, but 9,018 inputs (16.83%) were exact normalized duplicates across shards.
+- [x] Reconstructed and inspected 1,872 accepted cases from eight deterministic shards. The corpus was dominated by simple transformations, extraction, classification, translation and repeated mechanics templates. The same GLM binding generated and validated the cases and accepted 98.47%; this proves mechanics, not useful eval quality.
+- [x] Retain every v21 object as immutable mechanics evidence. Do not coordinate, publish, train from, repair or resume that revision.
+- [~] Replace the independent 100,000-case target with source-proportional generation: `MILK_CASES_PER_CONVERSATION=100`. `MILK_EVAL_SOURCE_CONVERSATIONS` selects an exact deterministic source count and stops before inference if it is unavailable. One eligible held-out conversation produces exactly 100 creative cases; 100 eligible held-out conversations produce exactly 10,000. Prove one conversation through the complete 100-case path before paid scale-up.
+
 ## Non-negotiable architecture
 
 ### Repository and reuse boundary
@@ -682,20 +690,27 @@ Mechanics scopes can become mechanics-ready but can never produce a production-q
 
 A ready summary triggers a fixed teacher job selected through `MILK_EVAL_*`.
 
-The first scale target is explicit:
+The generation ratio is explicit:
 
 ```text
-100 complete two-sided gateway exchanges
--> one summary/classification checkpoint
--> 100,000 validated eval cases
+MILK_CASES_PER_CONVERSATION=100
+
+1 eligible held-out conversation    -> 100 validated eval cases
+100 eligible held-out conversations -> 10,000 validated eval cases
 ```
 
-The 100 exchanges define the source distribution, not a one-case-per-exchange
-limit. The versioned split policy first assigns source digests; only held-out
-eval source seeds expand into eval cases, while train sources remain isolated.
-`MILK_EVAL_TARGET_CASES` selects the reviewed corpus size and is `100000` for
-this target. Milk Man creates a deterministic ordinal/source plan, generates
-cases in bounded batches, and writes compressed immutable shards.
+The versioned split policy first assigns source digests. Only eligible held-out
+DEV, calibration and sealed sources expand into eval cases; train sources remain
+isolated for teacher training targets. The total is derived from the immutable
+source list and `MILK_CASES_PER_CONVERSATION`, never selected independently.
+Changing the ratio creates a new revision. Milk Man creates exactly 100 planned
+case identities per source at the default ratio, gives the teacher each source's
+bounded request and response plus its per-source example index, and asks for a
+materially distinct realistic scenario rather than a paraphrase or mechanics
+template. The teacher chooses content, not counts, source assignment, split,
+identity or storage location.
+
+Milk Man generates cases in bounded batches and writes compressed immutable shards.
 `MILK_EVAL_SHARD_CASES` is fixed in the eval revision identity; changing it
 creates a new revision. Case IDs, order, and source assignment remain
 deterministic within that revision.
@@ -705,28 +720,39 @@ source digests, and prompt/model/config digests. A repeated `bin/milk operate
 --once` resumes at the first absent shard. It never regenerates a completed
 shard and never loads or rewrites the full corpus. The final manifest binds the
 ordered shard keys, digests, ranges, and counts.
-`e/current.json` advances only after the manifest accounts for exactly 100,000
-unique validated cases and every referenced shard digest exists. Generation
+`e/current.json` advances only after the manifest accounts for the exact derived
+case count, every source contributes the configured ratio, every input is
+globally unique, and every referenced shard digest exists. Generation
 and independent validation are batched model calls; there is no requirement or
 design for one inference request per eval case.
 
 The generation prompt is deliberately generic. The immutable revision retains
-the complete deterministic 100-exchange request/response corpus. Each model
+the complete deterministic source request/response corpus. Each model
 batch receives the current summary checkpoint, its assigned ordinal/source
-descriptors, and only the source conversations bound to those assignments. The
+descriptors, per-source example indexes, and only the source conversations bound
+to those assignments. The
 selected high-intelligence model spends its output tokens producing synthetic
 examples that reproduce the observed task distribution, formats, difficulty,
 and failure modes without copying traffic. Code does not encode a
 synthetic-data DSL or hand-authored mutation catalog.
 
-The existing four-case mechanics path proves orchestration, training splits,
-and GPU execution quickly. It is not evidence that the 100,000-case corpus has
-been generated. Production traffic and generated mechanics traffic remain
-separate scopes.
+Strict tool schemas already enforce JSON fields, types, counts and bounds. They
+do not establish usefulness. Before scaling, a model-free corpus audit must
+report exact duplicates, repeated normalized prefixes/templates, source
+contribution counts, operation/oracle coverage and length distributions. A
+bounded independently selected semantic sample must establish correctness,
+difficulty, diversity and absence of mechanics boilerplate. Failure leaves the
+revision unreferenced and stops further paid generation.
 
-The first 100-to-100,000 proof is an explicit mechanics run with
-`MILK_EVAL_MIN_CAPTURES=100`; it does not change the production default of
-1,000 independent captures and cannot qualify a production route.
+The existing four-case mechanics path proves orchestration, training splits,
+and GPU execution quickly. It is not evidence that source-proportional cases are
+useful at 100-per-source scale. Production traffic and generated mechanics
+traffic remain separate scopes.
+
+The first proof is one eligible held-out source expanded into exactly 100 cases,
+fully reduced, published and audited. Only after that passes may the same code
+expand 100 eligible held-out sources into exactly 10,000 cases. Mechanics
+traffic cannot qualify a production route.
 
 The deterministic plan selects:
 
@@ -746,9 +772,9 @@ The generated eval must bind source digests without copying raw source text into
 - source separation from training data;
 - one independent validator verdict per case.
 
-At the 100,000-case target the representative/tail selection above allocates
-source coverage; deterministic expansion supplies multiple cases per source
-while retaining each source digest and category cell. Case IDs are derived
+The representative/tail selection above determines eligible held-out sources.
+Deterministic expansion supplies exactly the configured number of cases per
+source while retaining each source digest and category cell. Case IDs are derived
 from the eval revision and ordinal so sharding and retries cannot duplicate or
 renumber them.
 
@@ -1285,21 +1311,21 @@ Completed 2026-09-01:
 - [x] Proved production-scale parallel generation against the same live R2/OpenAI bindings. Distinct precompute workers prepared ordinals `0..255` and `256..511` for eval `23faf45b-13a8-5d06-bffd-c8fbf7735374` without touching shared progress; the ordinal coordinator committed both shards, advanced the cumulative ledger to 512 unique cases, reused the first shard with zero inference, and regenerated only two real cross-shard collisions on the second. Generation and validation made zero GPU/provider calls.
 - [x] Extended that immutable scale proof to a contiguous 2,560-case DEV prefix across ten shards. Four-way precompute was stable after adding bounded SigV4 transport retries; the coordinator never skipped an ordinal, reused globally unique prepared shards with zero inference, and regenerated 47 exact normalized collisions across seven shard reductions. The measured repair cost now uses only the pending cases' source conversations. A separate ordinal-diversity prompt experiment was rejected after producing 96 vacuous cases in one shard; it never advanced shared progress, and the proven v7 generation prompt remains authoritative.
 - [x] Historical v14 scale proof `c9f2d98a696bb40493d4d5de324ee9b0b7e5f2ab5583f18d474d3222e75e207e`, eval UUID `454efa61-1f99-5133-950e-75009bcde6e5`, prepared and coordinated the first 512 cases. Its retained receipts contain 1,723,691 input and 92,512 output tokens across 63 inference requests; at current uncached list rates this completed proof is approximately $0.31. It remains the visible 512-case pointer until the current revision is coordinated.
-- [~] The current v21 revision is `4087cdace336000e95e61ca1cdfdd6313a280c4d6f14b2e43c882e780f051596`, eval UUID `0940bb40-3cc0-5aea-b0c1-f5244ccadf65`. The 4-case readiness sample only admits work; generation deterministically uses all 17 eligible held-out conversations from the 100-conversation checkpoint while 78 train conversations remain isolated for teacher targets. Oracle-homogeneous batches bind schema roots in strict tools, results bind to plan order without model-authored IDs, and rejected verdicts carry bounded repair guidance. The first 256-case shard retained 236 cases on its initial pass, repaired all 20 incorrect cases in one guided pass, became prepared in 28 inference turns, and replayed with zero calls. No GPU/provider lifecycle call or route action occurred.
-- [x] OpenAI Responses generation stopped with `credit_balance_exhausted`. This is account credit exhaustion, not throttling and not a Milk code or object-store failure. The current v21 run therefore uses the separate environment-selected Baseten `zai-org/GLM-5.3-Flash` binding.
+- [x] Stopped v21 revision `4087cdace336000e95e61ca1cdfdd6313a280c4d6f14b2e43c882e780f051596`, eval UUID `0940bb40-3cc0-5aea-b0c1-f5244ccadf65`, after the quality audit above. It remains immutable mechanics evidence and must not be resumed or promoted.
+- [x] OpenAI Responses generation stopped with `credit_balance_exhausted`. This was account credit exhaustion, not throttling and not a Milk code or object-store failure. The stopped v21 run then used the separate environment-selected Baseten `zai-org/GLM-5.3-Flash` binding.
 - [x] A four-worker Baseten precompute pilot returned genuine HTTP `429` responses. It launched no GPU lifecycle work and advanced no shared pointer. Three concurrent precompute workers are the observed stable ceiling for this run; do not retry with four.
 
-Active v21 execution sequence:
+Active v22 execution sequence:
 
-1. Freeze the published v21 source and run at most three precompute workers, with exactly one owner for each shard ordinal.
-2. Never run the shared coordinator while any precompute worker is active.
-3. After workers exit, inventory ordinals `0..391` and classify every missing shard. Replay transient provider/tool-call holes unchanged. For attempt-exhausted holes, retain all immutable attempts and accepted cases, then continue only the remaining rejected cases at the next unused attempt index under the exact v21 prompts, bindings, case IDs, and validation policy. Bind a repair-executor version and a bounded additional-attempt count to that continuation; never delete or overwrite an attempt.
-4. Run one coordinator invocation at a time. It consumes prepared shards in ordinal order, writes shared progress, and regenerates only exact cross-shard collisions.
-5. Finalize `e/current.json` only at exactly 100,000 unique validated cases, then run `dataset -> train -> evaluate -> one explicit route-propose provider -> operator-signed canary/fallback/rollback/zero -> independent zero-GPU checks`.
-6. Never restart a completed shard, run two coordinators, mix eval revisions, interpret historical dashboard progress as v21 progress, or select a second provider after a failure.
+1. Select the exact deterministic eligible held-out source count from `MILK_EVAL_SOURCE_CONVERSATIONS`, then derive split counts and total cases from that list multiplied by `MILK_CASES_PER_CONVERSATION`; remove `MILK_EVAL_TARGET_CASES` and all target-equals-100,000 branches.
+2. Bind the ratio, exact per-split source counts, per-split case counts and per-source example index into the immutable revision and generated case provenance.
+3. Run one eligible source through exactly 100 generation, validation, global reduction, final manifest and zero-call replay. Do not start parallel workers for this proof.
+4. Audit the final 100 cases for exact and repeated-template duplication, correctness, difficulty, operation/oracle coverage, boilerplate and source leakage. Record only aggregate/redacted evidence.
+5. If the proof passes, run the same immutable implementation with 100 eligible held-out sources for exactly 10,000 cases. Parallel preparation may resume only after the one-source quality proof, and one coordinator owns the cumulative uniqueness ledger.
+6. Continue the accepted 10,000-case lineage through `dataset -> train -> evaluate -> one explicit route-propose provider -> operator-signed canary/fallback/rollback/zero -> independent zero-GPU checks`.
 
-- [ ] Expand one 100-exchange summary checkpoint into exactly 100,000 validated eval cases using deterministic, resumable R2 shards. A small mechanics corpus proves the job graph but does not satisfy this scale target.
-- [ ] After the bulk feed exits, prove every missing shard recovers without regenerating a completed shard. A prepared-shard replay must make zero inference calls, and an exhausted-shard continuation must preserve the v21 revision while recording only new immutable attempt artifacts.
+- [ ] Prove one eligible held-out source produces exactly 100 useful, globally unique, independently validated cases and a zero-call replay.
+- [ ] Prove 100 eligible held-out sources produce exactly 10,000 useful cases with exactly 100 cases bound to each source.
 
 Owned:
 
@@ -1324,9 +1350,9 @@ Acceptance:
 
 ### [~] P8 — Dataset, training and three evaluation branches
 
-Historical bounded-mechanics capability proof — not current v21 completion:
+Historical bounded-mechanics capability proof — not current v22 completion:
 
-All checked items below prove the job code and provider path on earlier small mechanics datasets. P8 remains active until the finalized 100,000-case v21 manifest produces its own dataset, Qwen3.5-0.8B training result, comparable branches, deterministic winner, and sealed result.
+All checked items below prove the job code and provider path on earlier small mechanics datasets. P8 remains active until the accepted source-proportional v22 manifest produces its own dataset, Qwen3.5-0.8B training result, comparable branches, deterministic winner, and sealed result.
 
 - [x] Generated live R2 dataset `f59d59b7-9992-5f6c-bad0-9842afeec31a` from the accepted eval with disjoint train/DEV/calibration/sealed objects; creation used the teacher binding and immediate replay made zero inference or provider calls.
 - [x] Expanded the mechanics vertical to eval revision `6dcc2cb3-087a-55a9-8791-b96d9359034a` with four validated cases, then generated dataset `a7376834-b241-5d8d-850b-105624d4550c` with exact counts train 1, DEV 2, calibration 1 and sealed 1. Eval and dataset replays made zero inference calls.
@@ -1388,9 +1414,9 @@ Acceptance:
 
 ### [~] P9 — Signed routing and release
 
-Historical routing/release capability proof — not current v21 completion:
+Historical routing/release capability proof — not current v22 completion:
 
-All checked items below prove Parlor's signed-routing implementation and an earlier bounded mechanics candidate. P9 remains active for the current lineage until the v21-derived winner produces a new unsigned proposal and the operator proves candidate success, pre-byte fallback, rollback, signed zero, credential removal, and zero GPU capacity.
+All checked items below prove Parlor's signed-routing implementation and an earlier bounded mechanics candidate. P9 remains active for the current lineage until the v22-derived winner produces a new unsigned proposal and the operator proves candidate success, pre-byte fallback, rollback, signed zero, credential removal, and zero GPU capacity.
 
 - [x] Published the independently reviewed signed canary, pre-byte fallback, rollback, and zero-route implementation at Milk Parlor commit `933b45eac824787cb064b869d93515b75c0c58a8`; requests never wait for R2 route refresh.
 - [x] Fixed macOS Ed25519 one-shot signing at `b1744d79be67e7606c4ba8cb2eac2e693b6436d0` and published one canonical, signature-verified production zero route at revision 1.
@@ -1508,7 +1534,7 @@ The goal is complete only when:
 - `parlor.milkinfrastructure.com` accepts an operator-issued key through the official SDK and asynchronously writes exact two-sided traffic into R2.
 - Local and scheduled Milk Man consume the same remote store through environment bindings.
 - Production-like traffic progresses through summary, classification, readiness and validated eval generation.
-- One 100-exchange source scope produces a resumable, independently validated 100,000-case eval corpus without rewriting completed shards.
+- One eligible held-out source produces a useful audited 100-case corpus before scale; 100 eligible held-out sources then produce a resumable, independently validated 10,000-case corpus with exactly 100 cases per source.
 - The full whiteboard model loop produces a trained Qwen3.5-0.8B student from
   maximum-intelligence teacher data, three comparable branches, deterministic
   winner, sealed result and unsigned proposal.

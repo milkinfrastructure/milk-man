@@ -273,7 +273,6 @@ def _eval_context_v3(store, settings, pointer: dict, pointer_body: bytes) -> tup
         or summary.digest(context["summary_checkpoint"]) != identity["summary_sha256"]
         or not isinstance(conversations, list)
         or len(conversations) != revision.get("context_conversation_count")
-        or identity["target_case_count"] == 100_000 and len(conversations) != 100
         or any(
             not isinstance(conversation, dict)
             or set(conversation) != conversation_fields

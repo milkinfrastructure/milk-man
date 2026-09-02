@@ -34,10 +34,12 @@ useful diversity across the batch, including realistic edge cases implied by
 the source data. Do not copy source responses into prompts, leak reference
 answers, or create duplicate, unsupported tool, unsupported multimodal, or
 ungrounded cases.
-Use each supplied `order` and `case_id` as hidden deterministic creative seeds:
-vary concrete entities, quantities, constraints, framing, and wording for that
-case, but never expose either seed in the generated input or answer. A later
-case for the same source must still be a materially distinct task.
+Use each supplied `source_example_index`, `source_example_count`, `order`, and
+`case_id` as hidden deterministic creative seeds. Across the configured cases
+for one source, create materially different realistic scenarios by varying the
+task, entities, quantities, constraints, difficulty, framing, and response
+format—not merely names or wording. Never expose a seed, source index, Milk
+mechanics language, or synthetic-sample label in the generated input or answer.
 On a repair turn, `source_bindings` contains only rejected case IDs. Use each
 rejected verdict's `guidance` as the exact defect to correct. Generate
 only those cases. Cases omitted from the repair input were already accepted:

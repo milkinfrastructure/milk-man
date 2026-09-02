@@ -93,8 +93,14 @@ invokes the other provider.
 Training reads the immutable dataset manifest before provider discovery. New
 GPU work starts only when train, DEV, calibration, and sealed counts are all
 nonzero. Otherwise the job returns to summary with zero provider calls.
-The mechanics profile therefore defaults to four representative eval cases:
-two DEV, one calibration, and one sealed.
+The mechanics profile defaults to four representative readiness seeds: two
+DEV, one calibration, and one sealed. Generation volume is derived from the
+eligible held-out sources, not configured independently: each source produces
+`MILK_CASES_PER_CONVERSATION` cases (default `100`). One source therefore makes
+a 100-case pilot; 100 sources make 10,000 cases. Set
+`MILK_EVAL_SOURCE_CONVERSATIONS` to require an exact deterministic source count;
+the job stops before inference when that many eligible sources are unavailable.
+Training sources remain separate.
 
 The only fine-tune base is the exact `Qwen/Qwen3.5-0.8B` revision pinned in
 [`config/student.json`](config/student.json). It is an artifact input, not an

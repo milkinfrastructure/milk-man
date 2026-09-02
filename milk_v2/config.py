@@ -84,7 +84,8 @@ BINDING_ENVIRONMENTS = {
         "optional": (
             "MILK_EVAL_API_MODE",
             "MILK_REASONING_EFFORT",
-            "MILK_EVAL_TARGET_CASES",
+            "MILK_CASES_PER_CONVERSATION",
+            "MILK_EVAL_SOURCE_CONVERSATIONS",
             "MILK_EVAL_SHARD_CASES",
             "MILK_EVAL_PRECOMPUTE_SHARD",
             "MILK_EVAL_MAX_OUTPUT_TOKENS",

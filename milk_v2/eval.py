@@ -10,8 +10,7 @@ import uuid
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.eval.v21"
-CONTEXT_CONVERSATIONS = 100
+CODE_VERSION = "milk.eval.v22"
 GENERATOR_BATCH_CASES = 64
 VALIDATOR_BATCH_CASES = 64
 MAX_GENERATION_ATTEMPTS = 8
@@ -68,7 +67,13 @@ def _current(store, settings) -> tuple[dict, dict, dict, dict, str]:
     return summary_pointer, summary_value, readiness_pointer, readiness, summary.digest(readiness_pointer_body)
 
 
-def current_matches(store, settings, target: int | None = None, shard_cases: int | None = None) -> bool:
+def current_matches(
+    store,
+    settings,
+    target: int | None = None,
+    shard_cases: int | None = None,
+    revision_id: str | None = None,
+) -> bool:
     summary_pointer, unused_summary, readiness_pointer, unused_readiness, readiness_pointer_sha256 = _current(store, settings)
     try:
         pointer, pointer_body = _object(store, settings.scope_prefix + "e/current.json")
@@ -148,6 +153,8 @@ def current_matches(store, settings, target: int | None = None, shard_cases: int
         or identity.get("shard_case_count") != manifest.get("shard_case_count")
     ):
         raise EvalError("current eval manifest identity differs")
+    if revision_id is not None and revision.get("revision_id") != revision_id:
+        return False
     return summary.digest(pointer_body) == summary.digest(pointer)
 
 
@@ -181,12 +188,13 @@ def _labels(store, settings, summary_value: dict) -> list[dict]:
 def _plan(store, settings, summary_value: dict, readiness: dict) -> dict:
     try:
         value = eval_plan.build(_labels(store, settings, summary_value), settings.profile)
+        selected = eval_plan.select_sources(value)
     except eval_plan.PlanError as error:
         raise EvalError(str(error)) from error
     expected = {"policy": value["policy"], "counts": value["counts"], "missing": value["missing"]}
     if readiness.get("eval_plan") != expected or not value["ready"] or readiness.get("ready") is not True:
         raise EvalError("current readiness does not admit the deterministic eval plan")
-    return value
+    return selected
 
 
 def _generation_schema(count: int, oracle: str, schema_kind: str) -> dict:
@@ -436,6 +444,8 @@ def _cases(generation: dict, shard_plan: dict, corpus: dict, summary_sha256: str
             "tail_reason": planned["tail_reason"],
             "operation": planned["operation"],
             "oracle": planned["oracle"],
+            "source_example_index": planned["source_example_index"],
+            "source_example_count": planned["source_example_count"],
             "input": generated["input"],
             "expected": expected,
             "source_key": planned["source_key"],
@@ -621,10 +631,10 @@ def _generation_source_identity(plan: dict) -> list[dict]:
 
 
 def _revision_identity(settings, runtime, summary_pointer: dict, readiness_pointer: dict, readiness_pointer_sha256: str, plan: dict, eval_prompt: str, validator_prompt: str, target: int, shard_cases: int) -> dict:
-    target_splits = eval_plan.target_allocation(target)
-    generation_sources = plan["sources"] if target == 100_000 else plan["cases"]
-    source_splits = {source["split"] for source in generation_sources}
-    if any(count and split not in source_splits for split, count in target_splits.items()):
+    generation_sources = plan["sources"]
+    target_splits = eval_plan.target_allocation(plan, target)
+    source_splits = Counter(source["split"] for source in generation_sources)
+    if any(count and not source_splits[split] for split, count in target_splits.items()):
         raise EvalError("the eval revision has no held-out source for a required split")
     return {
         "schema_version": "milk.eval-revision-identity.v3",
@@ -638,6 +648,9 @@ def _revision_identity(settings, runtime, summary_pointer: dict, readiness_point
         "policy": plan["policy"],
         "source_seeds": _seed_identity(plan),
         "generation_sources": _generation_source_identity({"sources": generation_sources}),
+        "generation_source_count": len(generation_sources),
+        "generation_source_split_counts": {split: source_splits[split] for split in eval_plan.SPLITS},
+        "cases_per_conversation": target // len(generation_sources),
         "target_case_count": target,
         "target_split_counts": target_splits,
         "shard_case_count": shard_cases,
@@ -648,42 +661,17 @@ def _revision_identity(settings, runtime, summary_pointer: dict, readiness_point
     }
 
 
-def _context_rows(store, settings, summary_value: dict, plan: dict, target: int) -> list[dict]:
-    if target != 100_000:
-        return [
-            {
-                "key": case["source_key"],
-                "object_sha256": case["source_object_sha256"],
-                "request_sha256": case["request_sha256"],
-                "response_sha256": case["response_sha256"],
-                "content_sha256": case["content_sha256"],
-            }
-            for case in {case["source_key"]: case for case in plan["cases"]}.values()
-        ]
-    rows, unused_keys = summary._ancestry(store, settings, summary_value)
-    by_key = {row.get("key"): row for row in rows if isinstance(row, dict) and isinstance(row.get("key"), str)}
-    seed_keys = list(dict.fromkeys(source["source_key"] for source in plan["sources"]))
-    if (
-        not isinstance(summary_value.get("capture_count"), int)
-        or summary_value["capture_count"] < CONTEXT_CONVERSATIONS
-        or len(by_key) < CONTEXT_CONVERSATIONS
-        or len(seed_keys) > CONTEXT_CONVERSATIONS
-        or any(key not in by_key for key in seed_keys)
-    ):
-        raise EvalError("the 100000-case revision requires at least 100 complete summarized conversations")
-    ordered = sorted(
-        by_key.values(),
-        key=lambda row: summary.digest("milk.eval-context.v3:" + str(row.get("request_sha256", "")) + str(row.get("content_sha256", ""))),
-    )
-    selected = [by_key[key] for key in seed_keys]
-    selected_keys = set(seed_keys)
-    for row in ordered:
-        if len(selected) == CONTEXT_CONVERSATIONS:
-            break
-        if row["key"] not in selected_keys:
-            selected.append(row)
-            selected_keys.add(row["key"])
-    return selected
+def _context_rows(plan: dict) -> list[dict]:
+    return [
+        {
+            "key": source["source_key"],
+            "object_sha256": source["source_object_sha256"],
+            "request_sha256": source["request_sha256"],
+            "response_sha256": source["response_sha256"],
+            "content_sha256": source["content_sha256"],
+        }
+        for source in plan["sources"]
+    ]
 
 
 def _build_context(store, settings, summary_value: dict, rows: list[dict]) -> dict:
@@ -724,7 +712,7 @@ def _revision(store, settings, summary_value: dict, plan: dict, identity: dict) 
         if summary.digest(context_body) != revision.get("context_sha256"):
             raise EvalError("stored eval context digest differs")
     except FileNotFoundError:
-        rows = _context_rows(store, settings, summary_value, plan, identity["target_case_count"])
+        rows = _context_rows(plan)
         context = _build_context(store, settings, summary_value, rows)
         context_body = summary._zstd(summary.canonical(context), False)
         store.create_same(context_key, context_body)
@@ -742,10 +730,8 @@ def _revision(store, settings, summary_value: dict, plan: dict, identity: dict) 
         context = json.loads(summary._zstd(context_body, True))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise EvalError("stored eval context is invalid") from error
-    if not isinstance(context, dict) or context.get("schema_version") != "milk.eval-context.v3" or not isinstance(context.get("conversations"), list) or len(context["conversations"]) != revision.get("context_conversation_count"):
+    if not isinstance(context, dict) or context.get("schema_version") != "milk.eval-context.v3" or not isinstance(context.get("conversations"), list) or len(context["conversations"]) != revision.get("context_conversation_count") or len(context["conversations"]) != identity["generation_source_count"]:
         raise EvalError("stored eval context identity differs")
-    if identity["target_case_count"] == 100_000 and len(context["conversations"]) != CONTEXT_CONVERSATIONS:
-        raise EvalError("the 100000-case revision context is incomplete")
     return revision, context, [revision_key, context_key]
 
 
@@ -937,6 +923,7 @@ def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha
                     key: case[key]
                     for key in (
                         "case_id", "order", "split", "selection", "tail_reason", "operation", "oracle",
+                        "source_example_index", "source_example_count",
                         "source_key", "source_object_sha256", "request_sha256", "response_sha256", "content_sha256",
                     )
                 },
@@ -1209,19 +1196,84 @@ def _prepare_range(store, revision: dict, context: dict, shard_plan: dict, summa
     return prepared, None, attempts, calls, [*artifacts, prepared_key], created
 
 
-def _ranges(target: int, shard_cases: int):
+def _ranges(plan: dict, target: int, shard_cases: int):
     start = 0
     while start < target:
-        split, end = eval_plan.range_for(start, target, shard_cases)
+        split, end = eval_plan.range_for(plan, start, target, shard_cases)
         yield split, start, end
         start = end
 
 
-def _finalize(store, settings, revision: dict) -> tuple[dict, list[str]]:
+def _prefix_quality(counter: Counter) -> dict:
+    total = sum(counter.values())
+    repeated = [count for count in counter.values() if count > 1]
+    maximum = max(counter.values(), default=0)
+    return {
+        "eligible_case_count": total,
+        "repeated_prefix_count": len(repeated),
+        "cases_in_repeated_prefixes": sum(repeated),
+        "max_case_count": maximum,
+        "max_basis_points": maximum * 10_000 // total if total else 0,
+    }
+
+
+def _quality_summary(store, shards: list[dict], exact_unique_input_count: int) -> dict:
+    sources, operations, oracles = Counter(), Counter(), Counter()
+    prefixes = {8: Counter(), 24: Counter()}
+    input_bytes = []
+    mechanics_boilerplate = 0
+    markers = (
+        "source example index", "source example count", "hidden deterministic creative seed",
+        "source binding", "synthetic eval", "synthetic sample", "mechanics sample",
+        "milk job read", "milk job commit",
+    )
+    for shard in shards:
+        plain = summary._zstd(store.get(shard["cases_key"]).body, True)
+        for line in plain.splitlines():
+            case = json.loads(line)
+            text = case["input"]
+            normalized = _normalized(text)
+            tokens = ["#" if token.isdigit() else token for token in normalized.split()]
+            sources[case["source_content_sha256"]] += 1
+            operations[case["operation"]] += 1
+            oracles[case["oracle"]] += 1
+            input_bytes.append(len(text.encode()))
+            for size, counter in prefixes.items():
+                if len(tokens) >= size:
+                    counter[summary.digest(" ".join(tokens[:size]).encode())] += 1
+            searchable = normalized
+            if isinstance(case.get("expected"), str):
+                searchable += " " + _normalized(case["expected"])
+            mechanics_boilerplate += any(marker in searchable for marker in markers)
+    ordered_sizes = sorted(input_bytes)
+
+    def percentile(percent: int) -> int:
+        return ordered_sizes[max(0, (len(ordered_sizes) * percent + 99) // 100 - 1)]
+
+    return {
+        "schema_version": "milk.eval-quality.v1",
+        "case_count": len(input_bytes),
+        "exact_unique_input_count": exact_unique_input_count,
+        "source_count": len(sources),
+        "source_case_counts": [
+            {"source_content_sha256": source, "case_count": count}
+            for source, count in sorted(sources.items())
+        ],
+        "operation_counts": dict(sorted(operations.items())),
+        "oracle_counts": dict(sorted(oracles.items())),
+        "input_bytes": {
+            "min": ordered_sizes[0], "p50": percentile(50), "p95": percentile(95), "max": ordered_sizes[-1],
+        },
+        "template_prefixes": {str(size): _prefix_quality(counter) for size, counter in prefixes.items()},
+        "mechanics_boilerplate_case_count": mechanics_boilerplate,
+    }
+
+
+def _finalize(store, settings, revision: dict, plan: dict) -> tuple[dict, list[str]]:
     target = revision["identity"]["target_case_count"]
     shard_cases = revision["identity"]["shard_case_count"]
     shards, normalized = [], set()
-    for split, start, end in _ranges(target, shard_cases):
+    for split, start, end in _ranges(plan, target, shard_cases):
         shard = _read_shard(store, revision, split, start, end)
         if shard is None:
             raise EvalError("eval manifest cannot skip a shard")
@@ -1234,6 +1286,12 @@ def _finalize(store, settings, revision: dict) -> tuple[dict, list[str]]:
         shards.append(shard)
     if sum(shard["count"] for shard in shards) != target or len(normalized) != target:
         raise EvalError("eval manifest does not contain the exact target")
+    quality = _quality_summary(store, shards, len(normalized))
+    ratio = revision["identity"]["cases_per_conversation"]
+    if quality["source_count"] != revision["identity"]["generation_source_count"] or any(
+        item["case_count"] != ratio for item in quality["source_case_counts"]
+    ):
+        raise EvalError("eval manifest does not contain the exact per-source case count")
     eval_prefix = revision["context_key"].removesuffix("context.json.zst")
     cases_content_sha256 = summary.digest({"schema_version": "milk.eval-content.v3", "shards": [shard["cases_content_sha256"] for shard in shards]})
     normalized_sha256 = summary.digest({"schema_version": "milk.eval-normalized-set.v3", "hashes": sorted(normalized)})
@@ -1257,6 +1315,7 @@ def _finalize(store, settings, revision: dict) -> tuple[dict, list[str]]:
         "shard_count": len(shards),
         "cases_content_sha256": cases_content_sha256,
         "normalized_hashes_sha256": normalized_sha256,
+        "quality": quality,
         "shards": shards,
     }
     manifest_key = eval_prefix + "manifest.json"
@@ -1289,21 +1348,21 @@ def reconcile(store, settings, runtime) -> dict:
     summary_pointer, summary_value, readiness_pointer, readiness, readiness_pointer_sha256 = _current(store, settings)
     if readiness.get("ready") is not True:
         return {"state": "idle", "identity": readiness_pointer["sha256"], "artifacts": [], "inference_calls": 0, "provider_calls": 0, "next": "summary", "details": {"reason": "readiness_not_met"}}
+    plan = _plan(store, settings, summary_value, readiness)
     try:
-        target, shard_cases = eval_plan.generation_counts(settings.profile)
-        selected = eval_plan.precompute_range(target, shard_cases)
+        target, shard_cases = eval_plan.generation_counts(plan)
+        selected = eval_plan.precompute_range(plan, target, shard_cases)
     except eval_plan.PlanError as error:
         raise EvalError(str(error)) from error
-    if selected is None and current_matches(store, settings, target, shard_cases):
-        pointer, pointer_body = _object(store, settings.scope_prefix + "e/current.json")
-        status_key = _complete_status(store, settings, pointer)
-        return {"state": "idle", "identity": pointer["uuid"], "artifacts": [{"key": settings.scope_prefix + "e/current.json", "sha256": summary.digest(pointer_body)}, *_artifacts(store, [status_key])], "inference_calls": 0, "provider_calls": 0, "next": "dataset", "details": {"eval_uuid": pointer["uuid"], "case_count": pointer["case_count"]}}
-
-    plan = _plan(store, settings, summary_value, readiness)
     root = Path(__file__).resolve().parents[1]
     eval_prompt = (root / runtime.job("eval").system_prompt).read_text()
     validator_prompt = (root / "prompts" / "eval-validator.md").read_text()
     identity = _revision_identity(settings, runtime, summary_pointer, readiness_pointer, readiness_pointer_sha256, plan, eval_prompt, validator_prompt, target, shard_cases)
+    if selected is None and current_matches(store, settings, target, shard_cases, summary.digest(identity)):
+        pointer, pointer_body = _object(store, settings.scope_prefix + "e/current.json")
+        status_key = _complete_status(store, settings, pointer)
+        return {"state": "idle", "identity": pointer["uuid"], "artifacts": [{"key": settings.scope_prefix + "e/current.json", "sha256": summary.digest(pointer_body)}, *_artifacts(store, [status_key])], "inference_calls": 0, "provider_calls": 0, "next": "dataset", "details": {"eval_uuid": pointer["uuid"], "case_count": pointer["case_count"]}}
+
     revision, context, base_artifacts = _revision(store, settings, summary_value, plan, identity)
     if selected is not None:
         shard_index, split, start, end = selected
@@ -1326,13 +1385,13 @@ def reconcile(store, settings, runtime) -> dict:
 
     completed, unused_status_key = _completed(store, settings, revision)
     if completed == target:
-        pointer, final_artifacts = _finalize(store, settings, revision)
+        pointer, final_artifacts = _finalize(store, settings, revision, plan)
         return {"state": "progressed", "identity": revision["revision_id"], "artifacts": _artifacts(store, base_artifacts + final_artifacts), "inference_calls": 0, "provider_calls": 0, "next": "dataset", "details": {"eval_uuid": pointer["uuid"], "case_count": target, "shard_count": pointer["shard_count"]}}
 
     recovered = []
     last_shard = None
     while completed < target:
-        split, end = eval_plan.range_for(completed, target, shard_cases)
+        split, end = eval_plan.range_for(plan, completed, target, shard_cases)
         existing = _read_shard(store, revision, split, completed, end)
         if existing is None:
             break
@@ -1343,10 +1402,10 @@ def reconcile(store, settings, runtime) -> dict:
         status_key = _advance_progress(store, settings, revision, completed, last_shard)
         base_artifacts.extend((status_key, *recovered))
     if completed == target:
-        pointer, final_artifacts = _finalize(store, settings, revision)
+        pointer, final_artifacts = _finalize(store, settings, revision, plan)
         return {"state": "progressed", "identity": revision["revision_id"], "artifacts": _artifacts(store, base_artifacts + final_artifacts), "inference_calls": 0, "provider_calls": 0, "next": "dataset", "details": {"eval_uuid": pointer["uuid"], "case_count": target, "shard_count": pointer["shard_count"]}}
 
-    split, end = eval_plan.range_for(completed, target, shard_cases)
+    split, end = eval_plan.range_for(plan, completed, target, shard_cases)
 
     shard_plan = eval_plan.shard(plan, revision["eval_uuid"], target, completed, end)
     eval_prefix = revision["context_key"].removesuffix("context.json.zst")
@@ -1411,9 +1470,9 @@ def reconcile(store, settings, runtime) -> dict:
     store.create_same(result_key, summary.canonical(result))
     artifacts.append(result_key)
     if end == target:
-        pointer, final_artifacts = _finalize(store, settings, revision)
+        pointer, final_artifacts = _finalize(store, settings, revision, plan)
         artifacts.extend(final_artifacts)
         result["details"].update({"case_count": target, "shard_count": pointer["shard_count"]})
     else:
-        result["details"]["next_range"] = [end, eval_plan.range_for(end, target, shard_cases)[1]]
+        result["details"]["next_range"] = [end, eval_plan.range_for(plan, end, target, shard_cases)[1]]
     return {"state": "progressed", "identity": revision["revision_id"], "artifacts": _artifacts(store, artifacts), "inference_calls": inference_calls, "provider_calls": 0, "next": next_job, "details": result["details"]}

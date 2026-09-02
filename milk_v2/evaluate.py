@@ -524,7 +524,12 @@ def _dataset_rows(store, settings, config: dict, manifest: dict):
             or not _hex_digest(validation.get("normalized_ledger_sha256"))
             or not isinstance(verdicts, list)
             or len(verdicts) != count
-            or any(not isinstance(item, dict) or set(item) != {"case_id", "accepted", "reason"} for item in verdicts)
+            or any(
+                not isinstance(item, dict)
+                or set(item) != {"case_id", "accepted", "reason", "guidance"}
+                or not isinstance(item.get("guidance"), str)
+                for item in verdicts
+            )
             or [item.get("case_id") for item in verdicts if item.get("accepted") is True and item.get("reason") == "accepted"] != case_ids
         ):
             raise EvaluateError("evaluation dataset shard validation differs")

@@ -10,22 +10,23 @@ SPLIT_VERSION = "milk.split.v2"
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 ORACLES = frozenset({"exact", "reference", "schema"})
 SCHEMA_KINDS = ("object", "array", "string", "number", "integer", "boolean")
-MAX_GENERATION_SOURCES = 100
 SPLITS = ("dev", "calibration", "sealed")
 TAIL_REASONS = ("long_context", "rare", "error", "tool_use", "multimodal", "low_confidence")
+MAX_TARGET_CASES = 1_000_000
 
 
 class PlanError(ValueError):
     pass
 
 
-def _integer(name: str, default: int, minimum: int, maximum: int) -> int:
+def _integer(name: str, default: int, minimum: int, maximum: int | None = None) -> int:
     try:
         value = int(os.environ.get(name, str(default)))
     except ValueError as error:
         raise PlanError(f"{name} must be an integer") from error
-    if not minimum <= value <= maximum:
-        raise PlanError(f"{name} must be in {minimum}..{maximum}")
+    if value < minimum or maximum is not None and value > maximum:
+        suffix = f"..{maximum}" if maximum is not None else " or greater"
+        raise PlanError(f"{name} must be {minimum}{suffix}")
     return value
 
 
@@ -37,9 +38,17 @@ def requested_counts(profile: str) -> tuple[int, int]:
     )
 
 
-def generation_counts(profile: str) -> tuple[int, int]:
-    representative, tail = requested_counts(profile)
-    target = _integer("MILK_EVAL_TARGET_CASES", representative + tail, 1, 1_000_000)
+def cases_per_conversation() -> int:
+    return _integer("MILK_CASES_PER_CONVERSATION", 100, 1)
+
+
+def generation_counts(plan: dict) -> tuple[int, int]:
+    sources = plan.get("sources")
+    if not isinstance(sources, list) or not sources:
+        raise PlanError("eval plan has no eligible held-out sources")
+    target = len(sources) * cases_per_conversation()
+    if target > MAX_TARGET_CASES:
+        raise PlanError(f"derived eval target must be at most {MAX_TARGET_CASES}")
     shard = _integer("MILK_EVAL_SHARD_CASES", min(target, 256), 1, 256)
     return target, min(target, shard)
 
@@ -205,16 +214,6 @@ def build(labels: list[dict], profile: str) -> dict:
             hashlib.sha256(("generation-source:" + value["request_sha256"] + value["content_sha256"]).encode()).digest(),
         )
     sources.sort(key=source_key)
-    if len(sources) > MAX_GENERATION_SOURCES:
-        allocation = target_allocation(MAX_GENERATION_SOURCES)
-        selected = []
-        remaining = []
-        for split in SPLITS:
-            candidates = [source for source in sources if source["split"] == split]
-            selected.extend(candidates[:allocation[split]])
-            remaining.extend(candidates[allocation[split]:])
-        selected.extend(sorted(remaining, key=source_key)[:MAX_GENERATION_SOURCES - len(selected)])
-        sources = sorted(selected, key=source_key)
     counts = Counter((value["split"], value["selection"]) for value in cases)
     return {
         "schema_version": POLICY_VERSION,
@@ -227,12 +226,55 @@ def build(labels: list[dict], profile: str) -> dict:
     }
 
 
-def target_allocation(target: int) -> dict[str, int]:
-    return _allocation(target)
+def select_sources(plan: dict) -> dict:
+    raw = os.environ.get("MILK_EVAL_SOURCE_CONVERSATIONS")
+    if raw is None:
+        return plan
+    requested = _integer("MILK_EVAL_SOURCE_CONVERSATIONS", 1, 1)
+    sources = plan.get("sources")
+    if not isinstance(sources, list) or len(sources) < requested:
+        available = len(sources) if isinstance(sources, list) else 0
+        raise PlanError(f"MILK_EVAL_SOURCE_CONVERSATIONS requires {requested} eligible sources; found {available}")
+    allocation = _allocation(requested)
+    selected = []
+    for split in SPLITS:
+        available = sorted(
+            (value for value in sources if value.get("split") == split),
+            key=lambda value: hashlib.sha256(
+                ("generation-selection:" + value["request_sha256"] + value["content_sha256"]).encode()
+            ).digest(),
+        )
+        required = allocation[split]
+        if len(available) < required:
+            raise PlanError(
+                f"MILK_EVAL_SOURCE_CONVERSATIONS requires {required} {split} sources; found {len(available)}"
+            )
+        selected.extend(available[:required])
+    return {
+        **plan,
+        "sources": sorted(
+            selected,
+            key=lambda value: (
+                SPLITS.index(value["split"]),
+                hashlib.sha256(("generation-source:" + value["request_sha256"] + value["content_sha256"]).encode()).digest(),
+            ),
+        ),
+    }
 
 
-def range_for(start: int, target: int, shard_cases: int) -> tuple[str, int]:
-    allocation = target_allocation(target)
+def target_allocation(plan: dict, target: int) -> dict[str, int]:
+    sources = plan.get("sources")
+    if not isinstance(sources, list) or not sources or type(target) is not int or target < 1 or target % len(sources):
+        raise PlanError("eval target must be an exact multiple of its source count")
+    ratio = target // len(sources)
+    counts = Counter(source.get("split") for source in sources)
+    if any(split not in SPLITS for split in counts):
+        raise PlanError("eval plan contains an invalid source split")
+    return {split: counts[split] * ratio for split in SPLITS}
+
+
+def range_for(plan: dict, start: int, target: int, shard_cases: int) -> tuple[str, int]:
+    allocation = target_allocation(plan, target)
     cursor = 0
     for split in SPLITS:
         boundary = cursor + allocation[split]
@@ -242,7 +284,7 @@ def range_for(start: int, target: int, shard_cases: int) -> tuple[str, int]:
     raise PlanError("eval shard start is outside the target")
 
 
-def precompute_range(target: int, shard_cases: int) -> tuple[int, str, int, int] | None:
+def precompute_range(plan: dict, target: int, shard_cases: int) -> tuple[int, str, int, int] | None:
     raw = os.environ.get("MILK_EVAL_PRECOMPUTE_SHARD")
     if raw is None:
         return None
@@ -258,7 +300,7 @@ def precompute_range(target: int, shard_cases: int) -> tuple[int, str, int, int]
     for index in range(selected + 1):
         if start >= target:
             raise PlanError("MILK_EVAL_PRECOMPUTE_SHARD is outside the eval target")
-        split, end = range_for(start, target, shard_cases)
+        split, end = range_for(plan, start, target, shard_cases)
         if index == selected:
             return index, split, start, end
         start = end
@@ -266,7 +308,7 @@ def precompute_range(target: int, shard_cases: int) -> tuple[int, str, int, int]
 
 
 def shard(plan: dict, eval_uuid: str, target: int, start: int, end: int) -> dict:
-    seeds = plan.get("sources") if target == 100_000 else plan.get("cases")
+    seeds = plan.get("sources")
     if (
         not isinstance(seeds, list)
         or not seeds
@@ -277,22 +319,27 @@ def shard(plan: dict, eval_uuid: str, target: int, start: int, end: int) -> dict
         or not 0 <= start < end <= target
     ):
         raise PlanError("eval shard arguments are invalid")
-    split, expected_end = range_for(start, target, end - start)
+    split, expected_end = range_for(plan, start, target, end - start)
     if end != expected_end:
         raise PlanError("eval shard crosses a split boundary")
     seeds = [seed for seed in seeds if seed.get("split") == split]
     if not seeds:
         raise PlanError(f"eval shard has no {split} source seeds")
     offset = int.from_bytes(hashlib.sha256((eval_uuid + "\0" + split).encode()).digest()[:8], "big") % len(seeds)
-    split_start = sum(target_allocation(target)[name] for name in SPLITS[:SPLITS.index(split)])
+    allocation = target_allocation(plan, target)
+    split_start = sum(allocation[name] for name in SPLITS[:SPLITS.index(split)])
+    example_count = target // len(plan["sources"])
     cases = []
     for ordinal in range(start, end):
-        seed = seeds[(offset + ordinal - split_start) % len(seeds)]
+        split_ordinal = ordinal - split_start
+        seed = seeds[(offset + split_ordinal) % len(seeds)]
         cases.append(
             {
                 **seed,
                 "order": ordinal,
                 "case_id": hashlib.sha256(f"{eval_uuid}\0{ordinal}".encode()).hexdigest(),
+                "source_example_index": split_ordinal // len(seeds),
+                "source_example_count": example_count,
             }
         )
     schema_kind = SCHEMA_KINDS[
@@ -300,7 +347,7 @@ def shard(plan: dict, eval_uuid: str, target: int, start: int, end: int) -> dict
         % len(SCHEMA_KINDS)
     ]
     return {
-        "schema_version": "milk.eval-shard-plan.v3",
+        "schema_version": "milk.eval-shard-plan.v4",
         "split": split,
         "start": start,
         "end": end,
