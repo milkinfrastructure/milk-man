@@ -57,7 +57,7 @@ import re
 import sys
 
 text = open(sys.argv[1]).read()
-match = re.search(r"(?ms)^```(?:bash|sh|shell)[ \t]*\n(.*?)^```[ \t]*$", text)
+match = re.search(r"(?ms)```(?:bash|sh|shell)[ \t]*\r?\n(.*?)```", text)
 code = match.group(1) if match else ""
 if not code:
     call = re.search(r"<tool_call>[ \t]*([^<\r\n]+)", text)
