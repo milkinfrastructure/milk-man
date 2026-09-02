@@ -219,8 +219,6 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if not self.require_authorization():
-            return
         if self.path == "/health":
             self.send_json(200, {
                 "status": "ok",
@@ -229,7 +227,10 @@ class Handler(BaseHTTPRequestHandler):
                 "quantization": "static_fp8",
                 "quantized_linear_count": RUNTIME.quantized_linear_count,
             })
-        elif self.path == "/v1/models":
+            return
+        if not self.require_authorization():
+            return
+        if self.path == "/v1/models":
             self.send_json(200, {"object": "list", "data": [{"id": SERVED_MODEL, "object": "model", "owned_by": "milkinfrastructure"}]})
         else:
             self.send_json(404, {"error": {"message": "not found", "type": "invalid_request_error"}})
