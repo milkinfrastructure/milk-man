@@ -1202,6 +1202,15 @@ Acceptance:
 
 ### [ ] P8 — Dataset, training and three evaluation branches
 
+Progress 2026-09-01:
+
+- [x] Generated live R2 dataset `f59d59b7-9992-5f6c-bad0-9842afeec31a` from the accepted eval with disjoint train/DEV/calibration/sealed objects; creation used the teacher binding and immediate replay made zero inference or provider calls.
+- [x] Published the weight-free Linux AMD64 training image in Actions run `33583603822` at `ghcr.io/milkinfrastructure/milk-man-train@sha256:93f6a973d2e7b04e3dfc0c9807b5b83cb661601ebfbc1e371659b2530a9dd16f`; Qwen weights remain a separately mounted exact revision.
+- [x] Created and retained a full-access personal Baseten operator key in the existing local keychain binding; project, job-search and key-management API checks returned 200. Refreshed Baseten's two R2 runtime secrets from the current operator credentials.
+- [x] Milk Man created Baseten job `q09v7mq`, trained exact `Qwen/Qwen3.5-0.8B@2fc06364715b967f1860aea9cf38778875588b17` for one mechanics step on one H100, retained model `17959b86-64de-5c10-baa3-274a876a857a` in R2, observed completion, and verified zero active Baseten training jobs.
+- [x] Immediate training replay returned `provider_calls: 0` and status now deterministically advances to `evaluate`.
+- [ ] Run identical ordered DEV inputs through BF16, dynamic FP8 and calibration-derived static FP8; select the winner, run sealed evaluation, emit the unsigned proposal, and prove Modal fallback plus zero capacity.
+
 Owned:
 
 ```text
