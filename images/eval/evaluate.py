@@ -14,7 +14,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 MODEL_REPO = "Qwen/Qwen3.5-0.8B"
 MODEL_REVISION = "2fc06364715b967f1860aea9cf38778875588b17"
-MODEL_ROOT = Path(os.environ.get("BT_LOAD_CHECKPOINT_DIR", "/app/checkpoint")) / "rank-0" / "merged"
 
 
 def required(name: str) -> str:
@@ -96,6 +95,22 @@ def rows() -> tuple[dict, list[dict]]:
     return manifest, values
 
 
+def model_root() -> Path:
+    root = Path(os.environ.get("BT_LOAD_CHECKPOINT_DIR", "/app/checkpoint"))
+    candidates = []
+    for config in root.glob("**/config.json"):
+        try:
+            relative = config.relative_to(root)
+        except ValueError:
+            continue
+        parent = config.parent
+        if len(relative.parts) <= 5 and (parent / "tokenizer_config.json").is_file() and any(parent.glob("*.safetensors")):
+            candidates.append(parent)
+    if len(candidates) != 1:
+        raise ValueError("loaded checkpoint has no unique merged model")
+    return candidates[0]
+
+
 def normalized(value: str) -> list[str]:
     return "".join(character.lower() if character.isalnum() else " " for character in value).split()
 
@@ -165,8 +180,9 @@ def main() -> None:
         raise ValueError("this release admits only the BF16 branch")
     maximum = integer("MILK_EVALUATE_MAX_NEW_TOKENS", 256, 1, 2048)
     manifest, cases = rows()
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ROOT, local_files_only=True)
-    model = AutoModelForCausalLM.from_pretrained(MODEL_ROOT, local_files_only=True, torch_dtype=torch.bfloat16).cuda().eval()
+    checkpoint = model_root()
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint, local_files_only=True)
+    model = AutoModelForCausalLM.from_pretrained(checkpoint, local_files_only=True, torch_dtype=torch.bfloat16).cuda().eval()
     results = []
     started_all = time.monotonic()
     for row in cases:
@@ -188,6 +204,7 @@ def main() -> None:
                 "case_id": row["case_id"],
                 "order": row["order"],
                 "score_bps": score(row, candidate),
+                "candidate": candidate,
                 "response_sha256": digest(candidate.encode()),
                 "latency_ms": latency_ms,
                 "output_tokens": output_tokens,
