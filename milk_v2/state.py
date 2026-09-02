@@ -219,16 +219,20 @@ def context(arguments: argparse.Namespace) -> None:
     if arguments.max_bytes <= 0:
         raise ValueError("context byte limit must be positive")
     messages: list[dict] = []
+    prompt_indexes: list[int] = []
+    shell_indexes: list[int] = []
     for record in records(Path(arguments.trajectory)):
         kind = record.get("type")
         content = str(record.get("content", ""))
         if kind == "prompt":
+            prompt_indexes.append(len(messages))
             messages.append({"role": "user", "content": content})
         elif kind == "reasoning":
             messages.append({"role": "assistant", "content": content})
         elif kind == "shell-output":
             command = str(record.get("command", ""))
             exit_code = record.get("exit")
+            shell_indexes.append(len(messages))
             messages.append(
                 {
                     "role": "user",
@@ -238,22 +242,49 @@ def context(arguments: argparse.Namespace) -> None:
         elif kind == "final":
             messages.append({"role": "assistant", "content": content})
 
-    kept: list[dict] = []
-    used = 2
-    for message in reversed(messages):
-        size = len(json.dumps(message, ensure_ascii=False).encode()) + 1
-        if kept and used + size > arguments.max_bytes:
-            break
-        if size > arguments.max_bytes:
-            message = dict(message)
-            raw = message["content"].encode()
-            message["content"] = "[truncated]\n" + raw[-arguments.max_bytes // 2 :].decode(
-                errors="replace"
+    # Shell output can be much larger than the task that produced it. Keep the
+    # durable trajectory intact, but bound each rendered observation so the
+    # active task cannot fall out of the model context.
+    message_limit = max(1024, min(8192, arguments.max_bytes // 3))
+    for index in shell_indexes:
+        message = messages[index]
+        raw = message["content"].encode()
+        if len(raw) > message_limit:
+            message["content"] = (
+                "[shell output truncated; tail follows]\n"
+                + raw[-message_limit:].decode(errors="replace")
             )
-            size = len(json.dumps(message, ensure_ascii=False).encode()) + 1
-        kept.append(message)
+    required = set(prompt_indexes[-2:])
+    for index in required:
+        message = messages[index]
+        raw = message["content"].encode()
+        if len(raw) > message_limit:
+            half = message_limit // 2
+            message["content"] = (
+                raw[:half].decode(errors="replace")
+                + "\n[task middle truncated]\n"
+                + raw[-half:].decode(errors="replace")
+            )
+    kept_indexes = set(required)
+    used = 2 + sum(
+        len(json.dumps(messages[index], ensure_ascii=False, separators=(",", ":")).encode()) + 1
+        for index in required
+    )
+    for index in reversed(range(len(messages))):
+        if index in required:
+            continue
+        message = messages[index]
+        size = len(json.dumps(message, ensure_ascii=False, separators=(",", ":")).encode()) + 1
+        if used + size > arguments.max_bytes:
+            continue
+        kept_indexes.add(index)
         used += size
-    json.dump(list(reversed(kept)), sys.stdout, ensure_ascii=False, separators=(",", ":"))
+    json.dump(
+        [message for index, message in enumerate(messages) if index in kept_indexes],
+        sys.stdout,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
 
 
 def memory_add(arguments: argparse.Namespace) -> None:
