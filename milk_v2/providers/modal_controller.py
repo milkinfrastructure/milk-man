@@ -113,6 +113,13 @@ def plan() -> dict:
     }
 
 
+def controller_api_key(controller: dict) -> str:
+    value = os.environ.get(controller["api_key_env"], "")
+    if not value or "\n" in value or "\r" in value:
+        raise ControllerError(f"{controller['api_key_env']} is required and must be one line")
+    return value
+
+
 def atomic_json(path: Path, value: dict) -> None:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
@@ -395,6 +402,7 @@ def ensure_deployment(controller: dict, run_root: Path, observation: dict) -> tu
         "MILK_MODAL_CONTROLLER_APP_NAME": controller["app_name"],
         "MILK_MODAL_CONTROLLER_VOLUME_NAME": controller["volume_name"],
         "MILK_MODAL_ROUTING_REGION": controller["routing_region"],
+        "MILK_CONTROLLER_API_KEY": controller_api_key(controller),
     }
     command = [
         modal_binary(), "deploy", str(APP_FILE), "--name", controller["app_name"],
@@ -457,9 +465,9 @@ def smoke(controller: dict, run_root: Path, observation: dict) -> tuple[int, str
     if read_json(run_root / "smoke.json"):
         return 0, None
     endpoint = observation.get("endpoint_url")
-    key = os.environ.get(controller["api_key_env"])
-    if not endpoint or not key:
-        return 0, f"endpoint or {controller['api_key_env']} is unavailable"
+    if not endpoint:
+        return 0, "endpoint is unavailable"
+    key = controller_api_key(controller)
     deadline = time.monotonic() + int(os.environ.get("MILK_MODAL_CONTROLLER_STARTUP_TIMEOUT", "1800"))
     base = endpoint.rstrip("/") + "/v1"
     models_response, error = request_until_ready(base + "/models", key, None, deadline)
@@ -499,6 +507,8 @@ def smoke(controller: dict, run_root: Path, observation: dict) -> tuple[int, str
 
 def ensure(controller: dict, apply: bool) -> dict:
     root = state_root()
+    if apply:
+        controller_api_key(controller)
     run_root = root / "controller/runs" / controller["controller_id"]
     intent = {**controller, "schema_version": "milk.modal-controller-intent.v2", "intent_id": controller["controller_id"]}
     write_once(run_root / "intent.json", intent)

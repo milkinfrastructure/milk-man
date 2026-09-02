@@ -24,6 +24,9 @@ MARKER = MODEL_PATH / ".milk-model.json"
 APP_NAME = os.environ["MILK_MODAL_CONTROLLER_APP_NAME"]
 VOLUME_NAME = os.environ["MILK_MODAL_CONTROLLER_VOLUME_NAME"]
 ROUTING_REGION = os.environ.get("MILK_MODAL_ROUTING_REGION", "us-west")
+CONTROLLER_API_KEY = os.environ["MILK_CONTROLLER_API_KEY"]
+if not CONTROLLER_API_KEY or "\n" in CONTROLLER_API_KEY or "\r" in CONTROLLER_API_KEY:
+    raise RuntimeError("MILK_CONTROLLER_API_KEY is invalid")
 
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=False)
 download_image = modal.Image.debian_slim(python_version="3.12").pip_install(
@@ -31,6 +34,9 @@ download_image = modal.Image.debian_slim(python_version="3.12").pip_install(
 ).env({"HF_XET_HIGH_PERFORMANCE": "1"})
 server_image = modal.Image.from_registry(SGLANG_IMAGE).entrypoint([]).env(
     {"HF_HUB_OFFLINE": "1"}
+)
+controller_secret = modal.Secret.from_dict(
+    {"MILK_CONTROLLER_API_KEY": CONTROLLER_API_KEY}
 )
 app = modal.App(APP_NAME)
 
@@ -75,10 +81,12 @@ def hydrate() -> dict:
 
 @app.server(
     image=server_image,
+    secrets=[controller_secret],
     gpu="H200",
     cpu=16,
     volumes={"/models": volume.with_mount_options(read_only=True)},
     port=PORT,
+    unauthenticated=True,
     routing_region=ROUTING_REGION,
     min_containers=0,
     max_containers=1,
@@ -98,6 +106,7 @@ class Controller:
             "--served-model-name", SERVED_MODEL,
             "--host", "0.0.0.0",
             "--port", str(PORT),
+            "--api-key", os.environ["MILK_CONTROLLER_API_KEY"],
             "--tp-size", "1",
             "--tool-call-parser", "glm45",
             "--reasoning-parser", "glm45",

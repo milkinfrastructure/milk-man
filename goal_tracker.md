@@ -888,7 +888,7 @@ Progress 2026-09-01:
 - [x] Saved and verified complete Git bundles, the dirty patch, and bounded local state under `/Users/shantanu/milk-release-evidence/milk-v2-bootstrap-20260901`.
 - [x] Installed this file as the sole active repository tracker and removed the previous `GOAL.md`.
 - [x] Reduced Milk Man to 38 tracked files and 5,851 lines, committed the result as independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171`, and removed the stale Prime upstream remote.
-- [ ] Publish this Milk Man root and the already-created local Milk Parlor, establish final non-fork remotes, and record both first verified public commits.
+- [x] Published the clean non-fork repositories with default branch `main`: Milk Man `c8597ae5d99c3d02514df262037920adb30516e2` and Milk Parlor `ecdb29cae1c8ccd66a005d5216c360a44458b0f3`. The obsolete public Milk Man history remains recoverable only from the verified local bundle.
 
 Objective:
 
@@ -952,7 +952,7 @@ Excluded:
 
 Progress 2026-09-01:
 
-- [x] Created and locally committed the fresh Rust repository at `d089c46c3255b76bbf4ae40774d41aae5681a0bf` with no remote or legacy code.
+- [x] Created the fresh Rust repository at root `d089c46c3255b76bbf4ae40774d41aae5681a0bf` with no legacy code and published default `main` at `ecdb29cae1c8ccd66a005d5216c360a44458b0f3`.
 - [x] Replayed local Chat Completions SSE and Responses passthrough, invalid-key `401`, exact two-sided compressed capture, and response survival under an injected local-store failure.
 - [x] Added env-selected local/S3 storage and replayed signed create-only PUT plus bounded GET against an independent fake S3 endpoint.
 - [x] Local Parlor wrote two complete captures to the real `milk-prod` R2 bucket with zero drops or storage failures; retained receipt: `/Users/shantanu/milk-release-evidence/milk-v2-r2-20260901/report.json`, SHA-256 `7c96b77a387dbcce75ecbf4c696cebefc28d4f3e1f0d11c685007918f301169f`.
