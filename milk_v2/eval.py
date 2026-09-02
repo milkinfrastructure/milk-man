@@ -10,7 +10,7 @@ import uuid
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.eval.v23"
+CODE_VERSION = "milk.eval.v24"
 GENERATOR_BATCH_CASES = 64
 MAX_GENERATION_ATTEMPTS = 8
 VERDICT_SCHEMA = "milk.eval-verdicts.v3"
@@ -601,6 +601,7 @@ def _revision_identity(settings, runtime, summary_pointer: dict, readiness_point
         "generation_source_count": len(generation_sources),
         "generation_source_split_counts": {split: source_splits[split] for split in eval_plan.SPLITS},
         "cases_per_conversation": target // len(generation_sources),
+        "operation_schedule": eval_plan.OPERATION_SCHEDULE_VERSION,
         "target_case_count": target,
         "target_split_counts": target_splits,
         "shard_case_count": shard_cases,
@@ -871,7 +872,7 @@ def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha
                 **{
                     key: case[key]
                     for key in (
-                        "case_id", "order", "split", "selection", "tail_reason", "operation", "oracle",
+                        "case_id", "order", "split", "selection", "tail_reason", "operation", "source_operation", "oracle",
                         "source_example_index", "source_example_count",
                         "source_key", "source_object_sha256", "request_sha256", "response_sha256", "content_sha256",
                     )

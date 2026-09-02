@@ -41,7 +41,11 @@ Provider selection is environment-only, in this order:
    `MILK_CONTROLLER_API_KEY`
 3. `MILK_BOOTSTRAP_BASE_URL`, `MILK_BOOTSTRAP_MODEL`, optional
    `MILK_BOOTSTRAP_API_KEY`
-4. `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` and `OPENAI_MODEL`
+4. `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`, `OPENAI_MODEL`, and
+   `OPENAI_API_MODE` (`responses` by default)
+
+When `develop` selects the direct OpenAI driver, it defaults to maximum
+reasoning (`LLM_REASONING_EFFORT=max`) unless a non-empty override is set.
 
 That order applies to `develop`. `bootstrap` does not call a bootstrap model.
 It appends the task to one trajectory, invokes and records the fixed
@@ -50,9 +54,10 @@ after validating and warming the resulting controller binding. With the
 default `MILK_MODAL_CONTROLLER_APPLY=0`, it records the dry-run plan and exits
 without an inference call or provider mutation.
 
-Milk Man loads `goal_tracker.md`, the two checked-in Milk skills, bounded memory,
-and the exact trajectory. It may edit and commit locally. Push, deployment, and
-route signing remain operator actions.
+Milk Man is pointed to `goal_tracker.md` and reads only the active section it
+needs. It receives the checked-in skill index, bounded memory, exact trajectory,
+and current workspace state. It may edit and commit locally. Push, deployment,
+and route signing remain operator actions.
 
 ## Deterministic jobs
 

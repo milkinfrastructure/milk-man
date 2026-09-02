@@ -103,7 +103,7 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] Local Rust Parlor captured two realistic Responses exchanges into fresh R2 scope `8cc33bba-6790-4701-8a88-b3ba565971ee`. Local Milk Man wrote summary `4d9a0d1c-a7a6-54fe-9626-41488f3aa941`, readiness `259d0030-bb64-58ee-bd6a-81b1f30e22d9`, and selected the intended DEV source with readiness true.
 - [x] Eval `4476d990-7047-5b5e-a2fa-58b3dd48bf0f` expanded that source into exactly 100 schema-valid, lineage-bound, unique cases in four inference calls and zero provider calls. Replay made zero inference and provider calls.
 - [x] A direct read of all 100 accepted this revision only as mechanics evidence. Ninety-five cases were materially correct; orders 1, 50, 57, 72, and 74 contained bounded assumptions or unsupported details. All 100 remained in one event-aggregation family, so this corpus must not feed dataset or training.
-- [~] Next dependency: inventory and select exactly 100 diverse eligible held-out source digests. If fewer exist, add only the missing complete realistic Parlor exchanges, refresh summary/readiness, and then run the same implementation once for exactly 10,000 cases.
+- [~] Eval v24: scope `8cc33bba-6790-4701-8a88-b3ba565971ee` reconciled 103/103 into 50 DEV, 25 calibration, and 25 sealed; revisions `ed4c84eda5fb1498d1a1f3a9a1c8bfb5b7fe5406027baedef08d121347d3c68b` and `3586f34b4e42156edd2a53ca12a63fa105878a2bc85559374b4fbc575f5d4f56` are rejected and must not be scaled; next is one source to exactly 100 cases with `gpt-5.6-sol` at maximum reasoning and a one-time human read.
 
 ## Non-negotiable architecture
 
@@ -1075,6 +1075,8 @@ Progress 2026-09-01:
 - [x] Retained the post-cut local receipt at `/Users/shantanu/milk-release-evidence/milk-v2-local-postcut-20260901/report.json`, SHA-256 `750c9a8d3c728295184176c514e96393340f265df44420df7247713d584c1571`.
 - [x] Baseten `zai-org/GLM-5.3-Flash` resumed trajectory `d5985d21-2da8-4acb-ae83-93cad42857ff`, read `milk-system`, inspected both repositories, found the unauthenticated platform-readiness probe blocker, changed only `images/serve/server.py`, passed `py_compile`, and retained reviewable commit `2068b4026` with no provider lifecycle, push, deploy, or route action.
 - [x] A later local `gpt-5.6-sol` low-effort Milk Man run loaded this tracker and `milk-system`, inspected both current repositories and their diff, made no speculative edit, and identified P0/P10 as the remaining phases.
+- [x] A fresh local `gpt-5.6-sol` max-reasoning trajectory recovered from an overlong read-only attempt, reviewed exactly the requested three-file diff, ran narrow syntax and diff checks, and retained commit `12984457a` in two turns without invoking a Milk job or cloud provider.
+- [~] Stop injecting this entire tracker into every reasoning request. Keep the development system prompt minimal, point to this file, and require targeted active-section reads; prove the smaller context on the next supervised Milk Man task.
 
 Owned:
 

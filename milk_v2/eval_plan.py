@@ -9,6 +9,8 @@ POLICY_VERSION = "milk.eval-plan.v2"
 SPLIT_VERSION = "milk.split.v2"
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 ORACLES = frozenset({"exact", "reference", "schema"})
+OPERATION_SCHEDULE_VERSION = "milk.eval-operation-schedule.v1"
+GENERATION_OPERATIONS = ("answer", "classify", "extract", "summarize", "transform")
 SCHEMA_KINDS = ("object", "array", "string", "number", "integer", "boolean")
 SPLITS = ("dev", "calibration", "sealed")
 TAIL_REASONS = ("long_context", "rare", "error", "tool_use", "multimodal", "low_confidence")
@@ -329,12 +331,15 @@ def shard(plan: dict, eval_uuid: str, target: int, start: int, end: int) -> dict
     for ordinal in range(start, end):
         split_ordinal = ordinal - split_start
         seed = seeds[(offset + split_ordinal) % len(seeds)]
+        source_example_index = split_ordinal // len(seeds)
         cases.append(
             {
                 **seed,
                 "order": ordinal,
                 "case_id": hashlib.sha256(f"{eval_uuid}\0{ordinal}".encode()).hexdigest(),
-                "source_example_index": split_ordinal // len(seeds),
+                "source_operation": seed["operation"],
+                "operation": GENERATION_OPERATIONS[source_example_index % len(GENERATION_OPERATIONS)],
+                "source_example_index": source_example_index,
                 "source_example_count": example_count,
             }
         )

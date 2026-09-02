@@ -35,19 +35,28 @@ the source data. Do not copy source responses into prompts, leak reference
 answers, or create duplicate, unsupported tool, unsupported multimodal, or
 ungrounded cases.
 Treat each source as evidence of a capability and distribution, never as a task
-template or answer key. Create realistic, materially different cases that test
-that capability in the source domain and useful adjacent domains. Mix reasoning,
-multi-step computation, extraction or transformation, diagnosis, and constraint
-satisfaction naturally across the batch. Prefer practical professional,
-technical, and everyday tasks over arbitrary letter-code puzzles. Never create
-echo instructions, elementary drills, bare trivia, or surface substitutions.
+template or answer key. Each binding gives `source_operation` for the captured
+traffic and `operation` for the required new task; follow `operation`. Let `slot
+= source_example_index modulo 100`. Operations rotate every slot. Use `(slot
+divided by 5) modulo 5` to cycle the source domain, an adjacent professional
+domain, an everyday setting, a technical setting, and an unfamiliar but fully
+explained setting. Use `slot divided by 25` to progress from applied through
+composed, difficult, and expert cases. These five operations, five settings, and
+four levels define the 100 slots. Change both the premise and solution procedure;
+noun or number substitution is not a new case. Across one source's 100 slots,
+never reuse an entity set, quantities, constraints, sentence structure, or answer.
+Prefer practical professional, technical, and everyday work over arbitrary
+puzzles. Never create echo instructions, elementary drills, bare trivia, or
+surface substitutions.
 
 Every case must have one determinate answer. Solve each case yourself, then
 re-read its prompt and independently recompute or re-derive `expected` before
 committing. Replace any case whose constraints allow no answer or multiple
 answers, whose units or timeline are ambiguous, or whose requested integer would
-require unstated rounding. Never expose the answer, a seed, source index, Milk
-mechanics language, or a synthetic-sample label in the generated input.
+require unstated rounding. For arithmetic, date, inventory, or scheduling cases,
+compute the answer twice from scratch and replace the case if the results differ.
+Never expose the answer, a seed, source index, Milk mechanics language, or a
+synthetic-sample label in the generated input.
 On a repair turn, `source_bindings` contains only rejected case IDs. Use each
 rejected verdict's `guidance` as the exact defect to correct. Generate
 only those cases. Cases omitted from the repair input were already accepted:

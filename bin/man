@@ -19,7 +19,7 @@ Provider selection, in order:
   LLM_API_URL + LLM_MODEL [+ LLM_API_KEY]
   MILK_CONTROLLER_BASE_URL + MILK_CONTROLLER_MODEL [+ MILK_CONTROLLER_API_KEY]
   MILK_BOOTSTRAP_BASE_URL + MILK_BOOTSTRAP_MODEL [+ MILK_BOOTSTRAP_API_KEY]
-  OPENAI_API_KEY [+ OPENAI_BASE_URL + OPENAI_MODEL]
+  OPENAI_API_KEY [+ OPENAI_BASE_URL + OPENAI_MODEL + OPENAI_API_MODE]
 
 Develop uses the provider order above. Bootstrap deterministically runs the
 fixed controller jobs before its first model call. Controller creation is a
@@ -84,9 +84,16 @@ state_root="$(cd "$state_root" && pwd -P)"
 
 normalize_base_url() {
     local url="${1%/}"
+    local mode="${2:-chat_completions}"
     case "$url" in
-        */chat/completions) printf '%s' "$url" ;;
-        *) printf '%s/chat/completions' "$url" ;;
+        */chat/completions|*/responses) printf '%s' "$url" ;;
+        *)
+            case "$mode" in
+                chat_completions) printf '%s/chat/completions' "$url" ;;
+                responses) printf '%s/responses' "$url" ;;
+                *) die "API mode must be chat_completions or responses" ;;
+            esac
+            ;;
     esac
 }
 
@@ -114,14 +121,16 @@ else
         LLM_API_KEY="${MILK_BOOTSTRAP_API_KEY:-}"
         provider_source="MILK_BOOTSTRAP"
     elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
-        LLM_API_URL="$(normalize_base_url "${OPENAI_BASE_URL:-https://api.openai.com/v1}")"
+        LLM_API_MODE="${OPENAI_API_MODE:-responses}"
+        LLM_API_URL="$(normalize_base_url "${OPENAI_BASE_URL:-https://api.openai.com/v1}" "$LLM_API_MODE")"
         LLM_MODEL="${OPENAI_MODEL:-gpt-5.6-sol}"
         LLM_API_KEY="$OPENAI_API_KEY"
+        LLM_REASONING_EFFORT="${LLM_REASONING_EFFORT:-max}"
         provider_source="OPENAI"
     else
         die "configure an OpenAI-compatible provider; see bin/man --help"
     fi
-    export LLM_API_URL LLM_MODEL LLM_API_KEY
+    export LLM_API_URL LLM_MODEL LLM_API_KEY LLM_API_MODE LLM_REASONING_EFFORT
 fi
 
 environment_file="$(mktemp "$state_root/.man-env.XXXXXX")"
@@ -150,20 +159,21 @@ export MILK_MAN_SKILLS_DIR="$ROOT/skills"
 export MILK_MAN_TRAJECTORY MILK_MAN_TRAJECTORY_ID MILK_MAN_WORKSPACE_DIGEST
 export MILK_MAN_WORKSPACE_RECORD MILK_MAN_MEMORY_FILE MILK_MAN_PRIMARY_WORKSPACE
 export MILK_MAN_PROVIDER_SOURCE="$provider_source"
+export MILK_MAN_CONTEXT_BYTES="${MILK_MAN_CONTEXT_BYTES:-32768}"
+export MILK_MAN_MEMORY_BYTES="${MILK_MAN_MEMORY_BYTES:-4096}"
 export PATH="$HEADLONG_BIN:$ROOT/bin:$PATH"
 normal_path="$PATH"
 
 write_system() {
     {
         cat "$1"
-        printf '\n# Active goal tracker\n\n'
-        cat "$ROOT/goal_tracker.md"
-        printf '\n# Bound workspaces and current Git state\n\n```json\n'
+        printf '\n# Runtime context\n\n'
+        printf 'The human task is authoritative. The tracker is `%s/goal_tracker.md`; use `rg` to read only a named relevant section when needed.\n' "$ROOT"
+        printf '\nBound workspaces and initial Git state:\n\n```json\n'
         python3 -m json.tool "$MILK_MAN_WORKSPACE_RECORD"
-        printf '```\n\n# Available skills\n\n'
+        printf '```\n\nAvailable skills:\n\n'
         skills list
-        printf '\nRead `milk-system` before editing and `milk-jobs` before invoking a Milk job.\n'
-        printf '\n# Durable memory for this exact workspace set\n\n'
+        printf '\nDurable memory for this exact workspace set:\n\n'
         mem show
     } > "$system_file"
 }
