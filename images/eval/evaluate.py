@@ -14,7 +14,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 MODEL_REPO = "Qwen/Qwen3.5-0.8B"
 MODEL_REVISION = "2fc06364715b967f1860aea9cf38778875588b17"
-MODEL_ROOT = Path("/app/checkpoint/merged")
+MODEL_ROOT = Path(os.environ.get("BT_LOAD_CHECKPOINT_DIR", "/app/checkpoint")) / "rank-0" / "merged"
 
 
 def required(name: str) -> str:
