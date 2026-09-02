@@ -30,14 +30,14 @@ RUNTIME_ENV = {
     "MILK_MODAL_ROUTING_REGION": ROUTING_REGION,
 }
 
-controller_secrets = []
-if modal.is_local():
-    controller_api_key = os.environ["MILK_CONTROLLER_API_KEY"]
-    if not controller_api_key or "\n" in controller_api_key or "\r" in controller_api_key:
-        raise RuntimeError("MILK_CONTROLLER_API_KEY is invalid")
-    controller_secrets.append(
-        modal.Secret.from_dict({"MILK_CONTROLLER_API_KEY": controller_api_key})
-    )
+controller_api_key = os.environ.get("MILK_CONTROLLER_API_KEY", "")
+if modal.is_local() and (
+    not controller_api_key or "\n" in controller_api_key or "\r" in controller_api_key
+):
+    raise RuntimeError("MILK_CONTROLLER_API_KEY is invalid")
+controller_secret = modal.Secret.from_dict(
+    {"MILK_CONTROLLER_API_KEY": controller_api_key} if controller_api_key else {}
+)
 
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=False)
 download_image = modal.Image.debian_slim(python_version="3.12").pip_install(
@@ -89,7 +89,7 @@ def hydrate() -> dict:
 
 @app.server(
     image=server_image,
-    secrets=controller_secrets,
+    secrets=[controller_secret],
     gpu="H200",
     cpu=16,
     volumes={"/models": volume.with_mount_options(read_only=True)},
