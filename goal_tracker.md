@@ -1200,16 +1200,20 @@ Acceptance:
 - `e/current.json` advances only after the complete validated revision.
 - the eval model runs through the same restricted `milk job read`, `milk job commit`, and `milk status` interface and cannot select storage or provider authority.
 
-### [ ] P8 — Dataset, training and three evaluation branches
+### [~] P8 — Dataset, training and three evaluation branches
 
 Progress 2026-09-01:
 
 - [x] Generated live R2 dataset `f59d59b7-9992-5f6c-bad0-9842afeec31a` from the accepted eval with disjoint train/DEV/calibration/sealed objects; creation used the teacher binding and immediate replay made zero inference or provider calls.
+- [x] Expanded the mechanics vertical to eval revision `6dcc2cb3-087a-55a9-8791-b96d9359034a` with four validated cases, then generated dataset `a7376834-b241-5d8d-850b-105624d4550c` with exact counts train 1, DEV 2, calibration 1 and sealed 1. Eval and dataset replays made zero inference calls.
 - [x] Published the weight-free Linux AMD64 training image in Actions run `33583603822` at `ghcr.io/milkinfrastructure/milk-man-train@sha256:93f6a973d2e7b04e3dfc0c9807b5b83cb661601ebfbc1e371659b2530a9dd16f`; Qwen weights remain a separately mounted exact revision.
-- [x] Created and retained a full-access personal Baseten operator key in the existing local keychain binding; project, job-search and key-management API checks returned 200. Refreshed Baseten's two R2 runtime secrets from the current operator credentials.
+- [x] Created and retained full-access Baseten operator key `milk-production-operator-20260902` in macOS Keychain without writing it to the repository. Training project, job search, secret management, API-key management, and hosted-inference checks all returned 200; `zai-org/GLM-5.3-Flash` is visible. Refreshed and re-read Baseten runtime secrets `milk-control-store-access-key-id` and `milk-control-store-secret-access-key` from the current R2 credentials.
 - [x] Milk Man created Baseten job `q09v7mq`, trained exact `Qwen/Qwen3.5-0.8B@2fc06364715b967f1860aea9cf38778875588b17` for one mechanics step on one H100, retained model `17959b86-64de-5c10-baa3-274a876a857a` in R2, observed completion, and verified zero active Baseten training jobs.
 - [x] Immediate training replay returned `provider_calls: 0` and status now deterministically advances to `evaluate`.
-- [ ] Run identical ordered DEV inputs through BF16, dynamic FP8 and calibration-derived static FP8; select the winner, run sealed evaluation, emit the unsigned proposal, and prove Modal fallback plus zero capacity.
+- [x] Milk Man retrained the expanded dataset in Baseten job `qek7jrq`, retained merged model `fb0eacdd-4772-5fc5-88e0-d99ecc3aafc8`, and replayed with `provider_calls: 0`.
+- [x] Published the fixed three-branch policy, calibrated static-FP8 evaluator, and concurrent Baseten orchestration. The first runtime attempt exposed a missing C compiler required by TorchAO/Triton; a second isolated an `inference_mode` incompatibility. Commit `ddc04e9f0` replaced it with `no_grad`, and Actions run `33586890548` published `ghcr.io/milkinfrastructure/milk-man-eval@sha256:7d045e6432b2e6222a58b976889b8c0b4f548a55525826932ae3b435cf7f6343`.
+- [x] Final coherent DEV jobs `wp98xz3`, `wlklg03`, and `3yym443` completed on identical ordered cases. Checked-in code selected static FP8 at 10,000/10,000, zero errors, 316 ms p95 and 16.978 tokens/second. Winner-only sealed job `w7x7l63` completed and produced sealed evaluation `689e3c27-d0f1-58cb-8e12-e60dafc008a7`; evaluation group `73837076-9e42-5a8a-ac56-73eac5830a89` finalized under deterministic identity `32aa44d6bc531bc282c8bfdd49c62b5c35e957269745926aceba39c1670b6a0b`. Immediate replay retained the same artifacts with zero inference and provider calls.
+- [ ] Emit the unsigned proposal, prove definite-preflight Modal fallback, and verify zero active capacity on both providers.
 
 Owned:
 
