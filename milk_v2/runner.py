@@ -151,6 +151,20 @@ def _route_gate(store, settings, runtime, name="route-propose"):
     )
 
 
+def _gpu_gate(store, settings, name="gpu-reconcile"):
+    run = route_job.reconcile_gpu(store, settings)
+    return _result(
+        name,
+        run["state"],
+        settings.scope_id,
+        run["identity"],
+        run["artifacts"],
+        run["next"],
+        run["details"],
+        provider_calls=run["provider_calls"],
+    )
+
+
 def _operate(store, settings, runtime):
     results = []
     for name, gate, expected_next in (
@@ -336,6 +350,8 @@ def _run_job(name, store, settings, runtime):
         return _evaluate_gate(store, settings, runtime), 0
     if job.handler == "route-propose":
         return _route_gate(store, settings, runtime), 0
+    if job.handler == "gpu-reconcile":
+        return _gpu_gate(store, settings), 0
     if job.handler in CONTROLLER_HANDLERS:
         return _controller_job(job.handler, settings)
     identity = _json_digest(

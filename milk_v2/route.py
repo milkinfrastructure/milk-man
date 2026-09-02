@@ -692,7 +692,7 @@ def _modal_fallback(
         "schema_version": "milk.route-provider-receipt.v2",
         "job_id": artifact_sha256,
         "provider": "modal",
-        "provider_app_id": observation["app_id"],
+        "provider_app_id": observation["app_id"] or provider.get("app_id"),
         "provider_app_name": plan["app_name"],
         "provider_volume_name": plan["volume_name"],
         "base_url": base_url,
@@ -953,3 +953,110 @@ def reconcile(store, settings, runtime) -> dict:
         prefix,
         client.calls + smoke_calls,
     )
+
+
+def reconcile_gpu(store, settings) -> dict:
+    references = current(store, settings)
+    if references is None:
+        raise RouteError("a current candidate is required for GPU reconciliation")
+    candidate, candidate_body = _object(store, references["candidate"]["key"])
+    identity = candidate.get("identity")
+    provider = candidate.get("provider")
+    artifact_sha256 = candidate.get("artifact_sha256")
+    if (
+        summary.digest(candidate_body) != references["candidate"]["sha256"]
+        or candidate.get("schema_version") != "milk.candidate.v2"
+        or candidate.get("scope_id") != settings.scope_id
+        or not isinstance(identity, dict)
+        or identity.get("schema_version") != "milk.candidate-artifact-identity.v2"
+        or not isinstance(artifact_sha256, str)
+        or SHA256.fullmatch(artifact_sha256) is None
+        or summary.digest(identity) != artifact_sha256
+        or not isinstance(provider, dict)
+    ):
+        raise RouteError("current candidate identity is invalid")
+    model_reference = identity.get("model")
+    if not isinstance(model_reference, dict):
+        raise RouteError("current candidate has no model reference")
+    model, model_body = _object(store, model_reference.get("key", ""))
+    if summary.digest(model_body) != model_reference.get("sha256"):
+        raise RouteError("current candidate model digest differs")
+
+    prefix = settings.scope_prefix + f"j/gpu-reconcile/{artifact_sha256}/"
+    intent_key = prefix + "intent.json"
+    result_key = prefix + "result.json"
+    intent = {
+        "schema_version": "milk.gpu-reconcile-intent.v2",
+        "job_id": artifact_sha256,
+        "scope_id": settings.scope_id,
+        "candidate": references["candidate"],
+        "provider": provider.get("name"),
+        "target": "zero",
+    }
+    store.create_same(intent_key, summary.canonical(intent))
+    try:
+        result, unused = _object(store, result_key)
+        if (
+            result.get("schema_version") != "milk.gpu-reconcile-result.v2"
+            or result.get("job_id") != artifact_sha256
+            or result.get("scope_id") != settings.scope_id
+            or result.get("provider") != provider.get("name")
+            or result.get("state") != "zero"
+            or result.get("active_containers") != 0
+            or not isinstance(result.get("provider_app_id"), str)
+            or not isinstance(result.get("provider_app_name"), str)
+            or result.get("app_state") in modal_gpu.ACTIVE
+        ):
+            raise RouteError("stored GPU reconciliation result is invalid")
+        return {
+            "state": "idle",
+            "identity": artifact_sha256,
+            "artifacts": _artifacts(store, [intent_key, result_key]),
+            "provider_calls": 0,
+            "next": None,
+            "details": {
+                "provider": provider.get("name"),
+                "app_id": result["provider_app_id"],
+                "app_name": result["provider_app_name"],
+                "app_state": result["app_state"],
+                "active_containers": 0,
+                "state": "zero",
+            },
+        }
+    except FileNotFoundError:
+        pass
+
+    if provider.get("name") != "modal":
+        raise RouteError("the current candidate has no reviewed GPU teardown implementation")
+    timeout = _integer("MILK_GPU_TIMEOUT_SECONDS", 180, 30, 1800)
+    try:
+        stopped = modal_gpu.stop_candidate(identity, artifact_sha256, model, timeout)
+    except modal_gpu.ProviderError as error:
+        raise ProviderError(str(error), error.provider_calls, ambiguous=error.ambiguous) from error
+    result = {
+        "schema_version": "milk.gpu-reconcile-result.v2",
+        "job_id": artifact_sha256,
+        "scope_id": settings.scope_id,
+        "provider": "modal",
+        "provider_app_id": observation["app_id"],
+        "provider_app_name": stopped["plan"]["app_name"],
+        "app_state": observation["app_state"],
+        "active_containers": observation["active_containers"],
+        "state": "zero",
+    }
+    store.create_same(result_key, summary.canonical(result))
+    observation = stopped["observation"]
+    return {
+        "state": "complete",
+        "identity": artifact_sha256,
+        "artifacts": _artifacts(store, [intent_key, result_key]),
+        "provider_calls": stopped["provider_calls"],
+        "next": None,
+        "details": {
+            "provider": "modal",
+            "app_id": observation["app_id"],
+            "app_state": observation["app_state"],
+            "active_containers": observation["active_containers"],
+            "state": "zero",
+        },
+    }

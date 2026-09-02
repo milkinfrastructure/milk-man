@@ -68,7 +68,6 @@ def plan(identity: dict, artifact_sha256: str) -> dict:
         raise ProviderError("Modal candidate configuration is invalid", 0)
     _required("MODAL_TOKEN_ID")
     _required("MODAL_TOKEN_SECRET")
-    _required("MILK_CANDIDATE_API_KEY")
     return {
         "schema_version": "milk.modal-candidate-plan.v2",
         "artifact_sha256": artifact_sha256,
@@ -241,6 +240,7 @@ def _mutate(plan: dict, arguments: list[str], manifest: dict, *, extra: dict[str
 
 
 def ensure(identity: dict, artifact_sha256: str, model: dict, baseten_client) -> dict:
+    _required("MILK_CANDIDATE_API_KEY")
     plan_value = plan(identity, artifact_sha256)
     model = {**model, "candidate_artifact_sha256": artifact_sha256}
     manifest = _manifest(model)
@@ -321,6 +321,13 @@ def ensure(identity: dict, artifact_sha256: str, model: dict, baseten_client) ->
     if observation["app_state"] != "deployed" or not observation.get("endpoint_url"):
         return {"state": "active", "plan": plan_value, "observation": observation, "provider_calls": calls}
     return {"state": "ready", "plan": plan_value, "observation": observation, "provider_calls": calls}
+
+
+def stop_candidate(identity: dict, artifact_sha256: str, model: dict, timeout: int = 180) -> dict:
+    plan_value = plan(identity, artifact_sha256)
+    manifest = _manifest({**model, "candidate_artifact_sha256": artifact_sha256})
+    result = stop(plan_value, manifest, timeout)
+    return {**result, "plan": plan_value}
 
 
 def stop(plan_value: dict, manifest: dict, timeout: int = 180) -> dict:
