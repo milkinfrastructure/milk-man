@@ -32,7 +32,7 @@ Milk Parlor -- baseline/candidate inference --> streamed response
 Milk Man: account -> summarize -> classify -> readiness -> evals
                          |
                          v
-       teacher data -> train/merge student
+  strongest teacher -> data -> train/merge Qwen3.5-0.8B
                          |
                          v
     BF16 | dynamic FP8 | static FP8
@@ -273,7 +273,6 @@ MILK_SUMMARY_BASE_URL / MODEL / API_KEY
 MILK_EVAL_BASE_URL / MODEL / API_KEY
 MILK_VALIDATOR_BASE_URL / MODEL / API_KEY
 MILK_TEACHER_BASE_URL / MODEL / API_KEY
-MILK_STUDENT_BASE_URL / MODEL / API_KEY
 ```
 
 GPU variables remain explicit:
@@ -702,14 +701,28 @@ Dataset targets are reproducibility inputs selected by environment variables, no
 
 ### Teacher, training and evaluation
 
-Model roles remain independent environment bindings. GLM, gpt-oss, or another approved OpenAI-compatible teacher may be selected without code changes.
+Model roles are deliberately asymmetric:
+
+- The only fine-tune and merge base is `Qwen/Qwen3.5-0.8B` at revision
+  `2fc06364715b967f1860aea9cf38778875588b17`. This identity is fixed in
+  `config/student.json`, enters every dataset/training/evaluation job digest,
+  and cannot be overridden by an environment variable.
+- Data generation uses the strongest reviewed OpenAI-compatible binding
+  available through `MILK_TEACHER_*`. Eval generation and independent
+  validation use their own reviewed `MILK_EVAL_*` bindings. These roles may
+  select GLM or another approved high-intelligence model without code changes.
+- Teacher, eval, and validator calls never fall back to the 0.8B student or to
+  a student-derived endpoint. A missing or failed high-intelligence binding
+  blocks that semantic job; it does not silently lower generation quality.
+- The cheaper `MILK_SUMMARY_*` binding remains isolated to bounded traffic
+  classification. Summary classification output is not teacher training data.
 
 The full whiteboard sequence is:
 
 1. Generate bounded teacher training targets from train sources.
 2. Validate and publish one immutable dataset.
-3. Launch one student training job.
-4. Merge the resulting adapter with the pinned base model.
+3. Launch one Qwen3.5-0.8B training job.
+4. Merge the resulting adapter with the exact pinned Qwen3.5-0.8B base revision.
 5. Produce three candidates:
    - BF16;
    - dynamic FP8;
@@ -961,7 +974,10 @@ Progress 2026-09-01:
 - [x] GitHub Actions image run `33574807455` succeeded for `70dba12f96a12feedf7ed13b605f20d05ebefd23`: GHCR image digest `sha256:c5aab42449834638c3bcd31855ee1e8d68fe21262191b9b78f54e50553ce0138`, `linux/amd64` manifest `sha256:b63c78c67ace7b8f40784f377335777e886642abd026530b933adb4123e0c991`, 2,245,105 compressed layer bytes, and Cloudflare Registry digest `sha256:456a38baf70bd08ab8d10724f8873466b99277d7476dcb1095ae501d08130387`.
 - [x] The stripped local arm64 release binary is 3,252,912 bytes; Rust format, check, Clippy, and release build passed.
 - [x] Retained the content-free local receipt at `/Users/shantanu/milk-release-evidence/milk-v2-local-postcut-20260901/report.json`, SHA-256 `750c9a8d3c728295184176c514e96393340f265df44420df7247713d584c1571`.
-- [ ] Deploy hosted Parlor and prove official SDK calls, hosted R2 capture, capture-failure telemetry, and warm capture-enabled-versus-disabled timing.
+- [x] Deployed immutable Cloudflare Registry image digest `sha256:456a38baf70bd08ab8d10724f8873466b99277d7476dcb1095ae501d08130387` at `parlor.milkinfrastructure.com`; official OpenAI Python SDK authentication, baseline inference, asynchronous R2 persistence, and exact sent/returned body identity passed.
+- [x] A 99-request burst exposed the bounded writer queue without blocking successful customer responses: 23 captures dropped and zero storage writes failed. A follow-up 24-request run at concurrency four returned 24/24 and added zero drops. This is capacity evidence, not a production qualification claim.
+- [x] Retained the content-free live vertical receipt at `/Users/shantanu/milk-release-evidence/milk-v2-live-20260901/report.json`, SHA-256 `cda2ed3e33acea77bef2c710fd64c558e033e3441426e10a245c6a8d45a70caa`.
+- [ ] Record a controlled warm capture-enabled-versus-disabled timing comparison before claiming a capture overhead bound.
 
 Owned:
 
@@ -1037,7 +1053,9 @@ Progress 2026-09-01:
 - [x] The independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171` contains the fixed Modal controller, immutable local intent/endpoint receipts, CLI wiring, and same-trajectory bootstrap handoff source.
 - [x] Replayed deterministic ensure/stop dry runs and read-only provider status; both reported zero provider calls and no active Modal containers.
 - [x] Reconciled the first real deploy attempts without model inference: the first stopped after a pre-deploy tag-length rejection; the second deployed Modal app `ap-FsI3COYpkl1jiOIZXio8vT`, failed during remote hydrate import, and produced termination plus independent zero-container receipts before the import fix at `530235a879c3078623ef2f69e3fb830667a9e496`.
-- [ ] Hydrate the pinned weights on one real H200, prove authenticated inference and same-trajectory handoff, stop the deployment, and retain the provider receipts plus an independent zero-container observation.
+- [x] Hydrated and served the pinned GLM-4.5-Air-FP8 revision on one H200 as Modal app `ap-dBNCTsA9wu7aUjAmiFYW1a`; authenticated `/models` and Chat Completions smokes passed and immutable intent, deploy, endpoint, smoke, and result receipts were retained in object memory.
+- [x] Fixed H200 KV-cache admission, `.modal.direct` endpoint validation, explicit endpoint warmup before handoff, and a bootstrap prompt defect that allowed a model to describe rather than execute the required tool call.
+- [ ] Prove the corrected same-trajectory handoff reaches the Modal GLM, stop the deployment, and retain an independent zero-container observation.
 
 Owned:
 
@@ -1072,8 +1090,9 @@ Progress 2026-09-01:
 - [x] Direct integration found and fixed strict RFC3339 fractional precision and Responses top-level `input` extraction defects.
 - [x] Retained the content-free local lineage receipt at `/Users/shantanu/milk-release-evidence/milk-v2-local-postcut-20260901/report.json`, SHA-256 `750c9a8d3c728295184176c514e96393340f265df44420df7247713d584c1571`.
 - [x] Repeated the complete capture-to-summary/readiness lineage against real R2 using an environment-selected localhost mechanics inference binding; replay made zero calls and mechanics remained explicitly non-production-qualified.
-- [ ] Repeat semantic inference against a real env-selected endpoint, then prove a below-threshold production scope remains model-free.
-- [ ] Run semantic summary inference through restricted Headlong job mode with only `milk job read`, `milk job commit`, and `milk status`; the current local vertical calls the fixed inference binding directly.
+- [x] Repeated semantic inference against the real Baseten OpenAI-compatible binding through restricted Headlong job mode with only `milk_job_read`, `milk_job_commit`, and `milk_status`; one threshold-one checkpoint completed in two inference turns and its immediate replay made zero calls.
+- [x] Processed 100 complete mechanics captures into a second real R2 summary/readiness checkpoint in two inference turns; the result remained explicitly non-production-qualified.
+- [x] Proved a production scope below its first threshold remained model-free with zero inference calls, zero provider calls, and no route attempt.
 
 Owned:
 
@@ -1102,7 +1121,16 @@ Acceptance:
 - no session identity or customer text enters status.
 - semantic inference can read only its prepared input and commit one validated output; model arguments cannot choose scope, object key, prefix, parent, provenance, pointer, provider, or credential.
 
-### [ ] P6 — First live production vertical
+### [x] P6 — First live production vertical
+
+Completed 2026-09-01:
+
+- [x] Official OpenAI Python SDK traffic authenticated through hosted Parlor and persisted into the production R2 backend.
+- [x] A fresh mechanics scope produced threshold-one and threshold-100 summary/readiness checkpoints through local Milk Man.
+- [x] Direct decompression and hashing proved the stored request and response bodies were byte-identical to the SDK wire bodies.
+- [x] Authenticated `/api/status` reported the correct mechanics and production scope progress.
+- [x] Mechanics remained non-production and could not qualify a route; the real production scope below threshold made no semantic, GPU, or routing call.
+- [x] Retained `/Users/shantanu/milk-release-evidence/milk-v2-live-20260901/report.json`, SHA-256 `cda2ed3e33acea77bef2c710fd64c558e033e3441426e10a245c6a8d45a70caa`.
 
 Integrate P2 through P5:
 
@@ -1162,18 +1190,24 @@ milk_v2/providers/baseten.py
 milk_v2/providers/modal_gpu.py
 images/train/
 images/eval/
+config/student.json
 ```
 
 Allowed donor code:
 
 - deterministic partitions;
-- existing Qwen/student train and merge runtime where still applicable;
+- only the training kernels needed for pinned `Qwen/Qwen3.5-0.8B` revision
+  `2fc06364715b967f1860aea9cf38778875588b17`;
 - BF16/dynamic-FP8/static-FP8 evaluation;
 - Baseten and Modal lifecycle logic.
 
 Acceptance:
 
 - one bounded mechanics dataset;
+- all generated training targets come from the separately configured strongest
+  teacher binding; no teacher/eval/validator call falls back to the student;
+- train, merge and all three candidates bind the exact pinned
+  `Qwen/Qwen3.5-0.8B` revision and weight files never enter OCI;
 - one real Baseten train/merge job;
 - separate definite-preflight Modal fallback proof;
 - identical ordered DEV inputs across all branches;
@@ -1260,7 +1294,9 @@ The goal is complete only when:
 - `parlor.milkinfrastructure.com` accepts an operator-issued key through the official SDK and asynchronously writes exact two-sided traffic into R2.
 - Local and scheduled Milk Man consume the same remote store through environment bindings.
 - Production-like traffic progresses through summary, classification, readiness and validated eval generation.
-- The full whiteboard model loop produces a trained student, three comparable branches, deterministic winner, sealed result and unsigned proposal.
+- The full whiteboard model loop produces a trained Qwen3.5-0.8B student from
+  maximum-intelligence teacher data, three comparable branches, deterministic
+  winner, sealed result and unsigned proposal.
 - Operator-signed routing proves candidate success, pre-byte fallback, rollback and signed zero.
 - Baseten and Modal both end at verified zero active GPU capacity.
 - Both repositories are minimal, published, documented and free of the old Prime/Carton control-plane bulk.
