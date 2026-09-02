@@ -16,8 +16,10 @@ import tempfile
 import time
 import uuid
 
+from . import eval_plan
 
-CODE_VERSION = "milk.summary.v2"
+
+CODE_VERSION = "milk.summary.v3"
 TAXONOMY_VERSION = "milk.semantic-taxonomy.v2"
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 DOMAINS = ("general", "software", "math_science", "business", "legal", "finance", "health", "creative", "other")
@@ -272,6 +274,8 @@ def parse_capture(store, settings, key: str) -> dict:
     tps_milli = None
     if output_tokens is not None and total_ms > 0:
         tps_milli = output_tokens * 1_000_000 // total_ms
+    request_sha256 = digest(request_body)
+    response_sha256 = digest(response_body)
     content_sha256 = digest(request_body + b"\0" + response_body)
     reasoning = request_value.get("reasoning_effort") if isinstance(request_value, dict) else None
     if not isinstance(reasoning, str) and isinstance(request_value, dict) and isinstance(request_value.get("reasoning"), dict):
@@ -281,6 +285,8 @@ def parse_capture(store, settings, key: str) -> dict:
         "object_sha256": digest(stored.body),
         "exchange_id": exchange_id,
         "content_sha256": content_sha256,
+        "request_sha256": request_sha256,
+        "response_sha256": response_sha256,
         "started_at": value["started_at"],
         "completed_at": value["completed_at"],
         "endpoint": value.get("endpoint") if isinstance(value.get("endpoint"), str) else "other",
@@ -931,32 +937,32 @@ def _status(store, settings, state: dict) -> dict:
 def _readiness(settings, summary: dict, summary_sha256: str, labels: list[dict]) -> dict:
     production = settings.profile == "production"
     minimum_captures = _integer_environment("MILK_EVAL_MIN_CAPTURES", 1000 if production else 1, 1, 10_000_000)
-    representative = _integer_environment("MILK_EVAL_REPRESENTATIVE_CASES", 24 if production else 1, 1, 1024)
-    tails = _integer_environment("MILK_EVAL_TAIL_CASES", 8 if production else 0, 0, 1024)
     minimum_unique = _integer_environment("MILK_EVAL_MIN_UNIQUE_SOURCES", 32 if production else 1, 1, 1_000_000)
     minimum_parse = _integer_environment("MILK_EVAL_MIN_PARSE_WILSON_BPS", 9500 if production else 0, 0, 10000)
     maximum_abstain = _integer_environment("MILK_EVAL_MAX_ABSTAIN_WILSON_BPS", 2000 if production else 10000, 0, 10000)
     structural_value = summary["structural"]
     semantic = summary["semantic"]["cumulative"]
-    labels = list({label["row_id"]: label for label in labels}.values())
-    eligible = [label for label in labels if not label["abstain"] and label["answerable"] and label["safety"] == "benign" and label["oracle"] in ORACLES and label["outcome"] == "success"]
+    labels = list({label["request_sha256"]: label for label in labels}.values())
+    try:
+        plan = eval_plan.build(labels, settings.profile)
+    except eval_plan.PlanError as error:
+        raise SummaryError(str(error)) from error
     checks = {
         "minimum_complete_captures": summary["capture_count"] >= minimum_captures,
         "parse_wilson_lower": structural_value["quality"]["parse_wilson_95_basis_points"][0] >= minimum_parse,
         "abstain_wilson_upper": semantic["abstain_wilson_95_basis_points"][1] <= maximum_abstain,
         "minimum_unique_sources": structural_value["counters"]["unique_contents"] >= minimum_unique,
-        "representative_capacity": len(eligible) >= representative,
-        "tail_capacity": sum("representative" not in label.get("selection_reasons", []) for label in labels) >= tails,
+        "split_quotas": plan["ready"],
     }
     ready = all(checks.values())
-    identity = {"schema_version": "milk.readiness.v2", "scope_id": settings.scope_id, "profile": settings.profile, "summary_sha256": summary_sha256, "checks": checks, "ready": ready, "statistically_qualified": ready and production, "eval_eligible_cases": len(eligible)}
+    identity = {"schema_version": "milk.readiness.v3", "scope_id": settings.scope_id, "profile": settings.profile, "summary_sha256": summary_sha256, "checks": checks, "ready": ready, "statistically_qualified": ready and production, "eval_plan": {"policy": plan["policy"], "counts": plan["counts"], "missing": plan["missing"]}}
     readiness_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:readiness:" + digest(identity)))
     return {**identity, "readiness_uuid": readiness_uuid}
 
 
 def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_rows, processed: set[str], selected_keys: list[str]):
     rows = [parse_capture(store, settings, key) for key in selected_keys]
-    source_fields = ("key", "object_sha256", "content_sha256", "exchange_id", "started_at", "completed_at", "parse", "success", "endpoint", "model", "status", "status_class", "modalities", "tool_definitions", "tool_calls", "request_bytes", "response_bytes")
+    source_fields = ("key", "object_sha256", "content_sha256", "request_sha256", "response_sha256", "exchange_id", "started_at", "completed_at", "parse", "success", "endpoint", "model", "status", "status_class", "modalities", "tool_definitions", "tool_calls", "request_bytes", "response_bytes")
     source_rows = [{**{key: row[key] for key in source_fields}, "has_text": bool(row["request_text"] or row["response_text"])} for row in rows]
     all_rows = prior_rows + source_rows
     prompt_path = Path(__file__).resolve().parents[1] / runtime.job("summary").system_prompt
@@ -1108,12 +1114,12 @@ def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_
         label_object = {"schema_version": "milk.semantic-label.v2", "scope_id": settings.scope_id, "profile": settings.profile, "content_sha256": row["content_sha256"], "classifier_config_sha256": classifier_config_sha256, "label": label}
         label_body = canonical(label_object)
         store.create_same(label_key, label_body)
-        enriched_labels.append({**label, "source_key": row["key"], "content_sha256": row["content_sha256"], "label_key": label_key, "label_sha256": digest(label_body), "selection_reasons": reasons})
+        enriched_labels.append({**label, "source_key": row["key"], "source_object_sha256": row["object_sha256"], "content_sha256": row["content_sha256"], "request_sha256": row["request_sha256"], "response_sha256": row["response_sha256"], "modalities": row["modalities"], "tool_definitions": row["tool_definitions"], "tool_calls": row["tool_calls"], "success": row["success"], "label_key": label_key, "label_sha256": digest(label_body), "selection_reasons": reasons})
     delta_structural = structural(rows)
     cumulative_structural = merge_structural(parent_summary.get("structural") if parent_summary else None, delta_structural, all_rows)
     previous_semantic = parent_summary.get("semantic", {}).get("cumulative") if parent_summary else None
     semantic = _semantic_counts(labels, previous_semantic)
-    semantic["sample"] = [{key: label[key] for key in ("source_key", "content_sha256", "label_key", "label_sha256", "selection_reasons")} for label in enriched_labels]
+    semantic["sample"] = [{key: label[key] for key in ("source_key", "source_object_sha256", "content_sha256", "request_sha256", "response_sha256", "modalities", "tool_definitions", "tool_calls", "success", "label_key", "label_sha256", "selection_reasons")} for label in enriched_labels]
     summary_identity = {"scope_id": settings.scope_id, "profile": settings.profile, "parent_summary_sha256": parent_sha256, "source_manifest_logical_sha256": digest({"captures": source_rows}), "capture_count": len(processed) + len(rows), "config_digest": runtime.digest, "prompt_sha256": prompt_sha256, "model_binding_sha256": model_binding_sha256, "structural": cumulative_structural, "semantic": semantic}
     summary_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:summary:" + digest(summary_identity)))
     created_at = max(row["completed_at"] for row in rows)
