@@ -10,7 +10,7 @@ import uuid
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.eval.v16"
+CODE_VERSION = "milk.eval.v21"
 CONTEXT_CONVERSATIONS = 100
 GENERATOR_BATCH_CASES = 64
 VALIDATOR_BATCH_CASES = 64
@@ -22,6 +22,7 @@ VALIDATOR_POLICY = {
     "duplicate": "exact_normalized_input_only",
     "unsupported": "unavailable_state_tool_or_multimodal_input_only",
 }
+VERDICT_SCHEMA = "milk.eval-verdicts.v3"
 VERDICTS = ("accepted", "incorrect", "unanswerable", "vacuous", "unsupported", "copied", "leaked", "duplicate")
 ORACLE_SCALAR_TYPES = ("string", "number", "integer", "boolean", "null")
 ORACLE_SPEC_TYPES = ("none", "object", "array", *ORACLE_SCALAR_TYPES)
@@ -234,12 +235,11 @@ def _generation_schema(count: int, oracle: str, schema_kind: str) -> dict:
     item = {
         "type": "object",
         "properties": {
-            "slot": {"type": "integer", "minimum": 0, "maximum": count - 1},
             "input": {"type": "string", "minLength": 1, "maxLength": 4096},
             "expected": expected,
             "oracle_spec": oracle_spec,
         },
-        "required": ["slot", "input", "expected", "oracle_spec"],
+        "required": ["input", "expected", "oracle_spec"],
         "additionalProperties": False,
     }
     return {
@@ -344,21 +344,12 @@ def _wire_case(value: dict, oracle: str) -> dict:
 
 def _generation_contract(value: dict, shard_plan: dict, *, stored: bool = False) -> dict:
     version = "milk.eval-generation.v3" if stored else "milk.eval-generated-cases.v1"
-    fields = {"case_id", "input", "expected", "oracle_spec"} if stored else {"slot", "input", "expected", "oracle_spec"}
+    fields = {"case_id", "input", "expected", "oracle_spec"} if stored else {"input", "expected", "oracle_spec"}
     if not isinstance(value, dict) or set(value) != {"schema_version", "cases"} or value.get("schema_version") != version or not isinstance(value.get("cases"), list):
         raise ValueError("eval generation has invalid fields")
     if len(value["cases"]) != len(shard_plan["cases"]):
         raise ValueError("eval generation has the wrong case count")
     generated_cases = value["cases"]
-    if not stored:
-        by_slot = {
-            generated.get("slot"): generated
-            for generated in generated_cases
-            if isinstance(generated, dict) and set(generated) == fields and type(generated.get("slot")) is int
-        }
-        if set(by_slot) != set(range(len(shard_plan["cases"]))) or len(by_slot) != len(generated_cases):
-            raise ValueError("eval generation changed batch slots")
-        generated_cases = [by_slot[slot] for slot in range(len(generated_cases))]
     checked = []
     invalid = []
     for planned, generated in zip(shard_plan["cases"], generated_cases):
@@ -425,14 +416,15 @@ def _cases(generation: dict, shard_plan: dict, corpus: dict, summary_sha256: str
             reason = "vacuous"
         elif input_sha256 in accepted_hashes or input_sha256 in seen:
             reason = "duplicate"
-        elif isinstance(expected, str):
-            expected_normalized = _normalized(expected)
-            if len(expected_normalized) >= 8 and expected_normalized in normalized:
-                reason = "leaked"
         if reason is None and normalized in copied_inputs:
             reason = "copied"
         if reason is not None:
-            rejected.append({"case_id": planned["case_id"], "accepted": False, "reason": reason})
+            guidance = {
+                "vacuous": "Create a substantive answerable task.",
+                "duplicate": "Change the task framing and several concrete details.",
+                "copied": "Synthesize a distinct task; do not copy the source request or response.",
+            }[reason]
+            rejected.append({"case_id": planned["case_id"], "accepted": False, "reason": reason, "guidance": guidance})
             continue
         seen.add(input_sha256)
         cases.append({
@@ -460,8 +452,12 @@ def _cases(generation: dict, shard_plan: dict, corpus: dict, summary_sha256: str
 def _verdict_schema(count: int) -> dict:
     item = {
         "type": "object",
-        "properties": {"accepted": {"type": "boolean"}, "reason": {"type": "string", "enum": list(VERDICTS)}},
-        "required": ["accepted", "reason"],
+        "properties": {
+            "accepted": {"type": "boolean"},
+            "reason": {"type": "string", "enum": list(VERDICTS)},
+            "guidance": {"type": "string", "maxLength": 512},
+        },
+        "required": ["accepted", "reason", "guidance"],
         "additionalProperties": False,
     }
     return {
@@ -479,27 +475,43 @@ def _decision_contract(value: dict, cases: list[dict]) -> dict:
         raise ValueError("eval validator has the wrong verdict count")
     verdicts = []
     for case, decision in zip(cases, value["decisions"]):
-        if not isinstance(decision, dict) or set(decision) != {"accepted", "reason"}:
+        if not isinstance(decision, dict) or set(decision) != {"accepted", "reason", "guidance"}:
             raise ValueError("eval validator returned an invalid verdict")
-        if type(decision.get("accepted")) is not bool or decision.get("reason") not in VERDICTS or decision["accepted"] != (decision["reason"] == "accepted"):
+        guidance = decision.get("guidance")
+        if (
+            type(decision.get("accepted")) is not bool
+            or decision.get("reason") not in VERDICTS
+            or decision["accepted"] != (decision["reason"] == "accepted")
+            or not isinstance(guidance, str)
+            or len(guidance.encode()) > 512
+            or (not decision["accepted"] and not guidance.strip())
+        ):
             raise ValueError("eval validator returned an invalid verdict")
-        verdicts.append({"case_id": case["case_id"], **decision})
-    return {"schema_version": "milk.eval-verdicts.v2", "verdicts": verdicts}
+        verdicts.append({"case_id": case["case_id"], **decision, "guidance": "" if decision["accepted"] else guidance.strip()})
+    return {"schema_version": VERDICT_SCHEMA, "verdicts": verdicts}
 
 
 def _verdict_contract(value: dict, cases: list[dict]) -> dict:
-    if not isinstance(value, dict) or set(value) != {"schema_version", "verdicts"} or value.get("schema_version") != "milk.eval-verdicts.v2" or not isinstance(value.get("verdicts"), list):
+    if not isinstance(value, dict) or set(value) != {"schema_version", "verdicts"} or value.get("schema_version") != VERDICT_SCHEMA or not isinstance(value.get("verdicts"), list):
         raise ValueError("eval validator has invalid fields")
     if len(value["verdicts"]) != len(cases):
         raise ValueError("eval validator has the wrong verdict count")
     checked = []
     for case, verdict in zip(cases, value["verdicts"]):
-        if not isinstance(verdict, dict) or set(verdict) != {"case_id", "accepted", "reason"} or verdict.get("case_id") != case["case_id"]:
+        if not isinstance(verdict, dict) or set(verdict) != {"case_id", "accepted", "reason", "guidance"} or verdict.get("case_id") != case["case_id"]:
             raise ValueError("eval validator changed case identity or order")
-        if type(verdict.get("accepted")) is not bool or verdict.get("reason") not in VERDICTS or verdict["accepted"] != (verdict["reason"] == "accepted"):
+        guidance = verdict.get("guidance")
+        if (
+            type(verdict.get("accepted")) is not bool
+            or verdict.get("reason") not in VERDICTS
+            or verdict["accepted"] != (verdict["reason"] == "accepted")
+            or not isinstance(guidance, str)
+            or len(guidance.encode()) > 512
+            or verdict["accepted"] != (guidance == "")
+        ):
             raise ValueError("eval validator returned an invalid verdict")
         checked.append(verdict)
-    return {"schema_version": "milk.eval-verdicts.v2", "verdicts": checked}
+    return {"schema_version": VERDICT_SCHEMA, "verdicts": checked}
 
 
 def _binding(prefix: str) -> dict:
@@ -600,9 +612,18 @@ def _seed_identity(plan: dict) -> list[dict]:
     return [{key: case[key] for key in fields} for case in plan["cases"]]
 
 
+def _generation_source_identity(plan: dict) -> list[dict]:
+    fields = (
+        "split", "selection", "tail_reason", "source_key", "source_object_sha256", "request_sha256",
+        "response_sha256", "content_sha256", "label_key", "label_sha256", "operation", "oracle",
+    )
+    return [{key: source[key] for key in fields} for source in plan["sources"]]
+
+
 def _revision_identity(settings, runtime, summary_pointer: dict, readiness_pointer: dict, readiness_pointer_sha256: str, plan: dict, eval_prompt: str, validator_prompt: str, target: int, shard_cases: int) -> dict:
     target_splits = eval_plan.target_allocation(target)
-    source_splits = {case["split"] for case in plan["cases"]}
+    generation_sources = plan["sources"] if target == 100_000 else plan["cases"]
+    source_splits = {source["split"] for source in generation_sources}
     if any(count and split not in source_splits for split, count in target_splits.items()):
         raise EvalError("the eval revision has no held-out source for a required split")
     return {
@@ -616,6 +637,7 @@ def _revision_identity(settings, runtime, summary_pointer: dict, readiness_point
         "config_digest": runtime.digest,
         "policy": plan["policy"],
         "source_seeds": _seed_identity(plan),
+        "generation_sources": _generation_source_identity({"sources": generation_sources}),
         "target_case_count": target,
         "target_split_counts": target_splits,
         "shard_case_count": shard_cases,
@@ -640,7 +662,7 @@ def _context_rows(store, settings, summary_value: dict, plan: dict, target: int)
         ]
     rows, unused_keys = summary._ancestry(store, settings, summary_value)
     by_key = {row.get("key"): row for row in rows if isinstance(row, dict) and isinstance(row.get("key"), str)}
-    seed_keys = list(dict.fromkeys(case["source_key"] for case in plan["cases"]))
+    seed_keys = list(dict.fromkeys(source["source_key"] for source in plan["sources"]))
     if (
         not isinstance(summary_value.get("capture_count"), int)
         or summary_value["capture_count"] < CONTEXT_CONVERSATIONS
@@ -789,6 +811,12 @@ def _read_shard(store, revision: dict, split: str, start: int, end: int) -> dict
     case_ids = [summary.digest(f"{revision['eval_uuid']}\0{ordinal}".encode()) for ordinal in range(start, end)]
     hashes = validation.get("normalized_hashes") if isinstance(validation, dict) else None
     verdicts = validation.get("verdicts") if isinstance(validation, dict) else None
+    try:
+        checked_verdicts = _verdict_contract(
+            {"schema_version": VERDICT_SCHEMA, "verdicts": verdicts}, cases
+        )
+    except (KeyError, TypeError, ValueError):
+        checked_verdicts = None
     expected_hashes = [
         {"case_id": case["case_id"], "input_sha256": summary.digest(_normalized(case.get("input", "")).encode())}
         for case in cases
@@ -820,7 +848,8 @@ def _read_shard(store, revision: dict, split: str, start: int, end: int) -> dict
         or ledger_hashes != prior_hashes | current_hashes
         or validation.get("normalized_ledger_sha256") != summary.digest(ledger_body)
         or not isinstance(verdicts, list)
-        or [item.get("case_id") for item in verdicts if isinstance(item, dict) and item.get("accepted") is True] != case_ids
+        or checked_verdicts is None
+        or [item["case_id"] for item in checked_verdicts["verdicts"] if item["accepted"]] != case_ids
     ):
         raise EvalError("stored eval shard identity differs")
     return {
@@ -902,9 +931,8 @@ def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha
         batch_plan = {**shard_plan, "cases": planned_cases}
         batch_case_ids = [case["case_id"] for case in planned_cases]
         source_bindings = []
-        for slot, case in enumerate(planned_cases):
+        for case in planned_cases:
             binding = {
-                "slot": slot,
                 **{
                     key: case[key]
                     for key in (
@@ -1041,7 +1069,7 @@ def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha
         validator_batches.append({"key": batch_key, "sha256": summary.digest(batch_body)})
         model_verdicts.extend(batch_verdicts["verdicts"])
         artifacts.append(batch_key)
-    verdicts = None if not cases else _verdict_contract({"schema_version": "milk.eval-verdicts.v2", "verdicts": model_verdicts}, cases)
+    verdicts = None if not cases else _verdict_contract({"schema_version": VERDICT_SCHEMA, "verdicts": model_verdicts}, cases)
     try:
         validation, unused_body = _object(store, validation_key)
         if (
@@ -1095,7 +1123,7 @@ def _attempt(store, revision: dict, context: dict, shard_plan: dict, summary_sha
     accepted_cases = [case for case in cases if case["case_id"] in accepted_ids]
     accepted_case_ids = {case["case_id"] for case in accepted_cases}
     accepted_case_hashes = [item for item in hashes if item["case_id"] in accepted_case_ids]
-    accepted_verdicts = {"schema_version": "milk.eval-verdicts.v2", "verdicts": [item for item in model_verdicts if item["case_id"] in accepted_case_ids]}
+    accepted_verdicts = {"schema_version": VERDICT_SCHEMA, "verdicts": [item for item in model_verdicts if item["case_id"] in accepted_case_ids]}
     if accepted_case_ids | set(rejected_by_id) != set(case_ids) or accepted_case_ids & set(rejected_by_id):
         raise EvalError("eval repair partition differs from its requested cases")
     rejected_ids = set(rejected_by_id)
@@ -1160,7 +1188,7 @@ def _prepare_range(store, revision: dict, context: dict, shard_plan: dict, summa
     prepared = (
         [cases_by_id[case_id] for case_id in case_ids],
         [hashes_by_id[case_id] for case_id in case_ids],
-        {"schema_version": "milk.eval-verdicts.v2", "verdicts": [verdicts_by_id[case_id] for case_id in case_ids]},
+        {"schema_version": VERDICT_SCHEMA, "verdicts": [verdicts_by_id[case_id] for case_id in case_ids]},
     )
     receipt = {
         "schema_version": "milk.eval-prepared-shard.v1",
@@ -1344,10 +1372,18 @@ def reconcile(store, settings, runtime) -> dict:
         cases_by_id = {case["case_id"]: case for case in accepted_cases}
         verdicts_by_id = {item["case_id"]: item for item in accepted_verdicts["verdicts"]}
         retained_ids = [case_id for case_id in case_ids if case_id not in duplicate_id_set]
-        retained = ([cases_by_id[case_id] for case_id in retained_ids], [hash_by_id[case_id] for case_id in retained_ids], {"schema_version": "milk.eval-verdicts.v2", "verdicts": [verdicts_by_id[case_id] for case_id in retained_ids]})
+        retained = ([cases_by_id[case_id] for case_id in retained_ids], [hash_by_id[case_id] for case_id in retained_ids], {"schema_version": VERDICT_SCHEMA, "verdicts": [verdicts_by_id[case_id] for case_id in retained_ids]})
         rejection = {
             "attempt": -1,
-            "rejected_verdicts": [{"case_id": case_id, "accepted": False, "reason": "duplicate"} for case_id in duplicate_ids],
+            "rejected_verdicts": [
+                {
+                    "case_id": case_id,
+                    "accepted": False,
+                    "reason": "duplicate",
+                    "guidance": "Change the task framing and several concrete details.",
+                }
+                for case_id in duplicate_ids
+            ],
             "prior_generation": {"schema_version": "milk.eval-generation.v3", "cases": [_wire_case(cases_by_id[case_id], oracle_by_id[case_id]) for case_id in duplicate_ids]},
         }
         pending_plan = [case for case in shard_plan["cases"] if case["case_id"] in duplicate_id_set]
@@ -1364,7 +1400,7 @@ def reconcile(store, settings, runtime) -> dict:
             return {"state": "progressed", "identity": revision["revision_id"], "artifacts": _artifacts(store, artifacts), "inference_calls": inference_calls, "provider_calls": 0, "next": "eval", "details": details}
         accepted_cases = [cases_by_id[case_id] for case_id in case_ids]
         accepted_hashes = [hash_by_id[case_id] for case_id in case_ids]
-        accepted_verdicts = {"schema_version": "milk.eval-verdicts.v2", "verdicts": [verdicts_by_id[case_id] for case_id in case_ids]}
+        accepted_verdicts = {"schema_version": VERDICT_SCHEMA, "verdicts": [verdicts_by_id[case_id] for case_id in case_ids]}
 
     shard, shard_artifacts = _write_shard(store, revision, split, completed, end, accepted_cases, accepted_hashes, accepted_verdicts, prior_hashes)
     artifacts.extend(shard_artifacts)

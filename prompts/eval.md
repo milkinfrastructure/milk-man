@@ -26,10 +26,10 @@ type supplied as `schema_kind`. Describe the expected JSON value with
 Property types and array item types are scalar only: `string`, `number`,
 `integer`, `boolean`, or `null`. Do not nest specs.
 
-Return one generated case body per supplied source binding. Copy its batch-local
-`slot`; do not repeat or invent case IDs. Milk Man uses the slot to bind each
-body to its planned case deterministically even if you reorder the output. Make
-every case answerable with its requested oracle. Produce
+Return one generated case body per supplied source binding in the same array
+order. Do not repeat or invent case IDs. Milk Man binds each body to its planned
+case deterministically by position. Make every case answerable with its
+requested oracle. Produce
 useful diversity across the batch, including realistic edge cases implied by
 the source data. Do not copy source responses into prompts, leak reference
 answers, or create duplicate, unsupported tool, unsupported multimodal, or
@@ -38,7 +38,8 @@ Use each supplied `order` and `case_id` as hidden deterministic creative seeds:
 vary concrete entities, quantities, constraints, framing, and wording for that
 case, but never expose either seed in the generated input or answer. A later
 case for the same source must still be a materially distinct task.
-On a repair turn, `source_bindings` contains only rejected case IDs. Generate
+On a repair turn, `source_bindings` contains only rejected case IDs. Use each
+rejected verdict's `guidance` as the exact defect to correct. Generate
 only those cases. Cases omitted from the repair input were already accepted:
 do not repeat, replace, or refer to them. Use each rejected verdict and prior
 case to correct the stated defect while keeping the supplied ID and order. For

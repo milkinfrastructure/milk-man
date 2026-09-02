@@ -10,6 +10,7 @@ SPLIT_VERSION = "milk.split.v2"
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 ORACLES = frozenset({"exact", "reference", "schema"})
 SCHEMA_KINDS = ("object", "array", "string", "number", "integer", "boolean")
+MAX_GENERATION_SOURCES = 100
 SPLITS = ("dev", "calibration", "sealed")
 TAIL_REASONS = ("long_context", "rare", "error", "tool_use", "multimodal", "low_confidence")
 
@@ -185,11 +186,41 @@ def build(labels: list[dict], profile: str) -> dict:
         value["case_id"] = hashlib.sha256(
             (POLICY_VERSION + "\0" + value["split"] + "\0" + value["selection"] + "\0" + value["request_sha256"] + "\0" + value["content_sha256"]).encode()
         ).hexdigest()
+    sources = []
+    for value in distinct.values():
+        if value["split"] not in SPLITS:
+            continue
+        reasons = [reason for reason in value.get("selection_reasons", []) if reason in TAIL_REASONS]
+        if value.get("confidence_basis_points", 10_000) < 7_000:
+            reasons.append("low_confidence")
+        reasons = list(dict.fromkeys(reasons))
+        sources.append({
+            **value,
+            "selection": "tail" if reasons else "representative",
+            "tail_reason": reasons[0] if reasons else None,
+        })
+    def source_key(value):
+        return (
+            SPLITS.index(value["split"]),
+            hashlib.sha256(("generation-source:" + value["request_sha256"] + value["content_sha256"]).encode()).digest(),
+        )
+    sources.sort(key=source_key)
+    if len(sources) > MAX_GENERATION_SOURCES:
+        allocation = target_allocation(MAX_GENERATION_SOURCES)
+        selected = []
+        remaining = []
+        for split in SPLITS:
+            candidates = [source for source in sources if source["split"] == split]
+            selected.extend(candidates[:allocation[split]])
+            remaining.extend(candidates[allocation[split]:])
+        selected.extend(sorted(remaining, key=source_key)[:MAX_GENERATION_SOURCES - len(selected)])
+        sources = sorted(selected, key=source_key)
     counts = Counter((value["split"], value["selection"]) for value in cases)
     return {
         "schema_version": POLICY_VERSION,
         "policy": policy,
         "cases": cases,
+        "sources": sources,
         "counts": {f"{split}.{selection}": counts[(split, selection)] for split in SPLITS for selection in ("representative", "tail")},
         "missing": missing,
         "ready": not missing and len(cases) == policy["total"],
@@ -235,7 +266,7 @@ def precompute_range(target: int, shard_cases: int) -> tuple[int, str, int, int]
 
 
 def shard(plan: dict, eval_uuid: str, target: int, start: int, end: int) -> dict:
-    seeds = plan.get("cases")
+    seeds = plan.get("sources") if target == 100_000 else plan.get("cases")
     if (
         not isinstance(seeds, list)
         or not seeds
@@ -260,7 +291,6 @@ def shard(plan: dict, eval_uuid: str, target: int, start: int, end: int) -> dict
         cases.append(
             {
                 **seed,
-                "seed_case_id": seed["case_id"],
                 "order": ordinal,
                 "case_id": hashlib.sha256(f"{eval_uuid}\0{ordinal}".encode()).hexdigest(),
             }
