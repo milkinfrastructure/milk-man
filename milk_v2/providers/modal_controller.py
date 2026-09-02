@@ -277,8 +277,9 @@ def observe_marker(controller: dict, volume_exists: bool) -> dict | None:
             return None
         raise ControllerError("cannot observe the Modal model-cache marker")
     try:
-        value = json.loads(result["stdout"])
-    except json.JSONDecodeError as error:
+        marker_line = result["stdout"].splitlines()[0]
+        value = json.loads(marker_line)
+    except (IndexError, json.JSONDecodeError) as error:
         raise ControllerError("Modal model-cache marker is invalid") from error
     if value != marker_value():
         raise ControllerError("Modal model-cache marker differs from the pinned model")
