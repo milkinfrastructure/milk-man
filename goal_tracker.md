@@ -1031,7 +1031,7 @@ Progress 2026-09-01:
 - [x] The independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171` contains the strict fixed job registry, direct CLI, local store, and SigV4 S3 implementation.
 - [x] Replayed `status`, `operate --once`, and `run summary` against an empty local store; unchanged invocations returned the same identity with zero inference and provider calls.
 - [x] Configuration accepts only ten reviewed handler identifiers and reviewed environment-variable names; it cannot introduce an executable path.
-- [x] Summary and the three controller handlers are implemented; eval, dataset, train, evaluate, route-propose, and gpu-reconcile fail closed as blocked until their milestones land, and `operate --once` currently schedules summary only.
+- [x] All ten reviewed handlers are implemented. `operate --once` deterministically advances through route proposal and stops at the operator-sign boundary; explicit `gpu-reconcile` records provider teardown and zero capacity.
 - [x] Proved the public CLI against R2 through two checkpoints: immutable create-same objects, conditional pointer replacement, one concurrent owner plus one exit-75 duplicate, and an idle zero-call replay. Retained receipt: `/Users/shantanu/milk-release-evidence/milk-v2-r2-20260901/report.json`, SHA-256 `7c96b77a387dbcce75ecbf4c696cebefc28d4f3e1f0d11c685007918f301169f`.
 
 Owned:
@@ -1200,7 +1200,7 @@ Acceptance:
 - `e/current.json` advances only after the complete validated revision.
 - the eval model runs through the same restricted `milk job read`, `milk job commit`, and `milk status` interface and cannot select storage or provider authority.
 
-### [~] P8 — Dataset, training and three evaluation branches
+### [x] P8 — Dataset, training and three evaluation branches
 
 Progress 2026-09-01:
 
@@ -1213,7 +1213,10 @@ Progress 2026-09-01:
 - [x] Milk Man retrained the expanded dataset in Baseten job `qek7jrq`, retained merged model `fb0eacdd-4772-5fc5-88e0-d99ecc3aafc8`, and replayed with `provider_calls: 0`.
 - [x] Published the fixed three-branch policy, calibrated static-FP8 evaluator, and concurrent Baseten orchestration. The first runtime attempt exposed a missing C compiler required by TorchAO/Triton; a second isolated an `inference_mode` incompatibility. Commit `ddc04e9f0` replaced it with `no_grad`, and Actions run `33586890548` published `ghcr.io/milkinfrastructure/milk-man-eval@sha256:7d045e6432b2e6222a58b976889b8c0b4f548a55525826932ae3b435cf7f6343`.
 - [x] Final coherent DEV jobs `wp98xz3`, `wlklg03`, and `3yym443` completed on identical ordered cases. Checked-in code selected static FP8 at 10,000/10,000, zero errors, 316 ms p95 and 16.978 tokens/second. Winner-only sealed job `w7x7l63` completed and produced sealed evaluation `689e3c27-d0f1-58cb-8e12-e60dafc008a7`; evaluation group `73837076-9e42-5a8a-ac56-73eac5830a89` finalized under deterministic identity `32aa44d6bc531bc282c8bfdd49c62b5c35e957269745926aceba39c1670b6a0b`. Immediate replay retained the same artifacts with zero inference and provider calls.
-- [ ] Emit the unsigned proposal, prove definite-preflight Modal fallback, and verify zero active capacity on both providers.
+- [x] Actions run `33590675453` published the authenticated serve image `ghcr.io/milkinfrastructure/milk-man-serve@sha256:5d265b975920f049775e16f959b6fe5177c4c5429ab66eca6bf178d0a892f851`; weights remained outside OCI.
+- [x] Candidate artifact `04f4af2eb8b2596985a4694d1a167ea99c66063b19438425199d76bf1c2e8fbd` received a definite Baseten `custom_base_image_not_enabled` preflight with no Baseten model or deployment, then deterministically fell back to Modal app `ap-pf5pYKvKgMMo5SqEyx9ZF6` and volume `milk-candidate-04f4af2eb8b2596985a4`.
+- [x] Milk Man verified the exact Baseten checkpoint inventory during Modal hydration, completed one authenticated inference smoke, retained candidate `40ee1fff-303c-5a5e-842c-72ee9880638d`, and advanced to corrected unsigned proposal `d86f2910-9ccc-5d56-9aeb-ee7b400f4f8c` at `p/d86f2910-9ccc-5d56-9aeb-ee7b400f4f8c.json`.
+- [x] `milk run gpu-reconcile` stopped the exact Modal app and wrote immutable intent/result objects under `j/gpu-reconcile/04f4af2e...`; independent listings showed that app stopped with zero containers, every other visible Modal app at zero containers, zero Baseten candidate models, and training job `qek7jrq` in `TRAINING_JOB_COMPLETED` with checkpoint sync `COMPLETED`.
 
 Owned:
 
@@ -1258,10 +1261,13 @@ Progress 2026-09-01:
 - [x] Published the independently reviewed signed canary, pre-byte fallback, rollback, and zero-route implementation at Milk Parlor commit `933b45eac824787cb064b869d93515b75c0c58a8`; requests never wait for R2 route refresh.
 - [x] Fixed macOS Ed25519 one-shot signing at `b1744d79be67e7606c4ba8cb2eac2e693b6436d0` and published one canonical, signature-verified production zero route at revision 1.
 - [x] Built the scratch image in Actions run `33579400572`: GHCR index `sha256:cb625bb33231629d18fea12925d55f5f96397b2492def794c615ed162d72562b`, Linux AMD64 manifest `sha256:6afe8277d9ce1b10b182258fe802f65e3cf1718050a7f4f8d7ca068b808aff7a`, Cloudflare digest `sha256:545ef3a0ccef16b20e0fe689d59fd7dff06651fcb6d00dbd1ecd51be53bde728`, and 2,328,627 compressed layer bytes.
-- [x] Deleted the old Cloudflare Parlor application and created only application `a039d064-0442-45e4-aa31-8dd838c015b6` with the pinned image and `max_instances: 1`.
+- [x] Deleted the old Cloudflare Parlor application and retained only application `a039d064-0442-45e4-aa31-8dd838c015b6` with the pinned image. Commits `5e41260` and `bfa5681` added explicit instance generations for credential/route cutovers and raised the sleeping-container ceiling from 1 to 10 so an old process cannot block a new revision.
 - [x] Two live production requests returned 200. The second complete R2 capture bound signed route `8384c78c-bd73-45dd-973b-13dd2a7b20fd` and selected baseline with no candidate or fallback.
 - [x] Retained `/Users/shantanu/milk-release-evidence/milk-v2-signed-zero-20260901/report.json`, SHA-256 `39c13ab4a77662246b37338ea1bdd6b21a903a9a2de90175228080fb394d546b`.
-- [ ] Prove candidate success, forced pre-byte fallback, higher-revision rollback, and credential removal after the P8 winner or an explicitly mechanics-only candidate exists.
+- [x] Signed revision 2 (`96da3bdc-7dcf-4169-b0f0-ad07c5ed5433`) routed 100% to candidate artifact `04f4af2e...`; the official OpenAI Python SDK returned model `milk-qwen3.5-0.8b-static-fp8` with the requested exact response.
+- [x] R2 capture `01a0606d-e155-7932-902c-aab870d951d9` retained a forced cold-start fallback from the same signed route with `fallback_reason: candidate_status_503`, baseline `200`, and no candidate bytes exposed.
+- [x] Higher revision 3 (`c4668940-9131-4b67-a434-a834844b4e8c`) rolled exposure back from 100% to a 1% canary; capture `01a0606f-4638-7772-8fcc-c80e9175984b` bound that route and selected baseline with no fallback.
+- [x] Signed zero revision 4 (`ce2f4d88-0107-429f-89a7-6a9083c14a18`) removed candidate identity and basis points. Capture `01a0606f-feca-7280-a6ec-fd529cea9f00` bound the zero route and returned baseline `200`; Cloudflare version `d1b61ee7-ce8f-47c3-b90e-4c1e61314537` contains no candidate URL, credential, or artifact binding.
 
 Owned:
 

@@ -568,7 +568,7 @@ def _finalize(
         "MILK_ROUTE_CANDIDATE_BPS", 10_000 if settings.profile == "mechanics" else 100, 1, 10_000
     )
     proposal_identity = {
-        "schema_version": "milk.route-proposal-identity.v2",
+        "schema_version": "milk.route-proposal-identity.v3",
         "scope_id": settings.scope_id,
         "profile": settings.profile,
         "candidate": candidate_reference,
@@ -582,10 +582,10 @@ def _finalize(
     proposal_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:route-proposal:" + proposal_sha256))
     proposal_key = settings.scope_prefix + f"p/{proposal_uuid}.json"
     proposal = {
+        **proposal_identity,
         "schema_version": "milk.route-proposal.v2",
         "proposal_uuid": proposal_uuid,
         "proposal_sha256": proposal_sha256,
-        **proposal_identity,
         "candidate_api_key_env": candidate_api_key_env,
         "operator_action": "sign-and-publish-with-milk-parlor",
     }
