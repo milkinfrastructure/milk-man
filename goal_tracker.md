@@ -967,37 +967,19 @@ Candidate credentials remain deployment environment bindings. Do not implement h
 
 ## Status interface
 
-Embed one raw HTML/CSS/JavaScript page in Milk Parlor:
+Milk Man serves one local raw HTML/CSS/JavaScript page from `bin/man dashboard`:
 
-- reuse the owned pixel milk-carton asset from `/Users/shantanu/milk-ide/milkCarton.png`;
-- reuse the original Milk HTML, CSS, and typewriter text-execution code as the
-  donor instead of recreating its interaction;
-- apply Susan Kare's design discipline: immediate legibility, crisp pixel
-  iconography, a restrained system palette, strong information hierarchy,
-  memorable direct metaphors, and small moments of delight without ornament;
-- keep the black terminal background and monospace/typewriter voice, but use
-  motion only to reveal live execution; honor reduced-motion and provide the
-  same information without animation;
-- no frontend framework, package manager, build step, database, or analytics;
-- enter the same operator API key client-side and retain it only in `sessionStorage`;
-- fetch only `/api/status`.
+- bind only to `127.0.0.1` and read the current bounded trajectory, memory and exact workspace revisions;
+- reuse `milk_v2.store` and `MILK_SUMMARY_THRESHOLDS`; do not add another object-store client, database, cache or status writer;
+- make cloud reads only on page load or the explicit refresh button; the three-second watch loop reads local Milk Man state only;
+- probe Parlor's public `/healthz` through optional `MILK_PARLOR_BASE_URL` and show a square active/degraded/down light plus the last-checked time;
+- count durable scoped captures, show equal-width threshold segments for `100,1000,10000,100000` or the configured values, and traverse the bounded immutable summary-parent chain;
+- at every completed threshold show parse and success rates, unique and classified counts, latency, throughput, and leading topic, task, sentiment and capability counts;
+- show the remaining eval, dataset, student, winner, candidate and route pointers from `status/current.json` without opening their payloads;
+- apply Susan Kare's design discipline with crisp square pixels, immediate hierarchy, a restrained palette and no decorative motion;
+- use no frontend framework, package manager, asset request, build step or analytics.
 
-This dashboard is deferred until the data and route loop works. It remains one
-hyper-minimal, dependency-free document and a read-only view of the UUID's
-object-memory progress; it cannot launch jobs, mutate routes, expose secrets,
-or display raw customer traffic.
-
-Show:
-
-- Parlor health and capture counters;
-- persisted complete exchange count;
-- next summary threshold and progress;
-- latest summary, readiness and eval;
-- controller and teacher endpoint state;
-- current Milk job and active GPU count;
-- route, candidate and fallback state.
-
-`/api/status` authenticates the key, resolves its scope, and combines Parlor’s local counters with one GET of `status/current.json`. It never lists raw traffic or returns prompt content.
+The page is read only. It never launches jobs, mutates routes, exposes environment values, or returns raw customer traffic or semantic samples. Parlor retains its public `/healthz` and authenticated `/api/status` for remote scope status; a hosted gateway cannot and must not expose Milk Man's local files or development trajectory.
 
 ## Images and deployment
 
@@ -1084,6 +1066,7 @@ Progress 2026-09-01:
 - [x] A later local `gpt-5.6-sol` low-effort Milk Man run loaded this tracker and `milk-system`, inspected both current repositories and their diff, made no speculative edit, and identified P0/P10 as the remaining phases.
 - [x] A fresh local `gpt-5.6-sol` max-reasoning trajectory recovered from an overlong read-only attempt, reviewed exactly the requested three-file diff, ran narrow syntax and diff checks, and retained commit `12984457a` in two turns without invoking a Milk job or cloud provider.
 - [x] The development system prompt is 711 bytes, the 93 KB tracker is no longer injected, automatic trajectory and memory context default to 32 KB and 4 KB, and the direct OpenAI driver defaults to `gpt-5.6-sol` at maximum reasoning. A supervised Milk Man trajectory reviewed, corrected, checked, and committed the seven-file v24 change as `f0977e738`.
+- [x] A dependency-free local dashboard now shows bounded Milk Man trajectory activity, memory, exact workspace revisions, and the object-memory pipeline. It binds only to `127.0.0.1`, reuses `milk_v2.store`, performs one read of `status/current.json`, and exposes no environment values. Milk Man reviewed and committed the implementation as `203fab30e`; the browser proved working-to-idle state changes and live R2 counts.
 
 Owned:
 
@@ -1111,7 +1094,7 @@ Acceptance:
 
 Excluded:
 
-- Prime, dashboards, persistent thinkers, messaging, deployment, provider jobs and production scheduling.
+- Prime, persistent thinkers, messaging, dashboard mutation controls, deployment, provider jobs and production scheduling.
 
 ### [x] P2 — Milk Parlor direct request path
 

@@ -22,6 +22,10 @@ It binds only `127.0.0.1`, reads Milk Man's current trajectory, memory, and
 workspace state, and reads `status/current.json` through the configured object
 store. It does not invoke a job or provider.
 
+`MILK_PARLOR_BASE_URL` enables its public gateway-health light.
+`MILK_SUMMARY_THRESHOLDS` drives the data progress marks and checkpoint
+statistics; the same object-store environment used by jobs supplies the data.
+
 Start one supervised development task:
 
 ```bash
