@@ -9,8 +9,6 @@ It does not need Docker, a local GPU, a database, a queue, or a background
 service. Settings and keys come from environment variables. When there is no
 work, it does not call a model or rent a GPU.
 
-![Milk Man showing live gateway, data, summaries, and model progress](docs/dashboard.png)
-
 ## What we have run
 
 We completed a fresh check of the whole system using 180 conversations sent
@@ -41,12 +39,16 @@ Start the local dashboard:
 bin/man dashboard
 ```
 
-It binds only `127.0.0.1`, reads Milk Man's current trajectory, memory, and
-workspace state, and reads `status/current.json` through the configured object
-store. Its prompt box starts or resumes the exact recorded workspace set with
-the provider environment inherited by the dashboard. One follow-up may wait
-for the active turn; a second is rejected. It never exposes environment values
-or grants push, deploy, signing, or merge authority.
+It binds only `127.0.0.1`. The page shows the current Milk Man conversation,
+tool output, saved memory, workspace changes, gateway health, object-store
+progress, and every step from captured traffic to a route proposal. It refreshes
+local activity every second and says whether the saved session is attached,
+running elsewhere, detached, or missing.
+
+The prompt box starts or resumes the exact recorded workspace set with the
+provider environment inherited by the dashboard. One follow-up may wait for the
+active turn; a second is rejected. It never exposes environment values or
+grants push, deploy, signing, or merge authority.
 
 `MILK_PARLOR_BASE_URL` enables its public gateway-health light.
 `MILK_SUMMARY_THRESHOLDS` drives the data progress marks and checkpoint

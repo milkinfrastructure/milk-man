@@ -24,30 +24,13 @@ RUN_PROCESS: subprocess.Popen | None = None
 PENDING_PROMPT: str | None = None
 
 
-HTML = r"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Milk Man</title><style>
-:root{color-scheme:dark;--bg:#0c0d0c;--panel:#181a18;--line:#383a37;--ink:#f3efe4;--dim:#8f918b;--pink:#ff6b9e;--mint:#7ce6c2;--gold:#ffd166;--red:#ff6b6b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}main{width:min(1180px,calc(100% - 28px));margin:auto;padding:34px 0 60px}header{display:flex;justify-content:space-between;gap:20px;align-items:end;border-bottom:1px solid var(--line);padding-bottom:18px}.brand{color:var(--pink);font-size:11px;letter-spacing:.16em;text-transform:uppercase}h1,h2,p{margin:0}h1{font-size:25px;letter-spacing:-.05em}.controls{display:grid;grid-template-columns:auto auto;gap:5px 12px;align-items:center;text-align:right}.gateway,.live{color:var(--dim)}.live{grid-column:1/-1}.live b{color:var(--mint)}.signal{display:inline-block;width:11px;height:11px;margin-right:8px;border:2px solid var(--dim);vertical-align:-1px}.signal.up{background:var(--mint);border-color:var(--mint)}.signal.down{background:var(--red);border-color:var(--red)}.signal.degraded{background:var(--gold);border-color:var(--gold)}button{border:1px solid var(--line);border-radius:0;background:var(--ink);color:var(--bg);padding:7px 10px;font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;cursor:pointer}button:hover{background:var(--pink)}button:disabled{opacity:.45;cursor:wait}.checked{grid-column:1/-1;color:var(--dim);font-size:9px}.progress{margin:26px 0 16px;border:1px solid var(--line)}.progress-head{display:flex;justify-content:space-between;gap:20px;margin-bottom:13px}.volume{font-size:17px}.target{color:var(--dim);text-align:right}.meter{height:22px;border:1px solid var(--line);background:var(--bg);padding:3px}.meter-fill{height:100%;width:0;background:var(--pink)}.milestones{display:grid;grid-template-columns:repeat(var(--points,1),minmax(0,1fr));gap:1px;background:var(--line);margin-top:15px;border:1px solid var(--line)}.checkpoint{background:var(--panel);padding:11px;min-height:140px}.checkpoint.reached{background:#14231e}.checkpoint.crossed{border-bottom:3px solid var(--gold)}.checkpoint h3{margin:0 0 8px;font-size:12px}.checkpoint .pin{display:inline-block;width:8px;height:8px;margin-right:7px;background:var(--dim)}.checkpoint.reached .pin{background:var(--mint)}.checkpoint.crossed .pin{background:var(--gold)}.checkpoint small{display:block;color:var(--dim);margin-top:4px;overflow-wrap:anywhere}.rail{display:grid;grid-template-columns:repeat(9,1fr);border:1px solid var(--line);margin:16px 0}.stage{min-height:92px;padding:10px;border-right:1px solid var(--line)}.stage:last-child{border:0}.stage b{color:var(--dim);font-size:9px}.stage h2{font-size:11px;margin:13px 0 6px}.stage p{color:var(--dim);font-size:10px;overflow-wrap:anywhere}.stage.done{background:#14231e}.stage.done h2{color:var(--mint)}.stage.next{border-bottom:3px solid var(--gold)}.grid{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:1px;background:var(--line);border:1px solid var(--line)}section{background:var(--panel);padding:16px;min-width:0}section>h2{color:var(--dim);font-size:10px;letter-spacing:.13em;text-transform:uppercase;margin-bottom:13px}.row{padding:9px 0;border-top:1px solid var(--line)}.row:first-of-type{border:0}.row b,.row small{display:block}.row small,.empty,.time{color:var(--dim)}.path,.content{white-space:pre-wrap;overflow-wrap:anywhere}.path{font-size:10px;color:var(--dim)}.changes{color:var(--gold)}.activity{grid-column:1/-1;max-height:42vh;overflow:auto}.event{display:grid;grid-template-columns:78px 94px 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--line)}.event:first-of-type{border:0}.kind{color:var(--pink)}.content{margin:0;color:var(--ink)}footer{margin-top:18px;color:var(--dim);font-size:10px}@media(max-width:850px){.rail{grid-template-columns:repeat(3,1fr)}.stage{border-bottom:1px solid var(--line)}.grid{grid-template-columns:1fr}.activity{grid-column:auto}.milestones{grid-template-columns:1fr 1fr}}@media(max-width:520px){header{align-items:start;flex-direction:column}.controls{text-align:left}.rail,.milestones{grid-template-columns:1fr}.event{grid-template-columns:1fr}.time{display:none}.progress-head{display:block}.target{text-align:left;margin-top:4px}}
-.checkpoint.reached,.stage.done{background:var(--panel)}.checkpoint.reached,.stage.done{border-bottom:3px solid var(--mint)}.prompt-box{margin:18px 0;border:1px solid var(--line)}.prompt-box form{display:flex;gap:10px;align-items:flex-end}.prompt-box label{display:flex;flex:1;flex-direction:column;gap:7px}.prompt-box textarea{width:100%;min-height:72px;resize:vertical;padding:10px;border:1px solid var(--line);border-radius:0;background:var(--bg);color:var(--ink);font:inherit;outline:none}.prompt-box textarea:focus{border-color:var(--pink)}.prompt-box button{min-width:110px}.prompt-state{min-height:1.3em;margin:8px 0 0;color:var(--dim)}.prompt-state.error{color:var(--red)}@media(max-width:640px){.prompt-box form{align-items:stretch;flex-direction:column}.prompt-box button{min-height:42px}}
-</style></head><body><main><header><div><div class="brand">milkinfrastructure.com</div><h1>Milk Man</h1></div><div class="controls"><div class="gateway"><i class="signal" id="signal"></i><b id="gateway">gateway unchecked</b></div><button id="refresh" type="button">check cloud</button><small class="checked" id="checked">never checked</small><div class="live" id="live">loading Milk Man</div></div></header><section class="prompt-box"><h2>development prompt</h2><form id="run-form"><label for="prompt">What should Milk Man work on?<textarea id="prompt" name="prompt" maxlength="16384" required></textarea></label><button id="run" type="submit">start / resume</button></form><p class="prompt-state" id="prompt-state" role="status" aria-live="polite"></p></section><section class="progress"><h2>data milk</h2><div class="progress-head"><b class="volume" id="volume">waiting for object memory</b><span class="target" id="target"></span></div><div class="meter" id="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="meter-fill" id="fill"></div></div><div class="milestones" id="milestones"></div></section><div class="rail" id="rail"></div><div class="grid"><section><h2>workspaces</h2><div id="workspaces"></div></section><section><h2>memory</h2><div id="memory"></div></section><section><h2>object memory</h2><div id="object"></div></section><section class="activity"><h2>local activity</h2><div id="activity"></div></section></div><footer id="foot"></footer></main><script>
-const el=id=>document.getElementById(id),short=v=>typeof v==='string'?v.slice(0,8):'waiting',num=v=>Number.isFinite(Number(v))?Number(v):0;
-const stages=[['traffic','traffic'],['summary','summary'],['readiness','ready'],['eval','evals'],['dataset','dataset'],['training','student'],['evaluation','winner'],['candidate','candidate'],['proposal','route']];
-function node(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
-function rows(target,values,empty){target.replaceChildren();if(!values.length){target.append(node('p','empty',empty));return}for(const value of values){const row=node('div','row');row.append(node('b','',value.title));if(value.detail)row.append(node('small',value.class||'',value.detail));target.append(row)}}
-function topCounts(values){return Object.entries(values||{}).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,3).map(v=>v[0]+' '+v[1]).join(' · ')||'none'}
-function percent(bps){return (num(bps)/100).toFixed(num(bps)%100?2:0)+'%'}
-function fillPercent(count,points){if(!points.length)return 0;let prior=0;for(let i=0;i<points.length;i++){if(count<points[i])return 100*(i+(count-prior)/(points[i]-prior))/points.length;prior=points[i]}return 100}
-function renderProgress(p){p=p||{};const count=num(p.capture_count),processed=num(p.processed_count),points=p.thresholds||[],checkpoints=p.checkpoints||[];el('volume').textContent=count.toLocaleString()+' conversations captured';el('target').textContent=p.next_threshold?(processed.toLocaleString()+' summarized · '+(count>=p.next_threshold?'ready to summarize at ':(p.next_threshold-count).toLocaleString()+' to ')+p.next_threshold.toLocaleString()):processed.toLocaleString()+' summarized · all configured checkpoints reached';const fill=Math.max(0,Math.min(100,fillPercent(count,points)));el('fill').style.width=fill+'%';el('meter').setAttribute('aria-valuenow',String(Math.round(fill)));el('milestones').style.setProperty('--points',String(Math.max(1,points.length)));el('milestones').replaceChildren();for(const point of points){const checkpoint=checkpoints.find(c=>num(c.capture_count)>=point);const card=node('div','checkpoint'+(checkpoint?' reached':count>=point?' crossed':''));const title=node('h3');title.append(node('i','pin'),document.createTextNode(point.toLocaleString()));card.append(title);if(checkpoint){card.append(node('small','',short(checkpoint.uuid)+' · '+checkpoint.capture_count.toLocaleString()+' rows'),node('small','',percent(checkpoint.parse_bps)+' parsed · '+percent(checkpoint.success_bps)+' success'),node('small','',checkpoint.unique_count.toLocaleString()+' unique · '+checkpoint.classified_count.toLocaleString()+' classified'),node('small','',checkpoint.p95_total_ms?('95% under '+(checkpoint.p95_total_ms/1000).toFixed(1)+'s · median '+(checkpoint.p50_tps_milli/1000).toFixed(1)+' tok/s'):'no timing data'),node('small','category','topics '+topCounts(checkpoint.domain)),node('small','category','tasks '+topCounts(checkpoint.operation)),node('small','category','sentiment '+topCounts(checkpoint.sentiment)),node('small','category','capabilities '+topCounts(checkpoint.capability)))}else{card.append(node('small','',count>=point?'data crossed; summary waiting':(point-count).toLocaleString()+' conversations to go'))}el('milestones').append(card)}if(!points.length)el('milestones').append(node('div','checkpoint','no thresholds configured'))}
-function renderLoop(s){const done={traffic:(s.capture_count||0)>0,summary:!!s.summary,readiness:!!s.readiness,eval:!!s.eval&&!s.eval_generation,dataset:!!s.dataset,training:!!s.training,evaluation:!!s.evaluation,candidate:!!s.candidate,proposal:!!s.proposal};const notes={traffic:(s.capture_count||0)+' captured',summary:s.summary?'checkpoint '+short(s.summary.uuid):'waiting',readiness:s.readiness?(s.readiness.ready?'ready':'not ready'):'waiting',eval:s.eval_generation?s.eval_generation.completed_case_count+' / '+s.eval_generation.target_case_count:s.eval?s.eval.case_count+' cases':'waiting',dataset:s.dataset?'revision '+short(s.dataset.uuid):'waiting',training:s.training?'model '+short(s.training.uuid):'waiting',evaluation:s.evaluation?s.evaluation.winner_branch+' selected':'waiting',candidate:s.candidate?'artifact '+short(s.candidate.uuid):'zero',proposal:s.proposal?'ready for operator':(s.next_action||'waiting')};let marked=false;el('rail').replaceChildren();stages.forEach(([key,label],i)=>{const card=node('div','stage');const next=!done[key]&&!marked;if(done[key])card.classList.add('done');else if(next){card.classList.add('next');marked=true}card.append(node('b','',String(i+1).padStart(2,'0')),node('h2','',label),node('p','',notes[key]));el('rail').append(card)})}
-function renderMan(man){el('live').replaceChildren(node('b','',man.active?'working':'idle'),document.createTextNode(' · '+(man.trajectory_id?short(man.trajectory_id):'no session')));rows(el('workspaces'),man.workspaces.map(w=>({title:w.name+' · '+(w.head||'no git'),detail:w.changes.length?w.changes.join('\n'):w.path,class:w.changes.length?'changes':'path'})),'no workspaces');rows(el('memory'),man.memory.map(m=>({title:m.ts||'memory',detail:m.content,class:'content'})),'no saved memory');el('activity').replaceChildren();if(!man.activity.length)el('activity').append(node('p','empty','no activity'));for(const e of man.activity){const row=node('div','event');row.append(node('span','kind',e.type),node('span','time',e.ts||''),node('pre','content',e.content));el('activity').append(row)}}
-let runLoading=false;function runState(message='',error=false){el('run').disabled=runLoading;el('prompt-state').className='prompt-state'+(error?' error':'');el('prompt-state').textContent=message}
-async function startRun(event){event.preventDefault();if(runLoading)return;const prompt=el('prompt').value.trim();if(!prompt){runState('Enter a prompt first.',true);return}runLoading=true;runState('Starting Milk Man…');try{const response=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});const result=await response.json();if(!response.ok)throw Error(result.error||'Unable to start Milk Man.');el('prompt').value='';runState(result.state==='queued'?'Prompt queued in the current run.':'Milk Man started. Activity will appear below.');refreshLocal()}catch(error){runState(error.message||'Unable to start Milk Man.',true)}finally{runLoading=false;el('run').disabled=false}}
-
-function renderCloud(d){const g=d.gateway||{};el('signal').className='signal '+(g.state||'');el('gateway').textContent=g.state==='up'?'gateway active':g.state==='degraded'?'gateway degraded':g.state==='down'?'gateway unavailable':'gateway not configured';el('checked').textContent='last checked '+new Date(d.now).toLocaleString();const s=d.milk.status||{};renderProgress(d.milk.progress);renderLoop(s);rows(el('object'),d.milk.error?[{title:'unavailable',detail:d.milk.error}]:d.milk.missing.length?[{title:'not configured',detail:d.milk.missing.join('\n')}]:[{title:(s.next_action||'waiting'),detail:(d.milk.progress.capture_count||0)+' captured · '+(d.milk.progress.processed_count||0)+' summarized'},{title:s.profile||'scope',detail:s.scope_id||''},{title:'gateway since restart',detail:(g.observed||0)+' observed · '+(g.persisted||0)+' persisted · '+(g.dropped||0)+' dropped'}],'waiting for status');el('foot').textContent='local only · cloud checked '+d.now+' · credentials remain in the Milk Man process environment'}
-let cloudLoading=false;async function refreshCloud(){if(cloudLoading)return;cloudLoading=true;el('refresh').disabled=true;el('refresh').textContent='checking';try{const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)throw Error('status '+r.status);const d=await r.json();renderMan(d.man);renderCloud(d)}catch(error){el('signal').className='signal down';el('gateway').textContent='dashboard unavailable';el('checked').textContent='last checked '+new Date().toLocaleString()}finally{cloudLoading=false;el('refresh').disabled=false;el('refresh').textContent='check cloud'}}
-async function refreshLocal(){if(document.hidden)return;try{const r=await fetch('/api/local',{cache:'no-store'});if(r.ok)renderMan((await r.json()).man)}catch(error){}}
-el('refresh').addEventListener('click',refreshCloud);el('run-form').addEventListener('submit',startRun);refreshCloud();setInterval(refreshLocal,3000);document.addEventListener('visibilitychange',refreshLocal);
-</script></body></html>"""
+WEB_ROOT = ROOT / "milk_v2" / "web"
+ASSETS = {
+    "/": ("text/html; charset=utf-8", WEB_ROOT / "dashboard.html"),
+    "/milk.css": ("text/css; charset=utf-8", WEB_ROOT / "milk.css"),
+    "/dashboard.js": ("text/javascript; charset=utf-8", WEB_ROOT / "dashboard.js"),
+    "/milk-carton.png": ("image/png", WEB_ROOT / "milk-carton.png"),
+}
 
 
 def _tail(path: Path, limit: int) -> list[dict]:
@@ -131,7 +114,9 @@ def _man_state() -> dict:
     try:
         current, trajectory, memory = _current_state()
     except (OSError, ValueError, json.JSONDecodeError):
-        return {"active": False, "trajectory_id": None, "workspaces": [], "memory": [], "activity": []}
+        return {"active": False, "connection": "missing", "trajectory_id": None, "workspaces": [], "memory": [], "activity": []}
+    attached = RUN_PROCESS is not None and RUN_PROCESS.poll() is None
+    discovered = _active(trajectory)
     workspaces = []
     for value in current.get("workspaces", []):
         if not isinstance(value, dict) or not isinstance(value.get("path"), str):
@@ -149,18 +134,18 @@ def _man_state() -> dict:
         if value.get("type") == "memory"
     ]
     activity = []
-    for value in _tail(trajectory, 10) if trajectory else []:
+    for value in _tail(trajectory, 60) if trajectory else []:
         kind = str(value.get("type", "event"))[:32]
         if kind == "trajectory":
             continue
         content = str(value.get("content", ""))
         if kind == "shell-output":
-            content = "\n".join(str(value.get("command", "")).splitlines()[:6]) + f"\nexit {value.get('exit', '?')}"
-        elif kind == "reasoning":
-            content = content.split("```", 1)[0].strip()
-        activity.append({"type": kind, "ts": str(value.get("ts", ""))[11:19], "content": content[-800:]})
+            command = "\n".join(str(value.get("command", "")).splitlines()[:6])
+            content = f"$ {command}\n{content[-1800:]}\nexit {value.get('exit', '?')}"
+        activity.append({"type": kind, "ts": str(value.get("ts", ""))[11:19], "content": content[:2400]})
     return {
-        "active": _active(trajectory) or (RUN_PROCESS is not None and RUN_PROCESS.poll() is None),
+        "active": attached or discovered,
+        "connection": "attached" if attached else "discovered" if discovered else "detached",
         "trajectory_id": current.get("trajectory_id"),
         "workspaces": workspaces,
         "memory": memories,
@@ -381,8 +366,14 @@ class Handler(BaseHTTPRequestHandler):
             self._send(403, "text/plain; charset=utf-8", b"forbidden\n")
             return
         path = urlsplit(self.path).path
-        if path == "/":
-            self._send(200, "text/html; charset=utf-8", HTML.encode())
+        if path in ASSETS:
+            content_type, source = ASSETS[path]
+            try:
+                body = source.read_bytes()
+            except OSError:
+                self._send(500, "text/plain; charset=utf-8", b"dashboard asset unavailable\n")
+                return
+            self._send(200, content_type, body)
             return
         if path == "/api/local":
             body = json.dumps(
@@ -450,8 +441,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'",
+            "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         )
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)

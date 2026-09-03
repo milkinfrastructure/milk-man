@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Milk Man</title>
+  <link rel="stylesheet" href="/milk.css">
+  <script src="/dashboard.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="identity">
+        <img class="carton" src="/milk-carton.png" width="44" height="44" alt="">
+        <div><small>milkinfrastructure.com</small><h1>Milk Man</h1></div>
+      </div>
+      <div class="lights" aria-label="Live status">
+        <span><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span>
+        <span><i class="signal" id="gateway-signal"></i><b id="gateway-state">gateway unchecked</b></span>
+        <span><i class="signal" id="store-signal"></i><b id="store-state">object store unchecked</b></span>
+      </div>
+    </header>
+
+    <section class="chat" aria-label="Milk Man conversation">
+      <div class="messages" id="activity" aria-live="polite">
+        <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
+      </div>
+      <form id="run-form">
+        <label class="sr-only" for="prompt">Tell Milk Man what to do next</label>
+        <textarea id="prompt" name="prompt" maxlength="16384" placeholder="Tell Milk Man what to do next" required></textarea>
+        <button id="run" type="submit">send</button>
+      </form>
+      <p class="prompt-state" id="prompt-state" role="status" aria-live="polite"></p>
+    </section>
+
+    <div class="status-line">
+      <b id="volume">waiting for object memory</b>
+      <span id="target"></span>
+      <button id="refresh" type="button">check cloud</button>
+    </div>
+    <progress class="meter" id="meter" max="100" value="0">0%</progress>
+    <small class="checked" id="checked">never checked</small>
+
+    <details open>
+      <summary>milk loop</summary>
+      <div class="rail" id="rail"></div>
+    </details>
+    <details>
+      <summary>summary checkpoints</summary>
+      <div class="milestones" id="milestones"></div>
+    </details>
+    <details>
+      <summary>object memory</summary>
+      <div class="rows" id="object"></div>
+    </details>
+    <details>
+      <summary>workspaces</summary>
+      <div class="rows" id="workspaces"></div>
+    </details>
+    <details>
+      <summary>saved memory</summary>
+      <div class="rows" id="memory"></div>
+    </details>
+
+    <footer>
+      <a href="https://github.com/milkinfrastructure/milk-man">milk-man</a>
+      <a href="https://github.com/milkinfrastructure/milk-parlor">milk-parlor</a>
+      <span id="foot">local only</span>
+    </footer>
+  </main>
+</body>
+</html>

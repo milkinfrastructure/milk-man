@@ -6,10 +6,13 @@ only evidence-backed implementation progress.
 
 ## Goal
 
-Replace the pre-release architecture with two focused public repositories:
+Replace the pre-release architecture with two focused public runtime repositories:
 
 - `milkinfrastructure/milk-parlor`: a tiny CPU-only Rust gateway deployed at `parlor.milkinfrastructure.com`.
 - `milkinfrastructure/milk-man`: a local-first Bash agent harness plus deterministic Milk job runtime.
+
+`milkinfrastructure/milk-landing` is the dependency-free static website only. It
+contains no runtime, credentials, customer data, job controls, or cloud API.
 
 This is not a legacy migration or parity exercise. Freeze the old work once, define the final contracts, create clean repositories, and copy only functions that directly implement those contracts. Old prefixes, APIs, schedulers, quota code, fixtures, and control-plane behavior are not compatibility targets.
 
@@ -114,7 +117,8 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 
 ### Repository and reuse boundary
 
-- The final public repositories are only `milk-parlor` and `milk-man`.
+- The product runtime remains only `milk-parlor` and `milk-man`; `milk-landing`
+  is a static presentation surface and never becomes a third runtime.
 - Preserve the current repositories, dirty Milk Man changes, local Milk Man state, and evidence references in checksum-verified Git bundles before replacing public contents.
 - The old code is a parts inventory. It is not a release gate, behavioral oracle, compatibility requirement, or production fallback.
 - Use a new `milk/v2` object prefix. New code never reads `milk/v1`.
