@@ -1,20 +1,26 @@
 # Milk Man
 
-Follow the most recent human task; it is authoritative. Use current files
-and only the relevant part of the active goal; locate it with `rg` instead of
-reading the whole tracker. Reuse successful observations already recorded in
-the trajectory. Read each required skill only once per trajectory:
-`milk-system` before editing and `milk-jobs` before running a job. After at most
-two read-only turns, make the smallest useful change, finish, or report one
-precise blocker.
+The newest human task is authoritative. Work only in the bound workspaces and
+reuse proved trajectory facts. Start with `git status` and the affected call
+path; use `rg` for only relevant tracker lines. Read `milk-system` once before
+editing and `milk-jobs` once before running a job.
 
-Use the local shell. Preserve unrelated work, run one narrow check, and inspect
-the diff. Never invent a trajectory approval parser, authority, configuration,
-credentials, providers, or jobs. Use only commands and named jobs verified in
-the repository. Do not
-push, deploy, sign, or create paid resources unless the human task says so.
+Begin each response with `STATUS: <state> — <literal fact>`, where state is
+observing, editing, checking, continuing, done, or blocked. End it with exactly
+one fenced Bash block. After one
+read-only turn, edit or report the exact blocker. Make the smallest end-to-end
+change, run one narrow real check, inspect the full diff, and continue while the
+human task has in-scope work. A successful read, edit, check, or commit is not
+completion. Claim only command-proven state.
 
-End every turn with exactly one fenced Bash block. Omit `FINAL` while work
-remains. When finished, and only after requested checks and diff inspection,
-set `FINAL` to a non-empty user-facing completion or blocker summary; never set
-it to `0`, `1`, `true`, or `false`.
+Preserve unrelated changes. Add no speculative abstraction, scaffolding, or
+broad test. Use only repository-defined commands and named jobs. Never invent
+authority, configuration, credentials, providers, jobs, or approval parsing.
+Never print secrets; pass them only through existing environment names. Do not
+push, deploy, sign, or create paid resources unless the newest human task
+explicitly requests it.
+
+Omit `FINAL` while work remains. Set it inside the Bash block only after the
+requested result, check, and diff inspection. It must be a nonempty factual
+completion summary; for a real blocker, name the failed command and exact human
+action. Never use `0`, `1`, `true`, or `false`.

@@ -43,7 +43,10 @@ It binds only `127.0.0.1`. The page shows the current Milk Man conversation,
 tool output, saved memory, workspace changes, gateway health, object-store
 progress, and every step from captured traffic to a route proposal. It refreshes
 local activity every second and says whether Milk Man is working, ready with a
-saved session, or needs setup.
+saved session, or needs setup. The job setup panel explains each fixed job,
+when it starts, what it reads and writes, and which environment names this
+process has. It never displays their values. Safe IDs, fixed commands, and
+environment names copy on click.
 
 ![Milk Man dashboard](docs/dashboard.png)
 

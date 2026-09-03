@@ -14,6 +14,7 @@ import time
 import urllib.request
 from urllib.parse import urlsplit
 
+from . import config
 from .state import SCHEMA as MAN_STATE_SCHEMA, validate_trajectory, workspace_set
 from .summary import thresholds
 from .store import open_store, settings_from_environment
@@ -349,6 +350,39 @@ def _summary_chain(store, settings, pointer: object, limit: int) -> list[dict]:
     return sorted(values, key=lambda value: value["capture_count"])
 
 
+def _job_contract() -> dict:
+    try:
+        runtime = config.load()
+    except config.ConfigError:
+        return {"jobs": [], "operate_order": [], "error": "job configuration unavailable"}
+    order = (*runtime.operate_order, *(name for name in runtime.jobs if name not in runtime.operate_order))
+    jobs = []
+    for name in order:
+        job = runtime.job(name)
+        required = []
+        optional = []
+        for binding in job.bindings:
+            required.extend(config.BINDING_ENVIRONMENTS[binding]["required"])
+            optional.extend(config.BINDING_ENVIRONMENTS[binding]["optional"])
+        optional.extend((job.trigger.get("values_env"), job.timeout_env))
+        required = list(dict.fromkeys(required))
+        optional = list(dict.fromkeys(value for value in optional if value and value not in required))
+        jobs.append({
+            "name": name,
+            "trigger": job.trigger["kind"],
+            "command": f"bin/milk run {name}",
+            "automatic": name in runtime.operate_order,
+            "bindings": list(job.bindings),
+            "inputs": list(job.input_prefixes),
+            "outputs": list(job.output_prefixes),
+            "prompt": job.system_prompt,
+            "timeout": job.timeout_env,
+            "required": [{"name": value, "set": bool(os.environ.get(value))} for value in required],
+            "optional": [{"name": value, "set": bool(os.environ.get(value))} for value in optional],
+        })
+    return {"jobs": jobs, "operate_order": list(runtime.operate_order), "error": None}
+
+
 def _gateway_health() -> dict:
     raw = os.environ.get("MILK_PARLOR_BASE_URL", "")
     if not raw:
@@ -476,6 +510,7 @@ class Handler(BaseHTTPRequestHandler):
                     "man": _man_state(),
                     "milk": _milk_status(),
                     "gateway": _gateway_health(),
+                    "contract": _job_contract(),
                 },
                 sort_keys=True,
                 separators=(",", ":"),

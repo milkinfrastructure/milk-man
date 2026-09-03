@@ -2,16 +2,54 @@ const el = id => document.getElementById(id);
 const short = value => typeof value === "string" ? value.slice(0, 8) : "waiting";
 const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const stages = [
-  ["traffic", "traffic", "Parlor stores completed request and response pairs."],
-  ["summary", "summary", "Milk Man measures traffic and classifies a bounded sample at each configured count."],
-  ["readiness", "ready", "Fixed checks decide whether the data can generate evaluations."],
-  ["eval", "evals", "The teacher creates the configured number of cases per source conversation."],
-  ["dataset", "dataset", "Cases are separated into train, development, calibration, and sealed sets."],
-  ["training", "student", "Qwen3.5-0.8B is trained from the prepared dataset."],
-  ["evaluation", "winner", "Comparable model versions are scored and the winner is checked on sealed data."],
-  ["candidate", "candidate", "One provider serves the selected artifact."],
-  ["proposal", "route", "An unsigned proposal waits for an operator signature."],
+  ["traffic", "collect", "Milk Parlor stores eligible completed request and response pairs after serving them.", "Milk Parlor", "each eligible completed gateway response"],
+  ["summary", "understand", "Milk Man measures every new capture and classifies a bounded sample.", "summary", "a configured conversation threshold is crossed"],
+  ["readiness", "decide", "Fixed checks decide whether enough independent, usable data exists.", "summary", "each summary checkpoint completes"],
+  ["eval", "make evals", "The teacher creates the configured number of new cases from admitted source conversations.", "eval", "the readiness record says ready"],
+  ["dataset", "separate data", "Cases are separated into training, development, calibration, and sealed sets.", "dataset", "the evaluation revision is complete"],
+  ["training", "train student", "A temporary GPU trains the pinned Qwen3.5-0.8B student.", "train", "the dataset has enough training examples"],
+  ["evaluation", "compare versions", "The same development data scores comparable model versions before one sealed check.", "evaluate", "the training record is complete"],
+  ["candidate", "prepare candidate", "One explicitly chosen provider prepares the selected artifact for serving.", "route-propose-baseten or route-propose-modal", "evaluation has selected a winner"],
+  ["proposal", "route proposal", "Milk Man writes an unsigned proposal; a person must approve and sign it.", "operator action", "a candidate has been prepared"],
 ];
+const jobCopy = {
+  "summary": "Count new traffic, classify a bounded sample, save a checkpoint, and decide readiness.",
+  "eval": "Use a teacher model to create evaluation cases from admitted source conversations.",
+  "dataset": "Separate evaluation cases and add teacher targets for student training.",
+  "train": "Train the pinned Qwen3.5-0.8B student on Baseten.",
+  "evaluate": "Compare the trained model versions on the same development and sealed data.",
+  "route-propose-baseten": "Prepare the chosen model on Baseten and write an unsigned route proposal.",
+  "route-propose-modal": "Prepare the chosen model on Modal and write an unsigned route proposal.",
+  "gpu-reconcile-modal": "Check or finish an existing Modal provider operation without choosing another provider.",
+  "inference-ensure": "Create or reuse Milk Man's reviewed Modal inference controller.",
+  "inference-status": "Read the controller state without changing it.",
+  "inference-stop": "Stop the tracked controller and verify it reached zero compute.",
+};
+const triggerCopy = {
+  manual: "only when explicitly requested",
+  crossed_capture_threshold: "a configured conversation checkpoint is crossed",
+  readiness: "the latest readiness record says evaluation generation may begin",
+  eval_ready: "the evaluation revision is complete",
+  dataset_ready: "the separated dataset is ready",
+  training_ready: "the training record is complete",
+  evaluation_ready: "evaluation has selected a winner",
+  provider_frontier: "a tracked provider operation needs reconciliation",
+};
+const prefixCopy = {
+  c: "captured conversations", s: "summary checkpoints", l: "semantic labels",
+  readiness: "readiness decisions", e: "evaluation cases", d: "datasets",
+  t: "training jobs", m: "model records", v: "model comparisons",
+  p: "route proposals", j: "job receipts", status: "current run status",
+};
+const nextCopy = {
+  summary: "wait for traffic or write the next summary",
+  eval: "generate evaluation cases",
+  dataset: "prepare the separated dataset",
+  train: "train the student model",
+  evaluate: "compare the trained versions",
+  "select-route-provider": "choose one candidate-serving provider",
+  "operator-sign-route": "waiting for the operator to review and sign the proposal",
+};
 
 function node(tag, className, text) {
   const value = document.createElement(tag);
@@ -20,11 +58,29 @@ function node(tag, className, text) {
   return value;
 }
 
+function copyButton(display, value, label) {
+  const button = node("button", "copy", display);
+  button.type = "button";
+  button.title = "Copy " + label;
+  button.setAttribute("aria-label", "Copy " + label + ": " + display);
+  button.addEventListener("click", async event => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(value);
+      el("copy-state").textContent = "copied " + label;
+    } catch {
+      el("copy-state").textContent = "copy failed · select the text instead";
+    }
+  });
+  return button;
+}
+
 function rows(target, values, empty) {
   target.replaceChildren();
   if (!values.length) return target.append(node("p", "empty", empty));
   for (const value of values) {
     const row = node("div", "row");
+    if (value.help) row.title = value.help;
     row.append(node("b", "", value.title));
     if (value.detail) row.append(node("small", value.class || "", value.detail));
     target.append(row);
@@ -65,11 +121,13 @@ function series(value, format = item => number(item).toLocaleString(), showTail 
   return showTail ? result + " · about 95% ≤" + format(value.p95) : result;
 }
 
-function summaryRow(label, value, help) {
+function summaryRow(label, value, help, copiedValue) {
   const row = node("div", "summary-row");
   const heading = node("b", help ? "has-help" : "", label);
   if (help) heading.title = help;
-  row.append(heading, node("span", "", value));
+  const result = node("span");
+  result.append(copiedValue ? copyButton(value, copiedValue, label) : document.createTextNode(value));
+  row.append(heading, result);
   return row;
 }
 
@@ -136,7 +194,9 @@ function renderProgress(progress = {}) {
       card.open = opened.has(checkpoint.uuid);
       const disclosure = node("summary", "checkpoint-head");
       disclosure.title = "Open the structured summary for this checkpoint.";
-      disclosure.append(node("i", "pin"), document.createTextNode(point.toLocaleString()), node("small", "", "complete · " + short(checkpoint.uuid)));
+      const identity = node("small", "", "complete · ");
+      identity.append(copyButton(short(checkpoint.uuid), checkpoint.uuid, "summary ID"));
+      disclosure.append(node("i", "pin"), document.createTextNode(point.toLocaleString()), identity);
       const quality = checkpoint.quality || {};
       const counters = checkpoint.counters || {};
       const traffic = checkpoint.traffic || {};
@@ -180,10 +240,11 @@ function renderProgress(progress = {}) {
 
 function renderLoop(status) {
   const value = status || {};
+  const opened = new Set(Array.from(el("rail").querySelectorAll("details[open]"), item => item.dataset.stage));
   const done = {
     traffic: number(value.capture_count) > 0,
     summary: Boolean(value.summary),
-    readiness: Boolean(value.readiness),
+    readiness: value.readiness?.ready === true,
     eval: Boolean(value.eval) && !value.eval_generation,
     dataset: Boolean(value.dataset),
     training: Boolean(value.training),
@@ -199,20 +260,120 @@ function renderLoop(status) {
     dataset: value.dataset ? "revision " + short(value.dataset.uuid) : "waiting",
     training: value.training ? "model " + short(value.training.uuid) : "waiting",
     evaluation: value.evaluation ? value.evaluation.winner_branch + " selected" : "waiting",
-    candidate: value.candidate ? "artifact " + short(value.candidate.uuid) : "zero",
-    proposal: value.proposal ? "ready for operator" : value.next_action || "waiting",
+    candidate: value.candidate ? "prepared · " + short(value.candidate.uuid) : "waiting",
+    proposal: value.proposal ? "awaiting operator signature" : nextCopy[value.next_action] || value.next_action || "waiting",
+  };
+  const records = {
+    summary: value.summary?.uuid,
+    readiness: value.readiness?.uuid,
+    eval: value.eval?.uuid || value.eval_generation?.uuid,
+    dataset: value.dataset?.uuid,
+    training: value.training?.uuid,
+    evaluation: value.evaluation?.uuid,
+    candidate: value.candidate?.uuid,
+    proposal: value.proposal?.uuid,
   };
   let marked = false;
   el("rail").replaceChildren();
-  stages.forEach(([key, label, help], index) => {
-    const card = node("div", "stage has-help");
+  stages.forEach(([key, label, help, job, startsWhen], index) => {
+    const card = node("details", "stage");
+    card.dataset.stage = key;
+    card.open = opened.has(key);
     card.title = help;
     card.setAttribute("aria-label", label + ". " + help + " Current state: " + notes[key]);
     if (done[key]) card.classList.add("done");
     else if (!marked) { card.classList.add("next"); marked = true; }
-    card.append(node("b", "", String(index + 1).padStart(2, "0")), node("h2", "", label), node("p", "", notes[key]));
+    const heading = node("summary", "stage-head");
+    heading.append(node("b", "", String(index + 1).padStart(2, "0")), node("i", "pin"), node("strong", "", label), node("small", "", notes[key]));
+    const body = node("div", "stage-body");
+    body.append(
+      node("p", "", help),
+      summaryRow("job", job),
+      summaryRow("starts when", startsWhen)
+    );
+    if (records[key]) body.append(summaryRow("record", short(records[key]), "The first eight characters of the stored record UUID.", records[key]));
+    card.append(heading, body);
     el("rail").append(card);
   });
+}
+
+function renderRun(status = {}) {
+  const profile = status.profile || "unknown";
+  const badge = el("run-profile");
+  badge.textContent = profile.toUpperCase() + " RUN";
+  badge.title = profile === "mechanics"
+    ? "A mechanics run proves the parts connect. It does not prove model quality or production readiness."
+    : profile === "production"
+      ? "A production run uses the production traffic and readiness policy for this scope."
+      : "The current scope profile is not known.";
+  el("run-now").textContent = nextCopy[status.next_action] || String(status.next_action || "waiting for object memory").replaceAll("-", " ");
+  const scope = status.scope_id || "";
+  const scopeNode = el("run-scope");
+  scopeNode.replaceChildren(scope ? document.createTextNode("scope ") : document.createTextNode("scope unknown"));
+  if (scope) scopeNode.append(copyButton(short(scope), scope, "scope ID"));
+  scopeNode.title = scope || "No scope is configured.";
+}
+
+function environmentList(label, values, optional = false) {
+  const section = node("section", "environment");
+  section.append(node("b", "", label));
+  if (!values.length) {
+    section.append(node("small", "", "none"));
+    return section;
+  }
+  const list = node("div", "env-list");
+  for (const value of values) {
+    const item = node("span", "env " + (value.set ? "set" : "missing"));
+    item.title = (value.set ? "Set" : "Not set") + " in this dashboard process. The value is never shown.";
+    item.append(node("i", "pin"), copyButton(value.name, value.name, "environment name"), node("small", "", value.set ? "set" : optional ? "unset" : "missing"));
+    list.append(item);
+  }
+  section.append(list);
+  return section;
+}
+
+function renderContract(contract = {}) {
+  const target = el("jobs");
+  const opened = new Set(Array.from(target.querySelectorAll("details.job[open]"), item => item.dataset.job));
+  const controls = new Set(Array.from(target.querySelectorAll("details.controls[open]"), item => item.dataset.job));
+  target.replaceChildren();
+  if (contract.error) {
+    target.append(node("p", "empty", contract.error));
+    return;
+  }
+  for (const job of contract.jobs || []) {
+    const missing = (job.required || []).filter(value => !value.set);
+    const card = node("details", "job " + (missing.length ? "needs-config" : "configured"));
+    card.dataset.job = job.name;
+    card.open = opened.has(job.name);
+    const heading = node("summary", "job-head");
+    heading.title = jobCopy[job.name] || "A reviewed Milk job.";
+    heading.append(
+      node("i", "pin"),
+      node("b", "", job.name),
+      node("small", "", missing.length ? "missing " + missing.length + " required name" + (missing.length === 1 ? "" : "s") : "required names set")
+    );
+    const body = node("div", "job-body");
+    body.append(node("p", "", jobCopy[job.name] || "A reviewed Milk job."));
+    const facts = node("div", "facts");
+    facts.append(
+      summaryRow("starts when", triggerCopy[job.trigger] || String(job.trigger || "manual").replaceAll("_", " ")),
+      summaryRow("run", job.command, "Run this exact reviewed job explicitly.", job.command),
+      summaryRow("schedule", job.automatic ? "checked by bin/milk operate --once" : "run explicitly"),
+      summaryRow("reads", (job.inputs || []).map(value => prefixCopy[value] || value).join(" · ") || "no object inputs"),
+      summaryRow("writes", (job.outputs || []).map(value => prefixCopy[value] || value).join(" · ") || "no object outputs"),
+      summaryRow("prompt", job.prompt || "deterministic code only", job.prompt ? "The repository-owned system prompt used by this job." : "This job uses deterministic code and no model prompt.", job.prompt || undefined),
+      summaryRow("time limit", job.timeout || "not configured", "Environment name controlling the job timeout.", job.timeout || undefined)
+    );
+    body.append(facts, environmentList("required environment", job.required || []));
+    const optional = node("details", "controls");
+    optional.dataset.job = job.name;
+    optional.open = controls.has(job.name);
+    optional.append(node("summary", "", "optional controls + defaults"), environmentList("optional environment", job.optional || [], true));
+    body.append(optional);
+    card.append(heading, body);
+    target.append(card);
+  }
 }
 
 let activityKey = "";
@@ -221,7 +382,12 @@ function renderMan(man) {
   const state = connection === "detached" ? "ready" : connection;
   const labels = { attached: "Milk Man working · output live", discovered: "Milk Man working outside this page", ready: "Milk Man ready · saved session", missing: "Milk Man needs setup" };
   light("man", state, (labels[state] || labels.missing) + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
-  rows(el("workspaces"), man.workspaces.map(workspace => ({ title: workspace.name + " · " + (workspace.head || "no git"), detail: workspace.changes.length ? workspace.changes.join("\n") : workspace.path, class: workspace.changes.length ? "changes" : "path" })), "no workspaces");
+  el("conversation-state").textContent = man.active ? "working" : man.trajectory_id ? "ready" : "setup needed";
+  rows(el("workspaces"), man.workspaces.map(workspace => ({
+    title: workspace.name + " · " + (workspace.head || "no git"),
+    detail: workspace.changes.length ? workspace.changes.length + " changed file" + (workspace.changes.length === 1 ? "" : "s") + "\n" + workspace.changes.join("\n") : "clean · " + workspace.path,
+    class: workspace.changes.length ? "changes" : "path",
+  })), "no workspaces");
   rows(el("memory"), man.memory.map(memory => ({ title: memory.ts || "memory", detail: memory.content })), "no saved memory");
 
   const target = el("activity");
@@ -297,12 +463,15 @@ function renderCloud(data) {
   light("store", milk.error ? "down" : milk.missing && milk.missing.length ? "detached" : "up", milk.error ? "object store unavailable" : milk.missing && milk.missing.length ? "object store not configured" : "object store active");
   el("checked").textContent = "status updated " + new Date(data.now).toLocaleString();
   const status = milk.status || {};
+  renderRun(status);
   renderProgress(milk.progress);
   renderLoop(status);
+  renderContract(data.contract || {});
   rows(el("object"), milk.error ? [{ title: "unavailable", detail: milk.error }] : milk.missing.length ? [{ title: "not configured", detail: milk.missing.join("\n") }] : [
-    { title: status.next_action || "waiting", detail: number(milk.progress.capture_count) + " captured · " + number(milk.progress.processed_count) + " summarized" },
-    { title: status.profile || "scope", detail: status.scope_id || "" },
-    { title: "gateway since restart", detail: number(gateway.observed) + " observed · " + number(gateway.persisted) + " persisted · " + number(gateway.dropped) + " dropped" },
+    { title: "next job", detail: nextCopy[status.next_action] || String(status.next_action || "waiting").replaceAll("-", " "), help: "The next deterministic action implied by the stored run status." },
+    { title: "run type", detail: status.profile === "mechanics" ? "mechanics · wiring proof only" : status.profile || "unknown", help: "Mechanics traffic proves that components connect; it does not qualify a production route." },
+    { title: "scope", detail: status.scope_id ? short(status.scope_id) : "unknown", help: status.scope_id || "No scope is configured." },
+    { title: "capture writer", detail: number(gateway.observed) + " received · " + number(gateway.persisted) + " stored · " + number(gateway.dropped) + " dropped", help: "Milk Parlor totals since its current process started." },
   ], "waiting for status");
   el("foot").textContent = "local only · remote status updated " + data.now;
 }

@@ -21,17 +21,32 @@
       </div>
     </header>
 
-    <details class="chat" aria-label="Milk Man conversation" open>
-      <summary>Milk Man conversation</summary>
+    <p class="purpose">Milk turns a small sample of model traffic into summaries, evaluations, training data, and a candidate route. Milk Man runs the work; a person approves delivery.</p>
+    <div class="run-strip" aria-label="Current Milk run">
+      <b id="run-profile">finding run</b>
+      <span><small>next</small><strong id="run-now">reading object memory</strong></span>
+      <small id="run-scope">scope unknown</small>
+    </div>
+    <nav class="toolbar" aria-label="Dashboard sections">
+      <a href="#talk">talk</a>
+      <a href="#loop">system</a>
+      <a href="#jobs-panel">jobs</a>
+      <a href="#summaries">summaries</a>
+    </nav>
+    <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, or environment name to copy it</small>
+
+    <details class="chat" id="talk" aria-label="Milk Man conversation" open>
+      <summary title="This resumes the saved development session. It does not directly run production jobs or sign routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
+      <p class="section-help">Give the local builder one instruction. It resumes the same code, tools, saved decisions, and conversation while this page prints its work.</p>
       <div class="messages" id="activity">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>
       <form id="run-form">
-        <label class="prompt-label" for="prompt">next instruction</label>
-        <textarea id="prompt" name="prompt" maxlength="16384" placeholder="Tell Milk Man what to do next" required></textarea>
-        <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send instruction</button>
+        <label class="prompt-label" for="prompt">next instruction for the local builder</label>
+        <textarea id="prompt" name="prompt" maxlength="16384" placeholder="Example: inspect the next unfinished goal, make one minimal fix, check the diff, and continue." required></textarea>
+        <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send to Milk Man</button>
       </form>
-      <p class="prompt-state" id="prompt-state" role="status" aria-live="polite">Command/Control+Enter sends · Enter makes a new line · one instruction may wait.</p>
+      <p class="prompt-state" id="prompt-state" role="status" aria-live="polite"><kbd>Command / Control + Enter</kbd> sends · Enter makes a new line · one instruction may wait.</p>
     </details>
 
     <div class="status-line">
@@ -43,35 +58,41 @@
     <div class="ticks" id="ticks" aria-label="Configured summary thresholds"></div>
     <small class="checked" id="checked">never checked</small>
 
-    <details open>
-      <summary>milk loop</summary>
+    <details id="loop" open>
+      <summary title="Follow one captured conversation through every stored step.">from traffic to a better model</summary>
       <div class="delivery-line" aria-label="Milk system path">
-        <span class="has-help" title="Receives OpenAI-compatible traffic, routes it, and saves completed request and response pairs."><b>Milk Parlor</b><small>capture + route</small></span>
+        <span class="has-help" title="Your app calls this OpenAI-compatible gateway. It forwards the request and saves an eligible completed request and response pair after delivery."><b>Milk Parlor</b><small>serves + captures</small></span>
         <i aria-hidden="true">→</i>
-        <span class="has-help" title="Keeps scoped captures, checkpoints, datasets, model records, and route proposals in the selected object store."><b>cold store</b><small>object memory</small></span>
+        <span class="has-help" title="The selected local or S3-compatible store holds captures and every derived checkpoint for one scope."><b>object memory</b><small>remembers each step</small></span>
         <i aria-hidden="true">→</i>
-        <span class="has-help" title="Watches thresholds and runs the named summary, evaluation, training, and provider jobs."><b>Milk Man</b><small>fixed jobs</small></span>
+        <span class="has-help" title="The local harness watches thresholds and runs only reviewed named jobs."><b>Milk Man</b><small>chooses a fixed job</small></span>
         <i aria-hidden="true">→</i>
-        <span class="has-help" title="Hosted inference creates labels and evaluations; temporary GPUs train and serve the student."><b>teacher + student</b><small>inference + GPU</small></span>
+        <span class="has-help" title="A high-intelligence model creates labels and examples. Temporary GPUs train and compare Qwen3.5-0.8B."><b>teacher + student</b><small>creates + learns</small></span>
         <i aria-hidden="true">→</i>
-        <span class="has-help" title="An operator signs the chosen route. Milk Parlor applies canary, fallback, rollback, or zero route."><b>signed delivery</b><small>back to Parlor</small></span>
+        <span class="has-help" title="Milk Man writes an unsigned proposal. Only the operator signs it; Milk Parlor verifies the signature before routing."><b>signed delivery</b><small>operator approved</small></span>
       </div>
       <div class="rail" id="rail"></div>
     </details>
-    <details>
-      <summary>summary checkpoints</summary>
+    <details class="jobs" id="jobs-panel">
+      <summary title="See every reviewed Milk job and whether this dashboard process has its required environment names.">job setup</summary>
+      <p class="section-help">Environment names only. Secret values never leave this process. A configured job does not run by itself.</p>
+      <div class="job-list" id="jobs"></div>
+    </details>
+    <details id="summaries">
+      <summary title="Open a saved checkpoint to see aggregate traffic statistics and classifications.">what Milk learned</summary>
       <div class="milestones" id="milestones"></div>
     </details>
     <details>
-      <summary>object memory</summary>
+      <summary title="Current scope, next stored action, and capture-writer totals.">run + object memory</summary>
+      <p class="section-help">Every run is isolated by a scope ID. Derived records stay linked to the captures and earlier checkpoints that produced them.</p>
       <div class="rows" id="object"></div>
     </details>
     <details>
-      <summary>workspaces</summary>
+      <summary title="Exact local Git workspaces available to the supervised development harness.">code Milk Man can edit</summary>
       <div class="rows" id="workspaces"></div>
     </details>
     <details>
-      <summary>saved memory</summary>
+      <summary title="Small durable notes carried into later turns for this exact workspace set.">saved decisions</summary>
       <div class="rows" id="memory"></div>
     </details>
 
