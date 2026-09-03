@@ -970,6 +970,7 @@ Candidate credentials remain deployment environment bindings. Do not implement h
 Milk Man serves one local raw HTML/CSS/JavaScript page from `bin/man dashboard`:
 
 - bind only to `127.0.0.1` and read the current bounded trajectory, memory and exact workspace revisions;
+- accept one same-origin bounded development prompt, resume the exact recorded workspace set, and queue at most one follow-up until an active turn exits;
 - reuse `milk_v2.store` and `MILK_SUMMARY_THRESHOLDS`; do not add another object-store client, database, cache or status writer;
 - make cloud reads only on page load or the explicit refresh button; the three-second watch loop reads local Milk Man state only;
 - probe Parlor's public `/healthz` through optional `MILK_PARLOR_BASE_URL` and show a square active/degraded/down light plus the last-checked time;
@@ -979,7 +980,7 @@ Milk Man serves one local raw HTML/CSS/JavaScript page from `bin/man dashboard`:
 - apply Susan Kare's design discipline with crisp square pixels, immediate hierarchy, a restrained palette and no decorative motion;
 - use no frontend framework, package manager, asset request, build step or analytics.
 
-The page is read only. It never launches jobs, mutates routes, exposes environment values, or returns raw customer traffic or semantic samples. Parlor retains its public `/healthz` and authenticated `/api/status` for remote scope status; a hosted gateway cannot and must not expose Milk Man's local files or development trajectory.
+Cloud data remains read only in this page. The localhost prompt starts only the supervised development harness; it never directly launches a Milk job, mutates a route, exposes environment values, or returns raw customer traffic or semantic samples. Parlor retains its public `/healthz` and authenticated `/api/status` for remote scope status; a hosted gateway cannot and must not expose Milk Man's local files or development trajectory.
 
 ## Images and deployment
 
@@ -1067,6 +1068,7 @@ Progress 2026-09-01:
 - [x] A fresh local `gpt-5.6-sol` max-reasoning trajectory recovered from an overlong read-only attempt, reviewed exactly the requested three-file diff, ran narrow syntax and diff checks, and retained commit `12984457a` in two turns without invoking a Milk job or cloud provider.
 - [x] The development system prompt is 711 bytes, the 93 KB tracker is no longer injected, automatic trajectory and memory context default to 32 KB and 4 KB, and the direct OpenAI driver defaults to `gpt-5.6-sol` at maximum reasoning. A supervised Milk Man trajectory reviewed, corrected, checked, and committed the seven-file v24 change as `f0977e738`.
 - [x] A dependency-free local dashboard now shows bounded Milk Man trajectory activity, memory, exact workspace revisions, and the object-memory pipeline. It binds only to `127.0.0.1`, reuses `milk_v2.store`, performs one read of `status/current.json`, and exposes no environment values. Milk Man reviewed and committed the implementation as `203fab30e`; the browser proved working-to-idle state changes and live R2 counts.
+- [x] The localhost dashboard accepts a bounded prompt for the exact recorded workspaces and can hold one follow-up until the active turn exits. A live browser run moved from idle to working to idle, read both repository revisions in one maximum-reasoning turn, and made no file, job, provider or cloud changes.
 
 Owned:
 
@@ -1094,7 +1096,7 @@ Acceptance:
 
 Excluded:
 
-- Prime, persistent thinkers, messaging, dashboard mutation controls, deployment, provider jobs and production scheduling.
+- Prime, persistent thinkers, messaging, remote dashboard controls, deployment, provider jobs and production scheduling.
 
 ### [x] P2 — Milk Parlor direct request path
 

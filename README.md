@@ -42,7 +42,10 @@ bin/man dashboard
 
 It binds only `127.0.0.1`, reads Milk Man's current trajectory, memory, and
 workspace state, and reads `status/current.json` through the configured object
-store. It does not invoke a job or provider.
+store. Its prompt box starts or resumes the exact recorded workspace set with
+the provider environment inherited by the dashboard. One follow-up may wait
+for the active turn; a second is rejected. It never exposes environment values
+or grants push, deploy, signing, or merge authority.
 
 `MILK_PARLOR_BASE_URL` enables its public gateway-health light.
 `MILK_SUMMARY_THRESHOLDS` drives the data progress marks and checkpoint
