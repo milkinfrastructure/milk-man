@@ -1001,12 +1001,12 @@ GPU images:
 - no model weights;
 - model revisions hydrated into Modal Volumes or Baseten-native mounts and identified by digest.
 
-GitHub Actions:
+Image release:
 
-- builds and publishes only affected `linux/amd64` images;
-- uses registry-backed BuildKit caching;
-- emits immutable image digests, provenance and SBOM;
-- never runs Milk reconciliation, provider jobs, deployment, traffic generation, or paid work.
+- no GitHub Actions run from either repository;
+- a reviewed local or external builder publishes only affected `linux/amd64` images with registry-backed BuildKit caching;
+- every release records immutable image digests and source revision;
+- image building never runs Milk reconciliation, provider jobs, deployment, traffic generation, or paid work.
 
 Cloud deployment:
 
@@ -1533,7 +1533,7 @@ Do not add:
 - synthetic traffic in production qualification;
 - raw prompt archives;
 - broad unit/fixture suites;
-- GitHub Actions runtime reconciliation;
+- GitHub Actions;
 - self-signing, self-merging or self-deploying development agents.
 
 ## Completion definition
