@@ -74,27 +74,19 @@ textarea { min-height: 5.2rem; resize: vertical; border: 0; padding: .85rem; bac
 textarea::placeholder { color: var(--white); }
 textarea:focus { border-left: 3px solid var(--white); }
 
-button,
 summary,
 footer a {
-  border: 1px solid var(--white);
   background: var(--black);
   color: var(--white);
   text-decoration: none;
   cursor: pointer;
 }
 
-button { padding: .7rem 1rem; }
-button:hover,
-button:focus-visible,
-summary:hover,
-summary:focus-visible,
-footer a:hover,
-footer a:focus-visible { background: var(--white); color: var(--black); outline: 0; }
+button { background: var(--black); color: var(--white); cursor: pointer; }
+footer a { border: 2px outset var(--white); }
 button:active,
-summary:active,
-footer a:active { transform: translate(2px, 2px); }
-button:disabled { border-color: var(--white); background: var(--white); color: var(--black); cursor: wait; }
+footer a:active { border-style: inset; }
+button:disabled { cursor: wait; }
 
 .prompt-state { min-height: 1.5rem; margin: 0; padding: .35rem .75rem; border-top: 1px solid var(--white); }
 
