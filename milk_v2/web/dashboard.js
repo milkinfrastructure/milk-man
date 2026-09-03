@@ -403,11 +403,16 @@ function renderContract(contract = {}) {
 
 let activityKey = "";
 function renderMan(man) {
-  const connection = man.connection || (man.active ? "discovered" : man.trajectory_id ? "detached" : "missing");
-  const state = connection === "detached" ? "ready" : connection;
-  const labels = { attached: "Milk Man working · output live", discovered: "Milk Man working outside this page", ready: "Milk Man ready · saved session", missing: "Milk Man needs setup" };
-  light("man", state, (labels[state] || labels.missing) + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
-  el("conversation-state").textContent = man.active ? "working" : man.trajectory_id ? "ready" : "setup needed";
+  const state = man.state || (man.active ? "working" : man.trajectory_id ? "idle" : "setup");
+  const labels = {
+    working: man.connection === "discovered" ? "Milk Man online · working outside this page" : "Milk Man online · working" + (man.queued ? " · next instruction queued" : ""),
+    queued: "Milk Man online · instruction queued",
+    failed: "Milk Man online · last turn failed",
+    idle: "Milk Man online · waiting",
+    setup: "Milk Man online · session setup needed",
+  };
+  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", (labels[state] || labels.setup) + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
+  el("conversation-state").textContent = state === "setup" ? "online · setup needed" : "online · " + state + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
   rows(el("workspaces"), man.workspaces.map(workspace => ({
     title: workspace.name + " · " + (workspace.head || "no git"),
     detail: workspace.changes.length ? workspace.changes.length + " changed file" + (workspace.changes.length === 1 ? "" : "s") + "\n" + workspace.changes.join("\n") : "clean · " + workspace.path,
@@ -483,10 +488,19 @@ async function startRun(event) {
 
 function renderCloud(data) {
   const gateway = data.gateway || {};
-  light("gateway", gateway.state || "detached", gateway.state === "up" ? "gateway active" : gateway.state === "degraded" ? "gateway degraded" : gateway.state === "down" ? "gateway unavailable" : "gateway not configured");
   const milk = data.milk || {};
-  light("store", milk.error ? "down" : milk.missing && milk.missing.length ? "detached" : "up", milk.error ? "object store unavailable" : milk.missing && milk.missing.length ? "object store not configured" : "object store active");
-  el("checked").textContent = "status updated " + new Date(data.now).toLocaleString();
+  const monitor = data.monitor || {};
+  if (monitor.error) {
+    light("gateway", "degraded", "gateway status unknown");
+    light("store", "degraded", "object-store status unknown");
+  } else {
+    light("gateway", gateway.state || "detached", gateway.state === "up" ? "gateway active" : gateway.state === "degraded" ? "gateway degraded" : gateway.state === "down" ? "gateway unavailable" : "gateway not configured");
+    light("store", milk.error ? "down" : milk.missing && milk.missing.length ? "detached" : "up", milk.error ? "object store unavailable" : milk.missing && milk.missing.length ? "object store not configured" : "object store active");
+  }
+  el("checked").textContent = (monitor.error ? "status watcher failed " : "status updated ") + new Date(data.now).toLocaleString();
+  const jobs = data.contract?.jobs || [];
+  const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
+  el("watch-state").textContent = "Milk Man stays online without model use while idle. It checks the gateway, saved object-store status, and job setup every " + number(monitor.interval_seconds) + " seconds; refresh below counts every capture. " + readyJobs + " of " + jobs.length + " jobs have their required environment names. Restart after changing environment values.";
   const status = milk.status || {};
   renderRun(status);
   renderProgress(milk.progress);
@@ -502,13 +516,13 @@ function renderCloud(data) {
 }
 
 let cloudLoading = false;
-async function refreshCloud() {
+async function refreshCloud(force = false) {
   if (cloudLoading) return;
   cloudLoading = true;
   el("refresh").disabled = true;
   el("refresh").textContent = "refreshing";
   try {
-    const response = await fetch("/api/state", { cache: "no-store" });
+    const response = await fetch(force ? "/api/state?refresh=1" : "/api/state", { cache: "no-store" });
     if (!response.ok) throw Error("status " + response.status);
     const data = await response.json();
     renderMan(data.man);
@@ -535,7 +549,7 @@ async function refreshLocal() {
   }
 }
 
-el("refresh").addEventListener("click", refreshCloud);
+el("refresh").addEventListener("click", () => refreshCloud(true));
 el("stage-scrubber").addEventListener("input", event => selectStage(number(event.target.value) - 1, true));
 document.querySelectorAll("[data-copy]").forEach(button => button.addEventListener("click", () => copyValue(button.dataset.copy, button.dataset.copyLabel)));
 el("run-form").addEventListener("submit", startRun);

@@ -26,6 +26,13 @@ RUN_PROCESS: subprocess.Popen | None = None
 PENDING_PROMPT: str | None = None
 PROCESS_LOG: deque[dict] = deque(maxlen=80)
 PROCESS_LOG_LOCK = threading.Lock()
+LAST_EXIT_CODE: int | None = None
+MONITOR_INTERVAL_SECONDS = 30
+MONITOR_LOCK = threading.Lock()
+MONITOR_REFRESH_LOCK = threading.Lock()
+MONITOR_STOP = threading.Event()
+MONITOR_STATE: dict | None = None
+LAST_EXACT_CAPTURE: tuple[str, int] | None = None
 
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 SECRET_ASSIGNMENT = re.compile(
@@ -133,9 +140,25 @@ def _man_state() -> dict:
     try:
         current, trajectory, memory = _current_state()
     except (OSError, ValueError, json.JSONDecodeError):
-        return {"active": False, "connection": "missing", "trajectory_id": None, "workspaces": [], "memory": [], "activity": []}
-    attached = RUN_PROCESS is not None and RUN_PROCESS.poll() is None
+        return {
+            "online": True,
+            "active": False,
+            "state": "setup",
+            "connection": "missing",
+            "queued": False,
+            "last_exit_code": LAST_EXIT_CODE,
+            "trajectory_id": None,
+            "workspaces": [],
+            "memory": [],
+            "activity": [],
+        }
+    with RUN_LOCK:
+        attached = RUN_PROCESS is not None and RUN_PROCESS.poll() is None
+        queued = PENDING_PROMPT is not None
+        last_exit_code = LAST_EXIT_CODE
     discovered = _active(trajectory)
+    active = attached or discovered
+    state = "working" if active else "queued" if queued else "failed" if last_exit_code not in (None, 0) else "idle"
     workspaces = []
     for value in current.get("workspaces", []):
         if not isinstance(value, dict) or not isinstance(value.get("path"), str):
@@ -165,8 +188,12 @@ def _man_state() -> dict:
     with PROCESS_LOG_LOCK:
         activity.extend(PROCESS_LOG)
     return {
-        "active": attached or discovered,
-        "connection": "attached" if attached else "discovered" if discovered else "detached",
+        "online": True,
+        "active": active,
+        "state": state,
+        "connection": "attached" if attached else "discovered" if discovered else "idle",
+        "queued": queued,
+        "last_exit_code": last_exit_code,
         "trajectory_id": current.get("trajectory_id"),
         "workspaces": workspaces,
         "memory": memories,
@@ -175,13 +202,14 @@ def _man_state() -> dict:
 
 
 def _spawn(current: dict, prompt: str) -> None:
-    global RUN_PROCESS
+    global LAST_EXIT_CODE, RUN_PROCESS
     command = [str(ROOT / "bin/man"), "develop", "--resume"]
     for workspace in current["workspaces"]:
         command.extend(["--workspace", f"{workspace['name']}={workspace['path']}"])
     command.extend(["--", prompt])
     with PROCESS_LOG_LOCK:
         PROCESS_LOG.clear()
+    LAST_EXIT_CODE = None
     RUN_PROCESS = subprocess.Popen(
         command,
         cwd=ROOT,
@@ -198,11 +226,16 @@ def _spawn(current: dict, prompt: str) -> None:
 
 
 def _read_process(process: subprocess.Popen) -> None:
+    global LAST_EXIT_CODE
     if process.stdout is None:
         return
     for line in process.stdout:
         content = _redact(line).rstrip()
         if content:
+            with RUN_LOCK:
+                current = RUN_PROCESS is process
+            if not current:
+                continue
             with PROCESS_LOG_LOCK:
                 PROCESS_LOG.append({
                     "type": "process-output",
@@ -211,6 +244,10 @@ def _read_process(process: subprocess.Popen) -> None:
                 })
     process.stdout.close()
     code = process.wait()
+    with RUN_LOCK:
+        if RUN_PROCESS is not process:
+            return
+        LAST_EXIT_CODE = code
     with PROCESS_LOG_LOCK:
         PROCESS_LOG.append({
             "type": "process-output",
@@ -423,7 +460,7 @@ def _gateway_health() -> dict:
         return {"state": "down", "observed": 0, "persisted": 0, "dropped": 0}
 
 
-def _milk_status() -> dict:
+def _milk_status(exact_inventory: bool) -> dict:
     required = ["MILK_SCOPE_ID", "MILK_STORE_KIND"]
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
@@ -432,12 +469,15 @@ def _milk_status() -> dict:
         settings = settings_from_environment()
         store = open_store(settings)
         points = thresholds(settings.profile)
-        captured = _capture_count(store, settings.scope_prefix + "c/")
+        captured = _capture_count(store, settings.scope_prefix + "c/") if exact_inventory else 0
         item = store.get(settings.scope_prefix + "status/current.json")
         value = json.loads(item.body)
         if not isinstance(value, dict) or value.get("schema_version") != "milk.status.v2":
             raise ValueError("invalid status")
         processed = value.get("processed_count", 0)
+        if not exact_inventory:
+            stored_capture_count = value.get("capture_count", processed)
+            captured = stored_capture_count if type(stored_capture_count) is int and stored_capture_count >= 0 else processed
         value = {**value, "capture_count": captured}
         return {
             "status": value,
@@ -474,6 +514,72 @@ def _milk_status() -> dict:
         return {"status": None, "progress": {}, "missing": [], "error": "object store unavailable"}
 
 
+def _refresh_monitor(exact_inventory: bool = False) -> dict:
+    global LAST_EXACT_CAPTURE, MONITOR_STATE
+    with MONITOR_REFRESH_LOCK:
+        checked_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        errors = []
+        try:
+            milk = _milk_status(exact_inventory)
+            status = milk.get("status") if isinstance(milk.get("status"), dict) else {}
+            progress = milk.get("progress") if isinstance(milk.get("progress"), dict) else {}
+            scope_id = status.get("scope_id")
+            capture_count = progress.get("capture_count")
+            if isinstance(scope_id, str) and type(capture_count) is int and capture_count >= 0:
+                if exact_inventory:
+                    LAST_EXACT_CAPTURE = (scope_id, capture_count)
+                elif LAST_EXACT_CAPTURE and LAST_EXACT_CAPTURE[0] == scope_id and LAST_EXACT_CAPTURE[1] > capture_count:
+                    capture_count = LAST_EXACT_CAPTURE[1]
+                    milk = {
+                        **milk,
+                        "status": {**status, "capture_count": capture_count},
+                        "progress": {**progress, "capture_count": capture_count},
+                    }
+        except Exception:
+            errors.append("object-store status")
+            milk = {"status": None, "progress": {}, "missing": [], "error": "status check failed"}
+        try:
+            gateway = _gateway_health()
+        except Exception:
+            errors.append("gateway status")
+            gateway = {"state": "down", "observed": 0, "persisted": 0, "dropped": 0}
+        try:
+            contract = _job_contract()
+        except Exception:
+            errors.append("job configuration")
+            contract = {"jobs": [], "operate_order": [], "error": "status check failed"}
+        snapshot = {
+            "schema_version": "milk.dashboard.v1",
+            "now": checked_at,
+            "monitor": {
+                "checked_at": checked_at,
+                "interval_seconds": MONITOR_INTERVAL_SECONDS,
+                "exact_inventory": exact_inventory,
+                "error": ", ".join(errors) if errors else None,
+            },
+            "milk": milk,
+            "gateway": gateway,
+            "contract": contract,
+        }
+        with MONITOR_LOCK:
+            MONITOR_STATE = snapshot
+        return snapshot
+
+
+def _monitor_state(refresh: bool = False) -> dict:
+    if refresh:
+        return _refresh_monitor(True)
+    with MONITOR_LOCK:
+        snapshot = MONITOR_STATE
+    return snapshot if snapshot is not None else _refresh_monitor()
+
+
+def _monitor() -> None:
+    while not MONITOR_STOP.is_set():
+        _refresh_monitor()
+        MONITOR_STOP.wait(MONITOR_INTERVAL_SECONDS)
+
+
 class Handler(BaseHTTPRequestHandler):
     def _local(self) -> bool:
         expected = f"127.0.0.1:{self.server.server_port}"
@@ -484,7 +590,8 @@ class Handler(BaseHTTPRequestHandler):
         if not self._local():
             self._send(403, "text/plain; charset=utf-8", b"forbidden\n")
             return
-        path = urlsplit(self.path).path
+        requested = urlsplit(self.path)
+        path = requested.path
         if path in ASSETS:
             content_type, source = ASSETS[path]
             try:
@@ -503,15 +610,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, "application/json", body)
             return
         if path == "/api/state":
+            snapshot = _monitor_state(requested.query == "refresh=1")
             body = json.dumps(
-                {
-                    "schema_version": "milk.dashboard.v1",
-                    "now": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                    "man": _man_state(),
-                    "milk": _milk_status(),
-                    "gateway": _gateway_health(),
-                    "contract": _job_contract(),
-                },
+                {**snapshot, "man": _man_state()},
                 sort_keys=True,
                 separators=(",", ":"),
             ).encode()
@@ -574,19 +675,25 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    global MONITOR_INTERVAL_SECONDS
     try:
         port = int(os.environ.get("MILK_DASHBOARD_PORT", "8765"))
+        MONITOR_INTERVAL_SECONDS = int(os.environ.get("MILK_DASHBOARD_REFRESH_SECONDS", "30"))
     except ValueError as error:
-        raise SystemExit("milk-man: MILK_DASHBOARD_PORT must be an integer") from error
+        raise SystemExit("milk-man: dashboard port and refresh interval must be integers") from error
     if not 1024 <= port <= 65535:
         raise SystemExit("milk-man: MILK_DASHBOARD_PORT must be in 1024..65535")
+    if not 5 <= MONITOR_INTERVAL_SECONDS <= 3600:
+        raise SystemExit("milk-man: MILK_DASHBOARD_REFRESH_SECONDS must be in 5..3600")
+    threading.Thread(target=_monitor, daemon=True).start()
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"milk-man dashboard: http://127.0.0.1:{port}", flush=True)
+    print(f"milk-man dashboard: http://127.0.0.1:{port} (watching every {MONITOR_INTERVAL_SECONDS}s)", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        MONITOR_STOP.set()
         server.server_close()
 
 

@@ -15,7 +15,7 @@
         <div><small>milkinfrastructure.com</small><h1>Milk Man</h1></div>
       </div>
       <div class="lights" aria-label="Live status">
-        <span class="has-help" title="Whether this page can run Milk Man and resume its saved local session."><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span>
+        <span class="has-help" title="The local Milk Man supervisor stays online while this dashboard command is running. Model work happens only after you send an instruction."><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span>
         <span class="has-help" title="Whether Milk Parlor is reachable and its background capture writer is healthy."><i class="signal" id="gateway-signal"></i><b id="gateway-state">gateway unchecked</b></span>
         <span class="has-help" title="Whether this Milk Man process can read the configured object store."><i class="signal" id="store-signal"></i><b id="store-state">object store unchecked</b></span>
       </div>
@@ -62,9 +62,9 @@
       <p class="section-help">Milk currently tunnels <code>POST /v1/responses</code> and <code>POST /v1/chat/completions</code> unchanged. Other OpenAI API endpoints are not claimed.</p>
     </details>
 
-    <details class="chat" id="talk" aria-label="Milk Man conversation">
+    <details class="chat" id="talk" aria-label="Milk Man conversation" open>
       <summary title="This resumes the saved development session. It does not directly run production jobs or sign routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
-      <p class="section-help">Give the local builder one instruction. It resumes the same code, tools, saved decisions, and conversation while this page prints its work.</p>
+      <p class="section-help" id="watch-state">Milk Man stays online, watches local configuration and system status, and starts model work only when you send an instruction.</p>
       <div class="messages" id="activity">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>

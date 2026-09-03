@@ -11,9 +11,9 @@ SDK: keep the official OpenAI client and set `OPENAI_BASE_URL` to
 operator-issued Milk key. Milk Parlor tunnels Responses and Chat Completions;
 Milk Man processes the completed traffic later.
 
-It does not need Docker, a local GPU, a database, a queue, or a background
-service. Settings and keys come from environment variables. When there is no
-work, it does not call a model or rent a GPU.
+It does not need Docker, a local GPU, a database, a queue, or a separate daemon.
+Settings and keys come from environment variables. When there is no work, it
+does not call a model or rent a GPU.
 
 ## What we have run
 
@@ -39,13 +39,23 @@ tiny, so it does not prove that the trained model is useful yet.
 
 Requirements: Bash, Python 3, Git, and `curl`. Docker is not required.
 
-Start the local dashboard:
+Start the local dashboard from the shell that contains the environment needed
+by the jobs you want to inspect or run:
 
 ```bash
 bin/man dashboard
 ```
 
-It binds only `127.0.0.1`. The page shows the current Milk Man conversation,
+It binds only `127.0.0.1`. That foreground process is the always-available local
+supervisor. It checks gateway health, object memory, and job environment names
+every 30 seconds even with no browser open. The background check reads the small
+saved status object; the refresh button performs an exact capture inventory. Set
+`MILK_DASHBOARD_REFRESH_SECONDS` to another value from 5 to 3600 seconds. The
+inherited environment is fixed for that process, so restart it after changing
+environment values. These checks are read-only; jobs still run through an
+explicit `bin/milk` invocation or an external scheduler.
+
+The page shows the current Milk Man conversation,
 tool output, saved memory, workspace changes, gateway health, object-store
 progress, and every step from captured traffic to a route proposal. It refreshes
 local activity every second and says whether Milk Man is working, ready with a
@@ -57,10 +67,13 @@ used with arrow keys to inspect any stored stage and its trigger.
 
 ![Milk Man dashboard](docs/dashboard.png)
 
-The prompt box starts or resumes the exact recorded workspace set with the
-provider environment inherited by the dashboard. One follow-up may wait for the
-active turn; a second is rejected. It never exposes environment values or
-grants push, deploy, signing, or merge authority.
+The prompt box starts a bounded model turn and resumes the exact recorded
+workspace set with the provider environment inherited by the dashboard. The
+turn exits when it finishes and the supervisor returns to idle; the trajectory
+and saved memory remain connected to the next message. One follow-up may wait
+for the active turn; a second is rejected. Idle monitoring makes no model call.
+The page never exposes environment values or grants push, deploy, signing, or
+merge authority.
 
 `MILK_PARLOR_BASE_URL` enables its public gateway-health light.
 `MILK_SUMMARY_THRESHOLDS` drives the data progress marks and checkpoint
