@@ -42,8 +42,10 @@ bin/man dashboard
 It binds only `127.0.0.1`. The page shows the current Milk Man conversation,
 tool output, saved memory, workspace changes, gateway health, object-store
 progress, and every step from captured traffic to a route proposal. It refreshes
-local activity every second and says whether the saved session is attached,
-running elsewhere, detached, or missing.
+local activity every second and says whether Milk Man is working, ready with a
+saved session, or needs setup.
+
+![Milk Man dashboard](docs/dashboard.png)
 
 The prompt box starts or resumes the exact recorded workspace set with the
 provider environment inherited by the dashboard. One follow-up may wait for the

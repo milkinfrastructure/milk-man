@@ -15,34 +15,47 @@
         <div><small>milkinfrastructure.com</small><h1>Milk Man</h1></div>
       </div>
       <div class="lights" aria-label="Live status">
-        <span><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span>
-        <span><i class="signal" id="gateway-signal"></i><b id="gateway-state">gateway unchecked</b></span>
-        <span><i class="signal" id="store-signal"></i><b id="store-state">object store unchecked</b></span>
+        <span class="has-help" title="Whether this page can run Milk Man and resume its saved local session."><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span>
+        <span class="has-help" title="Whether Milk Parlor is reachable and its background capture writer is healthy."><i class="signal" id="gateway-signal"></i><b id="gateway-state">gateway unchecked</b></span>
+        <span class="has-help" title="Whether this Milk Man process can read the configured object store."><i class="signal" id="store-signal"></i><b id="store-state">object store unchecked</b></span>
       </div>
     </header>
 
-    <section class="chat" aria-label="Milk Man conversation">
-      <div class="messages" id="activity" aria-live="polite">
+    <details class="chat" aria-label="Milk Man conversation" open>
+      <summary>Milk Man conversation</summary>
+      <div class="messages" id="activity">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>
       <form id="run-form">
-        <label class="sr-only" for="prompt">Tell Milk Man what to do next</label>
+        <label class="prompt-label" for="prompt">next instruction</label>
         <textarea id="prompt" name="prompt" maxlength="16384" placeholder="Tell Milk Man what to do next" required></textarea>
-        <button id="run" type="submit">send</button>
+        <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send instruction</button>
       </form>
-      <p class="prompt-state" id="prompt-state" role="status" aria-live="polite"></p>
-    </section>
+      <p class="prompt-state" id="prompt-state" role="status" aria-live="polite">Command/Control+Enter sends · Enter makes a new line · one instruction may wait.</p>
+    </details>
 
     <div class="status-line">
       <b id="volume">waiting for object memory</b>
       <span id="target"></span>
-      <button id="refresh" type="button">check cloud</button>
+      <button id="refresh" type="button" title="Refresh Milk Parlor, object-store, and loop state now.">refresh gateway + object store</button>
     </div>
-    <progress class="meter" id="meter" max="100" value="0">0%</progress>
+    <progress class="meter has-help" id="meter" max="100" value="0" title="Progress is divided evenly across the configured summary thresholds.">0%</progress>
+    <div class="ticks" id="ticks" aria-label="Configured summary thresholds"></div>
     <small class="checked" id="checked">never checked</small>
 
     <details open>
       <summary>milk loop</summary>
+      <div class="delivery-line" aria-label="Milk system path">
+        <span class="has-help" title="Receives OpenAI-compatible traffic, routes it, and saves completed request and response pairs."><b>Milk Parlor</b><small>capture + route</small></span>
+        <i aria-hidden="true">→</i>
+        <span class="has-help" title="Keeps scoped captures, checkpoints, datasets, model records, and route proposals in the selected object store."><b>cold store</b><small>object memory</small></span>
+        <i aria-hidden="true">→</i>
+        <span class="has-help" title="Watches thresholds and runs the named summary, evaluation, training, and provider jobs."><b>Milk Man</b><small>fixed jobs</small></span>
+        <i aria-hidden="true">→</i>
+        <span class="has-help" title="Hosted inference creates labels and evaluations; temporary GPUs train and serve the student."><b>teacher + student</b><small>inference + GPU</small></span>
+        <i aria-hidden="true">→</i>
+        <span class="has-help" title="An operator signs the chosen route. Milk Parlor applies canary, fallback, rollback, or zero route."><b>signed delivery</b><small>back to Parlor</small></span>
+      </div>
       <div class="rail" id="rail"></div>
     </details>
     <details>

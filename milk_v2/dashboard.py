@@ -269,28 +269,62 @@ def _counts(value: object) -> dict[str, int]:
     }
 
 
+def _series_view(value: object) -> dict[str, int]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        name: item
+        for name in ("count", "min", "mean_milli", "p50", "p95", "p99", "max")
+        if isinstance((item := value.get(name)), int) and not isinstance(item, bool) and item >= 0
+    }
+
+
 def _summary_view(value: dict) -> dict:
     structural = value.get("structural") if isinstance(value.get("structural"), dict) else {}
     counters = structural.get("counters") if isinstance(structural.get("counters"), dict) else {}
     quality = structural.get("quality") if isinstance(structural.get("quality"), dict) else {}
+    distributions = structural.get("distributions") if isinstance(structural.get("distributions"), dict) else {}
     series = structural.get("series") if isinstance(structural.get("series"), dict) else {}
     semantic_root = value.get("semantic") if isinstance(value.get("semantic"), dict) else {}
     semantic = semantic_root.get("cumulative") if isinstance(semantic_root.get("cumulative"), dict) else {}
-    total = series.get("total_ms") if isinstance(series.get("total_ms"), dict) else {}
-    tps = series.get("tps_milli") if isinstance(series.get("tps_milli"), dict) else {}
     return {
         "uuid": value.get("summary_uuid"),
+        "created_at": value.get("created_at") if isinstance(value.get("created_at"), str) else None,
         "capture_count": value.get("capture_count", 0),
-        "parse_bps": quality.get("parse_basis_points", 0),
-        "success_bps": quality.get("success_basis_points", 0),
-        "unique_count": counters.get("unique_contents", 0),
-        "classified_count": semantic.get("classified", 0),
-        "p95_total_ms": total.get("p95", 0),
-        "p50_tps_milli": tps.get("p50", 0),
-        "domain": _counts(semantic.get("domain")),
-        "operation": _counts(semantic.get("operation")),
-        "sentiment": _counts(semantic.get("sentiment")),
-        "capability": _counts(semantic.get("capability")),
+        "quality": {
+            "parse_bps": quality.get("parse_basis_points", 0),
+            "success_bps": quality.get("success_basis_points", 0),
+            "duplicate_bps": quality.get("duplicate_basis_points", 0),
+            "capture_gap": quality.get("capture_gap") is True,
+        },
+        "counters": {
+            name: counters.get(name, 0)
+            for name in (
+                "captures", "complete", "parsed", "successful", "refusals",
+                "unique_contents", "duplicates", "max_concurrency",
+                "tool_argument_total", "tool_argument_valid",
+            )
+        },
+        "traffic": {
+            name: _counts(distributions.get(name))
+            for name in (
+                "endpoint", "model", "status_class", "streaming", "route_target",
+                "fallback_reason", "modalities", "structured_output",
+                "reasoning_effort", "outcome", "hour_utc",
+            )
+        },
+        "semantic": {
+            "classified": semantic.get("classified", 0),
+            "abstained": semantic.get("abstained", 0),
+            **{
+                name: _counts(semantic.get(name))
+                for name in ("operation", "domain", "capability", "oracle", "sentiment", "outcome", "language")
+            },
+        },
+        "series": {
+            name: _series_view(series.get(name))
+            for name in ("total_ms", "ttft_ms", "tps_milli", "input_tokens", "output_tokens", "message_count", "tool_calls")
+        },
     }
 
 
