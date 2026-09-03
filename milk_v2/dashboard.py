@@ -327,12 +327,12 @@ def _milk_status() -> dict:
     try:
         settings = settings_from_environment()
         store = open_store(settings)
+        points = thresholds(settings.profile)
+        captured = _capture_count(store, settings.scope_prefix + "c/")
         item = store.get(settings.scope_prefix + "status/current.json")
         value = json.loads(item.body)
         if not isinstance(value, dict) or value.get("schema_version") != "milk.status.v2":
             raise ValueError("invalid status")
-        points = thresholds(settings.profile)
-        captured = _capture_count(store, settings.scope_prefix + "c/")
         processed = value.get("processed_count", 0)
         value = {**value, "capture_count": captured}
         return {
@@ -348,7 +348,24 @@ def _milk_status() -> dict:
             "error": None,
         }
     except FileNotFoundError:
-        return {"status": None, "progress": {}, "missing": [], "error": "no status object yet"}
+        return {
+            "status": {
+                "scope_id": settings.scope_id,
+                "profile": settings.profile,
+                "capture_count": captured,
+                "processed_count": 0,
+                "next_action": "summary",
+            },
+            "progress": {
+                "capture_count": captured,
+                "processed_count": 0,
+                "thresholds": points,
+                "next_threshold": points[0] if points else None,
+                "checkpoints": [],
+            },
+            "missing": [],
+            "error": None,
+        }
     except Exception:
         return {"status": None, "progress": {}, "missing": [], "error": "object store unavailable"}
 
