@@ -208,24 +208,24 @@ function renderProgress(progress = {}) {
         summaryRow("saved", checkpoint.created_at ? new Date(checkpoint.created_at).toLocaleString() : "timestamp unavailable"),
         summaryRow("quality", percent(quality.parse_bps) + " parsed · " + percent(quality.success_bps) + " successful · " + percent(quality.duplicate_bps) + " duplicate · " + (quality.capture_gap ? "capture gap" : "continuous capture"), "Structural checks over every captured request and response in this checkpoint."),
         summaryRow("volume", number(counters.unique_contents).toLocaleString() + " unique · " + number(semantic.classified).toLocaleString() + " classified · " + number(semantic.abstained).toLocaleString() + " abstained · peak " + number(counters.max_concurrency).toLocaleString() + " concurrent"),
-        summaryRow("models", counts(traffic.model)),
-        summaryRow("endpoints", counts(traffic.endpoint)),
-        summaryRow("routes", counts(traffic.route_target)),
-        summaryRow("response", counts(traffic.status_class) + " · streaming " + counts(traffic.streaming) + " · structured " + counts(traffic.structured_output)),
-        summaryRow("traffic", counts(traffic.modalities) + " · outcome " + counts(traffic.outcome) + " · fallback " + counts(traffic.fallback_reason)),
-        summaryRow("reasoning", counts(traffic.reasoning_effort)),
+        summaryRow("models", counts(traffic.model), "Model names requested by captured applications."),
+        summaryRow("endpoints", counts(traffic.endpoint), "Responses and Chat Completions requests in this checkpoint."),
+        summaryRow("routes", counts(traffic.route_target), "Requests served by the baseline or an approved candidate."),
+        summaryRow("response", counts(traffic.status_class) + " · streaming " + counts(traffic.streaming) + " · structured " + counts(traffic.structured_output), "HTTP results plus streaming and structured-output use."),
+        summaryRow("traffic", counts(traffic.modalities) + " · outcome " + counts(traffic.outcome) + " · fallback " + counts(traffic.fallback_reason), "Input modes, request outcomes, and any candidate fallback reasons."),
+        summaryRow("reasoning", counts(traffic.reasoning_effort), "Reasoning-effort values requested by applications when present."),
         distributionChart("topics", semantic.domain, semantic.classified, "What the sampled conversations are about."),
         summaryRow("tasks", counts(semantic.operation), "What users are asking the model to do."),
         distributionChart("capabilities", semantic.capability, semantic.classified, "Capabilities needed to answer the sampled conversations. One conversation may need several."),
-        summaryRow("grading", counts(semantic.oracle), "How an answer could be checked."),
-        summaryRow("sentiment", counts(semantic.sentiment)),
+        summaryRow("grading", counts(semantic.oracle), "How each captured task could be checked."),
+        summaryRow("sentiment", counts(semantic.sentiment), "The classifier's coarse tone label for each conversation."),
         distributionChart("outcomes", semantic.outcome, semantic.classified, "How the classifier judged the captured responses."),
-        summaryRow("languages", counts(semantic.language)),
-        summaryRow("total time", series(values.total_ms, duration, true)),
-        summaryRow("first token", series(values.ttft_ms, duration, true)),
-        summaryRow("generation", series(values.tps_milli, item => (number(item) / 1000).toFixed(1) + " tok/s")),
-        summaryRow("input tokens", series(values.input_tokens)),
-        summaryRow("output tokens", series(values.output_tokens))
+        summaryRow("languages", counts(semantic.language), "Detected conversation languages."),
+        summaryRow("total time", series(values.total_ms, duration, true), "Time from request start to the complete response."),
+        summaryRow("first token", series(values.ttft_ms, duration, true), "Time from request start to the first streamed response byte when measured."),
+        summaryRow("generation", series(values.tps_milli, item => (number(item) / 1000).toFixed(1) + " tok/s"), "Observed output-token generation rate when token counts are available."),
+        summaryRow("input tokens", series(values.input_tokens), "Input tokens reported by the model provider."),
+        summaryRow("output tokens", series(values.output_tokens), "Output tokens reported by the model provider.")
       );
       card.append(disclosure, body);
     } else {
@@ -491,16 +491,17 @@ function renderCloud(data) {
   const milk = data.milk || {};
   const monitor = data.monitor || {};
   if (monitor.error) {
-    light("gateway", "degraded", "gateway status unknown");
-    light("store", "degraded", "object-store status unknown");
+    light("gateway", "degraded", "Milk Parlor status unknown");
+    light("store", "degraded", "object memory status unknown");
   } else {
-    light("gateway", gateway.state || "detached", gateway.state === "up" ? "gateway active" : gateway.state === "degraded" ? "gateway degraded" : gateway.state === "down" ? "gateway unavailable" : "gateway not configured");
-    light("store", milk.error ? "down" : milk.missing && milk.missing.length ? "detached" : "up", milk.error ? "object store unavailable" : milk.missing && milk.missing.length ? "object store not configured" : "object store active");
+    light("gateway", gateway.state || "detached", gateway.state === "up" ? "Milk Parlor reachable · capture active" : gateway.state === "degraded" ? "Milk Parlor reachable · capture degraded" : gateway.state === "down" ? "Milk Parlor unavailable" : "Milk Parlor not configured");
+    light("store", milk.error ? "down" : milk.missing && milk.missing.length ? "detached" : "up", milk.error ? "object memory unavailable" : milk.missing && milk.missing.length ? "object memory not configured" : "object memory readable");
   }
   el("checked").textContent = (monitor.error ? "status watcher failed " : "status updated ") + new Date(data.now).toLocaleString();
   const jobs = data.contract?.jobs || [];
   const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
-  el("watch-state").textContent = "Milk Man stays online without model use while idle. It checks the gateway, saved object-store status, and job setup every " + number(monitor.interval_seconds) + " seconds; refresh below counts every capture. " + readyJobs + " of " + jobs.length + " jobs have their required environment names. Restart after changing environment values.";
+  el("job-count").textContent = readyJobs + " / " + jobs.length + " ready";
+  el("watch-state").textContent = "Status is checked every " + number(monitor.interval_seconds) + " seconds without model use. " + readyJobs + " of " + jobs.length + " jobs have their required environment names; restart after changing them.";
   const status = milk.status || {};
   renderRun(status);
   renderProgress(milk.progress);
@@ -528,13 +529,13 @@ async function refreshCloud(force = false) {
     renderMan(data.man);
     renderCloud(data);
   } catch {
-    light("gateway", "down", "dashboard cannot reach gateway");
-    light("store", "down", "dashboard cannot reach object store");
+    light("gateway", "down", "Milk Parlor status unavailable");
+    light("store", "down", "object memory status unavailable");
     el("checked").textContent = "status refresh failed " + new Date().toLocaleString();
   } finally {
     cloudLoading = false;
     el("refresh").disabled = false;
-    el("refresh").textContent = "refresh gateway + object store";
+    el("refresh").textContent = "count traffic + refresh status";
   }
 }
 
@@ -545,7 +546,7 @@ async function refreshLocal() {
     if (!response.ok) throw Error();
     renderMan((await response.json()).man);
   } catch {
-    light("man", "detached", "dashboard detached from Milk Man");
+    light("man", "detached", "Milk Man supervisor unavailable");
   }
 }
 

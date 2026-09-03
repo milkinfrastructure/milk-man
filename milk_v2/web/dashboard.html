@@ -21,24 +21,24 @@
       </div>
     </header>
 
-    <p class="purpose">Milk turns a small sample of model traffic into summaries, evaluations, training data, and a candidate route. Milk Man runs the work; a person approves delivery.</p>
+    <p class="purpose"><b>Milk Parlor is the gateway.</b> Keep the official OpenAI SDK and change its base URL and key. Parlor streams Responses and Chat Completions, then saves eligible completed request and response pairs for Milk Man to summarize, turn into evals and training data, and prepare for operator-approved routing.</p>
     <div class="run-strip" aria-label="Current Milk run">
       <b id="run-profile">finding run</b>
       <span><small>next</small><strong id="run-now">reading object memory</strong></span>
       <small id="run-scope">scope unknown</small>
     </div>
     <nav class="toolbar" aria-label="Dashboard sections">
-      <a href="#connect">connect</a>
-      <a href="#talk">talk</a>
-      <a href="#loop">system</a>
-      <a href="#jobs-panel">jobs</a>
-      <a href="#summaries">summaries</a>
+      <a href="#connect">connect an app</a>
+      <a href="#prompt">talk to Milk Man</a>
+      <a href="#loop">watch the loop</a>
+      <a href="#jobs-panel">job setup</a>
+      <a href="#summaries">saved summaries</a>
     </nav>
     <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, environment name, or code block to copy it</small>
 
     <details id="connect" open>
-      <summary title="Milk uses the official OpenAI client. Only its base URL and key change.">connect an app <small>same SDK · new URL + key</small></summary>
-      <p class="section-help">There is no separate Milk SDK. Keep the official OpenAI package and your existing Responses or Chat Completions call. Install it only if needed with <code>pip install openai</code> or <code>npm install openai</code>.</p>
+      <summary title="Install the official OpenAI client, point it at Milk Parlor, and keep the rest of your call.">connect an app <small>official SDK · two values change</small></summary>
+      <p class="section-help">Install <code>openai</code>, not a Milk SDK. Keep your existing Responses or Chat Completions call; only the base URL and operator-issued key change.</p>
       <div class="connection-line" aria-label="Your application sends an OpenAI request through Milk Parlor to its configured model provider.">
         <span><b>your app</b><small>official OpenAI SDK</small></span><i>→</i>
         <span><b>Milk Parlor</b><small>authenticate · route · stream</small></span><i>→</i>
@@ -46,11 +46,11 @@
       </div>
       <div class="connect-grid">
         <section>
-          <b>1 · change two environment variables</b>
+          <b>1 · point the SDK at Milk Parlor</b>
           <button class="copy-block" type="button" data-copy="export OPENAI_BASE_URL=https://parlor.milkinfrastructure.com/v1&#10;export OPENAI_API_KEY='your Milk key'" data-copy-label="Milk connection settings"><code>export OPENAI_BASE_URL=<br>https://parlor.milkinfrastructure.com/v1<br>export OPENAI_API_KEY='your Milk key'</code></button>
         </section>
         <section>
-          <b>2 · keep the application call</b>
+          <b>2 · keep the OpenAI call</b>
           <button class="copy-block" type="button" data-copy="from openai import OpenAI&#10;&#10;milk = OpenAI()&#10;answer = milk.responses.create(model='your-model', input='Hello')&#10;print(answer.output_text)" data-copy-label="Python example"><code>from openai import OpenAI<br><br>milk = OpenAI()<br>answer = milk.responses.create(<br>&nbsp; model='your-model', input='Hello'<br>)<br>print(answer.output_text)</code></button>
         </section>
       </div>
@@ -63,14 +63,14 @@
     </details>
 
     <details class="chat" id="talk" aria-label="Milk Man conversation" open>
-      <summary title="This resumes the saved development session. It does not directly run production jobs or sign routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
-      <p class="section-help" id="watch-state">Milk Man stays online, watches local configuration and system status, and starts model work only when you send an instruction.</p>
+      <summary title="This resumes the saved local development session. It does not directly run production jobs or sign routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
+      <p class="section-help" id="watch-state">The local supervisor watches status without calling a model. A model turn starts only when you send an instruction.</p>
       <div class="messages" id="activity">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>
       <form id="run-form">
-        <label class="prompt-label" for="prompt">next instruction for the local builder</label>
-        <textarea id="prompt" name="prompt" maxlength="16384" placeholder="Example: inspect the next unfinished goal, make one minimal fix, check the diff, and continue." required></textarea>
+        <label class="prompt-label" for="prompt">tell Milk Man what to do next</label>
+        <textarea id="prompt" name="prompt" maxlength="16384" placeholder="Example: fix the next unfinished item, run one narrow check, inspect the diff, and continue." required></textarea>
         <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send to Milk Man</button>
       </form>
       <p class="prompt-state" id="prompt-state" role="status" aria-live="polite"><kbd>Command / Control + Enter</kbd> sends · Enter makes a new line · one instruction may wait.</p>
@@ -79,7 +79,7 @@
     <div class="status-line">
       <b id="volume">waiting for object memory</b>
       <span id="target"></span>
-      <button id="refresh" type="button" title="Refresh Milk Parlor, object-store, and loop state now.">refresh gateway + object store</button>
+      <button id="refresh" type="button" title="Check Milk Parlor, read the saved run status, and count every captured conversation now.">count traffic + refresh status</button>
     </div>
     <progress class="meter has-help" id="meter" max="100" value="0" title="Progress is divided evenly across the configured summary thresholds.">0%</progress>
     <div class="ticks" id="ticks" aria-label="Configured summary thresholds"></div>
@@ -95,8 +95,8 @@
       <div class="rail" id="rail"></div>
     </details>
     <details class="jobs" id="jobs-panel">
-      <summary title="See every reviewed Milk job and whether this dashboard process has its required environment names.">job setup</summary>
-      <p class="section-help">Environment names only. Secret values never leave this process. A configured job does not run by itself.</p>
+      <summary title="See every fixed Milk job and whether this dashboard process inherited its required environment names.">job setup <small id="job-count">checking configuration</small></summary>
+      <p class="section-help">Jobs select object storage, inference, and GPU providers through environment names. <code>set</code> means this dashboard inherited the name; it does not prove provider access. Values stay hidden, jobs do not start here, and environment changes require a restart.</p>
       <div class="job-list" id="jobs"></div>
     </details>
     <details id="summaries">

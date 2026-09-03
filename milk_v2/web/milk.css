@@ -23,7 +23,7 @@ body {
   margin: 0;
   background: var(--black);
   color: var(--white);
-  font: 14px/1.5 monospace;
+  font: 14px/1.5 ui-monospace, Menlo, Monaco, "Courier New", monospace;
 }
 
 main {
@@ -57,7 +57,7 @@ h1 { margin: .2rem 0 0; font-size: 22px; line-height: 1; }
   width: .8rem;
   height: .8rem;
   margin-right: .5rem;
-  border: 1px solid var(--white);
+  border: 1px solid var(--lamp);
   border-radius: 50%;
   background: var(--black);
   vertical-align: -.1rem;
@@ -92,7 +92,9 @@ h1 { margin: .2rem 0 0; font-size: 22px; line-height: 1; }
 .message:last-child { margin-bottom: 0; }
 .message + .message { padding-top: 1rem; border-top: 1px solid var(--white); }
 .message b { display: block; margin-bottom: .25rem; }
-.message.you { margin-left: auto; text-align: right; }
+.message.you { margin-left: auto; }
+.message.you > b,
+.message.you > time { text-align: right; }
 .message.tool { width: 100%; }
 .message p,
 .message pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }

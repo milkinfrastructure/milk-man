@@ -7,10 +7,10 @@ description: Work safely across the Milk Man and Milk Parlor repositories.
 
 Use this skill for any Milk code change.
 
-1. Use `rg` to read only the relevant active section of `goal_tracker.md`,
-   rather than the whole tracker, and identify the next unchecked requirement
-   affected by the task.
-2. Inspect current Git state and the complete call path before editing.
+1. For a concrete task, inspect only its affected state and code. Read the
+   relevant `goal_tracker.md` section only when asked to continue the plan.
+2. Inspect each unknown in the narrow call path once, then act. Do not repeat an
+   unchanged read, check, or poll.
 3. Keep Milk Parlor a CPU-only Rust proxy: authentication, routing, exact
    asynchronous capture, and status only.
 4. Keep orchestration in deterministic `milk` jobs. Development reasoning may

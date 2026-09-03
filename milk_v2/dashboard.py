@@ -175,8 +175,13 @@ def _man_state() -> dict:
         for value in (_tail(memory, 12) if memory else [])
         if value.get("type") == "memory"
     ]
+    events = _tail(trajectory, 200) if trajectory else []
+    latest_prompt = next(
+        (index for index in range(len(events) - 1, -1, -1) if events[index].get("type") == "prompt"),
+        0,
+    )
     activity = []
-    for value in _tail(trajectory, 60) if trajectory else []:
+    for value in events[latest_prompt:]:
         kind = str(value.get("type", "event"))[:32]
         if kind == "trajectory":
             continue

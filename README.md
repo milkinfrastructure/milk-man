@@ -1,19 +1,45 @@
 # Milk Man
 
-Milk Man is a local program that can work on Milk's code and run one Milk job
-at a time. It reads the same object storage used by production and can collect
-statistics, create evaluation data, train a small model, compare versions, and
-prepare a release for a person to approve.
+Milk has two programs:
 
-Applications talk to Milk Parlor, not Milk Man. There is no replacement Milk
-SDK: keep the official OpenAI client and set `OPENAI_BASE_URL` to
-`https://parlor.milkinfrastructure.com/v1` and `OPENAI_API_KEY` to an
-operator-issued Milk key. Milk Parlor tunnels Responses and Chat Completions;
-Milk Man processes the completed traffic later.
+- [Milk Parlor](https://github.com/milkinfrastructure/milk-parlor) is the small
+  Rust gateway between an application and its model provider. It authenticates,
+  routes, streams, and saves eligible completed request and response pairs.
+- Milk Man is the local harness that reads those saved conversations, summarizes
+  them, creates evals and training data, trains and compares small models, and
+  prepares an unsigned route for a person to approve.
 
-It does not need Docker, a local GPU, a database, a queue, or a separate daemon.
-Settings and keys come from environment variables. When there is no work, it
-does not call a model or rent a GPU.
+## Connect an application
+
+Install the official OpenAI package, not a Milk SDK. Point it at Milk Parlor
+with an operator-issued Milk key:
+
+```bash
+pip install openai # or: npm install openai
+export OPENAI_BASE_URL=https://parlor.milkinfrastructure.com/v1
+export OPENAI_API_KEY='your Milk key'
+```
+
+The application call stays the same:
+
+```python
+from openai import OpenAI
+
+milk = OpenAI()
+answer = milk.responses.create(model="your-model", input="Hello")
+print(answer.output_text)
+```
+
+Milk Parlor supports OpenAI's
+[Responses](https://developers.openai.com/api/reference/cli/resources/responses/methods/create)
+and [Chat Completions](https://developers.openai.com/api/reference/cli/resources/chat/subresources/completions)
+create routes, including streaming. It does not claim the rest of the OpenAI
+API. After the answer completes, the gateway copies both sides to object
+storage in the background; Milk Man processes them later.
+
+Milk Man needs no Docker, local GPU, database, queue, or second daemon. Settings
+and keys come from environment variables. When there is no work, it does not
+call a model or rent a GPU.
 
 ## What we have run
 
