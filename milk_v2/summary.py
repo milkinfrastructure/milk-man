@@ -30,6 +30,7 @@ OUTCOMES = ("success", "refusal", "partial", "upstream_failure", "malformed", "u
 COMPLEXITIES = ("low", "medium", "high", "unknown")
 SAFETY = ("benign", "sensitive", "unsafe", "unknown")
 SUMMARY_BATCH_BYTES = 64 * 1024
+SUMMARY_BATCH_ROWS = 48
 UTC_RFC3339 = re.compile(
     r"(?P<seconds>[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"
     r"(?:\.(?P<fraction>[0-9]{1,9}))?(?:Z|\+00:00)\Z"
@@ -513,7 +514,7 @@ def _prepared_batches(fixed: dict, rows: list[tuple[dict, dict]]) -> list[tuple[
     current_entries: list[dict] = []
     for row, entry in rows:
         candidate = {**fixed, "rows": current_rows + [row]}
-        if len(canonical(candidate)) > SUMMARY_BATCH_BYTES:
+        if len(current_rows) >= SUMMARY_BATCH_ROWS or len(canonical(candidate)) > SUMMARY_BATCH_BYTES:
             if not current_rows:
                 raise SummaryError("summary fixed metadata plus one row exceeds 64 KiB")
             batches.append(({**fixed, "rows": current_rows}, current_entries))
@@ -592,12 +593,12 @@ def _release_batch_claim(store, key: str, owner: str) -> None:
 
 
 def _session_tools(row_count: int) -> list[dict]:
-    empty = {"type": "object", "properties": {}, "additionalProperties": False}
+    empty = {"type": "object", "properties": {}, "required": [], "additionalProperties": False}
     label_properties = {
         "row_id": {"type": "string"},
         "operation": {"type": "string", "enum": list(OPERATIONS)},
         "domain": {"type": "string", "enum": list(DOMAINS)},
-        "capabilities": {"type": "array", "items": {"type": "string", "enum": list(CAPABILITIES)}, "uniqueItems": True},
+        "capabilities": {"type": "array", "items": {"type": "string", "enum": list(CAPABILITIES)}},
         "oracle": {"type": "string", "enum": list(ORACLES)},
         "sentiment": {"type": "string", "enum": list(SENTIMENTS)},
         "outcome": {"type": "string", "enum": list(OUTCOMES)},
@@ -623,7 +624,7 @@ def _session_tools(row_count: int) -> list[dict]:
         "additionalProperties": False,
     }
     return [
-        {"type": "function", "function": {"name": "milk_job_read", "description": "Read the immutable prepared input for this summary job.", "parameters": empty}},
+        {"type": "function", "function": {"name": "milk_job_read", "description": "Read the immutable prepared input for this summary job.", "parameters": empty, "strict": True}},
         {
             "type": "function",
             "function": {
@@ -635,9 +636,10 @@ def _session_tools(row_count: int) -> list[dict]:
                     "required": ["result"],
                     "additionalProperties": False,
                 },
+                "strict": True,
             },
         },
-        {"type": "function", "function": {"name": "milk_status", "description": "Read bounded status for this summary job.", "parameters": empty}},
+        {"type": "function", "function": {"name": "milk_status", "description": "Read bounded status for this summary job.", "parameters": empty, "strict": True}},
     ]
 
 
