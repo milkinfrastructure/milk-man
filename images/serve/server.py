@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import hashlib
 import hmac
 import json
 import math

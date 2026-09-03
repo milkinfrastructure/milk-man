@@ -522,13 +522,3 @@ def open_store(settings: Settings):
     if settings.kind == "local":
         return LocalStore(settings.root or "")
     return S3Store(settings)
-
-
-def list_all(store, prefix: str):
-    cursor = None
-    while True:
-        page = store.list(prefix, cursor)
-        yield from page.keys
-        if page.next_cursor is None:
-            return
-        cursor = page.next_cursor
