@@ -108,7 +108,7 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] Eval v24 revision `ab5f9fbc02664d5e03eebb97e664e1ae883c3fbeeae21facda1ce6553e860c3d`, eval `d2742262-68ae-5ca9-8728-ab0a5baf3acf`, used `gpt-5.6-sol` at maximum reasoning to prepare exactly 100 cases from one source in four inference calls and zero provider calls. Direct review found 98/100 materially correct and 96/100 clean including minor wording issues; all 100 followed their deterministic operation and structured-output contract with no duplicates, source copying, or improper answer leakage. Replay made zero calls. This is generation proof only and is not a training corpus.
 - [x] Stopped the 10,000-case fan-out revision `9172e6c6f16ad4d5873a3c44e3ab59d56636ddbbe27a4db064b9d91fcea1e9a1` after one immutable 64-case generation receipt. It published no prepared shard, eval, dataset, training, GPU, or route state and must not be resumed.
 - [x] The serial v24 scope `8cc33bba-6790-4701-8a88-b3ba565971ee` reached 100 cases, dataset, and Qwen3.5-0.8B training. Its three DEV jobs failed before inference because the evaluator expected the prior three-field validation record instead of the current record with empty `guidance`; all three jobs are terminal and no GPU remains active. Commits `9d1762bf1` and `68a4d7306` fixed and pinned the evaluator. Do not retry this scope.
-- [~] The active fresh run is scope `c47a7dd1-05fb-47fc-bfbe-1ba014ffa77b`. Local Rust Parlor wrote 180/180 new Responses exchanges to R2 with zero drops or storage failures: 80 train and exactly 50 DEV, 25 calibration, and 25 sealed request-digest splits. Strict maximum-reasoning summary `1cb3f7e2-0d4b-560a-94fb-fe5635affbe7` classified all 180 captures; readiness `88e43988-181e-5a49-85a4-769085692a44` passed every mechanics check. Eval `259e831c-1f20-5e13-b907-d648dbcd8ac3` contains exactly 100 unique cases in three split-pure shards. Dataset `af6004f0-923e-5abd-977f-ed654f5966c6` is complete. Baseten job `q89ez53` trained model `d0677ba8-b72b-54e1-be3d-49eed424058b`; fresh BF16 job `wg8opjq`, dynamic-FP8 job `w61xv5q`, and mechanics-only static-FP8 job `w5j69p3` are active.
+- [x] Fresh mechanics run `c47a7dd1-05fb-47fc-bfbe-1ba014ffa77b` completed the full loop without reusing old captures. Local Rust Parlor persisted 180/180 new Responses exchanges with zero drops: 80 train, 50 DEV, 25 calibration and 25 sealed. Summary `1cb3f7e2-0d4b-560a-94fb-fe5635affbe7` classified all 180; readiness `88e43988-181e-5a49-85a4-769085692a44` passed; eval `259e831c-1f20-5e13-b907-d648dbcd8ac3` produced 100 unique split-pure cases; dataset `af6004f0-923e-5abd-977f-ed654f5966c6` fed Baseten job `q89ez53` and model `d0677ba8-b72b-54e1-be3d-49eed424058b`. Dynamic FP8 won three repaired DEV branches and passed sealed evaluation group `0859095f-1c49-550b-b6d2-dcbd93e0acb9`. Modal served candidate `98a5b561-44d7-559c-9311-1b0a76edc345`; Milk Man wrote unsigned proposal `008d3ba1-06f9-53eb-9bb2-d9cd8b10d9ae`; production Parlor then proved signed candidate, pre-byte fallback, and signed zero. This is complete mechanics evidence, not a production-qualified corpus.
 
 ## Non-negotiable architecture
 
@@ -1362,16 +1362,16 @@ Acceptance:
 - `e/current.json` advances only after the complete validated revision.
 - semantic workers receive only the next strict `milk job read` or `milk job commit` function; Milk Man exposes status separately, and neither surface can select storage or provider authority.
 
-### [~] P8 — Dataset, training and three evaluation branches
+### [x] P8 — Dataset, training and three evaluation branches
 
 Current downstream status and historical bounded-mechanics proof:
 
-P8 remains active until the fresh scope above produces its own Qwen3.5-0.8B training result, comparable branches, deterministic winner, and sealed result.
+The fresh scope produced its own Qwen3.5-0.8B training result, comparable branches, deterministic winner, and sealed result. The larger production-qualified corpus remains a separate completion requirement below.
 
 - [x] The fresh v24 eval produced dataset `bdc34bb8-f431-507c-a5fd-8b65d0d39310` with exact counts train 1, DEV 50, calibration 25 and sealed 25. The maximum-reasoning teacher used two OpenAI Responses calls; no GPU lifecycle call occurred.
 - [x] Milk Man completed Baseten H100 training job `w7x9xy3` for the exact pinned Qwen3.5-0.8B base and current v24 dataset, publishing model `6c89d849-62e7-5f79-9526-2ad4a619f142`.
 - [x] Milk Man launched the v24 DEV comparison on the same 50 ordered cases: BF16 job `qrv4v03`, dynamic-FP8 job `qzylyxw`, and mechanics-only static-FP8 job `qjklkp3`. All three terminated at the same stale validation-record check before model inference. The minimal schema repair is published; the fresh scope will exercise it under new job identities.
-- [~] Fresh dataset `af6004f0-923e-5abd-977f-ed654f5966c6` has exact counts train 1, DEV 50, calibration 25 and sealed 25. Baseten H100 job `q89ez53` trained model `d0677ba8-b72b-54e1-be3d-49eed424058b` from pinned `Qwen/Qwen3.5-0.8B@2fc06364715b967f1860aea9cf38778875588b17`. Milk Man launched repaired BF16 `wg8opjq`, dynamic-FP8 `w61xv5q`, and mechanics-only static-FP8 `w5j69p3` DEV evaluations; deterministic winner and sealed evaluation remain active work.
+- [x] Fresh dataset `af6004f0-923e-5abd-977f-ed654f5966c6` has exact counts train 1, DEV 50, calibration 25 and sealed 25. Baseten H100 job `q89ez53` trained model `d0677ba8-b72b-54e1-be3d-49eed424058b` from pinned `Qwen/Qwen3.5-0.8B@2fc06364715b967f1860aea9cf38778875588b17`. BF16 `wg8opjq`, dynamic-FP8 `w61xv5q`, and mechanics-only static-FP8 `w5j69p3` completed with zero errors on identical DEV cases. The checked-in policy selected dynamic FP8 at 867 mean score, 132 ms p95 and 481.577 tokens/second; sealed job `qko7gl3` completed at 839 mean score, zero errors and 264 ms p95. Evaluation group `0859095f-1c49-550b-b6d2-dcbd93e0acb9` is final, and a fresh Baseten inventory found every job terminal, no active jobs and no Milk serving model.
 
 - [x] Generated live R2 dataset `f59d59b7-9992-5f6c-bad0-9842afeec31a` from the accepted eval with disjoint train/DEV/calibration/sealed objects; creation used the teacher binding and immediate replay made zero inference or provider calls.
 - [x] Expanded the mechanics vertical to eval revision `6dcc2cb3-087a-55a9-8791-b96d9359034a` with four validated cases, then generated dataset `a7376834-b241-5d8d-850b-105624d4550c` with exact counts train 1, DEV 2, calibration 1 and sealed 1. Eval and dataset replays made zero inference calls.
@@ -1431,11 +1431,13 @@ Acceptance:
 - unsigned proposal;
 - termination receipts and independently verified zero capacity on both providers.
 
-### [~] P9 — Signed routing and release
+### [x] P9 — Signed routing and release
 
-Historical routing/release capability proof — not current v24 completion:
+Current fresh mechanics routing proof and historical capability evidence:
 
-All checked items below prove Parlor's signed-routing implementation and an earlier bounded mechanics candidate. P9 remains active until an operator-authorized scaled successor to the current v24 proof produces a new unsigned proposal and the operator proves candidate success, pre-byte fallback, rollback, signed zero, credential removal, and zero GPU capacity.
+The fresh scope now has its own unsigned proposal and complete operator-signed live proof. Production qualification still requires independent customer traffic and the larger corpus defined below.
+
+- [x] Milk Man hydrated the exact fresh dynamic-FP8 winner into Modal app `ap-4DFfHJ1g3QiDFyEiyfeQKX`, passed authenticated health and Chat Completions smoke, and retained candidate `98a5b561-44d7-559c-9311-1b0a76edc345` plus unsigned proposal `008d3ba1-06f9-53eb-9bb2-d9cd8b10d9ae`. Production route revision 6 (`637b9b96-6fcd-4924-a9b0-e50bb01f62cf`) returned model `milk-qwen3.5-0.8b-dynamic-fp8`; R2 capture `01a065c2-2acc-7e60-a8e8-0dbfdc036b84` binds the exact candidate with no fallback. After Milk Man stopped the app, capture `01a065c3-0023-78b1-88e5-c207a45cc547` records pre-byte `candidate_status_503` fallback to the OpenAI baseline. Signed zero revision 7 (`9f4daccd-2cf8-4203-8c57-61dda43fdf9b`) then returned baseline with no candidate or fallback in capture `01a065c4-84a5-7f21-b3c0-0ebe6b53c7fa`. Final Cloudflare version `d9a9efb8-1cb9-4617-8004-b2e9bc766937` contains no candidate secrets or bindings. The official OpenAI SDK authenticated through that final version, returned `sdk` from native Responses, and produced R2 capture `01a065c8-6aff-7712-8258-d23d95f50565`; Modal reports zero Milk containers, Baseten reports zero active jobs and no Milk serving models.
 
 - [x] Published the independently reviewed signed canary, pre-byte fallback, rollback, and zero-route implementation at Milk Parlor commit `933b45eac824787cb064b869d93515b75c0c58a8`; requests never wait for R2 route refresh.
 - [x] Fixed macOS Ed25519 one-shot signing at `b1744d79be67e7606c4ba8cb2eac2e693b6436d0` and published one canonical, signature-verified production zero route at revision 1.

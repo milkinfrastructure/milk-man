@@ -9,23 +9,24 @@ It does not need Docker, a local GPU, a database, a queue, or a background
 service. Settings and keys come from environment variables. When there is no
 work, it does not call a model or rent a GPU.
 
-![Milk Man showing live gateway, data, summaries, and model progress](docs/dashboard.jpg)
+![Milk Man showing live gateway, data, summaries, and model progress](docs/dashboard.png)
 
 ## What we have run
 
-We completed a small check of the whole system using 101 conversations sent
-through the live Milk Parlor gateway:
+We completed a fresh check of the whole system using 180 conversations sent
+through Milk Parlor into Cloudflare R2:
 
 - Milk Parlor saved both sides of each conversation in Cloudflare R2.
-- Milk Man counted them and built a summary after the first 100.
-- It created a tiny evaluation set and used a separate teacher model to write
-  the training answers.
+- Milk Man counted, classified, and summarized all 180 conversations.
+- It created 100 evaluation cases and kept development, calibration, and final
+  checks separate.
 - It trained `Qwen/Qwen3.5-0.8B` for one step on a Baseten H100.
 - It compared normal 16-bit, dynamic 8-bit, and static 8-bit versions on the
-  same examples. The 16-bit version won the latest complete run and passed one
-  final check on held-back data.
-- It served that model briefly on Modal, prepared a route for a person to sign,
-  and then returned both providers to zero active GPUs.
+  same examples. Dynamic 8-bit won and passed a final held-back check.
+- It served that model briefly on Modal. The live gateway proved signed
+  candidate traffic, automatic fallback when Modal stopped, and a signed return
+  to the baseline with the candidate key removed.
+- Baseten finished every job and Modal returned to zero running containers.
 
 This proves the parts connect and stop cleanly. The dataset was intentionally
 tiny, so it does not prove that the trained model is useful yet.
