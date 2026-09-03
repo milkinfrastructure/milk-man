@@ -107,7 +107,8 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] Revisions `ed4c84eda5fb1498d1a1f3a9a1c8bfb5b7fe5406027baedef08d121347d3c68b` and `3586f34b4e42156edd2a53ca12a63fa105878a2bc85559374b4fbc575f5d4f56` are rejected low-reasoning pilots: both passed format checks but retained source task templates and contained unacceptable semantic errors. Never coordinate, train, or route them.
 - [x] Eval v24 revision `ab5f9fbc02664d5e03eebb97e664e1ae883c3fbeeae21facda1ce6553e860c3d`, eval `d2742262-68ae-5ca9-8728-ab0a5baf3acf`, used `gpt-5.6-sol` at maximum reasoning to prepare exactly 100 cases from one source in four inference calls and zero provider calls. Direct review found 98/100 materially correct and 96/100 clean including minor wording issues; all 100 followed their deterministic operation and structured-output contract with no duplicates, source copying, or improper answer leakage. Replay made zero calls. This is generation proof only and is not a training corpus.
 - [x] Stopped the 10,000-case fan-out revision `9172e6c6f16ad4d5873a3c44e3ab59d56636ddbbe27a4db064b9d91fcea1e9a1` after one immutable 64-case generation receipt. It published no prepared shard, eval, dataset, training, GPU, or route state and must not be resumed.
-- [~] The active concentric proof is one serial v24 eval, revision `09a776dfbdb52630b5c82b98173aa695cc70dfba1ff079942001e458b5d859dc`, eval `7351474f-dd59-57d6-af1d-c6ca4c986ef0`: one generated case from each of the 100 held-out sources, no precompute workers, then direct bounded review and dataset generation. Scale returns only after the complete downstream loop works.
+- [x] The serial v24 scope `8cc33bba-6790-4701-8a88-b3ba565971ee` reached 100 cases, dataset, and Qwen3.5-0.8B training. Its three DEV jobs failed before inference because the evaluator expected the prior three-field validation record instead of the current record with empty `guidance`; all three jobs are terminal and no GPU remains active. Commits `9d1762bf1` and `68a4d7306` fixed and pinned the evaluator. Do not retry this scope.
+- [~] The active fresh run is scope `c47a7dd1-05fb-47fc-bfbe-1ba014ffa77b`. Local Rust Parlor wrote 180/180 new Responses exchanges to R2 with zero drops or storage failures: 80 train and exactly 50 DEV, 25 calibration, and 25 sealed request-digest splits. Strict maximum-reasoning summary `1cb3f7e2-0d4b-560a-94fb-fe5635affbe7` classified all 180 captures; readiness `88e43988-181e-5a49-85a4-769085692a44` passed every mechanics check. Eval `259e831c-1f20-5e13-b907-d648dbcd8ac3` contains exactly 100 unique cases in three split-pure shards. Dataset `af6004f0-923e-5abd-977f-ed654f5966c6` is complete and Baseten training job `q89ez53` is active.
 
 ## Non-negotiable architecture
 
@@ -1330,13 +1331,15 @@ Active source-proportional execution sequence:
 2. Bind the ratio, exact per-split source counts, per-split case counts and per-source example index into the immutable revision and generated case provenance.
 3. Run one eligible source through exactly 100 generation, deterministic local checks, global reduction, final manifest, operator review and zero-call replay. Do not start parallel workers for this proof.
 4. Audit the final 100 cases for exact and repeated-template duplication, correctness, difficulty, operation/oracle coverage, boilerplate and source leakage. Record only aggregate/redacted evidence.
-5. If the proof passes, run the same immutable implementation with 100 eligible held-out sources for exactly 10,000 cases. Parallel preparation may resume only after the one-source quality proof, and one coordinator owns the cumulative uniqueness ledger.
-6. Continue the accepted 10,000-case lineage through `dataset -> train -> evaluate -> one explicit route-propose provider -> operator-signed canary/fallback/rollback/zero -> independent zero-GPU checks`.
+5. Before another fan-out, run 100 eligible held-out sources serially at one case per source and continue that smaller lineage through the full job stack.
+6. After the smaller lineage proves every layer, scale the same implementation to 100 cases per source with one coordinator owning the cumulative uniqueness ledger.
 
 - [x] Prove one eligible held-out source produces exactly 100 schema-valid, globally unique, lineage-bound cases and a zero-call replay. The current one-source v24 maximum-reasoning proof produced 100 structured cases with four inference calls, zero provider lifecycle calls and a zero-call replay; bounded human semantic review found 98 materially correct cases and two known semantic errors.
+- [x] Prove 100 eligible held-out sources can advance serially without fan-out. Scope `8cc33bba-6790-4701-8a88-b3ba565971ee` produced eval `7351474f-dd59-57d6-af1d-c6ca4c986ef0`: exactly 100 unique cases in split-pure DEV 50, calibration 25 and sealed 25 shards, using 14 maximum-reasoning OpenAI Responses calls and zero GPU lifecycle calls.
+- [x] The fresh post-fix scope produced eval `259e831c-1f20-5e13-b907-d648dbcd8ac3` with the same exact 50/25/25 split and one case per source. A read-only review of all 50 DEV cases found all useful, no answer leakage or substantive duplicates, and 45 correct as written; five bounded reference defects keep this mechanics-only rather than production-qualified.
 - [ ] Prove 100 eligible held-out sources produce exactly 10,000 useful cases with exactly 100 cases bound to each source.
 
-Operator decision: scaling v24 to 10,000 cases is deferred while Milk Man engineering proceeds; v24 remains the current lineage.
+Operator decision: scaling v24 to 10,000 cases is deferred until the fresh 100-source lineage completes the full Milk job stack.
 
 Owned:
 
@@ -1361,9 +1364,14 @@ Acceptance:
 
 ### [~] P8 — Dataset, training and three evaluation branches
 
-Historical bounded-mechanics capability proof — not current v24 completion:
+Current downstream status and historical bounded-mechanics proof:
 
-All checked items below prove the job code and provider path on earlier small mechanics datasets. The current v24 lineage is only the one-source proof; P8 remains active until operator-authorized scaling produces an accepted manifest with its own dataset, Qwen3.5-0.8B training result, comparable branches, deterministic winner, and sealed result.
+P8 remains active until the fresh scope above produces its own Qwen3.5-0.8B training result, comparable branches, deterministic winner, and sealed result.
+
+- [x] The fresh v24 eval produced dataset `bdc34bb8-f431-507c-a5fd-8b65d0d39310` with exact counts train 1, DEV 50, calibration 25 and sealed 25. The maximum-reasoning teacher used two OpenAI Responses calls; no GPU lifecycle call occurred.
+- [x] Milk Man completed Baseten H100 training job `w7x9xy3` for the exact pinned Qwen3.5-0.8B base and current v24 dataset, publishing model `6c89d849-62e7-5f79-9526-2ad4a619f142`.
+- [x] Milk Man launched the v24 DEV comparison on the same 50 ordered cases: BF16 job `qrv4v03`, dynamic-FP8 job `qzylyxw`, and mechanics-only static-FP8 job `qjklkp3`. All three terminated at the same stale validation-record check before model inference. The minimal schema repair is published; the fresh scope will exercise it under new job identities.
+- [~] Fresh dataset `af6004f0-923e-5abd-977f-ed654f5966c6` has exact counts train 1, DEV 50, calibration 25 and sealed 25. Milk Man launched Baseten H100 job `q89ez53` for pinned `Qwen/Qwen3.5-0.8B@2fc06364715b967f1860aea9cf38778875588b17`; training, three repaired evaluator branches, winner and sealed evaluation remain active work.
 
 - [x] Generated live R2 dataset `f59d59b7-9992-5f6c-bad0-9842afeec31a` from the accepted eval with disjoint train/DEV/calibration/sealed objects; creation used the teacher binding and immediate replay made zero inference or provider calls.
 - [x] Expanded the mechanics vertical to eval revision `6dcc2cb3-087a-55a9-8791-b96d9359034a` with four validated cases, then generated dataset `a7376834-b241-5d8d-850b-105624d4550c` with exact counts train 1, DEV 2, calibration 1 and sealed 1. Eval and dataset replays made zero inference calls.
