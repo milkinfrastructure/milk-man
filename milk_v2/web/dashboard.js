@@ -58,20 +58,21 @@ function node(tag, className, text) {
   return value;
 }
 
+async function copyValue(value, label) {
+  try {
+    await navigator.clipboard.writeText(value);
+    el("copy-state").textContent = "copied " + label;
+  } catch {
+    el("copy-state").textContent = "copy failed · select the text instead";
+  }
+}
+
 function copyButton(display, value, label) {
   const button = node("button", "copy", display);
   button.type = "button";
   button.title = "Copy " + label;
   button.setAttribute("aria-label", "Copy " + label + ": " + display);
-  button.addEventListener("click", async event => {
-    event.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(value);
-      el("copy-state").textContent = "copied " + label;
-    } catch {
-      el("copy-state").textContent = "copy failed · select the text instead";
-    }
-  });
+  button.addEventListener("click", event => { event.stopPropagation(); copyValue(value, label); });
   return button;
 }
 
@@ -536,6 +537,7 @@ async function refreshLocal() {
 
 el("refresh").addEventListener("click", refreshCloud);
 el("stage-scrubber").addEventListener("input", event => selectStage(number(event.target.value) - 1, true));
+document.querySelectorAll("[data-copy]").forEach(button => button.addEventListener("click", () => copyValue(button.dataset.copy, button.dataset.copyLabel)));
 el("run-form").addEventListener("submit", startRun);
 el("prompt").addEventListener("keydown", event => {
   if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {

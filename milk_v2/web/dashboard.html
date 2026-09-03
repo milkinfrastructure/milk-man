@@ -28,12 +28,39 @@
       <small id="run-scope">scope unknown</small>
     </div>
     <nav class="toolbar" aria-label="Dashboard sections">
+      <a href="#connect">connect</a>
       <a href="#talk">talk</a>
       <a href="#loop">system</a>
       <a href="#jobs-panel">jobs</a>
       <a href="#summaries">summaries</a>
     </nav>
-    <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, or environment name to copy it</small>
+    <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, environment name, or code block to copy it</small>
+
+    <details id="connect" open>
+      <summary title="Milk uses the official OpenAI client. Only its base URL and key change.">connect an app <small>same SDK · new URL + key</small></summary>
+      <p class="section-help">There is no separate Milk SDK. Keep the official OpenAI package and your existing Responses or Chat Completions call. Install it only if needed with <code>pip install openai</code> or <code>npm install openai</code>.</p>
+      <div class="connection-line" aria-label="Your application sends an OpenAI request through Milk Parlor to its configured model provider.">
+        <span><b>your app</b><small>official OpenAI SDK</small></span><i>→</i>
+        <span><b>Milk Parlor</b><small>authenticate · route · stream</small></span><i>→</i>
+        <span><b>model</b><small>configured provider</small></span>
+      </div>
+      <div class="connect-grid">
+        <section>
+          <b>1 · change two environment variables</b>
+          <button class="copy-block" type="button" data-copy="export OPENAI_BASE_URL=https://parlor.milkinfrastructure.com/v1&#10;export OPENAI_API_KEY='your Milk key'" data-copy-label="Milk connection settings"><code>export OPENAI_BASE_URL=<br>https://parlor.milkinfrastructure.com/v1<br>export OPENAI_API_KEY='your Milk key'</code></button>
+        </section>
+        <section>
+          <b>2 · keep the application call</b>
+          <button class="copy-block" type="button" data-copy="from openai import OpenAI&#10;&#10;milk = OpenAI()&#10;answer = milk.responses.create(model='your-model', input='Hello')&#10;print(answer.output_text)" data-copy-label="Python example"><code>from openai import OpenAI<br><br>milk = OpenAI()<br>answer = milk.responses.create(<br>&nbsp; model='your-model', input='Hello'<br>)<br>print(answer.output_text)</code></button>
+        </section>
+      </div>
+      <div class="capture-line" aria-label="After the answer finishes, Milk Parlor stores both sides for Milk Man to process.">
+        <span><b>after the answer</b><small>request + response copied asynchronously</small></span><i>→</i>
+        <span><b>object memory</b><small>isolated by Milk key</small></span><i>→</i>
+        <span><b>Milk Man</b><small>summaries · evals · training</small></span>
+      </div>
+      <p class="section-help">Milk currently tunnels <code>POST /v1/responses</code> and <code>POST /v1/chat/completions</code> unchanged. Other OpenAI API endpoints are not claimed.</p>
+    </details>
 
     <details class="chat" id="talk" aria-label="Milk Man conversation">
       <summary title="This resumes the saved development session. It does not directly run production jobs or sign routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>

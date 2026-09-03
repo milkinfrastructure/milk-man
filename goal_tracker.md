@@ -100,7 +100,7 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] Audited a 53,584-case prepared snapshot. Object schemas, identities, source bindings, digests, case IDs and accepted verdicts were valid, but 9,018 inputs (16.83%) were exact normalized duplicates across shards.
 - [x] Reconstructed and inspected 1,872 accepted cases from eight deterministic shards. The corpus was dominated by simple transformations, extraction, classification, translation and repeated mechanics templates. The same GLM binding generated and validated the cases and accepted 98.47%; this proves mechanics, not useful eval quality.
 - [x] Retain every v21 object as immutable mechanics evidence. Do not coordinate, publish, train from, repair or resume that revision.
-- [~] Replace the independent 100,000-case target with source-proportional generation: `MILK_CASES_PER_CONVERSATION=100`. `MILK_EVAL_SOURCE_CONVERSATIONS` selects an exact deterministic source count and stops before inference if it is unavailable. One eligible held-out conversation produces exactly 100 creative cases; 100 eligible held-out conversations produce exactly 10,000. Prove one conversation through the complete 100-case path before paid scale-up.
+- [x] Replaced the independent 100,000-case target with source-proportional generation: `MILK_CASES_PER_CONVERSATION=100`. `MILK_EVAL_SOURCE_CONVERSATIONS` selects an exact deterministic source count and stops before inference if it is unavailable. One eligible held-out conversation produced exactly 100 creative cases. The separate 100-source/10,000-case proof remains under P7.
 - [x] The first v22 one-source attempt, revision `12c0e095680e3d2f04ce257dc0e4baed17b7d68bd338a63e86e5857b8bd1d5d4`, made eight OpenAI inference calls and zero provider lifecycle calls. The validator rejected 80 answer-leaking prompts and one incorrect answer; its 19 accepted cases were still trivial. No shard, eval pointer, dataset, training, or GPU work was published. Do not repair this attempt.
 - [x] The second v22 attempt, revision `38a22326fae84d6557067d52c58ebd59f5815d7613a983a4a898e90d0acdc7f3`, used the deterministic 100-slot reasoning, setting, and difficulty brief. It produced substantially more varied multi-step work with no repeated 8- or 24-token prefix families. The semantic validator accepted 42 and rejected 58; its repair was stopped during validation. No shard, eval pointer, dataset, training, or GPU work was published.
 - [x] v23 removed the second LLM validator. The eval model commits JSON-schema-constrained output; Milk Man enforces identity, count, source lineage, oracle representation, exact copy, and normalized duplicate checks locally. The implementation was published at `5947a4841`.
@@ -1038,7 +1038,7 @@ Remove old images only after proving they are not referenced by Cloudflare, Moda
 
 Every coding agent receives this goal, its owned subsystem, exact public contracts, and only the listed donor files. It must not broaden scope or build speculative abstractions.
 
-### [~] P0 — Preserve and establish clean repositories
+### [x] P0 — Preserve and establish clean repositories
 
 Progress 2026-09-01:
 
@@ -1049,6 +1049,7 @@ Progress 2026-09-01:
 - [x] Published independent-root default histories. Recorded checkpoints include Milk Man `530235a879c3078623ef2f69e3fb830667a9e496` and Milk Parlor `70dba12f96a12feedf7ed13b605f20d05ebefd23`; the verified local bundle preserves the obsolete history.
 - [x] After verifying the retained all-history bundle, removed all 55 obsolete `origin/codex/*` branches; `origin/main` is now the only remote branch.
 - [x] Detached Milk Man from the GitHub fork network through the signed-in repository control. Real Chrome now shows a standalone public repository with no upstream fork label or ahead/behind controls; `main` remains the Milk-owned root history and `origin/main` remains its only remote branch.
+- [x] Disabled repository Actions, removed its obsolete 21-secret provider environment and GHCR publishing secret, removed Wiki and Projects, retained public issue/PR creation, selected squash-only merges with automatic branch cleanup, and restricted direct `main` updates to `ShantanuJoshi` without status checks.
 
 Objective:
 
@@ -1135,6 +1136,7 @@ Progress 2026-09-01:
 - [x] Deployed that exact Cloudflare manifest. Native streaming Chat reached Baseten and native streaming Responses reached OpenAI through signed zero route revision 5; both completed and persisted without a candidate binding.
 - [x] A fresh scope accepted and asynchronously persisted exactly 100/100 official OpenAI Python SDK Responses exchanges in 23,361 ms with eight clients, zero drops, zero storage failures, and a live writer. This proves the requested small-threshold path; no capture-overhead number is claimed, so an artificial enabled-versus-disabled benchmark is not a completion gate.
 - [x] Retained protocol-native proof at `/Users/shantanu/milk-release-evidence/milk-v2-protocol-native-20260902/report.json`, SHA-256 `7c988ce858176a2cd57a9c846ccb490bfd949b331a1793c3fecf8c627f64503d`.
+- [x] Parlor commit `02ec39593504b3fefe495acaebbcd1a9a44831cb` documents the customer contract without inventing a Milk SDK: official Python and JavaScript OpenAI clients use `https://parlor.milkinfrastructure.com/v1` plus an operator-issued Milk key; Parlor claims only native Responses and Chat Completions compatibility. The local dashboard shows the same request, streaming, asynchronous capture, object-memory and Milk Man path.
 
 Owned:
 
@@ -1220,7 +1222,6 @@ Owned:
 ```text
 milk_v2/providers/modal_controller.py
 images/controller/
-prompts/bootstrap.md
 ```
 
 Allowed donor code:
@@ -1354,7 +1355,7 @@ Active source-proportional execution sequence:
 - [x] The fresh post-fix scope produced eval `259e831c-1f20-5e13-b907-d648dbcd8ac3` with the same exact 50/25/25 split and one case per source. A read-only review of all 50 DEV cases found all useful, no answer leakage or substantive duplicates, and 45 correct as written; five bounded reference defects keep this mechanics-only rather than production-qualified.
 - [ ] Prove 100 eligible held-out sources produce exactly 10,000 useful cases with exactly 100 cases bound to each source.
 
-Operator decision: scaling v24 to 10,000 cases is deferred until the fresh 100-source lineage completes the full Milk job stack.
+The prerequisite full-stack mechanics lineage is complete. Run the 10,000-case proof only on a fresh scope and revision; never resume the rejected historical fan-out.
 
 Owned:
 
@@ -1491,13 +1492,13 @@ Acceptance:
 - both public repositories have concise macOS/Linux quickstarts, environment references, object-tree documentation, licenses, security guidance, tagged commits and release digests;
 - old public names, runtime Actions, unused images, fixtures and transition documents are removed.
 
-### [~] P10 — Remove measured provider startup waste
+### Follow-up — Remove measured provider startup waste
 
 Progress 2026-09-02:
 
 - [x] Provider logs show the current Baseten compatibility path repeatedly installs apt and Python packages before a one-step job. This dominates the useful mechanics work and is the largest measured remaining latency and failure surface.
 - [x] Historical GitHub Actions runs published immutable weight-free train, eval, and serve images; model weights remained separately mounted. Repository-hosted Actions are now deleted, and future image publication uses the reviewed local or external builder.
-- [~] The published digest-pinned images are anonymously pullable from GHCR, but Baseten still rejects them because account-level custom-base-image access is disabled. To continue the requested happy-path mechanics execution, the local fixed Baseten jobs temporarily use the previously proven pinned CUDA base plus digest-verified source; this reintroduces per-job package startup and does not satisfy this optimization milestone.
+- Known limitation: the published digest-pinned images are anonymously pullable from GHCR, but Baseten still rejects them because account-level custom-base-image access is disabled. The local fixed Baseten jobs temporarily use the previously proven pinned CUDA base plus digest-verified source. This reintroduces per-job package startup but does not block the proven system loop.
 - [x] TorchAO 0.18 still lists dynamic FP8 as stable but keeps static activation FP8 under `prototype`. Do not replace the known mechanics implementation with another unstable API or use its tiny-set result for production; BF16 and stable dynamic FP8 remain production candidates until a stable calibrated static path exists.
 - [x] The reviewed evaluation policy runs all three comparable DEV branches in mechanics but only BF16 and dynamic FP8 in production, so a prototype static job cannot block or win the production path. The chosen branch is bound through the sealed result, candidate artifact, direct-image Baseten config, separately invoked Modal job environment, server health, and smoke identity.
 - [x] Direct local payload smokes verified one-command train/eval startup, external Qwen3.5-0.8B weights, prior-checkpoint loading, zero runtime install commands, dynamic-over-static production selection, all-branch serving environments, and static-only activation-scale propagation.
@@ -1523,7 +1524,7 @@ Use only:
 - `bash -n` for shell entrypoints;
 - Python compilation/import check for fixed job modules;
 - `cargo check` before cloud build;
-- GitHub’s actual cached image build;
+- one reviewed local or external image build;
 - one direct smoke per milestone;
 - final end-to-end production scripts.
 
@@ -1568,7 +1569,7 @@ The goal is complete only when:
 - Milk Man runs locally, reads its goal/skills/memory, self-edits either repository, resumes, and retains a reviewed commit.
 - Milk Man provisions GLM-4.5-Air-FP8 on Modal and then uses that endpoint for its own next reasoning turn.
 - `parlor.milkinfrastructure.com` accepts an operator-issued key through the official SDK and asynchronously writes exact two-sided traffic into R2.
-- Local and scheduled Milk Man consume the same remote store through environment bindings.
+- Local Milk Man consumes the remote store through environment bindings; an external scheduler may invoke the same one-shot command without changing its behavior.
 - Production-like traffic progresses through summary, classification, readiness and validated eval generation.
 - One eligible held-out source proves the audited 100-case mechanics path before scale; 100 eligible held-out sources then produce a resumable, schema-valid, deterministically checked and operator-audited 10,000-case corpus with exactly 100 cases per source.
 - The full whiteboard model loop produces a trained Qwen3.5-0.8B student from

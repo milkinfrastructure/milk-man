@@ -5,6 +5,12 @@ at a time. It reads the same object storage used by production and can collect
 statistics, create evaluation data, train a small model, compare versions, and
 prepare a release for a person to approve.
 
+Applications talk to Milk Parlor, not Milk Man. There is no replacement Milk
+SDK: keep the official OpenAI client and set `OPENAI_BASE_URL` to
+`https://parlor.milkinfrastructure.com/v1` and `OPENAI_API_KEY` to an
+operator-issued Milk key. Milk Parlor tunnels Responses and Chat Completions;
+Milk Man processes the completed traffic later.
+
 It does not need Docker, a local GPU, a database, a queue, or a background
 service. Settings and keys come from environment variables. When there is no
 work, it does not call a model or rent a GPU.
