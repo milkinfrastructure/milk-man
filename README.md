@@ -1,12 +1,34 @@
 # Milk Man
 
-Milk Man is Milk's local agent harness and one-shot jobs runtime. It edits code
-under supervision, reads the same object memory used by production, and runs
-fixed data, inference, training, evaluation, and provider jobs.
+Milk Man is a local program that can work on Milk's code and run one Milk job
+at a time. It reads the same object storage used by production and can collect
+statistics, create evaluation data, train a small model, compare versions, and
+prepare a release for a person to approve.
 
-It has no daemon, database, queue, local GPU requirement, or credential store.
-Configuration and credentials enter through environment variables. An idle job
-does not call an inference or GPU provider.
+It does not need Docker, a local GPU, a database, a queue, or a background
+service. Settings and keys come from environment variables. When there is no
+work, it does not call a model or rent a GPU.
+
+![Milk Man showing live gateway, data, summaries, and model progress](docs/dashboard.jpg)
+
+## What we have run
+
+We completed a small check of the whole system using 101 conversations sent
+through the live Milk Parlor gateway:
+
+- Milk Parlor saved both sides of each conversation in Cloudflare R2.
+- Milk Man counted them and built a summary after the first 100.
+- It created a tiny evaluation set and used a separate teacher model to write
+  the training answers.
+- It trained `Qwen/Qwen3.5-0.8B` for one step on a Baseten H100.
+- It compared normal 16-bit, dynamic 8-bit, and static 8-bit versions on the
+  same examples. The 16-bit version won the latest complete run and passed one
+  final check on held-back data.
+- It served that model briefly on Modal, prepared a route for a person to sign,
+  and then returned both providers to zero active GPUs.
+
+This proves the parts connect and stop cleanly. The dataset was intentionally
+tiny, so it does not prove that the trained model is useful yet.
 
 ## Run locally
 
