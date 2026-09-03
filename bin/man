@@ -252,9 +252,15 @@ if [[ "$mode" == bootstrap ]]; then
     if ! run_controller_job inference-status "$controller_status"; then
         die "inference-status failed; its result remains in the trajectory" 70
     fi
-    if ! run_controller_job inference-ensure "$controller_result"; then
-        die "inference-ensure failed; its result remains in the trajectory" 70
-    fi
+    controller_status_state="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["details"]["state"])' "$controller_status")"
+    case "$controller_status_state" in
+        ready_zero|ready_active) ;;
+        *)
+            if ! run_controller_job inference-ensure "$controller_result"; then
+                die "inference-ensure failed; its result remains in the trajectory" 70
+            fi
+            ;;
+    esac
 
     python3 - "$state_root" "$controller_status" "$controller_result" "${MILK_SCOPE_ID:-}" > "$controller_file" <<'PY'
 import hashlib
@@ -286,12 +292,16 @@ def job_result(path, job, command):
         raise SystemExit(f"milk-man: {job} identity differs")
     return outer, result
 
-job_result(sys.argv[2], "inference-status", "status")
-outer, result = job_result(sys.argv[3], "inference-ensure", "ensure")
+status_outer, status_result = job_result(sys.argv[2], "inference-status", "status")
+if Path(sys.argv[3]).stat().st_size:
+    outer, result = job_result(sys.argv[3], "inference-ensure", "ensure")
+else:
+    outer, result = status_outer, status_result
 if result.get("state") == "planned" and outer.get("state") == "idle":
     print("controller_state=planned")
     raise SystemExit(0)
-if result.get("state") != "ready" or outer.get("state") != "complete":
+expected_outer_state = {"ready": "complete", "ready_zero": "complete", "ready_active": "active"}.get(result.get("state"))
+if expected_outer_state is None or outer.get("state") != expected_outer_state:
     raise SystemExit(f"milk-man: controller did not become ready: {result.get('state')}")
 
 controller_id = result.get("controller_id")
