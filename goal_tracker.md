@@ -106,7 +106,7 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] Scope `8cc33bba-6790-4701-8a88-b3ba565971ee` reconciled 103/103 captures into summary `69cf59a3-d9aa-5a25-b3c0-f500b1aadbee` and readiness `484d8224-971c-541a-b571-a1dc8ede9d2f`, with exactly 50 DEV, 25 calibration, and 25 sealed held-out sources. Replay made zero inference/provider calls.
 - [x] Revisions `ed4c84eda5fb1498d1a1f3a9a1c8bfb5b7fe5406027baedef08d121347d3c68b` and `3586f34b4e42156edd2a53ca12a63fa105878a2bc85559374b4fbc575f5d4f56` are rejected low-reasoning pilots: both passed format checks but retained source task templates and contained unacceptable semantic errors. Never coordinate, train, or route them.
 - [x] Eval v24 revision `ab5f9fbc02664d5e03eebb97e664e1ae883c3fbeeae21facda1ce6553e860c3d`, eval `d2742262-68ae-5ca9-8728-ab0a5baf3acf`, used `gpt-5.6-sol` at maximum reasoning to prepare exactly 100 cases from one source in four inference calls and zero provider calls. Direct review found 98/100 materially correct and 96/100 clean including minor wording issues; all 100 followed their deterministic operation and structured-output contract with no duplicates, source copying, or improper answer leakage. Replay made zero calls. This is generation proof only and is not a training corpus.
-- [ ] Scaling the verified v24 prompt/model/config identity to 10,000 cases is deferred while Milk Man engineering proceeds. When resumed, precompute from the 100 held-out sources and inspect a bounded source/operation/split sample before one serial coordinator publishes the eval; do not run dataset, training, GPU, or routing from an unreviewed precompute.
+- [~] Scaling the verified v24 prompt/model/config identity to 10,000 cases is active as revision `9172e6c6f16ad4d5873a3c44e3ab59d56636ddbbe27a4db064b9d91fcea1e9a1`, eval `5499ed8c-af6f-5b14-9f55-db4020538b62`: 100 held-out sources, 100 cases per source, and 40 split-pure shards. Review shard 0 before starting the remaining precompute, then run one serial coordinator; do not run dataset, training, GPU, or routing from unreviewed output.
 
 ## Non-negotiable architecture
 
@@ -1125,7 +1125,6 @@ Owned:
 src/main.rs
 src/store.rs
 Dockerfile
-.github/workflows/image.yml
 deploy/cloudflare/
 ```
 
@@ -1442,7 +1441,7 @@ All checked items below prove Parlor's signed-routing implementation and an earl
 - [x] Retained the content-free candidate, fallback, rollback, provider-drain, and zero-route receipt at `/Users/shantanu/milk-release-evidence/milk-v2-live-candidate-20260901/report.json`, SHA-256 `33f94057a7ae1ef700d4d16cbb335d958c193d4365033cfad1b05836aa6cb889`.
 - [x] Published Parlor `f0b476b1a7c41ae3b0c7739aeadb06e82b3bcb0e` and Milk Man `7b528a60c3137d5c7c7a033691383c043de7bcfd`: route v3 signs protocol-specific upstream bindings, Parlor forwards `/v1/chat/completions` and `/v1/responses` unchanged, and Milk Man proposes only protocols its candidate actually implements. There is no cross-protocol translation or legacy route reader.
 - [x] Signed zero revision 5 (`199226cd-4720-4b8d-9ff3-40f3e32a091e`) is the active production route. Final Cloudflare deployment `becfa07c-be0e-4b71-b431-6ebfc685c38a` runs the coordinated image with separate native Chat and Responses bindings and no candidate credentials.
-- [x] Published concise public READMEs and standard license/security/contribution files. The tracked trees contain no legacy names, fixtures, transition documents, runtime Actions, or model weights; Actions only publish one Parlor image and three Milk Man GPU job images with cache.
+- [x] Published concise public READMEs and standard license/security/contribution files. The tracked trees contain no legacy names, fixtures, transition documents, GitHub Actions, or model weights. Future images are built by the reviewed local or external builder and keep model weights outside the image.
 - [x] Tagged Milk Parlor runtime release `v0.1.0` at `642e3a26ebd921bafed5eb3ff26ccd34f0e0ea51` and Milk Man release `v0.1.0` at `87376d56096cf39988d6163d5752a7726acfc3a2`. Parlor deployment commit `216c27231dece763aa86812e6105012d88bf3285` pins the resulting Cloudflare digest without triggering another image build.
 - [x] Published the corrected dashboard image from Milk Parlor `f8752b8c4621e9a4b785acc808de6f575267b343`, pinned Cloudflare digest `sha256:7311ba8e6021f9c24277ad35ee5e6aeddc78e944e859ca4df0e933518a0e335e` at deployment commit `9b59d173d8ffa39e1d480315e03b59039fb90fe8`, and cut over to instance generation `parlor-20260902-f875`. Live health reports 101/101 captures persisted with zero drops; the dashboard key authenticates scope `c2ab9c16-79cc-4c7f-955d-49871f240919`, and the live dashboard now labels the unsigned artifact as a route proposal.
 
@@ -1450,8 +1449,8 @@ Owned:
 
 ```text
 milk-parlor route polling/fallback
-scripts/sign-route
-scripts/smoke
+milk-parlor/ops/publish-route.py
+direct official-SDK smoke
 README and release metadata
 ```
 
@@ -1471,7 +1470,7 @@ Acceptance:
 Progress 2026-09-02:
 
 - [x] Provider logs show the current Baseten compatibility path repeatedly installs apt and Python packages before a one-step job. This dominates the useful mechanics work and is the largest measured remaining latency and failure surface.
-- [x] GitHub Actions has already published immutable weight-free train, eval, and serve images; model weights remain separately mounted.
+- [x] Historical GitHub Actions runs published immutable weight-free train, eval, and serve images; model weights remained separately mounted. Repository-hosted Actions are now deleted, and future image publication uses the reviewed local or external builder.
 - [~] The published digest-pinned images are anonymously pullable from GHCR, but Baseten still rejects them because account-level custom-base-image access is disabled. To continue the requested happy-path mechanics execution, the local fixed Baseten jobs temporarily use the previously proven pinned CUDA base plus digest-verified source; this reintroduces per-job package startup and does not satisfy this optimization milestone.
 - [x] TorchAO 0.18 still lists dynamic FP8 as stable but keeps static activation FP8 under `prototype`. Do not replace the known mechanics implementation with another unstable API or use its tiny-set result for production; BF16 and stable dynamic FP8 remain production candidates until a stable calibrated static path exists.
 - [x] The reviewed evaluation policy runs all three comparable DEV branches in mechanics but only BF16 and dynamic FP8 in production, so a prototype static job cannot block or win the production path. The chosen branch is bound through the sealed result, candidate artifact, direct-image Baseten config, separately invoked Modal job environment, server health, and smoke identity.
