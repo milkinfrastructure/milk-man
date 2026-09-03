@@ -214,8 +214,15 @@ def _v3_validation(store, manifest: dict, shard: dict) -> dict:
         or len({item["input_sha256"] for item in hashes if isinstance(item, dict)}) != shard["count"]
         or not isinstance(verdicts, list)
         or len(verdicts) != shard["count"]
-        or any(not isinstance(item, dict) or set(item) != {"case_id", "accepted", "reason"} for item in verdicts)
-        or [item.get("case_id") for item in verdicts if isinstance(item, dict) and item.get("accepted") is True and item.get("reason") == "accepted"] != case_ids
+        or any(
+            not isinstance(item, dict)
+            or set(item) != {"case_id", "accepted", "reason", "guidance"}
+            or item.get("accepted") is not True
+            or item.get("reason") != "accepted"
+            or item.get("guidance") != ""
+            for item in verdicts
+        )
+        or [item.get("case_id") for item in verdicts] != case_ids
     ):
         raise ValueError("dataset shard validation identity differs")
     return value
