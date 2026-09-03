@@ -119,6 +119,36 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] The serial v24 scope `8cc33bba-6790-4701-8a88-b3ba565971ee` reached 100 cases, dataset, and Qwen3.5-0.8B training. Its three DEV jobs failed before inference because the evaluator expected the prior three-field validation record instead of the current record with empty `guidance`; all three jobs are terminal and no GPU remains active. Commits `9d1762bf1` and `68a4d7306` fixed and pinned the evaluator. Do not retry this scope.
 - [x] Fresh mechanics run `c47a7dd1-05fb-47fc-bfbe-1ba014ffa77b` completed the full loop without reusing old captures. Local Rust Parlor persisted 180/180 new Responses exchanges with zero drops: 80 train, 50 DEV, 25 calibration and 25 sealed. Summary `1cb3f7e2-0d4b-560a-94fb-fe5635affbe7` classified all 180; readiness `88e43988-181e-5a49-85a4-769085692a44` passed; eval `259e831c-1f20-5e13-b907-d648dbcd8ac3` produced 100 unique split-pure cases; dataset `af6004f0-923e-5abd-977f-ed654f5966c6` fed Baseten job `q89ez53` and model `d0677ba8-b72b-54e1-be3d-49eed424058b`. Dynamic FP8 won three repaired DEV branches and passed sealed evaluation group `0859095f-1c49-550b-b6d2-dcbd93e0acb9`. Modal served candidate `98a5b561-44d7-559c-9311-1b0a76edc345`; Milk Man wrote unsigned proposal `008d3ba1-06f9-53eb-9bb2-d9cd8b10d9ae`; production Parlor then proved signed candidate, pre-byte fallback, and signed zero. This is complete mechanics evidence, not a production-qualified corpus.
 
+## Active dashboard execution — 2026-09-03
+
+This is the next unproved execution path. It does not alter the historical
+evidence or completion state below.
+
+- [x] Launch the local dashboard with only the reviewed environment bindings
+  needed by the selected controller and Milk jobs. Show presence or absence,
+  never values.
+- [x] Send one explicit operator instruction through the existing dashboard
+  prompt. The resumed supervised trajectory reads this tracker, applicable
+  skills and bounded memory, inspects both repositories, then invokes the fixed
+  `inference-status` and, only when needed, `inference-ensure` jobs.
+- [x] Stream bounded redacted progress in the dashboard while preserving the
+  exact workspace set and trajectory across controller creation. Prove the next
+  reasoning turn on that same trajectory reaches the validated controller
+  endpoint.
+- [x] Invoke `inference-stop` from the supervised trajectory and independently
+  observe zero active controller containers.
+- [x] Dashboard trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a` created and
+  reached Modal controller `bc78fca753201668b03008141987ea5e56bcc22ecf9e95709e9547894cb11375`
+  with the pinned GLM revision, executed real repository and `milk status` tool
+  calls, then stopped it from a second dashboard instruction. The retained
+  zero receipt reports zero containers, an independent Modal listing is empty,
+  and controller pointers are cleared. One unrequested old-scope `eval` call
+  failed before inference or provider work because its eval binding was absent.
+- [ ] Only after the controller handoff proof, create one fresh mechanics scope
+  and drive the existing fixed jobs from official-SDK capture through the
+  source-proportional 100-source/10,000-case lineage and the remaining model,
+  proposal, signed-route and zero-capacity proofs.
+
 ## Non-negotiable architecture
 
 ### Repository and reuse boundary
@@ -357,14 +387,14 @@ Job-scoped environments reduce accidental credential propagation; they are not p
 ```text
 POST /v1/chat/completions
 POST /v1/responses
-ANY  /v1/*                 raw HTTP passthrough where supported
 GET  /healthz
 GET  /
 GET  /status
 GET  /api/status
 ```
 
-Initial acceptance covers Chat Completions and Responses, including SSE. WebSocket/Realtime is not claimed until a dedicated duplex adapter and direct smoke exist.
+Parlor supports only these two OpenAI create routes, including SSE. It does not
+claim compatibility with other OpenAI endpoints, WebSocket or Realtime.
 
 ### Authentication
 
@@ -389,16 +419,26 @@ Parlor:
 - uses the same key for `/api/status`;
 - has no user database or key-rotation service.
 
-Upstream and candidate definitions are environment bindings:
+Baseline and candidate definitions are explicit protocol-native environment
+bindings:
 
 ```text
-MILK_ROUTE_BINDINGS_JSON
-MILK_BASELINE_API_KEY
-MILK_CANDIDATE_API_KEY
+MILK_BASELINE_CHAT_BASE_URL
+MILK_BASELINE_CHAT_API_KEY
+MILK_BASELINE_RESPONSES_BASE_URL
+MILK_BASELINE_RESPONSES_API_KEY
+
+MILK_CANDIDATE_A_ARTIFACT_SHA256
+MILK_CANDIDATE_A_CHAT_BASE_URL
+MILK_CANDIDATE_A_CHAT_API_KEY
+MILK_CANDIDATE_A_RESPONSES_BASE_URL
+MILK_CANDIDATE_A_RESPONSES_API_KEY
+
 MILK_ROUTE_VERIFY_KEY
 ```
 
-The binding JSON contains base URLs, public model aliases, and API-key environment-variable names—not secret values.
+Candidate routing requires the artifact digest plus at least one complete
+protocol URL/key pair. Provider base URLs stop before `/v1`.
 
 ### Proxy behavior
 
@@ -995,7 +1035,16 @@ Milk Man serves one local raw HTML/CSS/JavaScript page from `bin/man dashboard`:
 - [x] Make the dense page understandable through native `details` and `title` disclosure: label mechanics versus production, explain the next deterministic action and all nine stored stages in plain language, and show each reviewed job's trigger, automatic/manual execution, fixed command, read/write prefixes, prompt, timeout and required/optional environment-name presence—never values. Clicking safe scope/record IDs, fixed commands and environment names copies exact text with inline feedback; use no modal, custom tooltip library or new endpoint. Never imply a prepared candidate is serving, an unsigned proposal is active, or configured credentials prove provider availability.
 - [x] Use no frontend framework, package manager, asset request, build step or analytics.
 
-Cloud data remains read only in this page. The localhost prompt starts only the supervised development harness; it never directly launches a Milk job, mutates a route, exposes environment values, or returns raw customer traffic or semantic samples. Parlor retains its public `/healthz` and authenticated `/api/status` for remote scope status; a hosted gateway cannot and must not expose Milk Man's local files or development trajectory.
+Cloud data remains read only in the browser. The localhost prompt endpoint
+starts only the supervised development harness; it is not a generic job API and
+does not accept a handler, provider, command, object prefix or environment name
+from HTTP. After an explicit operator instruction, that supervised trajectory
+may invoke reviewed fixed `bin/milk` jobs through the repository shell; each job
+still resolves only its declared environment bindings. The browser cannot sign
+or mutate a route, expose environment values, or return raw customer traffic or
+semantic samples. Parlor retains its public `/healthz` and authenticated
+`/api/status` for remote scope status; a hosted gateway cannot and must not
+expose Milk Man's local files or development trajectory.
 
 ## Images and deployment
 

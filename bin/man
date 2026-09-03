@@ -15,6 +15,7 @@ Usage:
   bin/man develop --traj UUID --workspace NAME=/absolute/path [--workspace ...] -- TASK
   bin/man develop --check --workspace NAME=/absolute/path [--workspace ...]
   bin/man bootstrap --workspace NAME=/absolute/path [--workspace ...] -- TASK
+  bin/man bootstrap --resume --workspace NAME=/absolute/path [--workspace ...] -- TASK
 
 Provider selection, in order:
   LLM_API_URL + LLM_MODEL [+ LLM_API_KEY]
@@ -70,8 +71,8 @@ done
 (( ${#workspaces[@]} )) || die "at least one --workspace is required"
 (( ! resume || ${#trajectory} == 0 )) || die "--resume and --traj are mutually exclusive"
 (( check || ${#task_parts[@]} )) || die "a task is required after --"
-if [[ "$mode" == bootstrap ]] && (( resume || ${#trajectory} || check )); then
-    die "bootstrap starts one new trajectory; --resume, --traj and --check are invalid"
+if [[ "$mode" == bootstrap ]] && (( ${#trajectory} || check )); then
+    die "bootstrap accepts a new or resumed trajectory; --traj and --check are invalid"
 fi
 [[ -r "$ROOT/goal_tracker.md" && -r "$ROOT/prompts/develop.md" && -x "$HEADLONG_BIN/shellm" ]] || {
     die "the Milk Man runtime is incomplete" 70
@@ -377,12 +378,13 @@ PY
     LLM_API_URL="$(normalize_base_url "$controller_base_url")"
     LLM_MODEL="$controller_model"
     LLM_API_KEY="$controller_token"
+    LLM_REASONING_EFFORT="${MILK_CONTROLLER_REASONING_EFFORT:-high}"
     # The controller is served with a 32K context. Leave room for the goal,
     # skills, trajectory, and tool output instead of requesting Headlong's
     # generic 16K completion ceiling.
     LLM_MAX_TOKENS=4096
     provider_source="MILK_CONTROLLER"
-    export LLM_API_URL LLM_MODEL LLM_API_KEY LLM_MAX_TOKENS
+    export LLM_API_URL LLM_MODEL LLM_API_KEY LLM_MAX_TOKENS LLM_REASONING_EFFORT
     export MILK_MAN_PROVIDER_SOURCE="$provider_source"
     export PATH="$normal_path"
     write_system "$ROOT/prompts/develop.md"

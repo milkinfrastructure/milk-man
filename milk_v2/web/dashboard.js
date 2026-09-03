@@ -413,6 +413,13 @@ function renderMan(man) {
   };
   light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", (labels[state] || labels.setup) + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
   el("conversation-state").textContent = state === "setup" ? "online · setup needed" : "online · " + state + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
+  if (!runLoading) {
+    runState(man.active ? "Milk Man is working. Output will appear above."
+      : man.queued ? "Instruction queued behind the current run."
+      : state === "failed" ? "The last turn failed. Review its output, then send a correction."
+      : state === "setup" ? "Send an instruction to start a saved local session."
+      : "Milk Man is ready for the next instruction.", state === "failed");
+  }
   rows(el("workspaces"), man.workspaces.map(workspace => ({
     title: workspace.name + " · " + (workspace.head || "no git"),
     detail: workspace.changes.length ? workspace.changes.length + " changed file" + (workspace.changes.length === 1 ? "" : "s") + "\n" + workspace.changes.join("\n") : "clean · " + workspace.path,

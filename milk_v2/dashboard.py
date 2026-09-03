@@ -209,10 +209,17 @@ def _man_state() -> dict:
 
 def _spawn(current: dict, prompt: str) -> None:
     global LAST_EXIT_CODE, RUN_PROCESS
-    command = [str(ROOT / "bin/man"), "develop", "--resume"]
+    mode = "develop"
+    task = prompt
+    if prompt == "/bootstrap" or prompt.startswith("/bootstrap "):
+        mode = "bootstrap"
+        task = prompt[len("/bootstrap"):].strip()
+        if not task:
+            raise ValueError("/bootstrap requires a task")
+    command = [str(ROOT / "bin/man"), mode, "--resume"]
     for workspace in current["workspaces"]:
         command.extend(["--workspace", f"{workspace['name']}={workspace['path']}"])
-    command.extend(["--", prompt])
+    command.extend(["--", task])
     with PROCESS_LOG_LOCK:
         PROCESS_LOG.clear()
     LAST_EXIT_CODE = None
@@ -279,6 +286,8 @@ def _drain_prompt() -> None:
 
 def _run(prompt: str) -> str:
     global PENDING_PROMPT
+    if prompt == "/bootstrap":
+        raise ValueError("/bootstrap requires a task")
     with RUN_LOCK:
         current, trajectory, _ = _current_state()
         process_active = RUN_PROCESS is not None and RUN_PROCESS.poll() is None

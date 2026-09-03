@@ -63,14 +63,14 @@
     </details>
 
     <details class="chat" id="talk" aria-label="Milk Man conversation" open>
-      <summary title="This resumes the saved local development session. It does not directly run production jobs or sign routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
-      <p class="section-help" id="watch-state">The local supervisor watches status without calling a model. A model turn starts only when you send an instruction.</p>
+      <summary title="A normal instruction resumes the saved local session. /bootstrap first starts or finds the reviewed remote controller. Milk Man never signs routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
+      <p class="section-help" id="watch-state">Status checks use no model. Send a normal instruction to resume, or start with <code>/bootstrap</code> to run inference status and ensure before the same session continues on the remote controller.</p>
       <div class="messages" id="activity">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>
       <form id="run-form">
         <label class="prompt-label" for="prompt">tell Milk Man what to do next</label>
-        <textarea id="prompt" name="prompt" maxlength="16384" placeholder="Example: fix the next unfinished item, run one narrow check, inspect the diff, and continue." required></textarea>
+        <textarea id="prompt" name="prompt" maxlength="16384" placeholder="Example: /bootstrap inspect the next unfinished item, make the smallest fix, and report the result." required></textarea>
         <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send to Milk Man</button>
       </form>
       <p class="prompt-state" id="prompt-state" role="status" aria-live="polite"><kbd>Command / Control + Enter</kbd> sends · Enter makes a new line · one instruction may wait.</p>
