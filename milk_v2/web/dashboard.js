@@ -238,6 +238,20 @@ function renderProgress(progress = {}) {
   if (!points.length) el("milestones").append(node("p", "empty", "no thresholds configured"));
 }
 
+let selectedStage = null;
+let stageNotes = {};
+function selectStage(index, openCard = false) {
+  selectedStage = Math.max(0, Math.min(stages.length - 1, index));
+  const [key, label] = stages[selectedStage];
+  const state = stageNotes[key] || "waiting";
+  const position = String(selectedStage + 1).padStart(2, "0");
+  el("stage-scrubber").value = selectedStage + 1;
+  el("stage-scrubber").setAttribute("aria-valuetext", `${position} of 09, ${label}, ${state}`);
+  el("stage-output").textContent = `${position} / 09 · ${label} · ${state}`;
+  Array.from(el("stage-stops").children).forEach((stop, stopIndex) => stop.classList.toggle("selected", stopIndex === selectedStage));
+  if (openCard) Array.from(el("rail").children).forEach((card, cardIndex) => { card.open = cardIndex === selectedStage; });
+}
+
 function renderLoop(status) {
   const value = status || {};
   const opened = new Set(Array.from(el("rail").querySelectorAll("details[open]"), item => item.dataset.stage));
@@ -273,6 +287,14 @@ function renderLoop(status) {
     candidate: value.candidate?.uuid,
     proposal: value.proposal?.uuid,
   };
+  stageNotes = notes;
+  if (selectedStage === null) {
+    const pending = stages.findIndex(([key]) => !done[key]);
+    selectedStage = pending < 0 ? stages.length - 1 : pending;
+  }
+  const stops = el("stage-stops");
+  stops.replaceChildren();
+  stages.forEach(([key], index) => stops.append(node("span", done[key] ? "done" : "", String(index + 1).padStart(2, "0"))));
   let marked = false;
   el("rail").replaceChildren();
   stages.forEach(([key, label, help, job, startsWhen], index) => {
@@ -293,8 +315,10 @@ function renderLoop(status) {
     );
     if (records[key]) body.append(summaryRow("record", short(records[key]), "The first eight characters of the stored record UUID.", records[key]));
     card.append(heading, body);
+    card.addEventListener("toggle", () => { if (card.open) selectStage(index); });
     el("rail").append(card);
   });
+  selectStage(selectedStage);
 }
 
 function renderRun(status = {}) {
@@ -511,6 +535,7 @@ async function refreshLocal() {
 }
 
 el("refresh").addEventListener("click", refreshCloud);
+el("stage-scrubber").addEventListener("input", event => selectStage(number(event.target.value) - 1, true));
 el("run-form").addEventListener("submit", startRun);
 el("prompt").addEventListener("keydown", event => {
   if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {

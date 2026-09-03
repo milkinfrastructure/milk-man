@@ -46,7 +46,8 @@ local activity every second and says whether Milk Man is working, ready with a
 saved session, or needs setup. The job setup panel explains each fixed job,
 when it starts, what it reads and writes, and which environment names this
 process has. It never displays their values. Safe IDs, fixed commands, and
-environment names copy on click.
+environment names copy on click. The nine-stop Milk line can be dragged or
+used with arrow keys to inspect any stored stage and its trigger.
 
 ![Milk Man dashboard](docs/dashboard.png)
 

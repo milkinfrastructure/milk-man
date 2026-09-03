@@ -35,7 +35,7 @@
     </nav>
     <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, or environment name to copy it</small>
 
-    <details class="chat" id="talk" aria-label="Milk Man conversation" open>
+    <details class="chat" id="talk" aria-label="Milk Man conversation">
       <summary title="This resumes the saved development session. It does not directly run production jobs or sign routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
       <p class="section-help">Give the local builder one instruction. It resumes the same code, tools, saved decisions, and conversation while this page prints its work.</p>
       <div class="messages" id="activity">
@@ -60,16 +60,10 @@
 
     <details id="loop" open>
       <summary title="Follow one captured conversation through every stored step.">from traffic to a better model</summary>
-      <div class="delivery-line" aria-label="Milk system path">
-        <span class="has-help" title="Your app calls this OpenAI-compatible gateway. It forwards the request and saves an eligible completed request and response pair after delivery."><b>Milk Parlor</b><small>serves + captures</small></span>
-        <i aria-hidden="true">→</i>
-        <span class="has-help" title="The selected local or S3-compatible store holds captures and every derived checkpoint for one scope."><b>object memory</b><small>remembers each step</small></span>
-        <i aria-hidden="true">→</i>
-        <span class="has-help" title="The local harness watches thresholds and runs only reviewed named jobs."><b>Milk Man</b><small>chooses a fixed job</small></span>
-        <i aria-hidden="true">→</i>
-        <span class="has-help" title="A high-intelligence model creates labels and examples. Temporary GPUs train and compare Qwen3.5-0.8B."><b>teacher + student</b><small>creates + learns</small></span>
-        <i aria-hidden="true">→</i>
-        <span class="has-help" title="Milk Man writes an unsigned proposal. Only the operator signs it; Milk Parlor verifies the signature before routing."><b>signed delivery</b><small>operator approved</small></span>
+      <div class="route-control">
+        <label for="stage-scrubber"><b>milk line</b><output id="stage-output" for="stage-scrubber">finding the live stage</output></label>
+        <input id="stage-scrubber" type="range" min="1" max="9" step="1" value="1" aria-label="Inspect a Milk stage">
+        <div class="stage-stops" id="stage-stops" aria-hidden="true"></div>
       </div>
       <div class="rail" id="rail"></div>
     </details>
