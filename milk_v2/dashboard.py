@@ -115,7 +115,8 @@ def _active(trajectory: Path | None) -> bool:
 
 
 def _current_state() -> tuple[dict, Path, Path]:
-    root = Path(os.environ.get("MILK_MAN_STATE_DIR", Path.home() / ".local/state/milk-man")).resolve()
+    state_home = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+    root = Path(os.environ.get("MILK_MAN_STATE_DIR", state_home / "milk-man")).resolve()
     current = json.loads((root / "current.json").read_text())
     if not isinstance(current, dict) or current.get("schema_version") != MAN_STATE_SCHEMA:
         raise ValueError("invalid Milk Man state")
