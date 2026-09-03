@@ -14,6 +14,12 @@ Replace the pre-release architecture with two focused public runtime repositorie
 `milkinfrastructure/milk-landing` is the dependency-free static website only. It
 contains no runtime, credentials, customer data, job controls, or cloud API.
 
+- [x] Published the six-file static `milk-landing` repository at
+  `9e71150cdf3bdd9217d4aea993b5e7965b66ee15`, disabled repository Actions, and
+  activated both `milkinfrastructure.com` and `www.milkinfrastructure.com` on
+  Cloudflare Pages. Both domains return the typewriter page with the original
+  carton asset and strict static security headers.
+
 This is not a legacy migration or parity exercise. Freeze the old work once, define the final contracts, create clean repositories, and copy only functions that directly implement those contracts. Old prefixes, APIs, schedulers, quota code, fixtures, and control-plane behavior are not compatibility targets.
 
 The completed system must prove:
@@ -975,16 +981,17 @@ Candidate credentials remain deployment environment bindings. Do not implement h
 
 Milk Man serves one local raw HTML/CSS/JavaScript page from `bin/man dashboard`:
 
-- bind only to `127.0.0.1` and read the current bounded trajectory, memory and exact workspace revisions;
-- accept one same-origin bounded development prompt, resume the exact recorded workspace set, and queue at most one follow-up until an active turn exits;
-- reuse `milk_v2.store` and `MILK_SUMMARY_THRESHOLDS`; do not add another object-store client, database, cache or status writer;
-- make cloud reads only on page load or the explicit refresh button; the three-second watch loop reads local Milk Man state only;
-- probe Parlor's public `/healthz` through optional `MILK_PARLOR_BASE_URL` and show a square active/degraded/down light plus the last-checked time;
-- count durable scoped captures, show equal-width threshold segments for `100,1000,10000,100000` or the configured values, and traverse the bounded immutable summary-parent chain;
-- at every completed threshold show parse and success rates, unique and classified counts, latency, throughput, and leading topic, task, sentiment and capability counts;
-- show the remaining eval, dataset, student, winner, candidate and route pointers from `status/current.json` without opening their payloads;
-- apply Susan Kare's design discipline with crisp square pixels, immediate hierarchy, a restrained palette and no decorative motion;
-- use no frontend framework, package manager, asset request, build step or analytics.
+- [x] Bind only to `127.0.0.1` and read the current bounded trajectory, memory and exact workspace revisions.
+- [x] Accept one same-origin bounded development prompt, resume the exact recorded workspace set, and queue at most one follow-up until an active turn exits.
+- [x] Stream a bounded view of the child process into the chat, remove terminal control codes, redact configured secret values and common credential assignments, and explicitly distinguish attached, externally running, detached and missing sessions.
+- [x] Reuse `milk_v2.store` and `MILK_SUMMARY_THRESHOLDS`; do not add another object-store client, database, cache or status writer.
+- [x] Refresh local Milk Man state every second; read cloud state on page load, the explicit button, and every 30 seconds while visible.
+- [x] Probe Parlor's public `/healthz` through optional `MILK_PARLOR_BASE_URL` and show a square active/degraded/down light plus the last-checked time.
+- [x] Count durable scoped captures, show equal-width threshold segments for `100,1000,10000,100000` or the configured values, and traverse the bounded immutable summary-parent chain.
+- [x] At every completed threshold show parse and success rates, unique and classified counts, latency, throughput, and leading topic, task, sentiment and capability counts.
+- [x] Show the remaining eval, dataset, student, winner, candidate and route pointers from `status/current.json` without opening their payloads.
+- [x] Apply Susan Kare's design discipline with crisp square pixels, immediate hierarchy, a restrained palette and no decorative motion.
+- [x] Use no frontend framework, package manager, asset request, build step or analytics.
 
 Cloud data remains read only in this page. The localhost prompt starts only the supervised development harness; it never directly launches a Milk job, mutates a route, exposes environment values, or returns raw customer traffic or semantic samples. Parlor retains its public `/healthz` and authenticated `/api/status` for remote scope status; a hosted gateway cannot and must not expose Milk Man's local files or development trajectory.
 
