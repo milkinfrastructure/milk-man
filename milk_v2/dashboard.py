@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import threading
 import time
@@ -22,6 +23,14 @@ ROOT = Path(__file__).resolve().parents[1]
 RUN_LOCK = threading.Lock()
 RUN_PROCESS: subprocess.Popen | None = None
 PENDING_PROMPT: str | None = None
+PROCESS_LOG: deque[dict] = deque(maxlen=80)
+PROCESS_LOG_LOCK = threading.Lock()
+
+ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+SECRET_ASSIGNMENT = re.compile(
+    r"(?i)(\b(?:authorization|password|token|api[_-]?key|secret(?:[_-]?access[_-]?key)?)\b[\"']?\s*[:=]\s*[\"']?)([^\"'\s,;]+)"
+)
+AUTHORIZATION = re.compile(r"(?i)\b(Bearer|Api-Key)\s+[^\s,;]+")
 
 
 WEB_ROOT = ROOT / "milk_v2" / "web"
@@ -31,6 +40,15 @@ ASSETS = {
     "/dashboard.js": ("text/javascript; charset=utf-8", WEB_ROOT / "dashboard.js"),
     "/milk-carton.png": ("image/png", WEB_ROOT / "milk-carton.png"),
 }
+
+
+def _redact(value: object) -> str:
+    text = ANSI.sub("", str(value or ""))
+    for name, secret in os.environ.items():
+        if secret and len(secret) >= 8 and any(word in name.upper() for word in ("KEY", "TOKEN", "SECRET", "PASSWORD")):
+            text = text.replace(secret, "[redacted]")
+    text = AUTHORIZATION.sub(r"\1 [redacted]", text)
+    return SECRET_ASSIGNMENT.sub(r"\1[redacted]", text)
 
 
 def _tail(path: Path, limit: int) -> list[dict]:
@@ -129,7 +147,7 @@ def _man_state() -> dict:
             "changes": _git(path, "status", "--short").splitlines()[:24],
         })
     memories = [
-        {"ts": str(value.get("ts", ""))[:32], "content": str(value.get("content", ""))[:1000]}
+        {"ts": str(value.get("ts", ""))[:32], "content": _redact(value.get("content"))[:1000]}
         for value in (_tail(memory, 12) if memory else [])
         if value.get("type") == "memory"
     ]
@@ -138,11 +156,13 @@ def _man_state() -> dict:
         kind = str(value.get("type", "event"))[:32]
         if kind == "trajectory":
             continue
-        content = str(value.get("content", ""))
+        content = _redact(value.get("content"))
         if kind == "shell-output":
-            command = "\n".join(str(value.get("command", "")).splitlines()[:6])
+            command = "\n".join(_redact(value.get("command")).splitlines()[:6])
             content = f"$ {command}\n{content[-1800:]}\nexit {value.get('exit', '?')}"
         activity.append({"type": kind, "ts": str(value.get("ts", ""))[11:19], "content": content[:2400]})
+    with PROCESS_LOG_LOCK:
+        activity.extend(PROCESS_LOG)
     return {
         "active": attached or discovered,
         "connection": "attached" if attached else "discovered" if discovered else "detached",
@@ -159,12 +179,43 @@ def _spawn(current: dict, prompt: str) -> None:
     for workspace in current["workspaces"]:
         command.extend(["--workspace", f"{workspace['name']}={workspace['path']}"])
     command.extend(["--", prompt])
+    with PROCESS_LOG_LOCK:
+        PROCESS_LOG.clear()
     RUN_PROCESS = subprocess.Popen(
         command,
         cwd=ROOT,
         stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
         close_fds=True,
     )
+    threading.Thread(target=_read_process, args=(RUN_PROCESS,), daemon=True).start()
+
+
+def _read_process(process: subprocess.Popen) -> None:
+    if process.stdout is None:
+        return
+    for line in process.stdout:
+        content = _redact(line).rstrip()
+        if content:
+            with PROCESS_LOG_LOCK:
+                PROCESS_LOG.append({
+                    "type": "process-output",
+                    "ts": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                    "content": content[:2400],
+                })
+    process.stdout.close()
+    code = process.wait()
+    with PROCESS_LOG_LOCK:
+        PROCESS_LOG.append({
+            "type": "process-output",
+            "ts": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+            "content": f"Milk Man exited {code}",
+        })
 
 
 def _drain_prompt() -> None:

@@ -129,9 +129,10 @@ function renderMan(man) {
   target.replaceChildren();
   if (!man.activity.length) target.append(node("article", "message milk-man", "No conversation yet."));
   for (const event of man.activity) {
-    const role = event.type === "prompt" ? "you" : event.type === "shell-output" ? "tool" : "milk-man";
+    const role = event.type === "prompt" ? "you" : ["shell-output", "process-output"].includes(event.type) ? "tool" : "milk-man";
     const message = node("article", "message " + role);
-    message.append(node("b", "", role === "tool" ? "tool" : role.replace("-", " ")), node("pre", "", event.content));
+    const label = event.type === "process-output" ? "live process" : role === "tool" ? "tool" : role.replace("-", " ");
+    message.append(node("b", "", label), node("pre", "", event.content));
     if (event.ts) message.append(node("time", "", event.ts));
     target.append(message);
   }
