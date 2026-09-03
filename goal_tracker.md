@@ -986,11 +986,12 @@ Milk Man serves one local raw HTML/CSS/JavaScript page from `bin/man dashboard`:
 - [x] Stream a bounded view of the child process into the chat, remove terminal control codes, redact configured secret values and common credential assignments, and explicitly distinguish attached, externally running, detached and missing sessions.
 - [x] Reuse `milk_v2.store` and `MILK_SUMMARY_THRESHOLDS`; do not add another object-store client, database, cache or status writer.
 - [x] Refresh local Milk Man state every second; read cloud state on page load, the explicit button, and every 30 seconds while visible.
-- [x] Probe Parlor's public `/healthz` through optional `MILK_PARLOR_BASE_URL` and show a square active/degraded/down light plus the last-checked time.
+- [x] Probe Parlor's public `/healthz` through optional `MILK_PARLOR_BASE_URL` and show a hardware-style active/degraded/down lamp plus the last-checked time.
 - [x] Count durable scoped captures, show equal-width threshold segments for `100,1000,10000,100000` or the configured values, and traverse the bounded immutable summary-parent chain.
 - [x] At every completed threshold show parse and success rates, unique and classified counts, latency, throughput, and leading topic, task, sentiment and capability counts.
 - [x] Show the remaining eval, dataset, student, winner, candidate and route pointers from `status/current.json` without opening their payloads.
-- [x] Apply Susan Kare's design discipline with one monospace face, the original black/white/pink/teal palette, crisp square bevels, tactile controls and compact hardware-like lamps whose fill and rim distinguish confirmed success, missing/error and waiting states; use no gradients, shadows, opacity, decorative motion, extra assets or extra colors. Iterate from real Chrome screenshots.
+- [x] Apply Susan Kare's design discipline with one monospace face, the original black/white/pink/teal palette, crisp square bevels, tactile controls and compact hardware-like lamps whose fill and rim distinguish confirmed success, missing/error and waiting states; use no gradients, shadows, opacity, ambient motion, extra assets or extra colors. Motion must communicate direct manipulation or changing live state. Iterate from real Chrome screenshots.
+- [x] Replace the duplicated static path diagram with one native nine-stop Milk line. Its existing pixel carton thumb moves by drag or arrow key, its stops distinguish completed, selected and pending stages, and selecting a stop opens the same stage disclosure below with the exact job, trigger and record.
 - [x] Make the dense page understandable through native `details` and `title` disclosure: label mechanics versus production, explain the next deterministic action and all nine stored stages in plain language, and show each reviewed job's trigger, automatic/manual execution, fixed command, read/write prefixes, prompt, timeout and required/optional environment-name presence—never values. Clicking safe scope/record IDs, fixed commands and environment names copies exact text with inline feedback; use no modal, custom tooltip library or new endpoint. Never imply a prepared candidate is serving, an unsigned proposal is active, or configured credentials prove provider availability.
 - [x] Use no frontend framework, package manager, asset request, build step or analytics.
 
@@ -1047,7 +1048,7 @@ Progress 2026-09-01:
 - [x] Reduced Milk Man to 38 tracked files and 5,851 lines, committed the result as independent root `5bcfaeb4fe3733b5962c6b5fc07b152eac827171`, and removed the stale Prime upstream remote.
 - [x] Published independent-root default histories. Recorded checkpoints include Milk Man `530235a879c3078623ef2f69e3fb830667a9e496` and Milk Parlor `70dba12f96a12feedf7ed13b605f20d05ebefd23`; the verified local bundle preserves the obsolete history.
 - [x] After verifying the retained all-history bundle, removed all 55 obsolete `origin/codex/*` branches; `origin/main` is now the only remote branch.
-- [ ] Detach Milk Man's GitHub fork metadata; GitHub still reports `fork: true` with parent `PrimeIntellect-ai/prime-agent` and the signed-in detach flow is waiting for passkey confirmation.
+- [x] Detached Milk Man from the GitHub fork network through the signed-in repository control. Real Chrome now shows a standalone public repository with no upstream fork label or ahead/behind controls; `main` remains the Milk-owned root history and `origin/main` remains its only remote branch.
 
 Objective:
 
@@ -1084,6 +1085,7 @@ Progress 2026-09-01:
 - [x] A dependency-free local dashboard now shows bounded Milk Man trajectory activity, memory, exact workspace revisions, and the object-memory pipeline. It binds only to `127.0.0.1`, reuses `milk_v2.store`, performs one read of `status/current.json`, and exposes no environment values. Milk Man reviewed and committed the implementation as `203fab30e`; the browser proved working-to-idle state changes and live R2 counts.
 - [x] The localhost dashboard accepts a bounded prompt for the exact recorded workspaces and can hold one follow-up until the active turn exits. A live browser run moved from idle to working to idle, read both repository revisions in one maximum-reasoning turn, and made no file, job, provider or cloud changes.
 - [x] Real Chrome validated the localhost dashboard at `127.0.0.1:8766`: native disclosure preserved open sections across refresh; safe IDs, fixed commands and environment names provided inline copy feedback; no environment value, raw traffic, provider-liveness claim or route-authority control appeared. The page clearly distinguished working, ready and setup states while cloud status remained read only. The public dashboard and tightened development prompt are published at `a0ec22b77`.
+- [x] Real Chrome moved the native Milk line from stage 01 to stage 04, opened the exact eval-stage disclosure, exposed its fixed trigger, preserved that selection through an explicit status refresh, and emitted no browser warning or error. The dependency-free control and updated public screenshot are published at `8d2d9dd31`.
 
 Owned:
 
