@@ -165,13 +165,14 @@ This path is complete. It does not alter the historical evidence below.
   256-case eval shard is retained as historical evidence only. Three disjoint
   workers were stopped before completing another shard; no coordinator or GPU
   job ran.
-- [x] Sent one additional official-SDK exchange through production Parlor. It
-  completed, persisted as capture 105, and deterministically entered the train
-  split with nonempty request and response text. Milk Man advanced summary
-  `e2a73ac0-771e-5652-919d-3a6b86a144b2` and readiness
-  `e18d9bd5-6eb7-5b66-8f6d-a955266c67c8` in two inference calls with zero
-  provider lifecycle calls. The current summary now contains exactly one
-  completed train source plus 50 DEV, 25 calibration and 25 sealed sources.
+- [x] Sent two additional official-SDK exchanges through production Parlor.
+  Both completed, persisted as captures 105 and 106, deterministically entered
+  the train split, and contain nonempty request and response text. Checkpoint
+  105 proved the train boundary; checkpoint 106 bound the exact 100-source eval
+  policy. Current summary `0630f2fb-6044-59f8-bb41-dcd5de25b876` and readiness
+  `9c730aa1-0f1a-5c9a-8e05-9f97d79eb5d7` contain two completed train sources
+  plus exactly 50 DEV, 25 calibration and 25 sealed sources. Each incremental
+  checkpoint used two inference calls and zero provider lifecycle calls.
 - [x] Restricted dataset source admission to model-completed, two-sided text
   captures. HTTP success alone can no longer admit an incomplete response.
 - [ ] Generate this scope's 10,000-case lineage, then continue through the

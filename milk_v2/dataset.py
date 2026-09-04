@@ -377,6 +377,7 @@ def _train_sources(store, settings, eval_pointer: dict, count: int, text_bytes: 
             row.get("parse") is not True
             or row.get("success") is not True
             or row.get("model_completed") is not True
+            or row.get("has_request_response_text") is not True
             or row.get("modalities") != ["text"]
             or row.get("tool_definitions") != 0
             or row.get("tool_calls") != 0
