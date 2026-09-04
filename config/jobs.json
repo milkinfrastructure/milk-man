@@ -47,6 +47,17 @@
     "inference-ensure": {"handler": "inference-ensure", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": "inference-stop"},
     "inference-status": {"handler": "inference-status", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
     "inference-stop": {"handler": "inference-stop", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
+    "benchmark": {
+      "description": "Measure configured chat inference: three requests by default, optional streaming time to first visible text, exact expected-answer checks, and JSON measurements without raw answers. Set output-token allowance for reasoning models.",
+      "executable": "bin/benchmark",
+      "environment": {
+        "required": ["MILK_BENCHMARK_BASE_URL", "MILK_BENCHMARK_MODEL", "MILK_BENCHMARK_API_KEY"],
+        "optional": ["MILK_BENCHMARK_REQUESTS", "MILK_BENCHMARK_MAX_TOKENS", "MILK_BENCHMARK_TIMEOUT_SECONDS", "MILK_BENCHMARK_PROMPT", "MILK_BENCHMARK_EXPECTED", "MILK_BENCHMARK_INPUT_FILE", "MILK_BENCHMARK_STREAM", "MILK_BENCHMARK_COMPUTE_USD_PER_HOUR", "MILK_BENCHMARK_JOB_TIMEOUT_SECONDS"]
+      },
+      "status": false,
+      "stop": false,
+      "timeout_env": "MILK_BENCHMARK_JOB_TIMEOUT_SECONDS"
+    },
     "serve-modal": {
       "description": "Deploy, inspect, or stop one environment-selected OpenAI-compatible vLLM server on Modal; listed environment names are required for run.",
       "executable": "milk_v2/providers/modal_serve.py",

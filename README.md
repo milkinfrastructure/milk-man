@@ -129,7 +129,7 @@ responses, and stopped its GPU. See [`goal_tracker.md`](goal_tracker.md).
 An executable job receives `run`, `status`, or `stop`, inherits the current
 environment plus `MILK_JOB_*` metadata, and returns one JSON result on stdout.
 
-`bin/benchmark` measures a configured chat endpoint. Set
+`bin/milk run benchmark` (or `bin/benchmark` directly) measures a configured chat endpoint. Set
 `MILK_BENCHMARK_BASE_URL`, `MILK_BENCHMARK_MODEL`, and
 `MILK_BENCHMARK_API_KEY`; `MILK_BENCHMARK_STREAM=1` also measures time to the
 first visible text. Results are JSON, not raw answers. Any configured hourly
