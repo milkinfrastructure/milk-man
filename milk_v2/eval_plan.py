@@ -5,7 +5,7 @@ import hashlib
 import os
 
 
-POLICY_VERSION = "milk.eval-plan.v2"
+POLICY_VERSION = "milk.eval-plan.v3"
 SPLIT_VERSION = "milk.split.v2"
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 ORACLES = frozenset({"exact", "reference", "schema"})
@@ -100,6 +100,8 @@ def _eligible(label: dict) -> bool:
         and label.get("tool_definitions") == 0
         and label.get("tool_calls") == 0
         and label.get("success") is True
+        and label.get("model_completed") is True
+        and label.get("has_request_response_text") is True
     )
 
 

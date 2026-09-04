@@ -19,7 +19,7 @@ import uuid
 from . import eval_plan
 
 
-CODE_VERSION = "milk.summary.v3"
+CODE_VERSION = "milk.summary.v4"
 TAXONOMY_VERSION = "milk.semantic-taxonomy.v2"
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 DOMAINS = ("general", "software", "math_science", "business", "legal", "finance", "health", "creative", "other")
@@ -158,6 +158,42 @@ def _texts(value) -> list[str]:
     return output
 
 
+def _model_completed(endpoint: str, values) -> bool:
+    if not isinstance(values, list):
+        return False
+    if endpoint == "responses":
+        if len(values) == 1 and isinstance(values[0], dict) and values[0].get("type") not in {
+            "response.completed", "response.incomplete", "response.failed",
+        }:
+            return values[0].get("status") == "completed"
+        terminal = [
+            value for value in values
+            if isinstance(value, dict)
+            and value.get("type") in {"response.completed", "response.incomplete", "response.failed"}
+        ]
+        return (
+            len(terminal) == 1
+            and terminal[0].get("type") == "response.completed"
+            and isinstance(terminal[0].get("response"), dict)
+            and terminal[0]["response"].get("status") == "completed"
+        )
+    if endpoint == "chat_completions":
+        seen = set()
+        finish = {}
+        for value in values:
+            choices = value.get("choices") if isinstance(value, dict) else None
+            for choice in choices if isinstance(choices, list) else ():
+                index = choice.get("index") if isinstance(choice, dict) else None
+                if type(index) is not int:
+                    return False
+                seen.add(index)
+                reason = choice.get("finish_reason")
+                if isinstance(reason, str):
+                    finish.setdefault(index, set()).add(reason)
+        return bool(seen) and all(finish.get(index) == {"stop"} for index in seen)
+    return False
+
+
 def _sse(raw: bytes):
     events = []
     try:
@@ -281,6 +317,8 @@ def parse_capture(store, settings, key: str) -> dict:
     reasoning = request_value.get("reasoning_effort") if isinstance(request_value, dict) else None
     if not isinstance(reasoning, str) and isinstance(request_value, dict) and isinstance(request_value.get("reasoning"), dict):
         reasoning = request_value["reasoning"].get("effort")
+    endpoint = value.get("endpoint") if isinstance(value.get("endpoint"), str) else "other"
+    model_completed = _model_completed(endpoint, response_values)
     return {
         "key": key,
         "object_sha256": digest(stored.body),
@@ -290,12 +328,13 @@ def parse_capture(store, settings, key: str) -> dict:
         "response_sha256": response_sha256,
         "started_at": value["started_at"],
         "completed_at": value["completed_at"],
-        "endpoint": value.get("endpoint") if isinstance(value.get("endpoint"), str) else "other",
+        "endpoint": endpoint,
         "streaming": value.get("streaming") is True,
         "model": request_model,
         "status": status,
         "status_class": f"{status // 100}xx",
         "success": 200 <= status < 300,
+        "model_completed": model_completed,
         "request_parse": request_ok,
         "response_parse": response_ok,
         "parse": request_ok and response_ok,
@@ -309,7 +348,7 @@ def parse_capture(store, settings, key: str) -> dict:
         "structured_output": structured,
         "reasoning_effort": reasoning if isinstance(reasoning, str) else "none",
         "refusal": refusal,
-        "outcome": "refusal" if refusal else "+".join(finish) if finish else "success" if 200 <= status < 300 else "upstream_failure",
+        "outcome": "refusal" if refusal else "incomplete" if not model_completed and 200 <= status < 300 else "+".join(finish) if finish else "success" if 200 <= status < 300 else "upstream_failure",
         "request_bytes": len(request_body),
         "response_bytes": len(response_body),
         "message_count": len(request_value.get("messages", [])) if isinstance(request_value, dict) and isinstance(request_value.get("messages"), list) else 0,
@@ -386,6 +425,7 @@ def structural(rows: list[dict]) -> dict:
         "response_parsed": sum(row["response_parse"] for row in rows),
         "parsed": sum(row["parse"] for row in rows),
         "successful": sum(row["success"] for row in rows),
+        "model_completed": sum(row["model_completed"] for row in rows),
         "refusals": sum(row["refusal"] for row in rows),
         "tool_argument_total": sum(row["tool_argument_total"] for row in rows),
         "tool_argument_valid": sum(row["tool_argument_valid"] for row in rows),
@@ -454,7 +494,7 @@ def merge_structural(previous: dict | None, delta: dict, all_source_rows: list[d
 def _sampling(rows: list[dict]) -> list[dict]:
     representative_limit = _integer_environment("MILK_SUMMARY_REPRESENTATIVE_SAMPLE", 256, 1, 2048)
     tail_limit = _integer_environment("MILK_SUMMARY_TAIL_SAMPLE", 64, 0, 512)
-    eligible = [row for row in rows if row["parse"] and row.get("has_text", bool(row.get("request_text") or row.get("response_text")))]
+    eligible = [row for row in rows if row["parse"] and row.get("has_request_response_text", row.get("has_text", bool(row.get("request_text") or row.get("response_text"))))]
     representative = sorted(eligible, key=lambda row: digest(("representative:" + row["key"]).encode()))[:representative_limit]
     request_sizes = sorted(row["request_bytes"] for row in eligible)
     long_threshold = max(8192, request_sizes[(len(request_sizes) * 95 - 1) // 100]) if request_sizes else 8192
@@ -708,6 +748,7 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
                 "LLM_API_MODE": api_mode,
                 "LLM_CONNECT_TIMEOUT": str(min(10, remaining)),
                 "LLM_MAX_TIME": str(remaining),
+                "LLM_MAX_TOKENS": str(_integer_environment("MILK_SUMMARY_MAX_OUTPUT_TOKENS", 16384, 1024, 65536)),
             }
             if os.environ.get("MILK_REASONING_EFFORT"):
                 environment["LLM_REASONING_EFFORT"] = os.environ["MILK_REASONING_EFFORT"]
@@ -995,15 +1036,18 @@ def _readiness(settings, summary: dict, summary_sha256: str, labels: list[dict])
 
 def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_rows, processed: set[str], selected_keys: list[str]):
     rows = [parse_capture(store, settings, key) for key in selected_keys]
-    source_fields = ("key", "object_sha256", "content_sha256", "request_sha256", "response_sha256", "exchange_id", "started_at", "completed_at", "parse", "success", "endpoint", "model", "status", "status_class", "modalities", "tool_definitions", "tool_calls", "request_bytes", "response_bytes")
-    source_rows = [{**{key: row[key] for key in source_fields}, "has_text": bool(row["request_text"] or row["response_text"])} for row in rows]
+    source_fields = ("key", "object_sha256", "content_sha256", "request_sha256", "response_sha256", "exchange_id", "started_at", "completed_at", "parse", "success", "model_completed", "endpoint", "model", "status", "status_class", "modalities", "tool_definitions", "tool_calls", "request_bytes", "response_bytes")
+    source_rows = [{
+        **{key: row[key] for key in source_fields},
+        "has_request_response_text": bool(row["request_text"].strip() and row["response_text"].strip()),
+    } for row in rows]
     all_rows = prior_rows + source_rows
     prompt_path = Path(__file__).resolve().parents[1] / runtime.job("summary").system_prompt
     prompt = prompt_path.read_text()
     prompt_sha256 = digest(prompt.encode())
     base = os.environ.get("MILK_SUMMARY_BASE_URL", "")
     model = os.environ.get("MILK_SUMMARY_MODEL", "")
-    model_binding_sha256 = digest({"base_url": base, "model": model, "api_mode": os.environ.get("MILK_SUMMARY_API_MODE", "chat_completions"), "reasoning_effort": os.environ.get("MILK_REASONING_EFFORT", "")})
+    model_binding_sha256 = digest({"base_url": base, "model": model, "api_mode": os.environ.get("MILK_SUMMARY_API_MODE", "chat_completions"), "reasoning_effort": os.environ.get("MILK_REASONING_EFFORT", ""), "max_output_tokens": os.environ.get("MILK_SUMMARY_MAX_OUTPUT_TOKENS", "16384")})
     classifier_config_sha256 = digest({"taxonomy": TAXONOMY_VERSION, "prompt_sha256": prompt_sha256, "model_binding_sha256": model_binding_sha256, "code_version": CODE_VERSION})
     sampled = _sampling(all_rows)
     parsed_by_key = {row["key"]: row for row in rows}
@@ -1147,12 +1191,12 @@ def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_
         label_object = {"schema_version": "milk.semantic-label.v2", "scope_id": settings.scope_id, "profile": settings.profile, "content_sha256": row["content_sha256"], "classifier_config_sha256": classifier_config_sha256, "label": label}
         label_body = canonical(label_object)
         store.create_same(label_key, label_body)
-        enriched_labels.append({**label, "source_key": row["key"], "source_object_sha256": row["object_sha256"], "content_sha256": row["content_sha256"], "request_sha256": row["request_sha256"], "response_sha256": row["response_sha256"], "modalities": row["modalities"], "tool_definitions": row["tool_definitions"], "tool_calls": row["tool_calls"], "success": row["success"], "label_key": label_key, "label_sha256": digest(label_body), "selection_reasons": reasons})
+        enriched_labels.append({**label, "source_key": row["key"], "source_object_sha256": row["object_sha256"], "content_sha256": row["content_sha256"], "request_sha256": row["request_sha256"], "response_sha256": row["response_sha256"], "modalities": row["modalities"], "tool_definitions": row["tool_definitions"], "tool_calls": row["tool_calls"], "success": row["success"], "model_completed": row["model_completed"], "has_request_response_text": bool(row["request_text"].strip() and row["response_text"].strip()), "label_key": label_key, "label_sha256": digest(label_body), "selection_reasons": reasons})
     delta_structural = structural(rows)
     cumulative_structural = merge_structural(parent_summary.get("structural") if parent_summary else None, delta_structural, all_rows)
     previous_semantic = parent_summary.get("semantic", {}).get("cumulative") if parent_summary else None
     semantic = _semantic_counts(labels, previous_semantic)
-    semantic["sample"] = [{key: label[key] for key in ("source_key", "source_object_sha256", "content_sha256", "request_sha256", "response_sha256", "modalities", "tool_definitions", "tool_calls", "success", "label_key", "label_sha256", "selection_reasons")} for label in enriched_labels]
+    semantic["sample"] = [{key: label[key] for key in ("source_key", "source_object_sha256", "content_sha256", "request_sha256", "response_sha256", "modalities", "tool_definitions", "tool_calls", "success", "model_completed", "has_request_response_text", "label_key", "label_sha256", "selection_reasons")} for label in enriched_labels]
     summary_identity = {"scope_id": settings.scope_id, "profile": settings.profile, "parent_summary_sha256": parent_sha256, "source_manifest_logical_sha256": digest({"captures": source_rows}), "capture_count": len(processed) + len(rows), "config_digest": runtime.digest, "prompt_sha256": prompt_sha256, "model_binding_sha256": model_binding_sha256, "structural": cumulative_structural, "semantic": semantic}
     summary_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:summary:" + digest(summary_identity)))
     created_at = max(row["completed_at"] for row in rows)

@@ -108,7 +108,7 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] A direct read of all 100 v23 outputs rejected this corpus for use: 31 cases had clearly wrong, impossible, non-unique, or under-specified expected answers. Examples included a copper zint that contradicted its premise, a five-item ordering with the wrong middle item, and multiple incorrect arithmetic and timeline results. Do not run dataset, training, GPU, or routing from this eval.
 - [x] Published `a426e554a` with the shorter generation prompt: infer useful capabilities, prefer realistic work, solve each case, and recompute its expected answer before one structured commit.
 - [x] Revision `7251287e5066c9772dbfe9a956f91190c96b9d0f5b0f0a80e1f6414561b3e3fb` was interrupted after immutable batch zero: 64 cases and two inference calls. Direct review found elementary correctness errors and correction-pair answer leakage. It wrote no prepared shard, `e/current.json`, dataset, provider, training, or route output. Never resume it.
-- [x] Eval-source admission now uses only deterministic capture facts: distinct request digest, parsed HTTP-successful text, and no tools. Semantic labels such as answerability, safety, outcome, and oracle remain summary metadata; unsupported source oracles normalize to generated `reference` while their original label provenance remains bound.
+- [x] Eval-source admission now uses only deterministic capture facts: distinct request digest, parsed HTTP-successful text on both sides, model completion, and no tools. Semantic labels such as answerability, safety, outcome, and oracle remain summary metadata; unsupported source oracles normalize to generated `reference` while their original label provenance remains bound.
 - [x] Local Rust Parlor captured two realistic Responses exchanges into fresh R2 scope `8cc33bba-6790-4701-8a88-b3ba565971ee`. Local Milk Man wrote summary `4d9a0d1c-a7a6-54fe-9626-41488f3aa941`, readiness `259d0030-bb64-58ee-bd6a-81b1f30e22d9`, and selected the intended DEV source with readiness true.
 - [x] Eval `4476d990-7047-5b5e-a2fa-58b3dd48bf0f` expanded that source into exactly 100 schema-valid, lineage-bound, unique cases in four inference calls and zero provider calls. Replay made zero inference and provider calls.
 - [x] A direct read of all 100 accepted this revision only as mechanics evidence. Ninety-five cases were materially correct; orders 1, 50, 57, 72, and 74 contained bounded assumptions or unsupported details. All 100 remained in one event-aggregation family, so this corpus must not feed dataset or training.
@@ -119,10 +119,9 @@ Execution begins by re-verifying these revisions and preserving one local bundle
 - [x] The serial v24 scope `8cc33bba-6790-4701-8a88-b3ba565971ee` reached 100 cases, dataset, and Qwen3.5-0.8B training. Its three DEV jobs failed before inference because the evaluator expected the prior three-field validation record instead of the current record with empty `guidance`; all three jobs are terminal and no GPU remains active. Commits `9d1762bf1` and `68a4d7306` fixed and pinned the evaluator. Do not retry this scope.
 - [x] Fresh mechanics run `c47a7dd1-05fb-47fc-bfbe-1ba014ffa77b` completed the full loop without reusing old captures. Local Rust Parlor persisted 180/180 new Responses exchanges with zero drops: 80 train, 50 DEV, 25 calibration and 25 sealed. Summary `1cb3f7e2-0d4b-560a-94fb-fe5635affbe7` classified all 180; readiness `88e43988-181e-5a49-85a4-769085692a44` passed; eval `259e831c-1f20-5e13-b907-d648dbcd8ac3` produced 100 unique split-pure cases; dataset `af6004f0-923e-5abd-977f-ed654f5966c6` fed Baseten job `q89ez53` and model `d0677ba8-b72b-54e1-be3d-49eed424058b`. Dynamic FP8 won three repaired DEV branches and passed sealed evaluation group `0859095f-1c49-550b-b6d2-dcbd93e0acb9`. Modal served candidate `98a5b561-44d7-559c-9311-1b0a76edc345`; Milk Man wrote unsigned proposal `008d3ba1-06f9-53eb-9bb2-d9cd8b10d9ae`; production Parlor then proved signed candidate, pre-byte fallback, and signed zero. This is complete mechanics evidence, not a production-qualified corpus.
 
-## Active dashboard execution — 2026-09-03
+## Dashboard/controller proof — 2026-09-03
 
-This is the next unproved execution path. It does not alter the historical
-evidence or completion state below.
+This path is complete. It does not alter the historical evidence below.
 
 - [x] Launch the local dashboard with only the reviewed environment bindings
   needed by the selected controller and Milk jobs. Show presence or absence,
@@ -144,10 +143,25 @@ evidence or completion state below.
   zero receipt reports zero containers, an independent Modal listing is empty,
   and controller pointers are cleared. One unrequested old-scope `eval` call
   failed before inference or provider work because its eval binding was absent.
-- [ ] Only after the controller handoff proof, create one fresh mechanics scope
-  and drive the existing fixed jobs from official-SDK capture through the
-  source-proportional 100-source/10,000-case lineage and the remaining model,
-  proposal, signed-route and zero-capacity proofs.
+- [x] Created fresh mechanics scope
+  `aeaa9585-74c8-43ea-b6e5-070b60c40619`, deployed its operator-issued key in
+  Cloudflare version `4515234c-d762-4be6-816a-d4cda7f3582b`, and sent 104 real
+  official-SDK exchanges through the production Parlor. Parlor persisted all
+  104 with zero drops or storage failures.
+- [x] Audited every stored body before summary inference. One hundred are
+  complete request-response pairs in the exact 50 DEV, 25 calibration and 25
+  sealed split. Four Responses calls ended `incomplete/max_output_tokens`; they
+  remain valid traffic statistics but are excluded from eval-source admission.
+- [x] Milk Man classified all 104 captures into summary
+  `5b8dd30a-a395-54b5-be20-ffe08a8fc761`; its structural statistics report 104
+  parsed HTTP successes, 100 model-completed answers, four incomplete answers
+  and zero duplicates. Readiness `f716fe26-12b1-59bd-b8c0-6698d3f1bc6e`
+  passed every mechanics check and exposes exactly 100 eligible sources in the
+  50/25/25 split. A first capped attempt returned no tool call and wrote no
+  checkpoint; the explicit `MILK_SUMMARY_MAX_OUTPUT_TOKENS=32768` binding then
+  completed in six inference calls. A replay made zero inference/provider calls.
+- [ ] Generate this scope's 10,000-case lineage, then continue through the
+  model, proposal, signed-route and zero-capacity proofs.
 
 ## Non-negotiable architecture
 
@@ -1429,7 +1443,7 @@ Acceptance:
 - `e/current.json` advances only after the complete validated revision.
 - semantic workers receive only the next strict `milk job read` or `milk job commit` function; Milk Man exposes status separately, and neither surface can select storage or provider authority.
 
-### [x] P8 — Dataset, training and three evaluation branches
+### [~] P8 — Dataset, training and three evaluation branches
 
 Current downstream status and historical bounded-mechanics proof:
 
@@ -1498,7 +1512,7 @@ Acceptance:
 - unsigned proposal;
 - termination receipts and independently verified zero capacity on both providers.
 
-### [x] P9 — Signed routing and release
+### [~] P9 — Signed routing and release
 
 Current fresh mechanics routing proof and historical capability evidence:
 

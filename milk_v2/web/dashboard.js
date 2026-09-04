@@ -2,7 +2,7 @@ const el = id => document.getElementById(id);
 const short = value => typeof value === "string" ? value.slice(0, 8) : "waiting";
 const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const stages = [
-  ["traffic", "collect", "Milk Parlor stores eligible completed request and response pairs after serving them.", "Milk Parlor", "each eligible completed gateway response"],
+  ["traffic", "collect", "Milk Parlor stores eligible request and returned-response bodies after each exchange ends.", "Milk Parlor", "each eligible gateway exchange"],
   ["summary", "understand", "Milk Man measures every new capture and classifies a bounded sample.", "summary", "a configured conversation threshold is crossed"],
   ["readiness", "decide", "Fixed checks decide whether enough independent, usable data exists.", "summary", "each summary checkpoint completes"],
   ["eval", "make evals", "The teacher creates the configured number of new cases from admitted source conversations.", "eval", "the readiness record says ready"],

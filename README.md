@@ -6,7 +6,8 @@ Milk has two programs:
 
 - [Milk Parlor](https://github.com/milkinfrastructure/milk-parlor) is the small
   Rust gateway between an application and its model provider. It authenticates,
-  routes, streams, and saves eligible completed request and response pairs.
+  routes, streams, and saves eligible request and returned-response bodies after
+  each exchange ends.
 - Milk Man is the local command-line tool that reads those saved conversations,
   summarizes them, creates model tests and training data, trains and compares
   small models, and prepares a traffic rule for a person to approve.
@@ -36,8 +37,9 @@ Restart the dashboard after changing its environment.
 The dashboard shows past tasks and messages, workspace changes, configured
 environment names, gateway health, and object-store progress. It never displays
 environment values. Its prompt box starts only the supervised development
-harness; it cannot launch a production job or activate a route. Start one
-development task as shown below before using the prompt box.
+harness. An explicit instruction may call a fixed job whose environment is
+configured; Milk Man still cannot choose, sign, or activate a route. Start one
+development task as shown below before using the prompt box on a fresh install.
 
 ![Milk Man dashboard](docs/dashboard.png)
 
