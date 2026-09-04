@@ -59,7 +59,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `dd7b61ade`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat, serving, benchmark, native finish, and conversation replay fixes are committed locally, not pushed |
+| `milk-man` | `bb1d76207`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat continuity, serving failure handling, credential redaction, and benchmark fixes are committed locally, not pushed |
 | `milk-parlor` | `37c0f892cee2bb03277fff6cc107312e36fda672` | same | clean and deployed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
@@ -319,6 +319,9 @@ Corrections made by this audit:
 - [x] Local commit `44502826b` separates heartbeat liveness from dashboard
   connectivity. Chrome showed stopped, starting, running, and waiting states;
   the dashboard restart preserved the active deployment and heartbeat owner.
+- [x] `720ddbb81` keeps the objective separate from a correction during active
+  work. The heartbeat panel exposes both under **saved task**. Chrome and the
+  live API show the owner remains running after a dashboard restart.
 
 ### P1 one autonomous existing-job task
 
@@ -386,7 +389,7 @@ Corrections made by this audit:
 - [x] A Chrome closeout prompt used the native finish path to read status and
   memory, report the three results, and return to online idle at turn 12. It
   made no new deployment or inference call.
-- [ ] Select model, revision, provider, runtime, GPU type/count, serving
+- [x] Select model, revision, provider, runtime, GPU type/count, serving
   arguments, and cache through environment variables.
 - [ ] Repeat with the intended 120B proving workload without hardcoding it into
   the harness.
@@ -417,6 +420,22 @@ Corrections made by this audit:
 - [x] An unrelated parallel catalog edit briefly broke job discovery. Milk Man
   backed up that edit privately and restored the working catalog before
   resuming its wait. Keep catalog changes out of active provider runs.
+- [x] Startup failures now return a bounded HTTP 500 and a failed job record.
+  H200 app `ap-5I6PxIMEQAVD3JruO5LhFR` loaded 65.6 GiB of model weights,
+  then exhausted memory allocating its request cache at utilization 0.95.
+  That failure automatically resumed Milk Man at turn 21.
+- [x] Milk Man stopped the failed app, retained the weight cache, and changed
+  utilization to 0.85. Replacement `ap-oB4ul0MsH18m5fJMxnnurF` reached ready
+  on one H200 with the same model revision and runtime image.
+- [!] This replacement returned one 176-token response, followed by six HTTP
+  503 errors across seven attempts. The 60-second scale-down window allowed
+  shutdown between requests. Correctness was not checked in those receipts;
+  they are not a successful three-call proof or comparable tuning evidence.
+- [x] `bb1d76207` makes a partially failed benchmark return failure and a
+  nonzero exit. Existing failed receipts remain unchanged.
+- [~] Chrome instructed Milk Man to increase only the scale-down window to
+  600 seconds, retain the cache, run three exact-correct responses, then stop.
+  This retry is in progress; 120B completion remains open.
 
 ### P5 inference autotuning
 

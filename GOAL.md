@@ -108,7 +108,7 @@ the current code in small working slices.
   dashboard language, and the tracker around autonomous prompt execution.
 - [x] Record the current eleven jobs as existing capabilities, not a permanent
   allowlist or completion boundary.
-- [ ] Restart the dashboard from the aligned source and verify that it reports
+- [x] Restart the dashboard from the aligned source and verify that it reports
   the active task, trajectory, driver, heartbeat, current activity, and next
   wake without exposing secrets.
 
@@ -117,15 +117,15 @@ not a sequence of human-issued commands, drives Milk Man.
 
 ## P1 — complete one autonomous task
 
-- [ ] Remove the prompt rule that a Milk job must be named by the human.
-- [ ] Keep the system prompt short: inspect state once, choose the next useful
+- [x] Remove the prompt rule that a Milk job must be named by the human.
+- [x] Keep the system prompt short: inspect state once, choose the next useful
   action, execute it through Bash, observe the result, and continue.
-- [ ] Through dashboard chat, give Milk Man one bounded objective that requires
+- [x] Through dashboard chat, give Milk Man one bounded objective that requires
   an existing job but does not prescribe its commands.
-- [ ] Verify Milk Man chooses and runs the job, streams readable progress,
+- [x] Verify Milk Man chooses and runs the job, streams readable progress,
   handles its result, saves useful state, and reports completion without
   manual command-by-command steering.
-- [ ] Run the same objective from Bash without the dashboard.
+- [x] Run the same objective from Bash without the dashboard.
 - [ ] On a repeated run, recognize the retained result instead of repeating
   the external work.
 
@@ -134,20 +134,20 @@ interfaces, with one retained trajectory and no duplicate operation.
 
 ## P2 — make jobs extensible
 
-- [ ] Adapt the existing job registry so a reviewed repository-relative script
+- [x] Adapt the existing job registry so a reviewed repository-relative script
   can be discovered and invoked without extending `milk_v2.runner`'s central
   handler list. Keep the current Python handlers available during the change.
-- [ ] Use the existing configuration surface rather than creating a separate
+- [x] Use the existing configuration surface rather than creating a separate
   plugin or workflow framework. A job entry may name only a script inside the
   repository and the environment names it needs; model-provided paths or shell
   fragments are not configuration.
-- [ ] Standardize the small process contract: arguments in, inherited declared
+- [x] Standardize the small process contract: arguments in, inherited declared
   environment, progress on stderr, one final JSON result on stdout, plus
   explicit status and cleanup when the job owns external resources.
-- [ ] Give Milk Man a small objective for which no current job exists. Verify
+- [x] Give Milk Man a small objective for which no current job exists. Verify
   it creates or adapts one script, executes it, repairs one observed failure if
   needed, and retains the working script.
-- [ ] Repeat the objective and reuse the script without changing the Headlong
+- [x] Repeat the objective and reuse the script without changing the Headlong
   loop or runner core.
 
 Acceptance: an unseen workload becomes a reusable tool through a small script,
@@ -155,20 +155,20 @@ not another bespoke orchestration branch.
 
 ## P3 — add the durable lightweight heartbeat
 
-- [ ] Run the heartbeat independently of the browser. Closing or refreshing
+- [x] Run the heartbeat independently of the browser. Closing or refreshing
   the dashboard must not stop the active task.
-- [ ] Configure initial interval, maximum interval, and idle backoff with
+- [x] Configure initial interval, maximum interval, and idle backoff with
   environment variables.
-- [ ] Hold one lock/lease per active task and persist its objective, trajectory,
+- [x] Hold one lock/lease per active task and persist its objective, trajectory,
   current activity, resource IDs, last observation, and next wake time.
-- [ ] Wake on a new prompt, scheduled review, changed object marker, completed
+- [x] Wake on a new prompt, scheduled review, changed object marker, completed
   or failed asynchronous job, or measured service regression.
-- [ ] Do not invoke the model or relist an unchanged object prefix while idle.
+- [x] Do not invoke the model or relist an unchanged object prefix while idle.
   Send compact changed results, not full historical logs, when reasoning
   resumes.
-- [ ] Observe several idle cycles with zero model calls, interrupt the process
-  during an asynchronous wait, restart it, and prove it resumes without
-  duplicating work.
+- [~] Idle cycles, timer restart, and provider status wake are proven; recovery
+  during a provider-owned operation without duplication remains open. See the
+  P3 evidence in the tracker.
 
 Acceptance: Milk Man remains available and resumes useful work at low idle cost
 without a separate scheduler service.
