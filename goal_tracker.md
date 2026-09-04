@@ -204,12 +204,17 @@ This path is complete. It does not alter the historical evidence below.
   written after the schema weakness was identified; no eval runner or model
   request remains active. One interrupted, unreceipted OpenAI request may still
   be billable.
-- [ ] Publish v25 as a new immutable revision: generated cases sourced from
-  schema oracles use reference answers, and exact-output prompts require the
-  expected value to follow every label and formatting constraint exactly.
-- [ ] Through the dashboard, run only shard 0 with
-  `MILK_EVAL_SHARD_CASES=64`; audit all 64 cases before authorizing a second
-  batch. Do not coordinate, train, route or start GPU work.
+- [x] Implemented and committed v25: generated cases sourced from schema
+  oracles use reference answers, and exact-output prompts require the expected
+  value to follow every label and formatting constraint exactly.
+- [x] Through the dashboard, prepared only shard 0 of revision
+  `c81e317f4b716703e8b2c98dcdb43ea0ba159c9038ee55854ece2aadcec9937c`
+  (`d4d6aa28-f09a-54ba-abac-dfeb9e63ef65`) with 64 cases in one attempt and
+  two maximum-reasoning Responses calls. All 64 effective oracles are
+  answer-sensitive references, including six schema-origin sources. Direct
+  review found 64 useful, determinate prompts, 64 correct answers and 64 exact
+  output-format matches. Usage was 116,876 tokens, approximately `$0.75` at
+  list price. No coordinator, dataset, training, route or GPU job ran.
 
 ## Non-negotiable architecture
 
@@ -1475,8 +1480,8 @@ Active source-proportional execution sequence:
   replay made zero inference/provider calls. The revision is historical because
   its source summary contained no train example; the checkpoint-105 lineage
   replaces it.
-- [ ] Prove the v25 semantic correction with one 64-case prepared shard and a
-  direct human review before any fan-out.
+- [x] Proved the v25 semantic correction with one 64-case prepared shard and a
+  direct review before any fan-out.
 - [ ] Prove 100 eligible held-out sources produce exactly 10,000 useful cases with exactly 100 cases bound to each source.
 
 The prerequisite full-stack mechanics lineage is complete. Run the 10,000-case proof only on a fresh scope and revision; never resume the rejected historical fan-out.
