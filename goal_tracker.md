@@ -143,6 +143,11 @@ This path is complete. It does not alter the historical evidence below.
   zero receipt reports zero containers, an independent Modal listing is empty,
   and controller pointers are cleared. One unrequested old-scope `eval` call
   failed before inference or provider work because its eval binding was absent.
+- [x] Local commit `970cda8e0` keeps interactive trajectory state distinct from
+  deterministic jobs and reports the exact active `milk_v2.runner` job counts
+  in the dashboard. Live Chrome showed `chat waiting · 3 eval jobs active`
+  while the saved trajectory remained available and all cloud/job bindings
+  stayed redacted.
 - [x] Created fresh mechanics scope
   `aeaa9585-74c8-43ea-b6e5-070b60c40619`, deployed its operator-issued key in
   Cloudflare version `4515234c-d762-4be6-816a-d4cda7f3582b`, and sent 104 real
