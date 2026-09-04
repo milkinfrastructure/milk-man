@@ -190,9 +190,12 @@ This path is complete. It does not alter the historical evidence below.
   `credit_balance_exhausted`: prepared shards 0–6 and 38–39 remain immutable;
   shards 7–9 and 34–37 retain their completed attempt-0 batches. Zero eval
   runner, model request or provider-lifecycle process remains active.
-- [ ] Raise the Milk Infrastructure OpenAI organization monthly spend limit
-  above its observed `$155.37` usage, then resume this exact revision from its
-  retained receipts. Do not change prompts, provider binding or case identity.
+- [x] Raised the Milk Infrastructure OpenAI organization monthly spend limit
+  from `$120` to `$500`. One exact shard-35 resume then stopped after one call
+  with `credit_balance_exhausted`; the live organization credit balance was
+  `-$9.32`, so no fan-out started and all retained receipts remain unchanged.
+- [ ] Add OpenAI API credits, then resume this exact revision from its retained
+  receipts. Do not change prompts, provider binding or case identity.
 - [ ] Generate this scope's 10,000-case lineage, then continue through the
   model, proposal, signed-route and zero-capacity proofs.
 
