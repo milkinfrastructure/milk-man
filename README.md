@@ -102,13 +102,27 @@ bin/man develop \
   -- "inspect both repositories and report their current state"
 ```
 
-This defaults to `gpt-5.6-sol`, the Responses API, and low reasoning.
+This defaults to `gpt-6-astra`, the Responses API, and low reasoning.
 The driver uses `bash` to work and `finish` to report completion. For an endpoint without
 function calling, explicitly set `MILK_MAN_TOOL_CALLS=0` to use fenced Bash.
 `LLM_API_URL` plus `LLM_MODEL`, with optional `LLM_API_KEY`, selects another
 OpenAI-compatible endpoint. `--resume` continues the latest trajectory for the
 exact workspace set; `--traj UUID` selects one explicitly. Run `bin/man --help`
 for the complete provider order and bootstrap command.
+
+Milk Man can send its own model calls through Parlor too. Use a separate Milk
+key so agent work stays apart from application traffic:
+
+```bash
+export LLM_API_URL=https://parlor.milkinfrastructure.com/v1/responses
+export LLM_API_MODE=responses
+export LLM_MODEL=gpt-6-astra
+export LLM_API_KEY='operator-issued Milk key'
+```
+
+The gateway must have that key and upstream provider configured. The scope UUID
+identifies stored conversations; it does not authenticate requests. Saved agent
+work can feed the same summary, evaluation, and training jobs as other traffic.
 
 State defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/milk-man`; set
 `MILK_MAN_STATE_DIR` to an absolute dedicated directory to move it.

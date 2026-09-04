@@ -27,6 +27,16 @@ Fine-tuning, reinforcement learning, and signed routing are extensions of the
 agent's general compute and research loop. They do not block proving the core
 agent.
 
+Milk Man's own reasoning traffic must also pass through Milk Parlor. Give this
+deployment a separate operator key and UUIDv6 scope, named
+`milk-man-autoresearch`, so its requests, responses, tool calls, and returned
+tool results become useful data for improving its research behavior. Preserve
+task/trajectory grouping; repeated context is not independent conversation
+data. Start with capture and one inspected task, then reuse the existing
+summary and learning jobs. The OpenAI driver defaults to `gpt-6-astra`; GLM
+remains an independent environment-selected option. Switch a running task at a
+safe turn boundary without repeating completed work.
+
 This file is the execution order. [PRD.md](PRD.md) is the stable product
 contract. [goal_tracker.md](goal_tracker.md) is the evidence ledger.
 
@@ -117,6 +127,10 @@ Acceptance: documentation and runtime behavior agree that a high-level task,
 not a sequence of human-issued commands, drives Milk Man.
 
 ## P1 — complete one autonomous task
+
+- [ ] Route the driver through Parlor using its own Milk key, prove the
+  request/response and tool sequence in its UUIDv6 scope, and show the selected
+  gateway connection and heartbeat in the dashboard. Preserve other scopes.
 
 - [x] Remove the prompt rule that a Milk job must be named by the human.
 - [x] Keep the system prompt short: inspect state once, choose the next useful

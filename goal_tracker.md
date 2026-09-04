@@ -15,6 +15,15 @@ Status notation:
 
 ## Executive state
 
+- [x] Reserved and validated UUIDv6
+  `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a` for `milk-man-autoresearch`.
+  Its node prefix encodes `milk`; it is not an authentication key.
+- [ ] Bind a dedicated Milk key to this scope, route the running driver's
+  model calls through Parlor, and inspect one captured task/tool sequence.
+  This is additional agent-training data; retain the existing application scopes.
+- [x] OpenAI driver default changed to `gpt-6-astra`. The running Baseten GLM
+  driver is unchanged until its current inference experiment reaches cleanup.
+
 - [x] The corrected product goal is autonomous, prompt-driven Milk Man: given
   an objective and configured environment, it uses Bash, existing or newly
   written scripts, prior results, and live measurements to operate and improve

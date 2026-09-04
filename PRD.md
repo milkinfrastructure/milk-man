@@ -173,6 +173,15 @@ applicable. Memory holds concise objectives, decisions, resource identities,
 measurements, conclusions, and recovery state rather than copied transcripts
 or full provider logs.
 
+The Milk deployment uses Parlor for the harness's own model calls. An
+operator-issued Milk key selects a dedicated UUIDv6 scope; the UUID is an
+identifier, not a credential. Capture the actual API requests and responses,
+including tool-call/result context, without copying process credentials.
+Keep task boundaries so overlapping context is not counted as independent
+training data. Captured attempts are research inputs, not automatically good
+training examples: compare task outcomes before selecting examples or changing
+the driver. Summaries, evaluation, and learning reuse the existing jobs.
+
 The dashboard is an optional local prompt and observation surface bound to
 `127.0.0.1`. It streams redacted reasoning/tool output and shows the active
 task, selected non-secret driver identity, repository state, heartbeat, current
@@ -249,6 +258,9 @@ contract, not a large generic cloud framework or silent fallback chain.
 The current managed driver is `zai-org/GLM-5.3-Flash` through an
 environment-selected OpenAI-compatible endpoint. The existing fixed Modal
 controller remains usable while it is extracted into general lifecycle jobs.
+When OpenAI is selected, the default model is `gpt-6-astra`. Both providers can
+use a Parlor endpoint and Milk key; upstream provider credentials stay in the
+gateway environment. A provider change is explicit, never an automatic fallback.
 GLM Flash, a 120B workload, and Qwen are initial demonstrations, not fixed
 controller, teacher, student, provider, or compute requirements.
 

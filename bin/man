@@ -137,7 +137,7 @@ else
     elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
         LLM_API_MODE="${OPENAI_API_MODE:-responses}"
         LLM_API_URL="$(normalize_base_url "${OPENAI_BASE_URL:-https://api.openai.com/v1}" "$LLM_API_MODE")"
-        LLM_MODEL="${OPENAI_MODEL:-gpt-5.6-sol}"
+        LLM_MODEL="${OPENAI_MODEL:-gpt-6-astra}"
         LLM_API_KEY="$OPENAI_API_KEY"
         LLM_REASONING_EFFORT="${LLM_REASONING_EFFORT:-low}"
         provider_source="OPENAI"
