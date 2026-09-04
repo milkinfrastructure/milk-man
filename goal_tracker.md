@@ -400,10 +400,23 @@ Corrections made by this audit:
 - [~] That turn then returned a malformed Bash argument. The runtime now gives
   the model a matching tool error so it can repair the call; a narrow local
   replay recovered without executing the invalid command.
-- [~] At 21:02:56 UTC Milk Man resumed from its private profile and launched
-  `milk-serve-845fd60ed341` once for `openai/gpt-oss-120b` on one H100. Its
-  second call registered the heartbeat watch; the job is loading pinned
-  weights into `milk-model-cache`. Inference and cleanup remain pending.
+- [x] At 21:02:56 UTC Milk Man launched `milk-serve-845fd60ed341` for
+  `openai/gpt-oss-120b` on one H100 and registered its heartbeat watch in two
+  calls. All 22 model files finished downloading to the reusable cache at
+  21:09:37 UTC. Unchanged waiting checks made no driver-model call.
+- [!] H100 startup failed while packing MXFP4 weights: 70.40 GiB allocated,
+  7.59 GiB reserved, and another 1.01 GiB allocation failed on the 79.18 GiB
+  device. Modal retried the failed startup while the local readiness loop
+  kept waiting. This attempt produced no successful inference.
+- [x] After a Chrome correction, Milk Man stopped the local worker and
+  `ap-t8u120tx5wCSovOvf0fq6X`; `stop-attempt2.log` records stopped and zero
+  containers. Model-cache files and prior Qwen receipts were retained.
+- [!] Two recovery turns exhausted their 20-call allowance, largely reading
+  source. The 120B lifecycle is not autonomously complete. Fix startup failure
+  reporting before another attempt; use a sufficient-memory GPU next.
+- [x] An unrelated parallel catalog edit briefly broke job discovery. Milk Man
+  backed up that edit privately and restored the working catalog before
+  resuming its wait. Keep catalog changes out of active provider runs.
 
 ### P5 inference autotuning
 
