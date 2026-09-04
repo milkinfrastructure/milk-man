@@ -56,11 +56,21 @@ BINDING_ENVIRONMENTS = {
     },
     "controller": {
         "required": (
-            "MILK_CONTROLLER_BASE_URL",
-            "MILK_CONTROLLER_MODEL",
-            "MILK_CONTROLLER_API_KEY",
+            "MODAL_TOKEN_ID",
+            "MODAL_TOKEN_SECRET",
+            "MODAL_PROXY_TOKEN_ID",
+            "MODAL_PROXY_TOKEN_SECRET",
         ),
-        "optional": (),
+        "optional": (
+            "MODAL_ENVIRONMENT",
+            "MILK_MODAL_ENDPOINT_NAME",
+            "MILK_MODAL_ENDPOINT_MODEL",
+            "MILK_MODAL_ROUTING_REGION",
+            "MILK_MODAL_CONTROLLER_APPLY",
+            "MILK_MODAL_CONTROLLER_STARTUP_TIMEOUT",
+            "MILK_MODAL_STOP_TIMEOUT",
+            "MILK_MODAL_CLI",
+        ),
     },
     "summary": {
         "required": ("MILK_SUMMARY_BASE_URL", "MILK_SUMMARY_MODEL", "MILK_SUMMARY_API_KEY"),
@@ -98,18 +108,7 @@ BINDING_ENVIRONMENTS = {
     },
     "modal": {
         "required": ("MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"),
-        "optional": (
-            "MODAL_ENVIRONMENT",
-            "MILK_CONTROLLER_API_KEY",
-            "MILK_MODAL_CONTROLLER_APPLY",
-            "MILK_MODAL_CONTROLLER_APP_PREFIX",
-            "MILK_MODAL_CONTROLLER_VOLUME",
-            "MILK_MODAL_ROUTING_REGION",
-            "MILK_MODAL_CONTROLLER_API_KEY_ENV",
-            "MILK_MODAL_CONTROLLER_STARTUP_TIMEOUT",
-            "MILK_MODAL_STOP_TIMEOUT",
-            "MILK_MODAL_CLI",
-        ),
+        "optional": ("MODAL_ENVIRONMENT", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_CLI"),
     },
     "baseten": {
         "required": ("BASETEN_API_KEY", "BASETEN_TRAINING_PROJECT_ID", "MILK_TRAIN_IMAGE"),
