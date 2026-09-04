@@ -108,6 +108,19 @@ curl_args=(
     --write-out '%{http_code}'
 )
 
+case "${LLM_MILK_TRAJECTORY_HEADER:-0}" in
+    0|"") ;;
+    1)
+        : "${MILK_MAN_TRAJECTORY_ID:?MILK_MAN_TRAJECTORY_ID is required when LLM_MILK_TRAJECTORY_HEADER=1}"
+        uuid='^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$'
+        [[ "$MILK_MAN_TRAJECTORY_ID" =~ $uuid && "$MILK_MAN_TRAJECTORY_ID" != 00000000-0000-0000-0000-000000000000 ]] || {
+            die "MILK_MAN_TRAJECTORY_ID must be a non-nil UUID"
+        }
+        curl_args+=(--header "X-Milk-Trajectory-Id: $MILK_MAN_TRAJECTORY_ID")
+        ;;
+    *) die "LLM_MILK_TRAJECTORY_HEADER must be 0 or 1" ;;
+esac
+
 if [[ -n "${LLM_API_KEY:-}" ]]; then
     [[ "$LLM_API_KEY" != *$'\n'* && "$LLM_API_KEY" != *$'\r'* ]] || die "LLM_API_KEY contains a newline"
     escaped="${LLM_API_KEY//\\/\\\\}"

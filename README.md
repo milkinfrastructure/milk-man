@@ -118,11 +118,14 @@ export LLM_API_URL=https://parlor.milkinfrastructure.com/v1/responses
 export LLM_API_MODE=responses
 export LLM_MODEL=gpt-6-astra
 export LLM_API_KEY='operator-issued Milk key'
+export LLM_MILK_TRAJECTORY_HEADER=1
 ```
 
 The gateway must have that key and upstream provider configured. The scope UUID
 identifies stored conversations; it does not authenticate requests. Saved agent
 work can feed the same summary, evaluation, and training jobs as other traffic.
+The opt-in header groups calls by the task UUID supplied by `bin/man`; Parlor
+stores it and removes it before forwarding. Leave it off for direct providers.
 
 State defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/milk-man`; set
 `MILK_MAN_STATE_DIR` to an absolute dedicated directory to move it.
