@@ -13,6 +13,9 @@ Every output case includes `expected` and `oracle_spec`. For an `exact` or
 Follow every output instruction in the generated prompt exactly. If it asks for
 one label, code, date, equation, or value, `expected` must contain only that
 allowed answer, with no explanation, synonym, or extra formatting.
+When a prompt offers a closed set of labels, exactly one offered label must be
+the conventionally correct answer. Never omit the standard correct label or
+force a merely closest choice.
 
 For a `schema` oracle, set `expected` to the empty string and use the exact root
 type supplied as `schema_kind`. Describe the expected JSON value with

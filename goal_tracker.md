@@ -215,6 +215,14 @@ This path is complete. It does not alter the historical evidence below.
   review found 64 useful, determinate prompts, 64 correct answers and 64 exact
   output-format matches. Usage was 116,876 tokens, approximately `$0.75` at
   list price. No coordinator, dataset, training, route or GPU job ran.
+- [x] Prepared v25 shard 1 serially through the dashboard in two Responses
+  calls. Structural checks passed for all 64 cases and direct review found 63
+  clean. One classification prompt described a Wizard-of-Oz prototype but
+  omitted that conventional label and forced `Concierge prototype`; do not
+  continue or coordinate v25. Usage was 112,405 tokens, approximately `$0.66`
+  at list price. No downstream or GPU job ran.
+- [ ] Prove v26 with one 64-case shard after requiring every closed label set to
+  contain exactly one conventionally correct answer.
 
 ## Non-negotiable architecture
 
