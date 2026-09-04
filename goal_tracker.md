@@ -148,6 +148,13 @@ This path is complete. It does not alter the historical evidence below.
   in the dashboard. Live Chrome showed `chat waiting · 3 eval jobs active`
   while the saved trajectory remained available and all cloud/job bindings
   stayed redacted.
+- [x] Local commit `136653580` repairs dashboard prompt submission, changes the
+  supervised OpenAI driver default to `gpt-5.6-sol` with low reasoning while
+  leaving Milk data jobs at max, removes Git subprocesses from the one-second
+  local refresh, and opens the first completed summary by default. Live Chrome
+  resumed trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a`; one bounded
+  correction recovered from an invalid first answer and accurately reported
+  six active `eval` jobs without file, cloud or provider changes.
 - [x] Created fresh mechanics scope
   `aeaa9585-74c8-43ea-b6e5-070b60c40619`, deployed its operator-issued key in
   Cloudflare version `4515234c-d762-4be6-816a-d4cda7f3582b`, and sent 104 real
