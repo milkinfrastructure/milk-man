@@ -201,8 +201,9 @@ def main():
     if hourly_rate is not None:
         aggregate.update(estimated_compute_cost_usd=round(hourly_rate * elapsed_wall_seconds / 3600, 6), estimated_compute_cost_basis="configured hourly rate multiplied by benchmark wall time; estimate only, not a provider bill")
     details = {"schema_version": "milk.inference-benchmark.v1", "config": config, "requests": rows, "aggregate": aggregate}
-    print(json.dumps({"state": "complete" if good else "failed", "identity": identity, "inference_calls": calls, "details": details}, sort_keys=True, separators=(",", ":")))
-    return 0 if good else 1
+    passed = len(good) == count and (expected is None or all(row["correct"] for row in good))
+    print(json.dumps({"state": "complete" if passed else "failed", "identity": identity, "inference_calls": calls, "details": details}, sort_keys=True, separators=(",", ":")))
+    return 0 if passed else 1
 
 
 if __name__ == "__main__":
