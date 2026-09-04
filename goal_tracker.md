@@ -394,6 +394,13 @@ Corrections made by this audit:
   function call. It launched no deployment. Native tool history was being
   flattened into ordinary text; correct that conversation contract before
   repeating this objective.
+- [x] Native replay now retains assistant call IDs and reasoning, paired with
+  tool results. The next live turn created and repaired the private 120B
+  profile in three calls rather than repeating the source audit.
+- [~] That turn then returned a malformed Bash argument. The runtime now gives
+  the model a matching tool error so it can repair the call; a narrow local
+  replay recovered without executing the invalid command. The next live
+  lifecycle is resuming from the saved profile.
 
 ### P5 inference autotuning
 

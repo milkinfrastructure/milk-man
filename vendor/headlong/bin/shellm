@@ -86,7 +86,10 @@ for ((iteration=1; iteration<=maximum; iteration++)); do
     fi
 
     code="$run_dir/code"
-    python3 - "$response" "$code" "$native_tools" <<'PY'
+    message="$run_dir/message.json"
+    protocol_error="$run_dir/protocol-error"
+    rm -f "$message" "$protocol_error"
+    python3 - "$response" "$code" "$native_tools" "$message" "$protocol_error" <<'PY'
 import json
 import re
 import shlex
@@ -94,34 +97,60 @@ import sys
 
 text = open(sys.argv[1]).read()
 if sys.argv[3] == "1":
-    calls = json.loads(text)["message"].get("tool_calls", [])
+    message = json.loads(text)["message"]
+    calls = message.get("tool_calls", [])
     if len(calls) != 1:
         raise SystemExit("shellm: expected one function call")
-    function = calls[0]["function"]
-    arguments = json.loads(function["arguments"])
-    if function["name"] == "bash":
-        code = arguments.get("code")
-        if not isinstance(code, str) or not code.strip():
-            raise SystemExit("shellm: bash code must be nonempty text")
-    elif function["name"] == "finish":
-        report = arguments.get("report")
-        if not isinstance(report, str) or not report.strip() or "\0" in report:
-            raise SystemExit("shellm: finish report must be nonempty text")
-        code = "FINAL=" + shlex.quote(report.strip())
+    call = calls[0]
+    if not isinstance(call, dict) or not isinstance(call.get("id"), str) or not call["id"]:
+        raise SystemExit("shellm: function call requires a nonempty id")
+    with open(sys.argv[4], "w") as handle:
+        json.dump(message, handle, ensure_ascii=False, separators=(",", ":"))
+    function = call.get("function")
+    name = function.get("name") if isinstance(function, dict) else None
+    raw_arguments = function.get("arguments") if isinstance(function, dict) else None
+    error = None
+    try:
+        arguments = json.loads(raw_arguments) if isinstance(raw_arguments, str) else None
+    except json.JSONDecodeError:
+        arguments = None
+    keys = ", ".join(sorted(arguments))[:256] if isinstance(arguments, dict) and arguments else "none"
+    if not isinstance(arguments, dict):
+        code, error = "", "function arguments must be a JSON object"
+    elif name == "bash" and (set(arguments) != {"code"} or not isinstance(arguments.get("code"), str) or not arguments["code"].strip()):
+        code, error = "", f"bash requires one nonempty string code argument; received keys: {keys}"
+    elif name == "finish" and (set(arguments) != {"report"} or not isinstance(arguments.get("report"), str) or not arguments["report"].strip() or "\0" in arguments["report"]):
+        code, error = "", f"finish requires one nonempty string report argument; received keys: {keys}"
+    elif name == "bash":
+        code = arguments["code"]
+    elif name == "finish":
+        code = "FINAL=" + shlex.quote(arguments["report"].strip())
     else:
-        raise SystemExit("shellm: expected bash or finish function call")
-    # Retain one provider-independent Bash trajectory for either API mode.
-    open(sys.argv[1], "w").write("```bash\n" + code + "\n```\n")
+        code, error = "", "unsupported function; expected bash or finish"
+    if error:
+        open(sys.argv[5], "w").write("milk-man protocol error: " + error + "\n")
+        open(sys.argv[1], "w").write("Native function call was not executed.\n")
+    else:
+        # Keep human-readable Bash beside the native assistant message.
+        open(sys.argv[1], "w").write("```bash\n" + code + "\n```\n")
 else:
     match = re.search(r"(?ms)```(?:bash|sh|shell)[ \t]*\r?\n(.*?)(?:```|\Z)", text)
     code = match.group(1) if match else ""
 open(sys.argv[2], "w").write(code)
 PY
-    append --type reasoning --content-file "$response"
+    if [[ "$native_tools" == 1 ]]; then
+        append --type reasoning --content-file "$response" --message-file "$message"
+    else
+        append --type reasoning --content-file "$response"
+    fi
 
     if [[ ! -s "$code" ]]; then
         output="$run_dir/output"
-        printf '%s\n' 'milk-man protocol error: response must include a fenced Bash block' > "$output"
+        if [[ -s "$protocol_error" ]]; then
+            cp "$protocol_error" "$output"
+        else
+            printf '%s\n' 'milk-man protocol error: response must include a fenced Bash block' > "$output"
+        fi
         cat "$output" >&2
         append --type shell-output --content-file "$output" --command-file "$code" --exit-code 65
         note_failure

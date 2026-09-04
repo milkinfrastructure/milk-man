@@ -194,6 +194,8 @@ def append_step(arguments: argparse.Namespace) -> None:
     }
     if arguments.command_file:
         record["command"] = Path(arguments.command_file).read_text()
+    if arguments.message_file:
+        record["message"] = read_json(Path(arguments.message_file))
     if arguments.exit_code is not None:
         record["exit"] = arguments.exit_code
     append_json(trajectory, record)
@@ -221,25 +223,47 @@ def context(arguments: argparse.Namespace) -> None:
     messages: list[dict] = []
     prompt_indexes: list[int] = []
     shell_indexes: list[int] = []
+    native_indexes: set[int] = set()
+    pairs: list[tuple[int, int]] = []
+    pending: tuple[int, str] | None = None
     for record in records(Path(arguments.trajectory)):
         kind = record.get("type")
         content = str(record.get("content", ""))
         if kind == "prompt":
+            pending = None
             prompt_indexes.append(len(messages))
             messages.append({"role": "user", "content": content})
         elif kind == "reasoning":
-            messages.append({"role": "assistant", "content": content})
+            pending = None
+            message = record.get("message")
+            calls = message.get("tool_calls") if isinstance(message, dict) else None
+            if (
+                isinstance(message, dict)
+                and message.get("role") == "assistant"
+                and isinstance(calls, list)
+                and len(calls) == 1
+                and isinstance(calls[0], dict)
+                and isinstance(calls[0].get("id"), str)
+                and bool(calls[0]["id"])
+            ):
+                pending = (len(messages), calls[0]["id"])
+                native_indexes.add(len(messages))
+                messages.append(message)
+            else:
+                messages.append({"role": "assistant", "content": content})
         elif kind == "shell-output":
             command = str(record.get("command", ""))
             exit_code = record.get("exit")
             shell_indexes.append(len(messages))
-            messages.append(
-                {
-                    "role": "user",
-                    "content": f"Command:\n{command}\nExit: {exit_code}\nOutput:\n{content}",
-                }
-            )
+            observation = f"Command:\n{command}\nExit: {exit_code}\nOutput:\n{content}"
+            if pending:
+                messages.append({"role": "tool", "tool_call_id": pending[1], "content": observation})
+                pairs.append((pending[0], len(messages) - 1))
+                pending = None
+            else:
+                messages.append({"role": "user", "content": observation})
         elif kind == "final":
+            pending = None
             messages.append({"role": "assistant", "content": content})
 
     # Shell output can be much larger than the task that produced it. Keep the
@@ -255,6 +279,8 @@ def context(arguments: argparse.Namespace) -> None:
                 + raw[-message_limit:].decode(errors="replace")
             )
     required = set(prompt_indexes[-2:])
+    paired_native = {assistant_index for assistant_index, _ in pairs}
+    unpaired_native = native_indexes - paired_native
     for index in required:
         message = messages[index]
         raw = message["content"].encode()
@@ -271,7 +297,7 @@ def context(arguments: argparse.Namespace) -> None:
         for index in required
     )
     for index in reversed(range(len(messages))):
-        if index in required:
+        if index in required or index in unpaired_native:
             continue
         message = messages[index]
         size = len(json.dumps(message, ensure_ascii=False, separators=(",", ":")).encode()) + 1
@@ -279,6 +305,10 @@ def context(arguments: argparse.Namespace) -> None:
             continue
         kept_indexes.add(index)
         used += size
+    for assistant_index, tool_index in pairs:
+        if assistant_index not in kept_indexes or tool_index not in kept_indexes:
+            kept_indexes.discard(assistant_index)
+            kept_indexes.discard(tool_index)
     json.dump(
         [message for index, message in enumerate(messages) if index in kept_indexes],
         sys.stdout,
@@ -339,6 +369,7 @@ def parser() -> argparse.ArgumentParser:
     append_parser.add_argument("--type", choices=("prompt", "reasoning", "shell-output", "final"), required=True)
     append_parser.add_argument("--content-file")
     append_parser.add_argument("--command-file")
+    append_parser.add_argument("--message-file")
     append_parser.add_argument("--exit-code", type=int)
     append_parser.set_defaults(run=append_step)
 
