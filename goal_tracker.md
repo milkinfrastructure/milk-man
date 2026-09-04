@@ -160,6 +160,20 @@ This path is complete. It does not alter the historical evidence below.
   50/25/25 split. A first capped attempt returned no tool call and wrote no
   checkpoint; the explicit `MILK_SUMMARY_MAX_OUTPUT_TOKENS=32768` binding then
   completed in six inference calls. A replay made zero inference/provider calls.
+- [x] Audited the downstream dataset boundary before scaling eval generation.
+  The 104-capture summary had zero train-split sources, so its reviewed
+  256-case eval shard is retained as historical evidence only. Three disjoint
+  workers were stopped before completing another shard; no coordinator or GPU
+  job ran.
+- [x] Sent one additional official-SDK exchange through production Parlor. It
+  completed, persisted as capture 105, and deterministically entered the train
+  split with nonempty request and response text. Milk Man advanced summary
+  `e2a73ac0-771e-5652-919d-3a6b86a144b2` and readiness
+  `e18d9bd5-6eb7-5b66-8f6d-a955266c67c8` in two inference calls with zero
+  provider lifecycle calls. The current summary now contains exactly one
+  completed train source plus 50 DEV, 25 calibration and 25 sealed sources.
+- [x] Restricted dataset source admission to model-completed, two-sided text
+  captures. HTTP success alone can no longer admit an incomplete response.
 - [ ] Generate this scope's 10,000-case lineage, then continue through the
   model, proposal, signed-route and zero-capacity proofs.
 
@@ -1418,6 +1432,15 @@ Active source-proportional execution sequence:
 - [x] Prove one eligible held-out source produces exactly 100 schema-valid, globally unique, lineage-bound cases and a zero-call replay. The current one-source v24 maximum-reasoning proof produced 100 structured cases with four inference calls, zero provider lifecycle calls and a zero-call replay; bounded human semantic review found 98 materially correct cases and two known semantic errors.
 - [x] Prove 100 eligible held-out sources can advance serially without fan-out. Scope `8cc33bba-6790-4701-8a88-b3ba565971ee` produced eval `7351474f-dd59-57d6-af1d-c6ca4c986ef0`: exactly 100 unique cases in split-pure DEV 50, calibration 25 and sealed 25 shards, using 14 maximum-reasoning OpenAI Responses calls and zero GPU lifecycle calls.
 - [x] The fresh post-fix scope produced eval `259e831c-1f20-5e13-b907-d648dbcd8ac3` with the same exact 50/25/25 split and one case per source. A read-only review of all 50 DEV cases found all useful, no answer leakage or substantive duplicates, and 45 correct as written; five bounded reference defects keep this mechanics-only rather than production-qualified.
+- [x] On fresh scope `aeaa9585-74c8-43ea-b6e5-070b60c40619`, revision
+  `08db51d03effb7bf1287caf66a6d79b9e52bbeec5214ec92fc0a10dae25a21b1`
+  prepared its first 256 DEV cases in one attempt and ten maximum-reasoning
+  inference calls. All 256 prompts and prompt-answer pairs are unique, none are
+  empty or expose mechanics text, and bounded review found useful planning,
+  classification, extraction, transformation and quantitative tasks. Exact
+  replay made zero inference/provider calls. The revision is historical because
+  its source summary contained no train example; the checkpoint-105 lineage
+  replaces it.
 - [ ] Prove 100 eligible held-out sources produce exactly 10,000 useful cases with exactly 100 cases bound to each source.
 
 The prerequisite full-stack mechanics lineage is complete. Run the 10,000-case proof only on a fresh scope and revision; never resume the rejected historical fan-out.

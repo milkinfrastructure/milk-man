@@ -9,7 +9,7 @@ from . import eval as eval_job
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.dataset.v3"
+CODE_VERSION = "milk.dataset.v4"
 SPLITS = ("train", "dev", "calibration", "sealed")
 
 
@@ -376,6 +376,7 @@ def _train_sources(store, settings, eval_pointer: dict, count: int, text_bytes: 
         if (
             row.get("parse") is not True
             or row.get("success") is not True
+            or row.get("model_completed") is not True
             or row.get("modalities") != ["text"]
             or row.get("tool_definitions") != 0
             or row.get("tool_calls") != 0
@@ -395,7 +396,14 @@ def _train_sources(store, settings, eval_pointer: dict, count: int, text_bytes: 
     prepared = []
     for row in selected:
         parsed = summary.parse_capture(store, settings, row["key"])
-        if parsed["object_sha256"] != row.get("object_sha256") or parsed["content_sha256"] != row.get("content_sha256") or parsed["request_sha256"] != row.get("request_sha256") or eval_plan.split_for(parsed["request_sha256"]) != "train":
+        if (
+            parsed["object_sha256"] != row.get("object_sha256")
+            or parsed["content_sha256"] != row.get("content_sha256")
+            or parsed["request_sha256"] != row.get("request_sha256")
+            or eval_plan.split_for(parsed["request_sha256"]) != "train"
+            or not parsed["request_text"].strip()
+            or not parsed["response_text"].strip()
+        ):
             raise DatasetError("selected train source identity differs")
         prepared.append({
             "source_request_sha256": parsed["request_sha256"],
