@@ -59,7 +59,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `9285bf0f5`, plus P4 serving work | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat and native finish are committed locally; serving and context corrections are being retained next |
+| `milk-man` | `dd7b61ade`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat, serving, benchmark, native finish, and conversation replay fixes are committed locally, not pushed |
 | `milk-parlor` | `37c0f892cee2bb03277fff6cc107312e36fda672` | same | clean and deployed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
@@ -343,9 +343,9 @@ Corrections made by this audit:
 
 ### P3 lightweight heartbeat continuity
 
-- [~] A successful registered watch now yields without requiring a model-written
-  `FINAL`. This fixes the observed repeated reasoning after watch registration;
-  the next resumed task must verify the automatic handoff live.
+- [x] At 21:03 UTC the 120B task registered its read-only status watch and
+  yielded automatically without a model-written `FINAL`. Polls advanced from
+  64 to 66 with task wakeups fixed at 15 and no model call while waiting.
 - [x] During the real Modal deployment, the retained status watch advanced idle
   checks from 49 to 51 with task wakeups fixed at 10. Codex resumed that watch
   after the driver failed; the provider worker was not restarted.
@@ -399,8 +399,11 @@ Corrections made by this audit:
   profile in three calls rather than repeating the source audit.
 - [~] That turn then returned a malformed Bash argument. The runtime now gives
   the model a matching tool error so it can repair the call; a narrow local
-  replay recovered without executing the invalid command. The next live
-  lifecycle is resuming from the saved profile.
+  replay recovered without executing the invalid command.
+- [~] At 21:02:56 UTC Milk Man resumed from its private profile and launched
+  `milk-serve-845fd60ed341` once for `openai/gpt-oss-120b` on one H100. Its
+  second call registered the heartbeat watch; the job is loading pinned
+  weights into `milk-model-cache`. Inference and cleanup remain pending.
 
 ### P5 inference autotuning
 
