@@ -307,12 +307,22 @@ def main() -> None:
                 if current and current["profile_id"] != value["profile_id"]:
                     print(json.dumps(result(value, "blocked", None, 0, f"stop {current['app_name']} before changing profiles")))
                     raise SystemExit(75)
-                observed, calls = ensure(value, path)
+                try:
+                    observed, calls = ensure(value, path)
+                except (ServeError, modal.ControllerError, OSError, ValueError) as error:
+                    modal.atomic_json(
+                        path / "current.json",
+                        {"state": "failed", "plan": value, "error": str(error)[:512]},
+                    )
+                    raise
                 output = result(value, "complete", observed, calls)
             elif action == "status":
                 observed = observe(value)
-                state = "complete" if observed["app_state"] == "deployed" and observed["endpoint_url"] else "idle"
-                output = result(value, state, observed, observed["provider_calls"])
+                record = modal.read_json(path / "current.json") or {}
+                failed = record.get("state") == "failed"
+                state = "failed" if failed else "complete" if observed["app_state"] == "deployed" and observed["endpoint_url"] else "idle"
+                error = record.get("error") if failed and isinstance(record.get("error"), str) else None
+                output = result(value, state, observed, observed["provider_calls"], error)
             else:
                 observed, calls = stop(value, path)
                 output = result(value, "complete", observed, calls)

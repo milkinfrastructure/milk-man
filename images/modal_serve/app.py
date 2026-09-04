@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 from pathlib import Path
+import signal
 import subprocess
+import threading
 import time
 from urllib.request import urlopen
 
@@ -124,10 +127,62 @@ def hydrate() -> dict:
     target_concurrency=TARGET_CONCURRENCY,
 )
 class Model:
+    def stop_process(self) -> None:
+        process = getattr(self, "process", None)
+        process_group = getattr(self, "process_group", None)
+        if process is None or process_group is None:
+            return
+        try:
+            os.killpg(process_group, signal.SIGTERM)
+        except ProcessLookupError:
+            return
+        if process.poll() is None:
+            try:
+                process.wait(timeout=25)
+            except subprocess.TimeoutExpired:
+                pass
+        try:
+            os.killpg(process_group, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        if process.poll() is None:
+            process.wait(timeout=5)
+
+    def fail(self, message: str) -> None:
+        self.stop_process()
+        body = json.dumps(
+            {"error": {"code": "model_startup_failed", "message": message}},
+            separators=(",", ":"),
+        ).encode()
+
+        class Handler(BaseHTTPRequestHandler):
+            def respond(self) -> None:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            do_GET = do_POST = respond
+
+            def log_message(self, unused_format: str, *unused_args: object) -> None:
+                pass
+
+        self.failure_server = HTTPServer(("0.0.0.0", 8000), Handler)
+        threading.Thread(target=self.failure_server.serve_forever, daemon=True).start()
+
     @modal.enter()
     def start(self) -> None:
-        if not MARKER.is_file() or json.loads(MARKER.read_text()) != marker_value():
-            raise RuntimeError("model weights are not hydrated")
+        self.process = None
+        self.process_group = None
+        self.failure_server = None
+        try:
+            ready = MARKER.is_file() and json.loads(MARKER.read_text()) == marker_value()
+        except (OSError, ValueError):
+            ready = False
+        if not ready:
+            self.fail("model weights are not hydrated")
+            return
         command = [
             "vllm",
             "serve",
@@ -142,23 +197,29 @@ class Model:
             str(GPU_COUNT),
             *VLLM_ARGS,
         ]
-        self.process = subprocess.Popen(command, start_new_session=True)
+        try:
+            self.process = subprocess.Popen(command, start_new_session=True)
+            self.process_group = self.process.pid
+        except OSError:
+            self.fail("vLLM could not start")
+            return
         deadline = time.monotonic() + 25 * 60
         while time.monotonic() < deadline:
             if self.process.poll() is not None:
-                raise RuntimeError(f"vLLM exited with {self.process.returncode}")
+                self.fail(f"vLLM exited during startup with code {self.process.returncode}")
+                return
             try:
                 with urlopen("http://127.0.0.1:8000/health", timeout=5) as response:
                     if response.status == 200:
                         return
             except OSError:
                 time.sleep(5)
-        raise TimeoutError("vLLM did not become ready")
+        self.fail("vLLM did not become ready before the startup timeout")
 
     @modal.exit()
     def stop(self) -> None:
-        self.process.terminate()
-        try:
-            self.process.wait(timeout=25)
-        except subprocess.TimeoutExpired:
-            self.process.kill()
+        server = getattr(self, "failure_server", None)
+        if server is not None:
+            server.shutdown()
+            server.server_close()
+        self.stop_process()
