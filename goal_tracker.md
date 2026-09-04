@@ -62,6 +62,11 @@ Status notation:
   `9c6453af8d9964b6150f94ebf86de0832408a28f6a269715345e49726a37d6ca`
   through the existing job, with no inference. Baseline and best remain null.
   Dashboard cards now include saved off-threshold checkpoints and source groups.
+- [x] Milk Man is watching the normal 100-exchange summary threshold. Chrome
+  showed 44 captured exchanges, 20 summarized, and 166 idle checks while model
+  wakeups remained at 41. Unchanged summary and research panels now keep their
+  existing elements during refresh; an open checkpoint stayed open through a
+  live refresh. No generation, GPU, or route action was started by this check.
 - [!] The longer summary/research instruction led Milk Man into repeated
   source inspection. Codex stopped that read-only turn after its summary and
   zero-call replay were retained. A short, single-job Chrome instruction then

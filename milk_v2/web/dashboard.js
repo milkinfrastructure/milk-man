@@ -158,7 +158,11 @@ function distributionChart(label, values, total, help) {
   return chart;
 }
 
+let progressKey;
 function renderProgress(progress = {}) {
+  const key = JSON.stringify(progress);
+  if (key === progressKey) return;
+  progressKey = key;
   const counted = Number.isInteger(progress.capture_count);
   const count = number(progress.capture_count);
   const processed = number(progress.processed_count);
@@ -571,7 +575,11 @@ function renderCloud(data) {
   el("foot").textContent = "local only · remote status updated " + data.now;
 }
 
+let researchKey;
 function renderResearch(value) {
+  const key = JSON.stringify(value);
+  if (key === researchKey) return;
+  researchKey = key;
   const record = value.record;
   const target = el("research");
   el("research-state").textContent = value.error || (record ? "saved · " + short(value.revision) : "no objective saved");
