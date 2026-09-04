@@ -10,6 +10,9 @@ usage() {
     cat <<'EOF'
 Usage:
   bin/man dashboard
+  bin/man run --workspace NAME=/absolute/path [--resume] -- TASK
+  bin/man heartbeat status|pause|resume|stop
+  bin/man heartbeat wait [--seconds N] [-- READ_ONLY_COMMAND ...]
   bin/man develop --workspace NAME=/absolute/path [--workspace ...] -- TASK
   bin/man develop --resume --workspace NAME=/absolute/path [--workspace ...] -- TASK
   bin/man develop --traj UUID --workspace NAME=/absolute/path [--workspace ...] -- TASK
@@ -37,7 +40,11 @@ case "$mode" in
     dashboard)
         exec env PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 -m milk_v2.dashboard
         ;;
-    develop|bootstrap) shift ;;
+    heartbeat)
+        shift
+        exec env PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 -m milk_v2.heartbeat "$@"
+        ;;
+    develop|bootstrap|run) shift ;;
     "") usage >&2; exit 64 ;;
     *) die "unknown command: $1" ;;
 esac
@@ -70,7 +77,9 @@ done
 
 (( ${#workspaces[@]} )) || die "at least one --workspace is required"
 (( ! resume || ${#trajectory} == 0 )) || die "--resume and --traj are mutually exclusive"
-(( check || ${#task_parts[@]} )) || die "a task is required after --"
+if (( ! check && ${#task_parts[@]} == 0 )); then
+    [[ "$mode" == run && "$resume" == 1 ]] || die "a task is required after --"
+fi
 if [[ "$mode" == bootstrap ]] && (( ${#trajectory} || check )); then
     die "bootstrap accepts a new or resumed trajectory; --traj and --check are invalid"
 fi
@@ -135,7 +144,8 @@ else
     else
         die "configure an OpenAI-compatible provider; see bin/man --help"
     fi
-    export LLM_API_URL LLM_MODEL LLM_API_KEY LLM_API_MODE LLM_REASONING_EFFORT
+    LLM_MAX_TOKENS="${LLM_MAX_TOKENS:-32768}"
+    export LLM_API_URL LLM_MODEL LLM_API_KEY LLM_API_MODE LLM_REASONING_EFFORT LLM_MAX_TOKENS
 fi
 
 environment_file="$(mktemp "$state_root/.man-env.XXXXXX")"
@@ -180,6 +190,10 @@ write_system() {
         skills list
         printf '\nDurable memory for this exact workspace set:\n\n'
         mem show
+        if [[ "$mode" == run ]]; then
+            printf '\n# Continuous task\n\n'
+            printf 'You are inside the persistent Bash heartbeat. Continue actionable work yourself. To await a job, call `man heartbeat wait -- READ_ONLY_STATUS_COMMAND` (example: `bin/milk run inference-status`). For a scheduled continuation use `man heartbeat wait --seconds N`. In that SAME Bash block set FINAL to a waiting report and stop working; do not also sleep or perform the follow-up yourself. The heartbeat resumes this task once due or changed. Save resource IDs and useful decisions with `mem add`. Status checks must not mutate resources or call inference. When finished, set FINAL without registering another wait; remain idle for new instructions.\n'
+        fi
     } > "$system_file"
 }
 
@@ -244,7 +258,7 @@ if [[ "$mode" == bootstrap ]]; then
         return "$code"
     }
 
-    printf '%s\n' "${task_parts[*]}" > "$prompt_file"
+    printf '%s\n' "${task_parts[*]-}" > "$prompt_file"
     python3 "$STATE_PY" append \
         --trajectory "$MILK_MAN_TRAJECTORY" \
         --type prompt \
@@ -403,4 +417,33 @@ PY
 fi
 
 write_system "$ROOT/prompts/develop.md"
-run_headlong "${task_parts[*]}"
+if [[ "$mode" == run ]]; then
+    printf '%s\n' "${task_parts[*]-}" > "$prompt_file"
+    export MILK_MAN_HEARTBEAT_FILE="$MILK_MAN_TRAJECTORY.heartbeat.json"
+    export MILK_HEARTBEAT_SYSTEM_FILE="$system_file"
+    export MILK_HEARTBEAT_PROMPT_FILE="$prompt_file"
+    export MILK_HEARTBEAT_NEW_TASK=0
+    [[ -z "${task_parts[*]-}" ]] || export MILK_HEARTBEAT_NEW_TASK=1
+    run_log="$MILK_MAN_TRAJECTORY.run.log"
+    : >> "$run_log"
+    chmod 600 "$run_log"
+    run_kind="resuming"
+    (( MILK_HEARTBEAT_NEW_TASK == 0 )) || run_kind="starting"
+    if [[ "${MILK_MAN_RUN_LOG_EXTERNAL:-0}" == 1 ]]; then
+        unset MILK_MAN_RUN_LOG_EXTERNAL
+        printf 'milk-man: %s trajectory %s\n' "$run_kind" "$MILK_MAN_TRAJECTORY_ID"
+        "$ROOT/bin/heartbeat"
+        exit $?
+    fi
+    set +e
+    {
+        printf 'milk-man: %s trajectory %s\n' "$run_kind" "$MILK_MAN_TRAJECTORY_ID"
+        "$ROOT/bin/heartbeat"
+    } 2>&1 | tee -a "$run_log"
+    run_status=("${PIPESTATUS[@]}")
+    set -e
+    (( run_status[0] == 0 )) || exit "${run_status[0]}"
+    (( run_status[1] == 0 )) || die "could not write the live run log" 74
+    exit 0
+fi
+run_headlong "${task_parts[*]-}"

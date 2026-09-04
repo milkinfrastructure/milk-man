@@ -8,13 +8,14 @@ Milk has two programs:
   Rust gateway between an application and its model provider. It authenticates,
   routes, streams, and saves eligible request and returned-response bodies after
   each exchange ends.
-- Milk Man is the local command-line tool that reads those saved conversations,
-  summarizes them, creates model tests and training data, trains and compares
-  small models, and prepares a traffic rule for a person to approve.
+- Milk Man is a local Bash agent. Give it an objective and it can use its saved
+  trajectory, configured model, registered jobs, and repository scripts to do
+  the work. The Parlor traffic-to-model loop is its first application.
 
 Milk Man is local-first. It needs no Docker, local GPU, database, queue, or
-resident daemon. It may edit and commit supervised development work locally;
-it does not push, deploy, sign routes, or receive production signing keys.
+separate scheduler service. One lightweight local heartbeat owns an active
+task, waits without model calls, and resumes it when work changes or becomes
+due. The task and configured environment define what Milk Man may operate.
 
 ## Quickstart
 
@@ -25,21 +26,29 @@ Baseten candidate serving requires `uvx`. Docker is not required.
 ```bash
 git clone https://github.com/milkinfrastructure/milk-man.git
 cd milk-man
+export OPENAI_API_KEY=...
+bin/man run --workspace milk-man="$PWD" -- \
+  "Inspect this repository and report the next unfinished goal."
+```
+
+`run` creates one saved trajectory and keeps its heartbeat in the foreground.
+In another terminal, start the optional local view:
+
+```bash
 bin/man dashboard
 ```
 
-Open <http://127.0.0.1:8765>. The dashboard binds only to `127.0.0.1` and is a
-foreground process. `MILK_DASHBOARD_PORT` changes the port;
-`MILK_DASHBOARD_REFRESH_SECONDS` changes the cloud-status interval from its
-30-second default; and `MILK_PARLOR_BASE_URL` enables the gateway health check.
-Restart the dashboard after changing its environment.
+Open <http://127.0.0.1:8765>. `MILK_DASHBOARD_PORT` changes the port,
+`MILK_DASHBOARD_REFRESH_SECONDS` changes the 30-second remote-status interval,
+and `MILK_PARLOR_BASE_URL` enables the gateway health check. Restart the
+dashboard after changing its environment.
 
-The dashboard shows past tasks and messages, workspace changes, configured
-environment names, gateway health, and object-store progress. It never displays
-environment values. Its prompt box starts only the supervised development
-harness. An explicit instruction may call a fixed job whose environment is
-configured; Milk Man still cannot choose, sign, or activate a route. Start one
-development task as shown below before using the prompt box on a fresh install.
+The dashboard reads the saved trajectory and heartbeat, sends instructions,
+and shows messages, workspace changes, configured environment names, gateway
+health, and object-store progress. It never displays environment values.
+Closing the page is not a stop command; current heartbeat proof status is in
+[`goal_tracker.md`](goal_tracker.md). On a fresh install, start the first task
+from Bash as shown above so the dashboard has a trajectory to resume.
 
 ## Dashboard
 
@@ -60,17 +69,35 @@ Open a checkpoint to see what the captured conversations contain.
 
 ![Milk summary checkpoint](docs/dashboard-summary.png)
 
-## Run a supervised development task
+## Continue or control a task
 
-The shortest setup uses an OpenAI API key:
+Restart the same heartbeat with the exact same workspace set:
 
 ```bash
-export OPENAI_API_KEY=...
+bin/man run --resume --workspace milk-man="$PWD"
+```
 
+Inspect or control the current heartbeat:
+
+```bash
+bin/man heartbeat status
+bin/man heartbeat pause
+bin/man heartbeat resume
+bin/man heartbeat stop
+```
+
+`MILK_HEARTBEAT_SECONDS` sets the first idle interval (30 seconds by default).
+`MILK_HEARTBEAT_MAX_SECONDS` caps exponential idle backoff (300 seconds by
+default). Idle checks do not call the model. A task may register a scheduled
+wake or a read-only status command; changed status resumes the saved task.
+
+For one direct turn without the persistent heartbeat:
+
+```bash
 bin/man develop \
   --workspace milk-man="$PWD" \
   --workspace milk-parlor=/absolute/path/milk-parlor \
-  -- "inspect both repositories and make one bounded correction"
+  -- "inspect both repositories and report their current state"
 ```
 
 This defaults to `gpt-5.6-sol`, the Responses API, and low reasoning.
@@ -82,10 +109,25 @@ for the complete provider order and bootstrap command.
 State defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/milk-man`; set
 `MILK_MAN_STATE_DIR` to an absolute dedicated directory to move it.
 
-## Run fixed jobs
+## Run jobs
 
 Every `bin/milk` invocation emits one `milk.job-result.v2` JSON object to stdout.
-Diagnostics go to stderr. Start with an empty local object store:
+Diagnostics go to stderr. Inspect the live catalog before choosing a job:
+
+```bash
+bin/milk jobs
+```
+
+`bin/milk jobs` returns every registered job, its supported actions, and the
+required and optional environment names for starting a run. Status and stop
+commands use saved resource settings. The catalog can include built-in jobs
+and repository-owned executable jobs from [`config/jobs.json`](config/jobs.json).
+Executable-job dispatch exists in the current development source but remains an
+end-to-end proof item in [`goal_tracker.md`](goal_tracker.md).
+An executable job receives `run`, `status`, or `stop`, inherits the current
+environment plus `MILK_JOB_*` metadata, and returns one JSON result on stdout.
+
+Start the built-in traffic loop with an empty local object store:
 
 ```bash
 export MILK_SCOPE_ID=11111111-1111-4111-8111-111111111111
@@ -94,6 +136,10 @@ export MILK_STORE_ROOT="$PWD/.milk-objects"
 
 bin/milk status
 bin/milk operate --once
+bin/milk run summary
+# For a catalog entry that advertises these actions:
+bin/milk run <job> status
+bin/milk run <job> stop
 ```
 
 `status` reads the current run. `operate --once` advances
@@ -101,24 +147,6 @@ bin/milk operate --once
 ready, then exits. It stops after evaluation at `select-route-provider`; it does
 not choose, sign, or activate a route. An idle run makes zero inference and
 provider calls.
-
-The complete fixed command surface is:
-
-```text
-bin/milk status
-bin/milk operate --once
-bin/milk run inference-ensure
-bin/milk run inference-status
-bin/milk run inference-stop
-bin/milk run summary
-bin/milk run eval
-bin/milk run dataset
-bin/milk run train
-bin/milk run evaluate
-bin/milk run route-propose-baseten
-bin/milk run route-propose-modal
-bin/milk run gpu-reconcile-modal
-```
 
 Provider proposal jobs are explicit and separate. A credential being present
 never starts a provider job, and failure in one provider does not select another.

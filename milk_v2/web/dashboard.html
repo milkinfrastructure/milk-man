@@ -15,13 +15,13 @@
         <div><small>milkinfrastructure.com</small><h1>Milk Man</h1></div>
       </div>
       <div class="lights" aria-label="Live status">
-        <span class="has-help" title="The local Milk Man supervisor stays online while this dashboard command is running. Model work happens only after you send an instruction."><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span>
+        <span class="has-help" title="The local heartbeat owns the current task and can continue after this page closes. Idle checks use no model."><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span>
         <span class="has-help" title="Whether Milk Parlor is reachable and its background capture writer is healthy."><i class="signal" id="gateway-signal"></i><b id="gateway-state">gateway unchecked</b></span>
         <span class="has-help" title="Whether this Milk Man process can read the configured object store."><i class="signal" id="store-signal"></i><b id="store-state">object store unchecked</b></span>
       </div>
     </header>
 
-    <p class="purpose"><b>Milk Parlor is the gateway.</b> Keep the official OpenAI SDK and change its base URL and key. Parlor streams Responses and Chat Completions, then saves eligible request and returned-response bodies after each exchange ends. Milk Man summarizes them, turns completed pairs into evals and training data, and prepares operator-approved routing.</p>
+    <p class="purpose"><b>Milk Man turns an objective into Bash work.</b> It resumes saved state, chooses registered jobs or repository scripts, observes their results, and waits cheaply when work is still running. Milk Parlor's traffic-to-model loop is its first application.</p>
     <div class="run-strip" aria-label="Current Milk run">
       <b id="run-profile">finding run</b>
       <span><small>next</small><strong id="run-now">reading object memory</strong></span>
@@ -31,14 +31,21 @@
       <a href="#prompt">talk to Milk Man</a>
       <a href="#connect">connect an app</a>
       <a href="#loop">watch the loop</a>
-      <a href="#jobs-panel">job setup</a>
+      <a href="#jobs-panel">jobs + environment</a>
       <a href="#summaries">saved summaries</a>
     </nav>
     <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, environment name, or code block to copy it</small>
 
+    <section class="heartbeat" aria-label="Milk Man heartbeat">
+      <span title="One local process keeps this task available. Closing this page does not stop it."><i class="signal" id="heartbeat-signal"></i><b id="heartbeat-state">heartbeat · connecting</b></span>
+      <span>last check <time id="heartbeat-last">not checked</time></span>
+      <span>next check <time id="heartbeat-next">not scheduled</time></span>
+      <span id="heartbeat-count" title="Task wakeups may involve several model calls. Unchanged idle checks use none.">0 wakeups · 0 idle checks</span>
+    </section>
+
     <details class="chat" id="talk" aria-label="Milk Man conversation" open>
-      <summary title="A normal instruction resumes the saved local session. /bootstrap first starts or finds the reviewed remote controller. Milk Man never signs routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
-      <p class="section-help" id="watch-state">Give Milk Man one task below. Replies stay in the conversation; commands and raw output stay folded under work details.</p>
+      <summary title="Describe the outcome. Milk Man resumes its saved task, selects available jobs or scripts, and continues from observed results.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
+      <p class="section-help" id="watch-state">Describe one outcome below. Milk Man chooses the steps. Replies stay in the conversation; commands and raw output stay folded under work details.</p>
       <div class="messages" id="activity" tabindex="0" aria-label="Milk Man transcript">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>
@@ -48,7 +55,7 @@
           <span class="prompt-state" id="prompt-state" role="status" aria-live="polite">Milk Man is ready.</span>
         </div>
         <form id="run-form">
-          <textarea id="prompt-text" name="prompt" rows="3" maxlength="16384" aria-describedby="prompt-help prompt-state" placeholder="Give Milk Man one bounded task." required></textarea>
+          <textarea id="prompt-text" name="prompt" rows="3" maxlength="16384" aria-describedby="prompt-help prompt-state" placeholder="Describe the result you want." required></textarea>
           <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send</button>
         </form>
         <small class="prompt-help" id="prompt-help">Command / Control + Enter sends · Enter makes a new line</small>
@@ -100,8 +107,8 @@
       <div class="rail" id="rail"></div>
     </details>
     <details class="jobs" id="jobs-panel">
-      <summary title="See every fixed Milk job and whether this dashboard process inherited its required environment names.">job setup <small id="job-count">checking configuration</small></summary>
-      <p class="section-help">Jobs select object storage, inference, and GPU providers through environment names. <code>set</code> means this dashboard inherited the name; it does not prove provider access. Opening this panel starts nothing. A fixed job runs only after an explicit chat instruction or <code>bin/milk</code> command. Values stay hidden, and environment changes require a restart.</p>
+      <summary title="See every registered job and whether this dashboard process inherited its required environment names.">jobs + environment <small id="job-count">checking configuration</small></summary>
+      <p class="section-help">The catalog contains built-in jobs and repository-owned scripts. Environment names select object storage, inference, models, and compute. <code>set</code> means this process inherited a name; it does not prove provider access or start a job. Milk Man selects jobs while pursuing a task, or you can run one with <code>bin/milk</code>. Values stay hidden, and environment changes require a restart.</p>
       <div class="job-list" id="jobs"></div>
     </details>
     <details id="summaries" open>
@@ -114,7 +121,7 @@
       <div class="rows" id="object"></div>
     </details>
     <details>
-      <summary title="Exact local Git workspaces available to the supervised development harness.">code Milk Man can edit</summary>
+      <summary title="Exact local Git workspaces available to the current Milk Man task.">code Milk Man can edit</summary>
       <div class="rows" id="workspaces"></div>
     </details>
     <details>

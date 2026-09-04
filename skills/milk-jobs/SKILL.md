@@ -1,23 +1,25 @@
 ---
 name: milk-jobs
-description: Invoke reviewed deterministic Milk jobs from the local harness.
+description: Discover and run environment-configured Milk jobs.
 ---
 
 # Milk jobs
 
-Use only the public `milk` CLI. Begin with `milk status`; invoke a named job
-with `milk run <name>` or one reconciliation with `milk operate --once`.
+Use `milk jobs` to discover available jobs, their actions, and environment
+names. Read existing progress with `milk status`. Run a job with
+`milk run <name>`; executable jobs may also expose `status` and `stop` actions.
 
 - Treat stdout as the single `milk.job-result.v2` JSON result and stderr as
   diagnostics.
-- A model may choose only a reviewed job name. The job definition owns its
-  handler, environment bindings, object prefixes, prompt, timeout, and teardown.
-- Baseten and Modal are separate reviewed jobs. Inspect status, then choose
-  exactly one from the system prompt and operator task; its environment binding
-  supplies all provider details and credentials.
-- Never pass credentials, provider accounts, object prefixes, images, GPU
-  types, model revisions, signing keys, or shell commands as model arguments.
-- An `idle` result is successful and must not be converted into polling.
+- Reuse job scripts. Add or adapt a repository executable and its catalog entry
+  when the task needs a missing capability; do not extend the harness engine.
+- Job definitions identify environment names; scripts resolve their values.
+  Configure the model, GPU, and inference settings needed for the objective.
+  Keep credentials in environment variables, never prompts or printed output.
+- Baseten and Modal are separate jobs. Use the selected provider; do not
+  silently fall back to another provider.
+- An `idle` result is successful. If the task requires a later check, register
+  a read-only heartbeat watch and yield rather than repeatedly calling a model.
 - On an ambiguous provider result, run that provider's fixed reconciliation
   job. Do not retry creation or invoke another provider until the first identity
   is resolved.

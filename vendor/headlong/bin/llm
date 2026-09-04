@@ -173,6 +173,17 @@ if isinstance(content, list):
         part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") in (None, "text", "output_text")
     )
 if not isinstance(content, str) or not content:
-    raise SystemExit("llm: response contained no assistant text")
+    finish_reason = None
+    if isinstance(value.get("choices"), list) and value["choices"] and isinstance(value["choices"][0], dict):
+        finish_reason = value["choices"][0].get("finish_reason")
+    reasoning = message.get("reasoning_content") if isinstance(message, dict) else None
+    usage = value.get("usage") if isinstance(value.get("usage"), dict) else {}
+    tool_calls = message.get("tool_calls") if isinstance(message, dict) else None
+    raise SystemExit(
+        "llm: response contained no assistant text "
+        f"(finish_reason={finish_reason!r}, reasoning_chars={len(reasoning) if isinstance(reasoning, str) else 0}, "
+        f"completion_tokens={usage.get('completion_tokens')!r}, "
+        f"tool_calls={len(tool_calls) if isinstance(tool_calls, list) else 0})"
+    )
 print(content)
 PY

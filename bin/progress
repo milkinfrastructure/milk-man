@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+"$repo/bin/milk" status | python3 -c '
+import json, sys
+result = json.load(sys.stdin)
+details = result["details"]
+print(json.dumps({
+    "captured": details["capture_count"],
+    "summarized": details["processed_count"],
+    "next": result["next"],
+}, sort_keys=True))
+'

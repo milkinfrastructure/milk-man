@@ -14,7 +14,7 @@ import time
 import urllib.request
 from urllib.parse import urlsplit
 
-from . import config
+from . import config, heartbeat
 from .state import SCHEMA as MAN_STATE_SCHEMA, validate_trajectory, workspace_set
 from .summary import thresholds
 from .store import open_store, settings_from_environment
@@ -186,9 +186,16 @@ def _man_state(include_metadata: bool = True) -> dict:
         attached = RUN_PROCESS is not None and RUN_PROCESS.poll() is None
         queued = PENDING_PROMPT is not None
         last_exit_code = LAST_EXIT_CODE
+    pulse = heartbeat.read(Path(str(trajectory) + ".heartbeat.json"))
+    pulse_alive = heartbeat.alive(pulse)
+    if pulse_alive:
+        queued = bool(pulse.get("pending"))
+        last_exit_code = pulse.get("last_exit_code")
     discovered, local_jobs = _process_state(trajectory)
-    active = attached or discovered
-    state = "working" if active else "queued" if queued else "failed" if last_exit_code not in (None, 0) else "idle"
+    active = pulse.get("state") == "running" if pulse_alive else attached or discovered
+    state = ("working" if active else pulse.get("state", "idle")) if pulse_alive else "working" if active else "queued" if queued else "failed" if last_exit_code not in (None, 0) else "idle"
+    if pulse and not pulse_alive and not active:
+        state = "stopped"
     workspaces, memories = None, None
     if include_metadata:
         workspaces = []
@@ -224,11 +231,26 @@ def _man_state(include_metadata: bool = True) -> dict:
         activity.append({"type": kind, "ts": str(value.get("ts", ""))[11:19], "content": content[:2400]})
     with PROCESS_LOG_LOCK:
         activity.extend(PROCESS_LOG)
+    try:
+        with Path(str(trajectory) + ".run.log").open("rb") as log:
+            log.seek(0, 2)
+            log.seek(max(0, log.tell() - 16384))
+            lines = log.read().decode("utf-8", "replace").splitlines()[-80:]
+        starts = [
+            index for index, line in enumerate(lines)
+            if line.startswith(("milk-man: starting trajectory ", "milk-man: resuming trajectory "))
+        ]
+        if starts:
+            lines = lines[starts[-1]:]
+        activity.extend({"type": "process-output", "ts": "", "content": _redact(line)[:2400]} for line in lines if line)
+    except FileNotFoundError:
+        pass
     return {
-        "online": True,
+        "online": pulse_alive or active or not pulse,
         "active": active,
         "state": state,
-        "connection": "attached" if attached else "discovered" if discovered else "idle",
+        "connection": "heartbeat" if pulse_alive else "attached" if attached else "discovered" if discovered else "idle",
+        "heartbeat": {key: pulse.get(key) for key in ("state", "checked_at", "next_wake", "turns", "polls")},
         "queued": queued,
         "last_exit_code": last_exit_code,
         "trajectory_id": current.get("trajectory_id"),
@@ -242,7 +264,7 @@ def _man_state(include_metadata: bool = True) -> dict:
 
 def _spawn(current: dict, prompt: str) -> None:
     global LAST_EXIT_CODE, RUN_PROCESS
-    mode = "develop"
+    mode = "run"
     task = prompt
     if prompt == "/bootstrap" or prompt.startswith("/bootstrap "):
         mode = "bootstrap"
@@ -256,6 +278,16 @@ def _spawn(current: dict, prompt: str) -> None:
     with PROCESS_LOG_LOCK:
         PROCESS_LOG.clear()
     LAST_EXIT_CODE = None
+    if mode == "run":
+        log_path = Path(current["trajectory_file"] + ".run.log")
+        environment = {**os.environ, "MILK_MAN_RUN_LOG_EXTERNAL": "1"}
+        with log_path.open("a") as log:
+            os.chmod(log_path, 0o600)
+            RUN_PROCESS = subprocess.Popen(command, cwd=ROOT, env=environment,
+                                           stdin=subprocess.DEVNULL, stdout=log,
+                                           stderr=subprocess.STDOUT,
+                                           start_new_session=True, close_fds=True)
+        return
     RUN_PROCESS = subprocess.Popen(
         command,
         cwd=ROOT,
@@ -324,6 +356,11 @@ def _run(prompt: str) -> str:
         raise ValueError("/bootstrap requires a task")
     with RUN_LOCK:
         current, trajectory, _ = _current_state()
+        pulse_path = Path(str(trajectory) + ".heartbeat.json")
+        pulse = heartbeat.read(pulse_path)
+        if heartbeat.alive(pulse):
+            heartbeat.enqueue(pulse_path, prompt)
+            return "queued" if pulse.get("state") == "running" else "started"
         process_active = RUN_PROCESS is not None and RUN_PROCESS.poll() is None
         discovered, _ = _process_state(trajectory)
         if process_active or discovered:
@@ -446,8 +483,8 @@ def _job_contract() -> dict:
     jobs = []
     for name in order:
         job = runtime.job(name)
-        required = []
-        optional = []
+        required = list(job.environment_required)
+        optional = list(job.environment_optional)
         for binding in job.bindings:
             required.extend(config.BINDING_ENVIRONMENTS[binding]["required"])
             optional.extend(config.BINDING_ENVIRONMENTS[binding]["optional"])
@@ -456,6 +493,7 @@ def _job_contract() -> dict:
         optional = list(dict.fromkeys(value for value in optional if value and value not in required))
         jobs.append({
             "name": name,
+            "description": job.description,
             "trigger": job.trigger["kind"],
             "command": f"bin/milk run {name}",
             "automatic": name in runtime.operate_order,

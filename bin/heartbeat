@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# One sleeping owner for an existing Milk Man trajectory.
+set -euo pipefail
+umask 077
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
+hb() { python3 -m milk_v2.heartbeat "$@"; }
+if [[ "${MILK_HEARTBEAT_OWNER:-}" != "$$" ]]; then
+    exec python3 -m milk_v2.heartbeat own "$ROOT/bin/heartbeat"
+fi
+sleep_pid=""
+child=""
+wake_pending=0
+wake() { wake_pending=1; [[ -z "$sleep_pid" ]] || kill "$sleep_pid" 2>/dev/null || true; }
+trap wake USR1
+trap 'hb stopped; trap - TERM INT; kill -TERM -- -$$ 2>/dev/null || true; exit 143' TERM INT
+hb init
+unset MILK_HEARTBEAT_NEW_TASK
+while true; do
+    wake_pending=0
+    action="$(hb tick)"
+    case "$action" in
+        run)
+            trap '' USR1
+            "$ROOT/vendor/headlong/bin/shellm" \
+                --system-file "$MILK_HEARTBEAT_SYSTEM_FILE" \
+                --prompt-file "$MILK_HEARTBEAT_PROMPT_FILE" \
+                --trajectory "$MILK_MAN_TRAJECTORY" \
+                --workdir "$MILK_MAN_PRIMARY_WORKSPACE" &
+            child=$!
+            code=0
+            wait "$child" || code=$?
+            child=""
+            hb finish "$code"
+            trap wake USR1
+            ;;
+        stop) break ;;
+        *)
+            (( wake_pending == 0 )) || continue
+            sleep "$action" &
+            sleep_pid=$!
+            (( wake_pending == 0 )) || kill "$sleep_pid" 2>/dev/null || true
+            wait "$sleep_pid" || true
+            sleep_pid=""
+            ;;
+    esac
+done
+hb stopped

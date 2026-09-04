@@ -111,9 +111,11 @@ PY
     } > "$runner"
 
     set +e
-    (cd "$workdir" && bash "$runner") > "$output" 2>&1
-    exit_code=$?
+    (cd "$workdir" && bash "$runner") 2>&1 | tee "$output" >&2
+    pipeline_status=("${PIPESTATUS[@]}")
+    exit_code="${pipeline_status[0]}"
     set -e
+    (( pipeline_status[1] == 0 )) || die "could not capture command output"
     final_ok=0
     protocol_failed=0
     if [[ -f "$final" ]]; then
@@ -130,11 +132,10 @@ PY
             protocol_failed=1
             printf '\n%s\n' \
                 'milk-man protocol error: FINAL or FINAL_FILE requires exit zero and nonblank text other than 0, 1, true, or false' \
-                >> "$output"
+                | tee -a "$output" >&2
         fi
     fi
 
-    cat "$output" >&2
     recorded_exit="$exit_code"
     (( ! protocol_failed || recorded_exit != 0 )) || recorded_exit=65
     append --type shell-output --content-file "$output" --command-file "$code" --exit-code "$recorded_exit"

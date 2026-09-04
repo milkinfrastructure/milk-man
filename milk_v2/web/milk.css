@@ -49,6 +49,8 @@ h1 { margin: .2rem 0 0; font-size: 22px; line-height: 1; }
 .carton { width: 2.7rem; height: auto; image-rendering: pixelated; }
 
 .lights { align-items: flex-start; flex-direction: column; gap: .25rem; }
+.heartbeat { display: flex; flex-wrap: wrap; gap: .6rem 1.25rem; padding: .75rem; border: 1px solid var(--white); border-bottom: 0; }
+.heartbeat > span { display: inline-flex; align-items: center; gap: .4rem; }
 .signal {
   --lamp: var(--white);
   --face: var(--black);

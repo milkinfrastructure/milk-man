@@ -13,8 +13,8 @@ Use this skill for any Milk code change.
    unchanged read, check, or poll.
 3. Keep Milk Parlor a CPU-only Rust proxy: authentication, routing, exact
    asynchronous capture, and status only.
-4. Keep orchestration in deterministic `milk` jobs. Development reasoning may
-   propose or implement code but cannot sign or activate routes.
+4. Keep resource operations in reusable scripts and `milk` jobs. Milk Man
+   chooses and improves those scripts. Route signing remains an operator action.
 5. Store durable data beneath `milk/v2/scopes/<scope_uuid>/`; raw captures and
    versioned artifacts are immutable, while small `current.json` objects are
    conditional pointers.
@@ -23,9 +23,10 @@ Use this skill for any Milk code change.
 7. Treat Baseten and Modal as separate named jobs. Select exactly one from the
    system prompt or operator task; never turn one provider's failure into a call
    to the other provider.
-8. Make one bounded change, run the narrowest real check, inspect the diff, and
-   leave a reviewable commit only when the human task permits it.
+8. Make small changes, run the narrowest real check, inspect the diff, and
+   continue toward the requested outcome. Commit when the task permits it.
 
-Do not add Prime, Exo, Docker to the local harness, a database, queue, tick
-loop, standing GPU, generic provider abstraction, compatibility layer, broad
-fixture suite, or product budget system.
+Reuse the existing Bash heartbeat; unchanged idle checks need no model call.
+Keep requested serving resources running and release abandoned work. Do not add
+another harness, mandatory local Docker, a database, queue, separate scheduler,
+generic provider framework, broad fixture suite, or product budget system.

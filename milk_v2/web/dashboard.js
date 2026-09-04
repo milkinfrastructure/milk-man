@@ -372,14 +372,14 @@ function renderContract(contract = {}) {
     card.dataset.job = job.name;
     card.open = opened.has(job.name);
     const heading = node("summary", "job-head");
-    heading.title = jobCopy[job.name] || "A reviewed Milk job.";
+    heading.title = jobCopy[job.name] || job.description || "A repository job.";
     heading.append(
       node("i", "pin"),
       node("b", "", job.name),
       node("small", "", missing.length ? "missing " + missing.length + " required name" + (missing.length === 1 ? "" : "s") : "required names set")
     );
     const body = node("div", "job-body");
-    body.append(node("p", "", jobCopy[job.name] || "A reviewed Milk job."));
+    body.append(node("p", "", jobCopy[job.name] || job.description || "A repository job."));
     const facts = node("div", "facts");
     facts.append(
       summaryRow("starts when", triggerCopy[job.trigger] || String(job.trigger || "manual").replaceAll("_", " ")),
@@ -414,15 +414,30 @@ function renderMan(man) {
     working: man.connection === "discovered" ? "Milk Man online · working outside this page" : "Milk Man online · working" + jobStatus + (man.queued ? " · next instruction queued" : ""),
     queued: "Milk Man online · instruction queued",
     failed: "Milk Man online · last turn failed",
+    waiting: "Milk Man online · watching for progress",
+    paused: "Milk Man paused",
+    stopped: "Milk Man stopped",
     idle: "Milk Man online · chat waiting" + jobStatus,
     setup: "Milk Man online · session setup needed",
   };
   light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", (labels[state] || labels.setup) + (driverStatus ? " · " + driverStatus : "") + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
-  el("conversation-state").textContent = state === "setup" ? "online · setup needed" : "online · " + state + jobStatus + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
+  const pulse = man.heartbeat || {};
+  light("heartbeat", !man.online ? "down" : state === "failed" ? "degraded" : "up", "heartbeat · " + (man.online ? state : "stopped"));
+  for (const [id, stamp] of [["last", pulse.checked_at], ["next", man.online && state !== "paused" ? pulse.next_wake : null]]) {
+    const target = el("heartbeat-" + id);
+    target.textContent = stamp ? new Date(stamp * 1000).toLocaleTimeString() : id === "next" && man.active ? "after current work" : "not scheduled";
+    target.dateTime = stamp ? new Date(stamp * 1000).toISOString() : "";
+  }
+  el("heartbeat-count").textContent = (pulse.turns || 0) + " wakeups · " + (pulse.polls || 0) + " idle checks";
+  const nextWake = man.online && pulse.next_wake ? " · next check " + new Date(pulse.next_wake * 1000).toLocaleTimeString() : "";
+  el("conversation-state").textContent = (man.online ? "online" : "stopped") + " · " + state + jobStatus + nextWake + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
+  el("conversation-state").title = pulse.checked_at ? "Heartbeat last checked " + new Date(pulse.checked_at * 1000).toLocaleString() + ". Unchanged idle checks use no model tokens." : "Heartbeat starts with your next task. Closing this page does not stop it.";
   if (!runLoading) {
     runState(man.active ? "Milk Man is working. Output will appear above."
       : man.queued ? "Instruction queued behind the current run."
       : state === "failed" ? "The last turn failed. Review its output, then send a correction."
+      : state === "waiting" ? "Milk Man will continue when the watched job changes or its next review is due."
+      : state === "paused" ? "Automatic continuation is paused. Send an instruction to continue."
       : state === "setup" ? "Send an instruction to start a saved local session."
       : jobs ? "Milk jobs are running outside chat. Their results will appear in object memory."
       : "Milk Man is ready for the next instruction.", state === "failed");
@@ -526,7 +541,7 @@ function renderCloud(data) {
   const jobs = data.contract?.jobs || [];
   const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
   el("job-count").textContent = readyJobs + " / " + jobs.length + " ready";
-  el("watch-state").textContent = "Give Milk Man one task at a time. Status checks every " + number(monitor.interval_seconds) + " seconds use no model. " + readyJobs + " of " + jobs.length + " jobs are configured. Commands and raw output stay folded.";
+  el("watch-state").textContent = "Describe one outcome. Milk Man chooses the steps. " + readyJobs + " of " + jobs.length + " jobs are configured. Unchanged idle checks use no model. Commands and raw output stay folded.";
   const status = milk.status || {};
   renderRun(status);
   renderProgress(milk.progress);
@@ -571,7 +586,9 @@ async function refreshLocal() {
     if (!response.ok) throw Error();
     renderMan((await response.json()).man);
   } catch {
-    light("man", "detached", "Milk Man supervisor unavailable");
+    light("man", "detached", "dashboard disconnected from Milk Man");
+    light("heartbeat", "down", "heartbeat · connection lost");
+    el("heartbeat-next").textContent = "unknown while disconnected";
   }
 }
 

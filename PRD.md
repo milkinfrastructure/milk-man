@@ -5,9 +5,16 @@ This file defines the product. `GOAL.md` defines the current execution outcome.
 
 ## Product promise
 
-Milk turns completed model traffic into scoped object memory, useful summaries,
-evaluation data, a trained small-model candidate, and an operator-approved route.
-An application keeps the official OpenAI SDK and changes only two settings:
+Milk Man turns a high-level objective and an environment into completed model,
+compute, and research work. It inspects existing resources and prior results,
+reuses or creates scripts, executes them through Bash, measures outcomes,
+adapts, persists what it learned, and continues until the objective is complete
+or a specific external blocker is proven.
+
+Milk Parlor is the first major application and data source. It turns completed
+model traffic into scoped object memory that Milk Man can summarize, use for
+evaluation or training research, and eventually route to an improved model. An
+application keeps the official OpenAI SDK and changes only two settings:
 
 ```text
 OPENAI_BASE_URL=https://parlor.milkinfrastructure.com/v1
@@ -21,43 +28,40 @@ OpenAI API and does not require a Milk SDK.
 ## The two loops
 
 ```text
-Product loop
+Autonomous research loop
+
+high-level prompt + environment + retained state
+                       |
+                       v
+inspect -> plan -> Bash/scripts -> resources -> measurements
+   ^                                              |
+   |                                              v
+   +------ compare <- persist result <- adapt/cleanup
+
+Milk application
 
 official SDK -> Milk Parlor -> configured model -> response to application
                     |
                     +-> completed request + response -> object memory
                                                         |
                                                         v
-Milk Man -> summary -> readiness -> evals -> dataset -> Qwen3.5-0.8B
-                                                        |
-                                                        v
-                compare versions -> candidate -> unsigned route proposal
-                                                        |
-                                                        v
-                 operator signature -> canary -> fallback -> rollback -> zero
-
-Development loop
-
-human -> local Milk Man dashboard -> bounded reasoning trajectory
-                                      |
-                                      +-> named Milk jobs
-                                      +-> inspect/edit Milk repositories
-                                      +-> narrow check and reviewable commit
+Milk Man -> summary -> evals/data -> training/research -> serving -> route
 ```
 
-The loops share code and object memory, not authority. Development reasoning
-may edit code and invoke reviewed jobs. It cannot silently push, deploy, merge,
-sign a route, or select a credential.
+The dashboard is an optional view and prompt surface for the same agent that
+runs from Bash. Human supervision is useful during development but is not a
+runtime dependency. One task may require many autonomous commands, waits, code
+changes, deployments, measurements, and cleanups.
 
 ## Components and ownership
 
 | Component | Owns | Must not own |
 | --- | --- | --- |
 | `milk-parlor` | Key authentication, protocol-native proxying, streaming, bounded asynchronous capture, signed-route verification, pre-byte fallback, process health | Summaries, thresholds, jobs, model training, provider lifecycle, user database |
-| `milk-man` | Local harness, trajectories, skills, memory, deterministic jobs, object traversal, summaries, evals, datasets, training/evaluation adapters, candidate proposals, local dashboard | Customer request serving, route signing, implicit deployment authority |
+| `milk-man` | Autonomous Bash harness, trajectories, skills, memory, heartbeat, reusable and self-authored scripts, model/compute lifecycle, optimization, object traversal, Milk research jobs, local dashboard | Customer request serving, credential publication, unrelated external actions |
 | `milk-landing` | Static public explanation and developer guide | Credentials, customer data, job execution, runtime control |
 | Object store | Durable scoped data, lineage, job receipts, and current pointers | Computation, scheduling, secret storage |
-| Human/operator | Keys, provider accounts, merges, deployment, route signatures, production qualification | Routine deterministic data processing |
+| Human/operator | High-level objectives, environment and provider accounts, route signatures when required, production qualification | Naming each command or manually advancing routine work |
 
 There are two runtime repositories and one static site. Do not add a fourth
 repository or another runtime service to coordinate them.
@@ -156,28 +160,34 @@ including Cloudflare R2 and Amazon S3, through environment variables only.
 Milk Man runs from Bash without Docker or a local GPU:
 
 ```text
-bin/man   supervised development, resume, bootstrap, and local dashboard
-bin/milk  status, one-shot reconciliation, and named deterministic jobs
+bin/man   prompt-driven reasoning, resume, bootstrap, heartbeat, and dashboard
+bin/milk  reusable Milk jobs and structured status/results
 ```
 
 `bin/man` uses the pinned minimal Headlong subset for an OpenAI-compatible
 model call, exact-workspace trajectories, bounded context, skills, memory, and
-small file/shell tools. Its system prompt stays short. Skills are listed and
-read only when applicable. Memory holds concise durable decisions, not copied
-Codex transcripts or provider logs.
+file/shell tools. Bash is the universal execution boundary. Its system prompt
+stays short: inspect current state, choose and execute the next useful action,
+observe the result, adapt, and continue. Skills are listed and read only when
+applicable. Memory holds concise objectives, decisions, resource identities,
+measurements, conclusions, and recovery state rather than copied transcripts
+or full provider logs.
 
-The dashboard is an always-on local supervisor bound to `127.0.0.1`. Its status
-refresh uses no model. Each chat instruction starts one bounded model turn,
-streams redacted output, then returns to idle. It shows the selected non-secret
-driver identity, exact repository state, active jobs, gateway health, object
-progress, summary checkpoints, and environment-variable presence. It never
-shows secret values and must distinguish local state, mechanics evidence, and
-production authority.
+The dashboard is an optional local prompt and observation surface bound to
+`127.0.0.1`. It streams redacted reasoning/tool output and shows the active
+task, selected non-secret driver identity, repository state, heartbeat, current
+activity, next wake, active jobs/resources, measurements, gateway health,
+object progress, and environment-variable presence. Closing the dashboard does
+not stop Milk Man.
 
-`bin/milk operate --once` is the production-compatible reconciler. An external
-scheduler invokes it. It processes all immediately ready work and exits. When
-no watermark or frontier changed, it makes zero inference and provider calls.
-There is no internal tick, sleeping loop, queue service, or resident manager.
+One lightweight Bash heartbeat keeps an active task available without another
+service. It owns one lock per task, persists the active objective and next wake,
+checks known asynchronous jobs and changed object markers, and backs off through
+environment-configured intervals. A new prompt, scheduled review, changed
+object, completed or failed job, or measured regression wakes reasoning. An
+unchanged idle check makes zero model calls and does not scan the whole bucket.
+`bin/milk operate --once` remains useful for a single deterministic pass, but it
+is not the only production execution model.
 
 Every invocation emits one `milk.job-result.v2` JSON object to stdout;
 diagnostics go to stderr. Jobs are idempotent by immutable intent/result
@@ -185,14 +195,25 @@ identity. Ambiguous provider creation is reconciled before any retry.
 
 ## Jobs and environment bindings
 
-`config/jobs.json` is the public job and environment-name contract. Each entry
-names a hard-coded handler, deterministic trigger, exact input/output prefixes,
-required bindings, prompt, timeout, and teardown handler. Configuration cannot
-introduce a command path or arbitrary shell.
+`config/jobs.json` remains the public job and environment-name index. Existing
+Python handlers continue to work, but they are not a permanent allowlist. A job
+may name a reviewed repository-relative Bash or Python script plus its purpose,
+inputs, required and optional environment names, timeout, status, cleanup, and
+object prefixes. Adding that job must not require another branch in a central
+handler enum. Resolve and execute only scripts inside the repository; model
+arguments cannot supply executable paths or shell fragments.
 
-The model or operator may select only a reviewed job name. The selected job
-resolves its own configured environment names. Credential presence never
-starts work and one provider's failure never selects another provider.
+The agent reuses a suitable job when one exists. For an unseen workload it may
+write or repair the smallest repository-owned script, add it to the existing
+job index, execute it, and reuse it later without changing the Headlong engine.
+The process contract is small: arguments in; selected environment inherited;
+progress on stderr; one final structured result on stdout; explicit status and
+cleanup when external resources are owned.
+
+Credential presence never starts work by itself. A high-level task may allow
+Milk Man to choose and sequence the necessary jobs, providers, configurations,
+waits, and cleanups without requiring the human to name each command. One
+provider's failure never silently selects another provider.
 
 Core bindings:
 
@@ -218,19 +239,51 @@ Data jobs
 GPU and serving jobs
   explicit Baseten variables
   explicit Modal variables
-  pinned image/model/config variables owned by the selected job
+  model/revision, image/runtime, GPU type/count, serving arguments
+  latency/throughput/correctness/cost targets owned by the selected task
 ```
 
-Baseten and Modal remain separate adapters and separate jobs. Do not build a
-generic provider framework or silent fallback chain.
+Baseten and Modal use small provider-native scripts behind the same process
+contract, not a large generic cloud framework or silent fallback chain.
 
-The default managed development driver is `zai-org/GLM-5.3-Flash` through the
-environment-selected Baseten OpenAI-compatible endpoint. A distinct Modal
-Endpoint lifecycle may create the same model as an owned driver. It must be
-added beside, not in place of, the existing custom Modal controller path. Each
-driver has separate state and explicit ensure/status/stop commands.
+The current managed driver is `zai-org/GLM-5.3-Flash` through an
+environment-selected OpenAI-compatible endpoint. The existing fixed Modal
+controller remains usable while it is extracted into general lifecycle jobs.
+GLM Flash, a 120B workload, and Qwen are initial demonstrations, not fixed
+controller, teacher, student, provider, or compute requirements.
 
-## Summary and readiness
+## Model, compute, and optimization loop
+
+For a model or compute objective, Milk Man must be able to:
+
+1. inspect configured providers, existing deployments, caches, artifacts, and
+   retained experiment results;
+2. create or reuse the selected resource and record its exact identity;
+3. follow startup and logs, verify readiness, and run a real workload;
+4. measure correctness, cold start, time to first token, output tokens per
+   second, p50/p95 latency, errors/OOM, resource usage, and cost as applicable;
+5. propose the next configuration from those measurements rather than replay a
+   fixed matrix;
+6. vary model/revision, runtime, GPU type/count, tensor parallelism,
+   quantization, context, batching/concurrency, cache, and serving arguments
+   allowed by the task;
+7. retain the best measured configuration satisfying the objective, stop losing
+   trials, and verify their resources are absent; and
+8. resume without repeating completed experiments or creating duplicate
+   resources.
+
+Managed APIs and owned deployments remain independent options. A task may keep
+a winning service alive or release all compute when finished. Model weights are
+hydrated from a pinned source or provider cache/volume and do not enter Git or
+lightweight OCI images.
+
+## Milk traffic and summary application
+
+The remaining sections define the whiteboard application's existing contracts.
+They are important Milk workloads, not prerequisites for accepting the general
+agent, job extensibility, heartbeat, or model lifecycle.
+
+### Summary and readiness
 
 Thresholds are environment-selected; the production progression is:
 
@@ -261,7 +314,7 @@ use small thresholds to prove code. A production profile requires independently
 collected traffic and configured statistical/data-quality minima. Generated or
 mechanics traffic cannot qualify a production candidate.
 
-## Evaluation and model loop
+### Evaluation and model loop
 
 Evaluation generation uses the strongest configured teacher and structured
 JSON output. Captured conversations provide provenance, task distribution, and
@@ -270,21 +323,22 @@ a coherent expected answer. The model does not choose object keys or commit
 pointers.
 
 `MILK_EVAL_SOURCE_CONVERSATIONS` selects an exact deterministic source count.
-`MILK_CASES_PER_CONVERSATION` selects the expansion ratio. The target operating
-point is exactly 100 selected conversations times 100 cases, or 10,000 cases.
-Before this fan-out, the same contract must produce one case from each of the
-100 sources and pass one direct operator review. Formatting is enforced by the
-provider's structured-output contract plus small local identity, count,
-lineage, answer-presence, and uniqueness checks. Do not add another LLM
-validator or grow a hand-built semantic rules engine.
+`MILK_CASES_PER_CONVERSATION` selects the expansion ratio. One planned
+experiment uses 100 selected conversations times 100 cases, or 10,000 cases;
+that ratio is configuration, not a runtime invariant or prerequisite for model
+operations. Before any large fan-out, inspect a small output from the same
+contract. Formatting is enforced by the provider's structured-output contract
+plus small local identity, count, lineage, answer-presence, and uniqueness
+checks. Do not add another LLM validator or grow a hand-built semantic rules
+engine.
 
-Source assignment happens before derived data so train, DEV, calibration, and
-sealed material cannot leak across splits. The source manifest must include
-enough model-completed two-sided traffic for 100 held-out eval sources and at
-least the configured train sources; therefore the capture count can exceed 100.
+When an experiment uses train, DEV, calibration, and sealed splits, source
+assignment happens before derived data so one source cannot leak across splits.
+The requested counts and ratios belong to that experiment's environment and
+source manifest, not the Milk Man runtime.
 
-Dataset generation uses a separately configured maximum-intelligence teacher
-for training targets. Training is pinned to:
+Dataset generation may use a separately configured maximum-intelligence teacher
+for training targets. The first student workload is pinned to:
 
 ```text
 Qwen/Qwen3.5-0.8B
@@ -301,9 +355,14 @@ experimental. Code selects the winner from the reviewed policy, runs one
 sealed evaluation, serves exactly one explicitly selected candidate provider,
 and writes an unsigned proposal.
 
-The operator then proves signed canary, candidate success, pre-byte fallback,
-higher-revision rollback, signed zero, credential removal, and independent
-zero active capacity on Baseten and Modal.
+The whiteboard application eventually proves signed canary, candidate success,
+pre-byte fallback, higher-revision rollback, signed zero, credential removal,
+and independent zero active capacity on Baseten and Modal.
+
+SFT is the currently demonstrated training mechanic. Reinforcement learning is
+an explicit optional extension with separate rollout generation, reward/judge
+output, training recipe, baseline, and evaluation jobs. Do not call existing
+SFT mechanics RL.
 
 ## Deployment and public experience
 
@@ -311,8 +370,9 @@ zero active capacity on Baseten and Modal.
   `scratch` runtime. Models and Python do not belong in this image.
 - Cloudflare hosts the Worker/container and R2. One selected instance is the
   initial topology.
-- Milk Man runs locally first. The same one-shot command may later be scheduled
-  as a scale-to-zero CPU job without changing job behavior.
+- Milk Man runs locally first and remains alive through its lightweight Bash
+  heartbeat. The same scripts may run on private cloud compute without changing
+  job behavior; no separate scheduler product is required.
 - Repository Actions do not execute Milk jobs. Image publication, when needed,
   is a separate reviewed builder concern.
 - Public landing/docs use dependency-free HTML/CSS/basic JavaScript and plain
@@ -336,22 +396,29 @@ production-qualified evidence
 ```
 
 Historical or synthetic mechanics never become production evidence merely
-because they ran on the production domain. Completion requires a coherent
-current-code lineage with exact commits, object IDs/digests, image digests,
-provider IDs, route revisions, replay results, and teardown observations.
+because they ran on the production domain. Claims about a completed workload
+require exact commits, object IDs/digests, image digests, provider IDs,
+measurements, replay results, and teardown or retained-service observations as
+applicable.
 
 Release acceptance:
 
+- one high-level objective automatically progresses through existing scripts
+  from both dashboard and Bash, saves its result, and reuses it;
+- one unseen objective causes Milk Man to create or repair a reusable script
+  without changing the harness engine;
+- Milk Man deploys or reuses a real model, verifies it, measures and improves
+  its inference configuration, selects a winner from evidence, and cleans losing
+  resources;
+- the heartbeat makes zero model calls while idle and resumes the same task
+  after an interrupted asynchronous wait without duplicating compute;
+- a different model or compute workload completes through the same mechanism;
 - the official SDK authenticates and both supported protocols stream through
   live Parlor;
 - exact completed exchanges appear asynchronously in remote object memory;
-- local Milk Man reads that store and progresses a fresh current-code mechanics
-  lineage through summary, eval, dataset, Qwen training, comparison, sealed
-  result, one candidate, unsigned proposal, signed routing, fallback, rollback,
-  zero route, and zero provider capacity;
-- managed GLM drives Milk Man; the additional Modal Endpoint lifecycle proves
-  create/reuse, a later tool-using turn, stop, and absence without replacing the
-  existing controller;
+- local Milk Man reads that store and progresses the whiteboard application
+  through summary and, as separate extensions, eval, dataset, Qwen training,
+  comparison, serving, and signed routing;
 - repos, deployment, docs, and tracker describe the same current behavior.
 
 Production qualification additionally requires independent customer traffic
@@ -361,8 +428,9 @@ production-qualified.
 
 ## Non-goals
 
-Do not add a database, external queue, resident manager, internal polling loop,
-standing GPU, generic provider abstraction, secret broker, product budget
-system, model weights in images, local Docker/GPU requirement, deprecated
-object reader, raw prompt archive, broad fixture suite, or self-signing/
-self-merging agent.
+Do not add a database, external queue, separate scheduler service, busy
+model-consuming poll loop, provider framework larger than the provider-native
+scripts require, secret broker, product budget system, model weights in images,
+local Docker/GPU requirement, deprecated object reader, raw prompt archive, or
+broad fixture suite. Do not require a standing GPU: keep a requested winning
+service alive and release other compute.

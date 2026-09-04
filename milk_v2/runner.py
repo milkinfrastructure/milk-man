@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from pathlib import Path
+import subprocess
 import sys
 from typing import NoReturn
 
@@ -80,14 +82,157 @@ def _emit(value: dict, code: int = 0) -> NoReturn:
     raise SystemExit(code)
 
 
-def _parse(argv: list[str]) -> tuple[str, str | None]:
+def _parse(argv: list[str]) -> tuple[str, str | None, str | None]:
+    if argv == ["jobs"]:
+        return "jobs", None, None
     if argv == ["status"]:
-        return "status", None
+        return "status", None, None
     if argv == ["operate", "--once"]:
-        return "operate", None
+        return "operate", None, None
     if len(argv) == 2 and argv[0] == "run":
-        return "run", argv[1]
-    raise UsageError("usage: milk status | milk operate --once | milk run <fixed-job>")
+        return "run", argv[1], "run"
+    if len(argv) == 3 and argv[0] == "run" and argv[2] in {"status", "stop"}:
+        return "run", argv[1], argv[2]
+    raise UsageError("usage: milk jobs | milk status | milk operate --once | milk run <job> [status|stop]")
+
+
+def _catalog(runtime) -> dict:
+    rows = []
+    for job in runtime.jobs.values():
+        required = list(job.environment_required)
+        optional = list(job.environment_optional)
+        for binding in job.bindings:
+            required.extend(config.BINDING_ENVIRONMENTS[binding]["required"])
+            optional.extend(config.BINDING_ENVIRONMENTS[binding]["optional"])
+        rows.append(
+            {
+                "name": job.name,
+                "description": job.description or job.name,
+                "actions": [
+                    "run",
+                    *(["status"] if job.supports_status else []),
+                    *(["stop"] if job.supports_stop else []),
+                ],
+                "environment": {
+                    "required": sorted(set(required)),
+                    "optional": sorted(set(optional)),
+                },
+            }
+        )
+    return {"schema_version": "milk.job-catalog.v1", "jobs": rows}
+
+
+def _external_job(job, runtime, action: str) -> tuple[dict, int]:
+    if action == "status" and not job.supports_status:
+        raise UsageError(f"{job.name} has no status action")
+    if action == "stop" and not job.supports_stop:
+        raise UsageError(f"{job.name} has no stop action")
+
+    # Status/stop resolve saved resource settings inside the script, not new run inputs.
+    missing = sorted(name for name in job.environment_required if not os.environ.get(name)) if action == "run" else []
+    identity = _json_digest(
+        {"job": job.name, "action": action, "config_digest": runtime.digest}
+    )
+    if missing:
+        return (
+            _result(
+                job.name,
+                "failed",
+                os.environ.get("MILK_SCOPE_ID"),
+                identity,
+                error=f"missing environment: {', '.join(missing)}",
+            ),
+            EXIT_CONFIG,
+        )
+
+    raw_timeout = os.environ.get(job.timeout_env, "3600")
+    try:
+        timeout = int(raw_timeout)
+    except ValueError as error:
+        raise config.ConfigError(f"{job.timeout_env} must be an integer") from error
+    if not 1 <= timeout <= 86_400:
+        raise config.ConfigError(f"{job.timeout_env} must be in 1..86400")
+
+    root = Path(__file__).resolve().parents[1]
+    executable = (root / str(job.executable)).resolve()
+    child_environment = os.environ.copy()
+    child_environment.update(
+        {
+            "MILK_JOB_NAME": job.name,
+            "MILK_JOB_ACTION": action,
+            "MILK_JOB_CONFIG_DIGEST": runtime.digest,
+        }
+    )
+    try:
+        completed = subprocess.run(
+            [str(executable), action],
+            cwd=root,
+            env=child_environment,
+            stdout=subprocess.PIPE,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return (
+            _result(
+                job.name,
+                "failed",
+                os.environ.get("MILK_SCOPE_ID"),
+                identity,
+                error=f"job {action} failed: {type(error).__name__}",
+            ),
+            EXIT_INTERNAL,
+        )
+    if len(completed.stdout) > 1024 * 1024:
+        raise config.ConfigError(f"{job.name} returned more than 1 MiB")
+    try:
+        value = json.loads(completed.stdout)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise config.ConfigError(f"{job.name} returned invalid JSON") from error
+    required = {"state", "identity"}
+    optional = {
+        "artifacts",
+        "next",
+        "details",
+        "error",
+        "inference_calls",
+        "provider_calls",
+    }
+    if not isinstance(value, dict) or not required.issubset(value) or value.keys() - required - optional:
+        raise config.ConfigError(f"{job.name} returned an invalid result")
+    state = value["state"]
+    result_identity = value["identity"]
+    artifacts = value.get("artifacts", [])
+    inference_calls = value.get("inference_calls", 0)
+    provider_calls = value.get("provider_calls", 0)
+    if (
+        state not in {"idle", "active", "complete", "progressed", "blocked", "failed"}
+        or not isinstance(result_identity, str)
+        or not result_identity
+        or len(result_identity) > 512
+        or not isinstance(artifacts, list)
+        or type(inference_calls) is not int
+        or inference_calls < 0
+        or type(provider_calls) is not int
+        or provider_calls < 0
+    ):
+        raise config.ConfigError(f"{job.name} returned an invalid result")
+    if completed.returncode and state not in {"blocked", "failed"}:
+        raise config.ConfigError(f"{job.name} exited nonzero without a failure result")
+    result = _result(
+        job.name,
+        state,
+        os.environ.get("MILK_SCOPE_ID"),
+        result_identity,
+        artifacts,
+        value.get("next"),
+        value.get("details"),
+        value.get("error"),
+        inference_calls,
+        provider_calls,
+    )
+    code = completed.returncode if 0 <= completed.returncode <= 125 else EXIT_INTERNAL
+    return result, code
 
 
 def _summary_gate(store, settings, runtime, name="summary"):
@@ -400,10 +545,20 @@ def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     command = "invalid"
     job_name = None
+    action = None
     scope_id = os.environ.get("MILK_SCOPE_ID")
     try:
-        command, job_name = _parse(argv)
+        command, job_name, action = _parse(argv)
         runtime = config.load()
+        if command == "jobs":
+            _emit(_catalog(runtime))
+        if command == "run" and job_name is not None:
+            job = runtime.job(job_name)
+            if job.executable is not None:
+                result, exit_code = _external_job(job, runtime, action or "run")
+                _emit(result, exit_code)
+            if action != "run":
+                raise UsageError(f"{job.name} has no {action} action")
         settings = settings_from_environment()
         store = open_store(settings)
         if command == "status":

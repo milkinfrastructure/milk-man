@@ -15,47 +15,56 @@ Status notation:
 
 ## Executive state
 
-- [x] The architecture is still the whiteboard architecture: a small gateway
-  captures model traffic into scoped object memory; Milk Man turns it into
-  summaries, evals, training data, a student, comparisons, and a route proposal.
-- [x] The product and development loops are now separated in `PRD.md` while
-  sharing the same Milk jobs and object contract.
+- [x] The corrected product goal is autonomous, prompt-driven Milk Man: given
+  an objective and configured environment, it uses Bash, existing or newly
+  written scripts, prior results, and live measurements to operate and improve
+  models or compute until complete or externally blocked.
+- [x] The whiteboard traffic-to-model flywheel remains the flagship Milk
+  application. Summary, eval, fine-tuning, RL, and signed routing are extensions
+  of the general agent rather than prerequisites for proving its core loop.
 - [x] Milk Parlor is a deployed, healthy Rust gateway. It is not a manager,
   scheduler, training service, or generic router.
 - [x] Milk Man runs locally from Bash, has an always-on model-free dashboard
-  supervisor, and can make bounded OpenAI-compatible reasoning turns with fixed
-  tools and jobs.
+  supervisor, resumes trajectories, and can make OpenAI-compatible reasoning
+  turns that invoke the current fixed tools and jobs.
 - [x] Summary, readiness, eval, dataset, training, evaluation, candidate,
   proposal, route, fallback, rollback, and teardown mechanics have all run in
   at least one retained small lineage.
 - [~] Those mechanics span older code and generated traffic. They do not prove
   one coherent current-code lineage or a production-qualified learned route.
-- [!] The immediate source defect was an incomplete Modal Endpoint declaration
-  that replaced the working controller contract. Published baseline
-  `503ac816aa1c495798f09fa06cfd560d52d56b24` restores the implemented
-  11-job contract; native Modal Endpoint jobs remain explicit work.
-- [ ] The next proof is a fresh scope: 100 held-out sources, one reviewed case
-  per source, then 100 cases per source and the complete downstream loop.
+- [x] Published Milk Man `38c1b9812e0182ec132d12a3da2460506fa9efd7`
+  contains the coherent eleven-job baseline and one successful managed-GLM
+  dashboard tool turn.
+- [x] Local Milk Man completed a Chrome-prompted remote progress check and then
+  authored and reused `bin/progress` across an automatic ten-second follow-up.
+  Both readings were 106 captured / 106 summarized. Two useful memory entries
+  are retained in trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a`.
+- [x] The independent heartbeat survived a dashboard-server restart, stopped,
+  and restarted from Bash with the same trajectory and no new model turn.
+- [~] Idle backoff and timer continuation work locally. Restart during real
+  asynchronous provider work and duplicate-resource prevention remain unproven.
+- [ ] Next: use an environment-selected serving script for one inexpensive
+  model lifecycle. Fresh traffic and large eval generation remain later work.
 
 ## Repository snapshot
 
-Snapshot captured before the centralization commit:
+Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `2985a52a037a3a03164add303fa622e25c929c0c`, plus the documented reconciliation | `ef315662a436a1df6166b5038f18dff68c75e7ab` | 13 commits ahead at audit time; independent repository; publish after narrow checks |
+| `milk-man` | `38c1b9812e0182ec132d12a3da2460506fa9efd7`, plus uncommitted runtime/docs work | same | public baseline is cleanly identified; local changes are implementation-in-progress, not proof |
 | `milk-parlor` | `37c0f892cee2bb03277fff6cc107312e36fda672` | same | clean and deployed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
-Published audit baseline:
-`503ac816aa1c495798f09fa06cfd560d52d56b24`.
+Published Milk Man audit baseline:
+`38c1b9812e0182ec132d12a3da2460506fa9efd7`.
 
 - [x] Milk Man is no longer a GitHub fork. It retains a pinned, attributed
   minimal Headlong subset as implementation source.
 - [x] Milk Parlor has no tracked Actions, test fixtures, model weights, Python
   runtime, or orchestration code.
 - [x] Milk Man repository Actions are absent; jobs run from `bin/milk` and
-  supervised development runs from `bin/man`.
+  prompt-driven Headlong runs from `bin/man`.
 - [!] Milk Man has 93 local branches and 44 worktrees from prior iterations.
   They are local clutter, not product architecture; clean them only after the
   retained commits and evidence are safely published.
@@ -71,9 +80,9 @@ Published audit baseline:
 - [x] Worker version: `4515234c-d762-4be6-816a-d4cda7f3582b`
 - [x] Image:
   `sha256:7311ba8e6021f9c24277ad35ee5e6aeddc78e944e859ca4df0e933518a0e335e`
-- [x] Health at audit: Responses and Chat Completions configured; candidate
-  bindings absent; capture writer alive; 106 observed, completed, enqueued, and
-  persisted; zero dropped, interrupted, oversized, or storage-failed.
+- [x] Live check on 2026-09-04 returned status `ok`: Responses and Chat
+  Completions configured; candidate bindings absent; capture writer alive; 106
+  persisted and zero dropped.
 - [x] The image is already a multi-stage Alpine build with a `scratch` runtime.
   Cloudflare's displayed 2 GB is ephemeral disk allocation, not image size.
 - [x] Requests route to one secret-selected named container instance. The
@@ -88,23 +97,31 @@ Published audit baseline:
 
 ## Local Milk Man snapshot
 
-- [x] Dashboard supervisor was alive on `127.0.0.1:8766` during the audit.
+- [x] Dashboard returned HTTP 200 on `127.0.0.1:8766` on 2026-09-04.
 - [x] Current trajectory:
   `df36b6bc-1651-4f74-aa40-43da7a8a216a`
 - [x] Selected driver: Baseten, `zai-org/GLM-5.3-Flash`, Chat Completions,
   maximum reasoning.
-- [~] The trajectory previously completed a real tool-using GLM turn that read
-  both repository HEADs.
-- [!] Its latest turn ended `llm: response contained no assistant text`, exit 1.
-  It changed no file, object, provider, or route.
+- [x] At 2026-09-04 18:59 UTC the trajectory completed a managed Baseten
+  GLM-5.3-Flash turn at maximum reasoning. It ran exactly one
+  `bin/milk status`, read the remote S3 scope, returned assistant text, and
+  exited 0. The job result reported 106 captures, 106 processed, `next=eval`,
+  `inference_calls=0`, and `provider_calls=0`.
+- [x] The preceding failed turn was isolated to a successful HTTP response with
+  no visible assistant content. It changed no file, object, provider, or route.
+- [~] Exhausting the prior 16,384-token allowance is one hypothesis, not a
+  proven cause because the raw provider body was not retained. Local changes
+  raise the allowance and add bounded finish/usage diagnostics; recurrence and
+  the diagnosis remain unproved.
 - [x] The dashboard's status refresh is model-free and the supervisor can remain
   idle without inference consumption.
 - [x] After removing the unimplemented endpoint declarations, the live API
   again reported 11 jobs and no job-contract error.
-- [ ] Run one clean bounded GLM tool turn after the reconciled source is
-  published.
-- [ ] Current saved-memory count is zero. Retention code and historical proof
-  exist, but the next useful decision should create the first current memory.
+- [x] Run one clean bounded GLM tool turn after the reconciled source is
+  published. Evidence: trajectory
+  `df36b6bc-1651-4f74-aa40-43da7a8a216a`, 2026-09-04 18:59 UTC, exit 0.
+- [x] Current memory contains two useful progress-check decisions, written by
+  Milk Man during the 2026-09-04 20:09–20:19 UTC dashboard tasks.
 - [!] The private local process is the current credential trust boundary. Jobs
   inherit its environment. Do not claim per-child secret isolation until it is
   actually implemented; do not add a secret broker for this private phase.
@@ -167,25 +184,29 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 
 | Capability | Current assessment | Next proof |
 | --- | --- | --- |
-| Official SDK -> Parlor | `[x]` live for Responses and Chat Completions, including streaming | repeat both in fresh scope |
-| Key -> scope UUID | `[x]` source and historical live proof | bind fresh mechanics key |
-| Async two-sided capture | `[x]` live counters and exact historical object proof | exact fresh object reread |
-| Summary/classification | `[x]` current 106-source checkpoint | fresh threshold checkpoint and idle replay |
-| Deterministic readiness | `[x]` current mechanics result | fresh result from accepted sources |
-| Useful eval generation | `[~]` 98/100 materially correct in best pilot; later pilot 60/64 clean | 100 sources times one case and human review |
-| 10,000-case target | `[ ]` not generated as one accepted current contract | freeze reviewed contract, then 100 times 100 |
-| Source-separated dataset | `[~]` small mechanics proven | current lineage with no split leakage |
-| Qwen3.5-0.8B training | `[~]` one-step Baseten H100 mechanics proven | current dataset, exact pinned revision |
-| BF16/dynamic FP8 comparison | `[~]` tiny mechanics proven | same current ordered DEV set |
+| High-level prompt -> existing job | `[~]` one human-prescribed GLM status tool call worked | one objective chooses and completes the job from dashboard and Bash |
+| Repository-script jobs | `[~]` local implementation changes exist | unseen task creates, runs, repairs if needed, then reuses one script |
+| Lightweight heartbeat | `[~]` local implementation changes exist | several zero-model idle cycles, event wake, interrupted restart, no duplicate work |
+| Managed GLM Milk Man driver | `[x]` Baseten GLM status turn proven | autonomous multi-step task through the driver |
+| General model lifecycle | `[~]` fixed Modal controller lifecycle historically worked | inexpensive model create/reuse/call/stop from one prompt |
+| Inference autotuning | `[ ]` no adaptive measured loop proven | compare configurations, select one from results, clean losing resources |
+| Different compute workload | `[ ]` harness generality not proven | complete a second workload without editing the engine |
+| Official SDK -> Parlor | `[x]` live for Responses and Chat Completions, including streaming | retain as Milk application input |
+| Key -> scope UUID | `[x]` source and historical live proof | reuse when the application needs a new scope |
+| Async two-sided capture | `[x]` live counters and exact historical object proof | preserve during application work |
+| Summary/classification | `[x]` current 106-source checkpoint | heartbeat-driven threshold and idle replay |
+| Deterministic readiness | `[x]` current mechanics result | retain as application logic |
+| Useful eval generation | `[~]` 98/100 materially correct in best pilot; later pilot 60/64 clean | inspect a small application sample before expansion |
+| 10,000-case experiment | `[ ]` not generated as one accepted current contract | optional configured expansion after small output is useful |
+| Source-separated dataset | `[~]` small mechanics proven | next training workload with no split leakage |
+| Qwen3.5-0.8B SFT | `[~]` one-step Baseten H100 mechanics proven | run only as a selected application workload |
+| Explicit RL experiment | `[ ]` existing SFT is not RL | rollout, reward/judge, recipe, baseline, and evaluation when requested |
+| BF16/dynamic FP8 comparison | `[~]` tiny mechanics proven | same ordered evaluation set when selected |
 | Static FP8 | `[~]` mechanics only | never select until independently qualified |
-| Sealed winner | `[~]` tiny mechanics proven | exactly one current sealed run |
-| Candidate proposal | `[~]` historical unsigned proposal proven | one current explicit provider |
-| Signed canary/fallback/rollback/zero | `[~]` historical live mechanics proven | repeat same fresh lineage |
-| Baseten zero capacity | `[~]` historical independent audit | confirm after current run |
-| Modal zero capacity | `[~]` historical independent audit | confirm after current run |
-| Managed GLM Milk Man driver | `[x]` Baseten GLM tool call proven | one clean post-publish turn |
-| Owned Modal GLM endpoint | `[ ]` contract not implemented | append ensure/status/stop and prove via dashboard |
-| Production-qualified learned route | `[ ]` no independent traffic lineage | repeat fixed loop after production readiness |
+| Candidate proposal | `[~]` historical unsigned proposal proven | coherent application lineage when requested |
+| Signed canary/fallback/rollback/zero | `[~]` historical live mechanics proven | repeat on a coherent application lineage |
+| Provider cleanup | `[~]` historical Baseten and Modal zero-capacity audits | verify after each new lifecycle or tuning task |
+| Production-qualified learned route | `[ ]` no independent traffic lineage | independent traffic after the application loop is fixed |
 
 ## Evaluation lessons retained
 
@@ -196,13 +217,14 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
   template-heavy. It was correctly stopped and must not be resumed.
 - [!] v25-v28 improved the prompt but still showed premise and completeness
   defects. Repeated prompt-version fan-out became the loop to avoid.
-- [x] The next rational ratio is 100 independent sources times one case for a
-  direct review, followed by the same frozen contract at 100 cases per source.
+- [x] One retained application plan is 100 independent sources times one case
+  for inspection, followed by the same accepted contract at 100 cases per
+  source. It is experiment configuration, not a core Milk Man prerequisite.
 - [x] Provider structured output plus six deterministic checks is sufficient:
   valid JSON, exact count, unique case IDs, complete source coverage, expected
   answers present, and no obvious normalized duplicates.
-- [x] Do not add an LLM validator or large semantic policy engine. Human review
-  happens once before bulk spend.
+- [x] Do not add an LLM validator or large semantic policy engine. Inspect a
+  small result before optional bulk spend.
 
 ## Historical evidence index
 
@@ -227,8 +249,8 @@ only redacted compact reports.
 
 The former tracker had 222 bracket claims: 213 checked and 9 open. A checked
 box often meant "implemented once" or "historical mechanics," not current
-end-to-end completion. That made it look approximately 96% complete while the
-current 10,000-case lineage had not begun.
+end-to-end completion. It also treated one eval/training lineage as the product
+goal instead of one application of the autonomous harness.
 
 | Former section | Checked | Open | Disposition |
 | --- | ---: | ---: | --- |
@@ -236,19 +258,19 @@ current 10,000-case lineage had not begun.
 | Starting point and execution decision | 26 | 0 | compressed into current snapshot and evidence classes |
 | Dashboard/controller and status UI | 35 | 1 | current facts retained; incomplete endpoint marked open |
 | P0-P4 | 52 | 0 | real source/local mechanics retained, not treated as release completion |
-| P4B | 2 | 3 | useful eval work remains open under one 100-source review gate |
+| P4B | 2 | 3 | useful eval evidence retained as application work |
 | P5-P7 | 41 | 1 | implementation/historical provider proof retained separately |
 | P8-P9 | 42 | 0 | relabeled historical small-lineage mechanics |
-| Provider follow-up | 10 | 0 | useful evidence retained; startup optimization is deferred |
+| Provider follow-up | 10 | 0 | useful lifecycle evidence retained; adaptive optimization remains open |
 
 Corrections made by this audit:
 
-- [x] Replaced the stale $1,000 wording with a $500 supervised testing
+- [x] Replaced the stale $1,000 wording with a $500 development testing
   allowance and kept it out of product runtime logic.
 - [x] Replaced "first live production vertical" with "live mechanics vertical."
 - [x] Separated current proof from historical proofs and parked experiments.
-- [x] Restored the implemented 11-job contract and made owned Modal Endpoint an
-  additive goal.
+- [x] Restored the implemented eleven-job baseline. It is retained capability,
+  not the final extensibility boundary.
 - [x] Stopped treating R2 object count, dashboard rendering, or a checked box as
   route or production authority.
 - [x] Kept the full old text recoverable in Git instead of creating another
@@ -256,60 +278,112 @@ Corrections made by this audit:
 
 ## Active work, in order
 
-### P0 coherent source and operations
+### P0 align source and contract
 
-- [x] Centralize stable requirements in `PRD.md`.
-- [x] Centralize the current execution sequence in `GOAL.md`.
-- [x] Replace the mixed historical tracker with this evidence ledger.
-- [x] Restore the working 11-job config contract locally.
-- [x] Run narrow syntax/config checks and a secret scan.
-- [x] Commit and publish the coherent Milk Man baseline at
-  `503ac816aa1c495798f09fa06cfd560d52d56b24`.
-- [ ] Prove one clean managed-GLM dashboard tool turn.
-- [ ] Stop five stale unselected Parlor container generations.
+- [x] Publish Milk Man baseline
+  `38c1b9812e0182ec132d12a3da2460506fa9efd7` and retain its eleven
+  working jobs.
+- [x] Prove one managed-GLM dashboard tool turn against remote object state.
+- [x] Align `AGENTS.md`, `GOAL.md`, `PRD.md`, `prompts/develop.md`, and this
+  tracker around autonomous prompt-driven Bash execution.
+- [~] Local source now adds repository-script jobs and heartbeat behavior.
+  Syntax/source presence is not end-to-end runtime proof.
+- [x] Restart the dashboard from the aligned source and verify truthful task,
+  trajectory, driver, heartbeat, current activity, and next-wake state.
+- [x] Chrome shows an always-visible heartbeat strip above chat: state light,
+  last check, next check, task wakeups, and idle checks. Disconnects are labeled
+  as lost visibility, not proof that the underlying task stopped.
 
-### P1 fresh data checkpoint
+### P1 one autonomous existing-job task
 
-- [ ] Create a fresh mechanics scope and bind a key.
-- [ ] Capture complete Responses and Chat Completions traffic for 100 held-out
-  eval sources plus configured train sources.
-- [ ] Run one remote summary/readiness job from the local dashboard.
-- [ ] Verify exact counts, pointers, and a zero-call idle replay.
+- [x] A Chrome prompt requested remote progress and one follow-up; Milk Man
+  selected status jobs, reported 106/106, and completed without another human
+  instruction. Retained trajectory: `df36b6bc-1651-4f74-aa40-43da7a8a216a`.
+- [x] Both entrypoints now stream to the same private trajectory run log. Chrome
+  displayed the CLI task's actual command, JSON result, and final message.
+- [x] A complete Bash-started objective ran `bin/progress`, reported 106/106,
+  saved memory, and finished at 2026-09-04 20:22:55 UTC (heartbeat turn 5).
+- [ ] Repeat it and prove retained state prevents duplicate external work.
 
-### P2 useful eval contract
+### P2 reusable script extensibility
 
-- [ ] Generate 100 cases: one from each of 100 sources.
-- [ ] Review once and record useful/defect counts.
-- [ ] Freeze or minimally correct the contract in a new revision.
+- [~] Local source can dispatch a reviewed repository-relative script without
+  adding another fixed Python handler. Execution and reuse are not yet proven.
+- [x] Chrome asked for a reusable compact progress command. Milk Man wrote
+  `bin/progress`, ran it against remote R2, yielded to a timer, reused it on
+  automatic continuation, compared unchanged 106/106 counts, and saved memory.
+- [x] No engine change was needed for this script. Codex tightened propagation
+  of upstream failures before retaining it; executable-catalog proof follows.
 
-### P3 current 10,000-case lineage
+### P3 lightweight heartbeat continuity
 
-- [ ] Generate exactly 100 cases from each accepted source.
-- [ ] Complete missing-shard-only replay and publish one 10,000-case pointer.
-- [ ] Build source-separated data; train pinned Qwen3.5-0.8B.
-- [ ] Compare BF16 and dynamic FP8; run one sealed winner evaluation.
+- [x] Live idle polling advanced from 9 to 13 with model turns fixed at 2.
+  A later task automatically resumed once at its timer, finished at turn 4,
+  and returned to idle. Idle code runs no store scan or model request.
+- [x] Isolated no-model checks cover owner-lock exclusion, interrupted-task
+  recovery, stale-prompt rejection, durable inputs, and replaced-watch races.
+  These checks do not prove recovery of a real provider deployment.
+- [ ] Trigger automatic continuation from a real job/object event.
+- [~] Restarted owner 409 during a real 45-second scheduled wait. Owner 1076
+  retained the exact deadline and task, resumed once (turn 6 to 7), ran the
+  progress script, and finished at 20:24:27 UTC. Provider-resource recovery is
+  still to be proven with the deployment workload.
+- [x] Terminated dashboard PID 93960 and started a new server; heartbeat PID
+  94338 remained alive. A subsequent explicit stop removed it, and Bash resume
+  created a new owner for the same trajectory without replaying finished work.
 
-### P4 route and teardown
+### P4 general model and compute lifecycle
 
-- [ ] Serve one explicitly selected provider candidate.
-- [ ] Write unsigned proposal and prove operator-signed canary.
-- [ ] Prove success, pre-byte fallback, rollback, signed zero, key removal, and
-  independent Baseten/Modal zero capacity.
+- [~] A fixed Modal GLM controller historically proved create, inference
+  handoff, stop, and zero; it is not yet a general lifecycle.
+- [ ] From one prompt, operate an inexpensive model through inspect,
+  create/reuse, readiness, inference, status/logs, and requested stop/retain.
+- [ ] Select model, revision, provider, runtime, GPU type/count, serving
+  arguments, and cache through environment variables.
+- [ ] Repeat with the intended 120B proving workload without hardcoding it into
+  the harness.
 
-### P5 additive owned GLM driver
+### P5 inference autotuning
 
-- [ ] Implement separate Modal Endpoint ensure/status/stop jobs and state.
-- [ ] Select it through existing `LLM_*` after `ensure` succeeds.
-- [ ] Prove one later dashboard tool turn, stop, absence, and compare observed
-  performance/cost with managed Baseten.
+- [ ] Give Milk Man a measurable latency/throughput/correctness/cost objective.
+- [ ] Run comparable configurations, persist exact identities and metrics, and
+  let later trials respond to measured results.
+- [ ] Retain the best configuration meeting the objective, use its endpoint,
+  stop losing trials, and verify their resources are absent.
+- [ ] Resume without rerunning completed experiments.
 
-### P6 public release and qualification
+### P6 continuity and generality
 
-- [ ] Publish concise docs and redacted current-lineage evidence.
+- [ ] Complete a second model or compute workload through reused or newly
+  authored scripts without editing the harness engine.
+- [ ] Preserve the objective, measurements, conclusions, and reusable script
+  across restart.
+
+### P7 Milk whiteboard application extensions
+
+- [ ] Reconcile useful existing traffic and summary objects before new paid
+  generation.
+- [ ] Let the heartbeat progress a configured summary threshold with zero-call
+  idle behavior.
+- [ ] Reuse or add generation, scoring/reward, filtering, split, dataset,
+  training, merge, quantization, evaluation, serving, and cleanup scripts only
+  as the chosen application needs them.
+- [ ] Inspect a small output before optional expansion. The prior 100 x 100
+  generation target remains one configurable experiment.
+- [ ] Keep Qwen3.5-0.8B SFT and a real RL experiment distinct.
+- [ ] Complete a coherent application lineage through proposal, signed route,
+  candidate success, fallback, rollback, signed zero, and provider cleanup.
+
+### P8 publish, operate, and qualify
+
+- [ ] Stop five stale unselected Parlor generations after exact identity
+  reconciliation.
+- [ ] Publish concise docs and redacted evidence after the autonomous core is
+  proven.
 - [ ] Enforce owner-only merge controls without blocking forks, issues, or pull
   requests.
-- [ ] Repeat the fixed loop on independently collected traffic before labeling
-  any learned route production-qualified.
+- [ ] Use independently collected traffic before labeling a learned route
+  production-qualified.
 
 ## Human-only inputs
 
@@ -319,5 +393,6 @@ Corrections made by this audit:
   time, but it does not block the current weight-hydration path.
 - GitHub branch protection/ruleset changes require repository-owner authority.
 
-Nothing else currently justifies redefining the architecture, restarting an old
-eval revision, or creating more scaffolding.
+These are application/release boundaries, not per-command gates for an already
+configured Milk Man task. Nothing else currently justifies restarting an old
+eval revision or creating more scaffolding.

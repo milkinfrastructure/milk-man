@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 
@@ -11,7 +12,7 @@ SCHEMA = "milk.jobs.v2"
 STUDENT_SCHEMA = "milk.student-base.v2"
 STUDENT_MODEL_REPO = "Qwen/Qwen3.5-0.8B"
 STUDENT_MODEL_REVISION = "2fc06364715b967f1860aea9cf38778875588b17"
-HANDLERS = frozenset(
+BUILTIN_HANDLERS = frozenset(
     {
         "inference-ensure",
         "inference-status",
@@ -26,6 +27,7 @@ HANDLERS = frozenset(
         "gpu-reconcile-modal",
     }
 )
+HANDLERS = BUILTIN_HANDLERS
 TRIGGERS = frozenset(
     {
         "manual",
@@ -237,6 +239,12 @@ class Job:
     system_prompt: str | None
     timeout_env: str
     teardown_handler: str | None
+    description: str | None = None
+    executable: str | None = None
+    environment_required: tuple[str, ...] = ()
+    environment_optional: tuple[str, ...] = ()
+    supports_status: bool = False
+    supports_stop: bool = False
 
 
 @dataclass(frozen=True)
@@ -320,12 +328,69 @@ def load(path: Path | None = None) -> RuntimeConfig:
             raise ConfigError(f"environment_bindings.{name} differs from the reviewed contract")
 
     jobs_value = value["jobs"]
-    if not isinstance(jobs_value, dict) or set(jobs_value) != HANDLERS:
-        raise ConfigError("jobs must contain exactly the reviewed handlers")
+    if not isinstance(jobs_value, dict) or not BUILTIN_HANDLERS.issubset(jobs_value):
+        raise ConfigError("jobs must contain every built-in handler")
     jobs = {}
     for name, raw_job in jobs_value.items():
-        if name not in HANDLERS:
-            raise ConfigError(f"unreviewed job: {name}")
+        if PREFIX.fullmatch(name) is None:
+            raise ConfigError(f"invalid job name: {name}")
+        if name not in BUILTIN_HANDLERS:
+            raw_job = _object(
+                raw_job,
+                f"jobs.{name}",
+                {"description", "executable", "environment"},
+                {"status", "stop", "timeout_env"},
+            )
+            description = _string(raw_job["description"], f"jobs.{name}.description", 512)
+            executable = _string(raw_job["executable"], f"jobs.{name}.executable", 256)
+            executable_path = (root / executable).resolve()
+            if (
+                root not in executable_path.parents
+                or not executable_path.is_file()
+                or not os.access(executable_path, os.X_OK)
+            ):
+                raise ConfigError(f"jobs.{name}.executable must be an executable repository file")
+            environment = _object(
+                raw_job["environment"],
+                f"jobs.{name}.environment",
+                {"required", "optional"},
+            )
+            required_environment = _strings(
+                environment["required"], f"jobs.{name}.environment.required"
+            )
+            optional_environment = _strings(
+                environment["optional"], f"jobs.{name}.environment.optional"
+            )
+            if set(required_environment) & set(optional_environment):
+                raise ConfigError(f"jobs.{name}.environment contains duplicates")
+            for item in required_environment + optional_environment:
+                _environment(item, f"jobs.{name}.environment")
+            status = raw_job.get("status", False)
+            stop = raw_job.get("stop", False)
+            if type(status) is not bool or type(stop) is not bool:
+                raise ConfigError(f"jobs.{name}.status and stop must be booleans")
+            timeout_env = _environment(
+                raw_job.get("timeout_env", "MILK_JOB_TIMEOUT_SECONDS"),
+                f"jobs.{name}.timeout_env",
+            )
+            jobs[name] = Job(
+                name=name,
+                handler="exec",
+                trigger={"kind": "manual"},
+                bindings=(),
+                input_prefixes=(),
+                output_prefixes=(),
+                system_prompt=None,
+                timeout_env=timeout_env,
+                teardown_handler=None,
+                description=description,
+                executable=executable,
+                environment_required=required_environment,
+                environment_optional=optional_environment,
+                supports_status=status,
+                supports_stop=stop,
+            )
+            continue
         raw_job = _object(
             raw_job,
             f"jobs.{name}",
@@ -341,7 +406,7 @@ def load(path: Path | None = None) -> RuntimeConfig:
             },
         )
         handler = _string(raw_job["handler"], f"jobs.{name}.handler", 64)
-        if handler != name or handler not in HANDLERS:
+        if handler != name or handler not in BUILTIN_HANDLERS:
             raise ConfigError(f"jobs.{name}.handler is not reviewed")
         trigger = _object(raw_job["trigger"], f"jobs.{name}.trigger", {"kind"}, {"values_env"})
         kind = _string(trigger["kind"], f"jobs.{name}.trigger.kind", 64)
@@ -369,7 +434,7 @@ def load(path: Path | None = None) -> RuntimeConfig:
         if timeout_env not in TIMEOUT_ENVIRONMENTS:
             raise ConfigError(f"jobs.{name}.timeout_env is not reviewed")
         teardown = raw_job["teardown_handler"]
-        if teardown is not None and teardown not in HANDLERS:
+        if teardown is not None and teardown not in jobs_value:
             raise ConfigError(f"jobs.{name}.teardown_handler is not reviewed")
         jobs[name] = Job(
             name,

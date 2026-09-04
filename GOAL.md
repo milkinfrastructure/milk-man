@@ -2,234 +2,281 @@
 
 ## Outcome
 
-Publish one coherent Milk baseline, then prove one fresh current-code mechanics
-lineage from the official OpenAI SDK through live Milk Parlor, remote object
-memory, local Milk Man, useful eval generation, Qwen3.5-0.8B training,
-comparable evaluation, candidate serving, signed routing, fallback, rollback,
-and zero provider capacity.
+Make Milk Man an autonomous, prompt-driven Bash agent that can deploy,
+operate, optimize, and research models and compute. Given one objective and an
+environment, it must inspect available resources and prior results, reuse or
+create scripts, execute work, measure it, adapt, persist useful state, and
+continue until the objective is complete or a specific external blocker is
+proven.
 
-In parallel, append an owned Modal Endpoint lifecycle for
-`zai-org/GLM-5.3-Flash` so Milk Man can use either the existing managed Baseten
-endpoint or a separately selected Milk-owned Modal endpoint through `LLM_*`.
-Do not replace the working custom Modal controller or silently fail over.
+The dashboard is an optional view and control surface. The same task must run
+from Bash without the dashboard. Human supervision is useful while developing
+Milk Man, but it is not a runtime requirement and must not be encoded as a
+per-command gate.
 
-This file is the active execution order. [PRD.md](PRD.md) is the stable product
+The Milk Parlor traffic-to-model flywheel remains the flagship application:
+
+```text
+official OpenAI SDK -> Milk Parlor -> response + scoped object memory
+                                             |
+                                             v
+Milk Man -> summaries -> evals/data -> training/research -> serving -> route
+```
+
+Fine-tuning, reinforcement learning, and signed routing are extensions of the
+agent's general compute and research loop. They do not block proving the core
+agent.
+
+This file is the execution order. [PRD.md](PRD.md) is the stable product
 contract. [goal_tracker.md](goal_tracker.md) is the evidence ledger.
 
-## Starting state: 2026-09-04
+## Verified starting point: 2026-09-04
 
-- Milk Parlor `37c0f892cee2bb03277fff6cc107312e36fda672` is published,
-  deployed, and healthy. It reports both supported protocols, 106 completed and
-  persisted exchanges, zero capture drops, and a live background writer.
-- Milk Landing `db49fb7c436d5841d6b73a759a3bbe7604232adc` is published and
-  live.
-- Milk Man local `main` is 13 commits ahead of published
-  `ef315662a436a1df6166b5038f18dff68c75e7ab`. The latest local commit
-  replaced a working controller binding with an unimplemented endpoint
-  contract. The working tree restores the coherent 11-job contract.
-- The local dashboard supervisor is reachable. Its last model turn failed
-  because the provider returned no assistant text; no code, job, route, or
-  provider state changed.
-- Remote object memory contains 6,623 objects across seven scopes. Historical
-  mechanics scopes prove the full loop in small form. None is the fresh
-  current-code lineage required by this goal, and none qualifies a learned
-  production route.
-- The current dashboard scope has 106 captures and a completed summary, but its
-  eval attempts are parked quality experiments. Do not resume, mutate, or call
-  them the current lineage.
+- [x] Milk Parlor `37c0f892cee2bb03277fff6cc107312e36fda672` is
+  published, deployed, and healthy. Both supported OpenAI protocols are live;
+  its audited process reported 106 completed and persisted exchanges with zero
+  capture drops.
+- [x] Milk Landing `db49fb7c436d5841d6b73a759a3bbe7604232adc` is
+  published and live.
+- [x] Milk Man public `main` is
+  `38c1b9812e0182ec132d12a3da2460506fa9efd7`. It runs Headlong locally
+  from Bash, resumes trajectories, exposes a dashboard, reads remote object
+  storage, and has eleven implemented Milk jobs.
+- [x] Managed Baseten `zai-org/GLM-5.3-Flash` completed one dashboard turn at
+  maximum reasoning, invoked `bin/milk status`, returned assistant text, and
+  exited zero in trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a`.
+- [~] Existing object memory contains historical summaries, evals, training,
+  candidate, route, fallback, rollback, and teardown mechanics. Those results
+  prove useful functions, not one current production-qualified lineage.
+- [~] Local changes now support script jobs and a dashboard-independent
+  heartbeat. Chrome-driven status, script creation/reuse, idle checks, and
+  clean restart have run. General provider lifecycle, provider-wait recovery,
+  and inference tuning remain unproven; see the tracker for exact evidence.
+- [!] Five unselected Cloudflare container generations remained running at the
+  last audit and still require exact reconciliation.
+
+Do not discard these implementations or restart large generation work. Adapt
+the current code in small working slices.
 
 ## Execution rules
 
-1. Work in the three existing repositories only: `milk-parlor`, `milk-man`,
-   and the static `milk-landing` site. Do not add another runtime service.
-2. Keep Parlor as the small Rust data plane. Keep orchestration in Milk Man.
-3. Run Milk Man locally from Bash against remote Parlor, R2, and explicit
-   inference/GPU providers. No local Docker or GPU is required.
-4. Use one fresh scope UUID and immutable revision IDs for the proof. Never mix
-   artifacts, prompts, model bindings, or case IDs from an older lineage.
-5. Each job selects a reviewed handler and resolves its own environment names
-   from `config/jobs.json`. Secret values remain in the private process
-   environment and never enter Git, the dashboard, logs, prompts, or objects.
-6. Baseten and Modal are independent adapters and jobs. A failure never causes
-   implicit fallback. The selected provider is an explicit command or env
-   binding.
-7. Idle reconciliation is model-free and exits. No internal tick, sleep loop,
-   database, queue service, resident cloud manager, or standing GPU.
-8. Use structured provider output plus small deterministic checks. Do not add
-   an LLM validator, broad rules engine, fixture suite, or speculative gates.
-9. Do not put model weights in Git or an OCI image. Hydrate pinned weights at
-   job start or reuse a provider cache/volume.
-10. The shared allowance for supervised build validation is $500. It is an
-    operator limit for this proof, not runtime product code. Record actual
-    provider IDs and usage; stop new paid work before the allowance can be
-    exceeded.
-11. Mark a tracker item complete only from the evidence class it names. Hosted
-    mechanics is not production-qualified evidence.
-12. Patch the first concrete failure and continue the same valid lineage. Do
-    not broaden the audit or refactor unrelated code while paid work is active.
+1. Preserve Headlong's reasoning -> Bash -> result loop. Bash is the universal
+   execution boundary; Milk jobs are reusable tools, not the limit of what the
+   agent can do.
+2. One high-level prompt authorizes the in-scope steps needed to complete it.
+   Milk Man may inspect, edit, deploy, benchmark, tune, wait, recover, and
+   clean up without requiring the human to name each command.
+3. Reuse existing scripts first. If a workload is missing or broken, Milk Man
+   may write or repair the smallest repository-owned Bash or Python script,
+   execute it, and retain it for reuse.
+4. A reusable job declares its purpose, inputs, required and optional
+   environment names, status, and cleanup. Adding a job must not require adding
+   another branch to a central handler enum.
+5. Environment variables select object stores, inference endpoints, models,
+   providers, credentials, GPU resources, runtimes, and optimization targets.
+   Secret values may enter the private process but never Git, prompts, logs,
+   dashboard payloads, or stored public evidence.
+6. Managed APIs and owned deployments are independent choices. Provider
+   failures do not silently select another provider.
+7. Keep one lightweight heartbeat owner for an active task. Idle checks inspect
+   only known job/resource state and changed object-store markers, invoke no
+   model, and back off through an environment-configured interval.
+8. Persist the active objective, trajectory, scripts used, resource IDs,
+   configuration, observations, conclusions, and next wake. Resume must not
+   repeat completed experiments or create duplicate resources.
+9. Models, providers, GPU types, counts, and serving stacks are configurable.
+   GLM Flash, a 120B model, and Qwen are initial proving workloads, not
+   architectural constants.
+10. Keep model weights out of Git and lightweight runtime images. Hydrate a
+    pinned revision at runtime or reuse a provider cache or volume.
+11. Use direct execution and measured results. Patch the first real failure;
+    do not add a broad test framework, duplicate orchestrator, database, queue,
+    or speculative provider framework.
+12. The existing $500 authorization limits this development proof, not product
+    behavior. Record provider usage and do not exceed it.
+13. Preserve immutable Milk objects and small conditional current pointers.
+    Historical and synthetic mechanics never become production evidence by
+    assertion.
 
-## P0 — publish a coherent baseline
+## P0 — align the operating contract
 
-- [x] Keep the working 11-job contract and remove declarations for handlers
-  that do not exist.
-- [x] Ensure `config/jobs.json`, `milk_v2/config.py`, `milk_v2/runner.py`,
-  `bin/milk`, `bin/man`, the dashboard, README, PRD, goal, and tracker describe
-  the same commands and bindings.
-- [x] Run only syntax/import/config checks and one read-only dashboard status
-  fetch. Do not run a broad test suite.
-- [x] Secret-scan the unpublished Milk Man range and current diff.
-- [x] Commit and push the 13 retained local commits plus the reconciliation.
-- [x] Confirm public `main` resolves to baseline commit
-  `503ac816aa1c495798f09fa06cfd560d52d56b24`.
-- [ ] Restart the dashboard from the published source when the current local
-  supervisor can be replaced, then confirm its read-only state endpoint.
-- [ ] Run one bounded dashboard instruction through managed Baseten
-  `zai-org/GLM-5.3-Flash` at maximum reasoning. It must make at least one fixed
-  tool call, return assistant text, and leave an exact trajectory record.
-- [ ] Identify the Cloudflare instance selected by Parlor and stop the five
-  stale running generations. Retain only the selected generation; uptime is
-  not a constraint during this development cutover.
+- [x] Publish the coherent Milk Man baseline and recover the implemented
+  eleven-job surface.
+- [x] Prove one real managed-GLM dashboard tool turn against remote object
+  state.
+- [x] Align `AGENTS.md`, `PRD.md`, `GOAL.md`, `prompts/develop.md`, the
+  dashboard language, and the tracker around autonomous prompt execution.
+- [x] Record the current eleven jobs as existing capabilities, not a permanent
+  allowlist or completion boundary.
+- [ ] Restart the dashboard from the aligned source and verify that it reports
+  the active task, trajectory, driver, heartbeat, current activity, and next
+  wake without exposing secrets.
 
-Acceptance: public source, local runtime, dashboard contract, and live Parlor
-all agree; no incomplete endpoint appears as ready; no secret is published.
+Acceptance: documentation and runtime behavior agree that a high-level task,
+not a sequence of human-issued commands, drives Milk Man.
 
-## P1 — fresh traffic, summary, and readiness
+## P1 — complete one autonomous task
 
-- [ ] Generate a new mechanics scope UUID and bind one operator-issued Milk
-  key to it.
-- [ ] Select source IDs deterministically before derivation. Capture enough
-  complete two-sided traffic for exactly 100 held-out eval sources plus the
-  configured training sources; the raw capture total may therefore exceed 100.
-- [ ] Send both Responses and Chat Completions through the official OpenAI SDK
-  to live Parlor. Use the lowest suitable reasoning for synthetic source
-  traffic. Keep request and returned-response bodies complete.
-- [ ] Confirm Parlor returns responses before asynchronous R2 writes and every
-  accepted source appears once under the fresh scope `c/` prefix.
-- [ ] From the dashboard, invoke Milk Man once to read the remote scope and run
-  `summary`. Use the configured maximum-intelligence summary teacher.
-- [ ] Inspect the immutable labels, summary, readiness, and current pointers.
-  Counts must reconcile exactly to accepted capture keys. Rerunning without a
-  new watermark must make zero inference calls and leave pointers unchanged.
+- [ ] Remove the prompt rule that a Milk job must be named by the human.
+- [ ] Keep the system prompt short: inspect state once, choose the next useful
+  action, execute it through Bash, observe the result, and continue.
+- [ ] Through dashboard chat, give Milk Man one bounded objective that requires
+  an existing job but does not prescribe its commands.
+- [ ] Verify Milk Man chooses and runs the job, streams readable progress,
+  handles its result, saves useful state, and reports completion without
+  manual command-by-command steering.
+- [ ] Run the same objective from Bash without the dashboard.
+- [ ] On a repeated run, recognize the retained result instead of repeating
+  the external work.
 
-Acceptance: the fresh scope has exact two-sided capture lineage, one useful
-summary checkpoint, deterministic readiness, and an idle zero-call replay.
+Acceptance: one prompt becomes one completed multi-step task through both user
+interfaces, with one retained trajectory and no duplicate operation.
 
-## P2 — prove eval usefulness before fan-out
+## P2 — make jobs extensible
 
-- [ ] Set `MILK_EVAL_SOURCE_CONVERSATIONS=100` and
-  `MILK_CASES_PER_CONVERSATION=1`.
-- [ ] Run one eval job through the dashboard with the strongest configured
-  teacher and structured JSON output.
-- [ ] Require exactly one new, self-contained, answerable case for each selected
-  source. Preserve source ID, prompt/model/config digests, case ID, expected
-  answer, and oracle type.
-- [ ] Check only parseability, exact count, unique IDs, source coverage,
-  answer presence, and obvious duplicate text.
-- [ ] Review the 100 cases once as a human. Record direct counts for useful,
-  repairable, duplicate, unanswerable, and source-copying cases, with a small
-  redacted sample.
-- [ ] If the contract fails, make one minimal prompt/schema correction and
-  create a new eval revision. Never overwrite or splice the failed revision.
+- [ ] Adapt the existing job registry so a reviewed repository-relative script
+  can be discovered and invoked without extending `milk_v2.runner`'s central
+  handler list. Keep the current Python handlers available during the change.
+- [ ] Use the existing configuration surface rather than creating a separate
+  plugin or workflow framework. A job entry may name only a script inside the
+  repository and the environment names it needs; model-provided paths or shell
+  fragments are not configuration.
+- [ ] Standardize the small process contract: arguments in, inherited declared
+  environment, progress on stderr, one final JSON result on stdout, plus
+  explicit status and cleanup when the job owns external resources.
+- [ ] Give Milk Man a small objective for which no current job exists. Verify
+  it creates or adapts one script, executes it, repairs one observed failure if
+  needed, and retains the working script.
+- [ ] Repeat the objective and reuse the script without changing the Headlong
+  loop or runner core.
 
-Acceptance: one reviewed revision demonstrates that the teacher is producing
-useful cases, not merely valid JSON. No bulk fan-out begins before this point.
+Acceptance: an unseen workload becomes a reusable tool through a small script,
+not another bespoke orchestration branch.
 
-## P3 — produce the 10,000-case lineage
+## P3 — add the durable lightweight heartbeat
 
-- [ ] Freeze the accepted prompt, schema, provider binding, source manifest,
-  and code revision.
-- [ ] Set `MILK_CASES_PER_CONVERSATION=100` and generate exactly 10,000 unique
-  cases from the same 100 sources using bounded immutable shards.
-- [ ] Resume only missing or incomplete ranges. A replay of a completed shard
-  must make zero inference calls.
-- [ ] Publish `e/current.json` only after all 10,000 cases parse, reconcile to
-  the source manifest, and are unique by case ID and normalized content.
-- [ ] Do not add another semantic validator loop. Audit one deterministic
-  sample and record the result.
+- [ ] Run the heartbeat independently of the browser. Closing or refreshing
+  the dashboard must not stop the active task.
+- [ ] Configure initial interval, maximum interval, and idle backoff with
+  environment variables.
+- [ ] Hold one lock/lease per active task and persist its objective, trajectory,
+  current activity, resource IDs, last observation, and next wake time.
+- [ ] Wake on a new prompt, scheduled review, changed object marker, completed
+  or failed asynchronous job, or measured service regression.
+- [ ] Do not invoke the model or relist an unchanged object prefix while idle.
+  Send compact changed results, not full historical logs, when reasoning
+  resumes.
+- [ ] Observe several idle cycles with zero model calls, interrupt the process
+  during an asynchronous wait, restart it, and prove it resumes without
+  duplicating work.
 
-Acceptance: one current pointer names exactly 10,000 source-bound cases from a
-single immutable contract; no old revision is mixed in.
+Acceptance: Milk Man remains available and resumes useful work at low idle cost
+without a separate scheduler service.
 
-## P4 — train and compare the student
+## P4 — general model and compute lifecycle
 
-- [ ] Assign source-level train, DEV, calibration, and sealed splits before
-  teacher targets. Assert no source crosses a split.
-- [ ] Generate training targets with the separately configured strongest
-  teacher.
-- [ ] Build the dataset and train exact
-  `Qwen/Qwen3.5-0.8B@2fc06364715b967f1860aea9cf38778875588b17` on
-  ephemeral Baseten training capacity.
-- [ ] Evaluate BF16 and dynamic FP8 on the same ordered DEV cases. Run static
-  FP8 only as mechanics unless its implementation is independently qualified.
-- [ ] Select the winner deterministically from the published evaluation policy
-  and run exactly one sealed evaluation.
-- [ ] Record dataset/model/evaluation UUIDs, source and image digests, provider
-  job IDs, metrics, termination receipts, and zero active training capacity.
+- [ ] Refactor the current fixed controller lifecycle into reusable,
+  provider-native scripts for ensure/reuse, status/logs, inference smoke, and
+  stop. Retain current working behavior while extracting it.
+- [ ] Select provider, model and revision, API mode, runtime/image, GPU
+  type/count, tensor parallelism, context, batching, cache/volume, region, and
+  endpoint identity through environment variables.
+- [ ] Keep Baseten managed inference, Baseten-owned resources, and Modal-owned
+  resources available independently. Do not encode an automatic fallback.
+- [ ] First prove the lifecycle on an inexpensive model: inspect existing
+  state, create or reuse one deployment, call it, inspect failure if any, and
+  stop or retain it according to the prompt.
+- [ ] Repeat with the intended 120B workload. Reuse weight caches and a
+  weight-free runtime image.
+- [ ] Allow the same active trajectory to use the resulting OpenAI-compatible
+  endpoint and continue its original objective.
 
-Acceptance: one source-separated dataset leads to one reproducible student and
-one deterministic, sealed winner without leakage or standing training GPUs.
+Acceptance: a prompt can make Milk Man operate a real model lifecycle without
+hardcoding that model or provider into the harness.
 
-## P5 — serve, route, fall back, and stop
+## P5 — inference autotuning
 
-- [ ] Explicitly select either the Baseten or Modal candidate job. Do not try
-  both automatically.
-- [ ] Hydrate the winning weights into a weight-free serving image and record
-  the exact candidate URL identity without exposing its key.
-- [ ] Milk Man writes one unsigned proposal. Only the operator route publisher
-  may sign and advance Parlor's route pointer.
-- [ ] Prove a low-percentage signed canary with the official SDK.
-- [ ] Prove candidate success, pre-byte fallback after candidate removal,
-  higher-revision rollback, and a signed zero route.
-- [ ] Remove candidate credentials and confirm Parlor reports no candidate
-  binding.
-- [ ] Independently confirm zero active candidate/training capacity on Baseten
-  and zero active Milk GPU apps on Modal.
+- [ ] Accept a measurable objective such as minimum throughput subject to a
+  latency, correctness, GPU, or cost constraint.
+- [ ] Have Milk Man propose the next configuration from prior measurements,
+  execute it, and capture cold start, time to first token, output tokens per
+  second, p50/p95 latency, errors/OOM, output correctness, and compute cost.
+- [ ] Compare like-for-like requests and concurrency. Persist exact model,
+  revision, runtime, resource, serving arguments, endpoint identity, metrics,
+  and conclusion for every trial.
+- [ ] Make later experiments respond to measured results rather than replaying
+  a fixed matrix.
+- [ ] Retain or reuse the best configuration that meets the task objective;
+  stop losing trials and verify their resources are absent.
+- [ ] Demonstrate a successful turn through the selected endpoint and resume
+  without rerunning completed trials.
 
-Acceptance: the same fresh lineage reaches a signed live mechanics route and
-returns to the baseline with both providers at zero capacity.
+Acceptance: Milk Man improves a live inference configuration from evidence and
+leaves one requested winner or zero resources according to the prompt.
 
-## P6 — append the owned Modal GLM driver
+## P6 — prove continuity and generality
 
-This work may proceed beside P1–P5 but may not block them.
+- [ ] Restart during an active research task and resume its trajectory,
+  resources, measurements, and next experiment without duplication.
+- [ ] Give Milk Man a different model or compute objective. It may reuse,
+  adapt, or create scripts, but must not require an edit to the harness engine.
+- [ ] Verify the second workload completes, leaves reusable code and retained
+  conclusions, and cleans up or preserves resources as requested.
 
-- [ ] Add three implemented jobs beside the existing controller:
-  `inference-endpoint-ensure`, `inference-endpoint-status`, and
-  `inference-endpoint-stop`.
-- [ ] Pin `zai-org/GLM-5.3-Flash`, the weight revision, vLLM/runtime version,
-  GPU type/count, tensor parallelism, context, batching, image digest, volume,
-  region, and endpoint name through reviewed config and environment names.
-- [ ] Keep its state pointer separate from the existing custom-controller state.
-- [ ] `ensure` reuses an exact healthy deployment, reconciles an ambiguous
-  creation before retrying, or creates one new deployment. `status` is
-  read-only. `stop` removes it and proves absence.
-- [ ] Feed the resulting OpenAI-compatible URL/model/key to the existing
-  `LLM_*` driver selection. Do not special-case Modal in Headlong.
-- [ ] Through the Chrome-controlled local dashboard, prove ensure, one later
-  tool-using Milk Man turn powered by that endpoint, stop, and zero capacity.
-- [ ] Compare measured cold start, time to first token, output tokens/second,
-  p50/p95 latency, failure rate, and cost with the managed Baseten endpoint.
-  Record the result; do not build an automatic optimizer.
+Acceptance: the agent is a general research and compute operator, not a GLM,
+120B, Qwen, Modal, Baseten, or Milk-pipeline special case.
 
-Acceptance: managed Baseten and owned Modal are two explicit usable GLM driver
-choices. Neither replaces the custom controller or silently selects the other.
+## P7 — extend the Milk whiteboard application
 
-## P7 — publish and distinguish qualification
+Build these capabilities with the same scripts, heartbeat, state, and
+optimization loop. Reuse existing R2 objects and historical implementations;
+do not restart parked large generation runs.
 
-- [ ] Update concise READMEs and public docs with the two-loop diagram, official
-  SDK setup, exact supported endpoints, dashboard screenshots, object stages,
-  provider choices, and the evidence-class distinction.
-- [ ] Publish current source and tags only after the current-code mechanics
-  lineage completes. Repository Actions remain absent.
-- [ ] Record a compact final report linking exact commits, live deployment,
-  scope/revisions, provider jobs, route revisions, and zero-capacity evidence.
-- [ ] Keep the learned route labeled mechanics until independently collected
-  customer traffic crosses the production readiness contract. Then repeat the
-  same fixed loop in a fresh production lineage before calling it qualified.
+- [~] Parlor already authenticates official OpenAI SDK traffic, streams both
+  supported protocols, and writes scoped request/response objects
+  asynchronously.
+- [~] Summary, readiness, eval, dataset, Qwen3.5-0.8B training, model
+  comparison, proposal, routing, fallback, rollback, and teardown have each
+  run in historical mechanics lineages.
+- [ ] Reconcile the useful existing traffic and summary objects before making
+  new paid generation calls.
+- [ ] Let the heartbeat detect a configured threshold and progress a cumulative
+  summary/classification checkpoint with zero-call idle behavior.
+- [ ] Add or reuse scripts for eval generation, synthetic rollouts, scoring or
+  rewards, filtering/deduplication, source-group splitting, dataset building,
+  training, merging, quantization, evaluation, serving, and cleanup.
+- [ ] Prove each required job with a small, inspected output before increasing
+  volume. The prior 100-conversation x 100-case target is one configurable
+  experiment, not a core runtime invariant.
+- [ ] Keep Qwen3.5-0.8B as the first student workload. SFT is the current
+  demonstrated training mechanic; do not call it RL.
+- [ ] Add an explicit RL experiment only when needed: rollout generation,
+  reward/judge output, training recipe, baseline, evaluation, and result must
+  be independently visible.
+- [ ] Complete one coherent application lineage through an unsigned proposal,
+  operator-signed canary, candidate success, pre-byte fallback, rollback,
+  signed zero route, and provider cleanup.
+
+Acceptance: the whiteboard flywheel is one complete application of the general
+Milk Man engine, with fine-tuning and RL represented truthfully.
+
+## P8 — publish and operate
+
+- [ ] Stop the five stale unselected Parlor generations after resolving their
+  exact Cloudflare identities; retain the selected live generation.
+- [ ] Keep the local dashboard and public docs accurate for someone with no
+  prior context. Show the active prompt, heartbeat, logs, environment-name
+  readiness, resources, measurements, object progress, and cleanup state.
+- [ ] Preserve the original dependency-free Milk HTML/CSS design.
+- [ ] Make focused commits, push validated source, deploy the updated local and
+  hosted surfaces, and record exact revisions and live evidence in the tracker.
+- [ ] Preserve the distinction between historical mechanics, current hosted
+  execution, and production-qualified customer traffic.
 
 ## Stop conditions
 
-Stop and report one precise blocker if continuation would require a missing
-credential, account capability, operator signature, unavailable source traffic,
-or a semantic contract change to an already-started immutable revision. Do not
-hide the blocker behind another audit, retry loop, provider fallback, or new
-abstraction.
+Stop only when the objective is complete or a concrete external dependency is
+unavailable: required credentials, provider/account capability, source data,
+or an operator-held route signature. Record the exact state needed to resume.
+Do not substitute repeated audits, unchanged polling, silent provider fallback,
+or another abstraction for progress.
