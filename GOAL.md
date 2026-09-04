@@ -78,9 +78,11 @@ contract. [goal_tracker.md](goal_tracker.md) is the evidence ledger.
 - [x] Run only syntax/import/config checks and one read-only dashboard status
   fetch. Do not run a broad test suite.
 - [x] Secret-scan the unpublished Milk Man range and current diff.
-- [ ] Commit and push the 13 retained local commits plus the reconciliation.
-- [ ] Confirm public `main` resolves to the pushed commit and the dashboard can
-  start from it.
+- [x] Commit and push the 13 retained local commits plus the reconciliation.
+- [x] Confirm public `main` resolves to baseline commit
+  `503ac816aa1c495798f09fa06cfd560d52d56b24`.
+- [ ] Restart the dashboard from the published source when the current local
+  supervisor can be replaced, then confirm its read-only state endpoint.
 - [ ] Run one bounded dashboard instruction through managed Baseten
   `zai-org/GLM-5.3-Flash` at maximum reasoning. It must make at least one fixed
   tool call, return assistant text, and leave an exact trajectory record.

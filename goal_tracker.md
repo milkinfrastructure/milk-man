@@ -31,8 +31,9 @@ Status notation:
 - [~] Those mechanics span older code and generated traffic. They do not prove
   one coherent current-code lineage or a production-qualified learned route.
 - [!] The immediate source defect was an incomplete Modal Endpoint declaration
-  that replaced the working controller contract. The working tree restores the
-  implemented 11-job contract; native Modal Endpoint jobs remain explicit work.
+  that replaced the working controller contract. Published baseline
+  `503ac816aa1c495798f09fa06cfd560d52d56b24` restores the implemented
+  11-job contract; native Modal Endpoint jobs remain explicit work.
 - [ ] The next proof is a fresh scope: 100 held-out sources, one reviewed case
   per source, then 100 cases per source and the complete downstream loop.
 
@@ -45,6 +46,9 @@ Snapshot captured before the centralization commit:
 | `milk-man` | `2985a52a037a3a03164add303fa622e25c929c0c`, plus the documented reconciliation | `ef315662a436a1df6166b5038f18dff68c75e7ab` | 13 commits ahead at audit time; independent repository; publish after narrow checks |
 | `milk-parlor` | `37c0f892cee2bb03277fff6cc107312e36fda672` | same | clean and deployed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
+
+Published audit baseline:
+`503ac816aa1c495798f09fa06cfd560d52d56b24`.
 
 - [x] Milk Man is no longer a GitHub fork. It retains a pinned, attributed
   minimal Headlong subset as implementation source.
@@ -259,7 +263,8 @@ Corrections made by this audit:
 - [x] Replace the mixed historical tracker with this evidence ledger.
 - [x] Restore the working 11-job config contract locally.
 - [x] Run narrow syntax/config checks and a secret scan.
-- [ ] Commit and publish the coherent Milk Man baseline.
+- [x] Commit and publish the coherent Milk Man baseline at
+  `503ac816aa1c495798f09fa06cfd560d52d56b24`.
 - [ ] Prove one clean managed-GLM dashboard tool turn.
 - [ ] Stop five stale unselected Parlor container generations.
 
