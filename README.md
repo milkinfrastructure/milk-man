@@ -92,6 +92,8 @@ bin/man heartbeat stop
 `MILK_HEARTBEAT_MAX_SECONDS` caps exponential idle backoff (300 seconds by
 default). Idle checks do not call the model. A task may register a scheduled
 wake or a read-only status command; changed status resumes the saved task.
+Unchanged status watches back off too. Set a shorter maximum when waiting on
+billable resources that should be stopped promptly.
 
 For one direct turn without the persistent heartbeat:
 

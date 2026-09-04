@@ -35,6 +35,12 @@ Status notation:
   baseline, held-out tasks, results, and wake plan. Raw capture totals are now
   labeled exchanges, not independent conversations. No GPU or route was
   changed in this slice.
+- [x] Corrected two issues found in the live view: uncounted captures are
+  labeled unknown after dashboard restart, and unchanged registered watches
+  retain their growing poll interval instead of resetting to the base delay.
+  Temporary-state execution proved 30/60/120/240-second delays, immediate
+  instruction wake, and on-time scheduled wake without sleeping or model use.
+  Chrome then showed a real 60-second wait, 156 checks, and still 36 wakeups.
 
 - [x] Reserved and validated UUIDv6
   `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a` for `milk-man-autoresearch`.

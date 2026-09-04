@@ -159,14 +159,15 @@ function distributionChart(label, values, total, help) {
 }
 
 function renderProgress(progress = {}) {
+  const counted = Number.isInteger(progress.capture_count);
   const count = number(progress.capture_count);
   const processed = number(progress.processed_count);
   const points = progress.thresholds || [];
   const checkpoints = progress.checkpoints || [];
   const opened = new Set(Array.from(el("milestones").querySelectorAll("details[open]"), value => value.dataset.uuid));
-  el("volume").textContent = count.toLocaleString() + " exchanges captured";
+  el("volume").textContent = counted ? count.toLocaleString() + " exchanges captured" : "capture count not checked";
   el("volume").title = "Each saved request and response is one exchange. An agent trajectory can contain many exchanges; these are not independent training examples.";
-  el("target").textContent = progress.next_threshold
+  el("target").textContent = !counted ? "count traffic to refresh" : progress.next_threshold
     ? processed.toLocaleString() + " summarized · " + (count >= progress.next_threshold ? "ready at " : (progress.next_threshold - count).toLocaleString() + " to ") + progress.next_threshold.toLocaleString()
     : processed.toLocaleString() + " summarized · checkpoints complete";
   const fill = Math.max(0, Math.min(100, fillPercent(count, points)));
@@ -181,6 +182,7 @@ function renderProgress(progress = {}) {
     const remaining = Math.max(0, point - count);
     tick.title = checkpoint
       ? "Summary checkpoint complete at " + point.toLocaleString() + " exchanges."
+      : !counted ? "Count traffic to check this threshold."
       : count >= point
         ? "Threshold reached; its summary has not committed yet."
         : remaining.toLocaleString() + " exchanges until this summary threshold.";
@@ -232,7 +234,7 @@ function renderProgress(progress = {}) {
     } else {
       const title = node("h3");
       title.append(node("i", "pin"), document.createTextNode(point.toLocaleString()));
-      card.append(title, node("small", "", count >= point ? "data crossed; summary waiting" : (point - count).toLocaleString() + " exchanges to go"));
+      card.append(title, node("small", "", !counted ? "capture count not checked" : count >= point ? "data crossed; summary waiting" : (point - count).toLocaleString() + " exchanges to go"));
       card.title = count >= point ? "Milk Man has enough data and is waiting to write this summary." : "Traffic is still accumulating for this checkpoint.";
     }
     el("milestones").append(card);

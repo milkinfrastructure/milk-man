@@ -561,7 +561,7 @@ def _milk_status(exact_inventory: bool) -> dict:
         except Exception:
             research_state["error"] = "research record unavailable"
         points = thresholds(settings.profile)
-        captured = _capture_count(store, settings.scope_prefix + "c/") if exact_inventory else 0
+        captured = _capture_count(store, settings.scope_prefix + "c/") if exact_inventory else None
         item = store.get(settings.scope_prefix + "status/current.json")
         value = json.loads(item.body)
         if not isinstance(value, dict) or value.get("schema_version") != "milk.status.v2":
@@ -619,10 +619,10 @@ def _refresh_monitor(exact_inventory: bool = False) -> dict:
             progress = milk.get("progress") if isinstance(milk.get("progress"), dict) else {}
             scope_id = status.get("scope_id")
             capture_count = progress.get("capture_count")
-            if isinstance(scope_id, str) and type(capture_count) is int and capture_count >= 0:
-                if exact_inventory:
+            if isinstance(scope_id, str):
+                if exact_inventory and type(capture_count) is int and capture_count >= 0:
                     LAST_EXACT_CAPTURE = (scope_id, capture_count)
-                elif LAST_EXACT_CAPTURE and LAST_EXACT_CAPTURE[0] == scope_id and LAST_EXACT_CAPTURE[1] > capture_count:
+                elif LAST_EXACT_CAPTURE and LAST_EXACT_CAPTURE[0] == scope_id and (capture_count is None or LAST_EXACT_CAPTURE[1] > capture_count):
                     capture_count = LAST_EXACT_CAPTURE[1]
                     milk = {
                         **milk,
