@@ -26,6 +26,14 @@ Provider selection, in order:
   MILK_BOOTSTRAP_BASE_URL + MILK_BOOTSTRAP_MODEL [+ MILK_BOOTSTRAP_API_KEY]
   OPENAI_API_KEY [+ OPENAI_BASE_URL + OPENAI_MODEL + OPENAI_API_MODE]
 
+Driver settings:
+  LLM_API_URL is the full /v1/responses or /v1/chat/completions URL.
+  LLM_API_MODE=responses|chat_completions; LLM_REASONING_EFFORT selects effort.
+  LLM_MAX_TOKENS=32768 limits output; reserve room for input in server context.
+  MILK_MAN_TOOL_CALLS=1 uses native Bash/finish tools (0 uses fenced Bash).
+  MILK_MAN_MAX_ITERATIONS=20 bounds one reasoning turn; develop then exits.
+  MILK_MAN_STATE_DIR=/absolute/private/path isolates task history and memory.
+
 Develop uses the provider order above. Bootstrap deterministically runs the
 fixed controller jobs before its first model call. Controller creation is a
 dry run unless MILK_MODAL_CONTROLLER_APPLY=1.
