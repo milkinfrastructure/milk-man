@@ -424,12 +424,12 @@ function renderMan(man) {
       : jobs ? "Milk jobs are running outside chat. Their results will appear in object memory."
       : "Milk Man is ready for the next instruction.", state === "failed");
   }
-  rows(el("workspaces"), man.workspaces.map(workspace => ({
+  if (man.workspaces) rows(el("workspaces"), man.workspaces.map(workspace => ({
     title: workspace.name + " · " + (workspace.head || "no git"),
     detail: workspace.changes.length ? workspace.changes.length + " changed file" + (workspace.changes.length === 1 ? "" : "s") + "\n" + workspace.changes.join("\n") : "clean · " + workspace.path,
     class: workspace.changes.length ? "changes" : "path",
   })), "no workspaces");
-  rows(el("memory"), man.memory.map(memory => ({ title: memory.ts || "memory", detail: memory.content })), "no saved memory");
+  if (man.memory) rows(el("memory"), man.memory.map(memory => ({ title: memory.ts || "memory", detail: memory.content })), "no saved memory");
 
   const target = el("activity");
   const nextActivityKey = String(man.active) + JSON.stringify(man.activity);

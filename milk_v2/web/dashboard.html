@@ -36,7 +36,7 @@
     </nav>
     <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, environment name, or code block to copy it</small>
 
-    <details id="connect" open>
+    <details id="connect">
       <summary title="Install the official OpenAI client, point it at Milk Parlor, and keep the rest of your call.">connect an app <small>official SDK · two values change</small></summary>
       <p class="section-help">Install <code>openai</code>, not a Milk SDK. Keep your existing Responses or Chat Completions call; only the base URL and operator-issued key change.</p>
       <div class="connection-line" aria-label="Your application sends an OpenAI request through Milk Parlor to its configured model provider.">
@@ -85,7 +85,7 @@
     <div class="ticks" id="ticks" aria-label="Configured summary thresholds"></div>
     <small class="checked" id="checked">never checked</small>
 
-    <details id="loop" open>
+    <details id="loop">
       <summary title="Follow one captured conversation through every stored step.">from traffic to a better model</summary>
       <div class="route-control">
         <label for="stage-scrubber"><b>milk line</b><output id="stage-output" for="stage-scrubber">finding the live stage</output></label>
@@ -99,7 +99,7 @@
       <p class="section-help">Jobs select object storage, inference, and GPU providers through environment names. <code>set</code> means this dashboard inherited the name; it does not prove provider access. Opening this panel starts nothing. A fixed job runs only after an explicit chat instruction or <code>bin/milk</code> command. Values stay hidden, and environment changes require a restart.</p>
       <div class="job-list" id="jobs"></div>
     </details>
-    <details id="summaries">
+    <details id="summaries" open>
       <summary title="Open a saved checkpoint to see aggregate traffic statistics and classifications.">what Milk learned</summary>
       <div class="milestones" id="milestones"></div>
     </details>

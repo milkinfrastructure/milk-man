@@ -146,7 +146,7 @@ def _current_state() -> tuple[dict, Path, Path]:
     return {**current, "workspaces": workspaces}, trajectory, memory
 
 
-def _man_state() -> dict:
+def _man_state(include_metadata: bool = True) -> dict:
     try:
         current, trajectory, memory = _current_state()
     except (OSError, ValueError, json.JSONDecodeError):
@@ -170,22 +170,24 @@ def _man_state() -> dict:
     discovered, local_jobs = _process_state(trajectory)
     active = attached or discovered
     state = "working" if active else "queued" if queued else "failed" if last_exit_code not in (None, 0) else "idle"
-    workspaces = []
-    for value in current.get("workspaces", []):
-        if not isinstance(value, dict) or not isinstance(value.get("path"), str):
-            continue
-        path = value["path"]
-        workspaces.append({
-            "name": str(value.get("name", "workspace"))[:64],
-            "path": path,
-            "head": _git(path, "rev-parse", "--short=9", "HEAD"),
-            "changes": _git(path, "status", "--short").splitlines()[:24],
-        })
-    memories = [
-        {"ts": str(value.get("ts", ""))[:32], "content": _redact(value.get("content"))[:1000]}
-        for value in (_tail(memory, 12) if memory else [])
-        if value.get("type") == "memory"
-    ]
+    workspaces, memories = None, None
+    if include_metadata:
+        workspaces = []
+        for value in current.get("workspaces", []):
+            if not isinstance(value, dict) or not isinstance(value.get("path"), str):
+                continue
+            path = value["path"]
+            workspaces.append({
+                "name": str(value.get("name", "workspace"))[:64],
+                "path": path,
+                "head": _git(path, "rev-parse", "--short=9", "HEAD"),
+                "changes": _git(path, "status", "--short").splitlines()[:24],
+            })
+        memories = [
+            {"ts": str(value.get("ts", ""))[:32], "content": _redact(value.get("content"))[:1000]}
+            for value in (_tail(memory, 12) if memory else [])
+            if value.get("type") == "memory"
+        ]
     events = _tail(trajectory, 200) if trajectory else []
     latest_prompt = next(
         (index for index in range(len(events) - 1, -1, -1) if events[index].get("type") == "prompt"),
@@ -287,7 +289,8 @@ def _drain_prompt() -> None:
         with RUN_LOCK:
             current, trajectory, _ = _current_state()
             process_active = RUN_PROCESS is not None and RUN_PROCESS.poll() is None
-            if process_active or _active(trajectory):
+            discovered, _ = _process_state(trajectory)
+            if process_active or discovered:
                 continue
             prompt, PENDING_PROMPT = PENDING_PROMPT, None
             if prompt is not None:
@@ -302,7 +305,8 @@ def _run(prompt: str) -> str:
     with RUN_LOCK:
         current, trajectory, _ = _current_state()
         process_active = RUN_PROCESS is not None and RUN_PROCESS.poll() is None
-        if process_active or _active(trajectory):
+        discovered, _ = _process_state(trajectory)
+        if process_active or discovered:
             if PENDING_PROMPT is not None:
                 raise RuntimeError("one prompt is already queued")
             PENDING_PROMPT = prompt
@@ -629,7 +633,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/local":
             body = json.dumps(
-                {"schema_version": "milk.dashboard-local.v1", "man": _man_state()},
+                {"schema_version": "milk.dashboard-local.v1", "man": _man_state(False)},
                 sort_keys=True,
                 separators=(",", ":"),
             ).encode()
