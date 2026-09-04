@@ -286,6 +286,45 @@ def _settings(settings, dataset_reference: dict, model_reference: dict, model: d
     }
 
 
+def _training_recipe(runtime, model: dict) -> str:
+    recipe = model.get("training_recipe", "sft")
+    if recipe not in {"sft", "reinforce"}:
+        raise EvaluateError("model training recipe is invalid")
+    if recipe == "reinforce":
+        expected_parent = {
+            "kind": "hf_base",
+            "model_repo": runtime.student_base.model_repo,
+            "model_revision": runtime.student_base.model_revision,
+        }
+        output = model.get("output")
+        reinforce = output.get("reinforce") if isinstance(output, dict) else None
+        if (
+            model.get("parent") != expected_parent
+            or not isinstance(output, dict)
+            or output.get("recipe") != "reinforce"
+            or output.get("parent") != expected_parent
+            or not isinstance(reinforce, dict)
+            or reinforce.get("updated") is not True
+        ):
+            raise EvaluateError("reinforce model has no verified policy update")
+    return recipe
+
+
+def _parent_base(runtime, base: dict) -> dict:
+    source = {
+        "kind": "hf_parent",
+        "model_repo": runtime.student_base.model_repo,
+        "model_revision": runtime.student_base.model_revision,
+        "digest": runtime.student_base.digest,
+    }
+    parent_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:hf-parent:" + summary.digest(source)))
+    return {
+        **{key: value for key, value in base.items() if key != "source_job_id"},
+        "model": {"uuid": parent_uuid, **source},
+        "model_source": source,
+    }
+
+
 def _plan(settings, runtime, base: dict, branch: str, split: str) -> dict:
     config = {**base, "branch": branch, "split": split}
     identity = {
@@ -336,6 +375,32 @@ def _job_body(settings, plan: dict) -> dict:
         f"assert hashlib.sha256(b).hexdigest()=='{config['evaluate_source_sha256']}';"
         "open('/tmp/milk-evaluate.py','wb').write(b)\""
     )
+    runtime = {
+        "start_commands": [
+            *setup,
+            f"python -m pip install --no-cache-dir {packages}",
+            fetch_source,
+            "python /tmp/milk-evaluate.py",
+        ],
+        "environment_variables": environment,
+        "cache_config": {"enabled": True, "require_cache_affinity": False},
+        "checkpointing_config": {"enabled": True, "checkpoint_path": "/mnt/ckpts", "volume_size_gib": 10},
+    }
+    source = config.get("model_source")
+    if source is None:
+        runtime["load_checkpoint_config"] = {
+            "enabled": True,
+            "download_folder": "/app/checkpoint",
+            "checkpoints": [{"typ": "baseten_latest_checkpoint", "job_id": config["source_job_id"]}],
+        }
+        weights = []
+    else:
+        if set(source) != {"kind", "model_repo", "model_revision", "digest"} or source.get("kind") != "hf_parent":
+            raise EvaluateError("evaluation model source is invalid")
+        weights = [{
+            "source": f"hf://{source['model_repo']}@{source['model_revision']}",
+            "mount_location": "/app/checkpoint/merged",
+        }]
     return {
         "image": {"base_image": config["baseten_base_image"], "docker_auth": None},
         "compute": {
@@ -345,24 +410,9 @@ def _job_body(settings, plan: dict) -> dict:
             "accelerator": {"accelerator": config["accelerator"], "count": 1},
             "availability_model": config["availability_model"],
         },
-        "runtime": {
-            "start_commands": [
-                *setup,
-                f"python -m pip install --no-cache-dir {packages}",
-                fetch_source,
-                "python /tmp/milk-evaluate.py",
-            ],
-            "environment_variables": environment,
-            "cache_config": {"enabled": True, "require_cache_affinity": False},
-            "checkpointing_config": {"enabled": True, "checkpoint_path": "/mnt/ckpts", "volume_size_gib": 10},
-            "load_checkpoint_config": {
-                "enabled": True,
-                "download_folder": "/app/checkpoint",
-                "checkpoints": [{"typ": "baseten_latest_checkpoint", "job_id": config["source_job_id"]}],
-            },
-        },
+        "runtime": runtime,
         "name": "milk-eval-" + job_id[:20],
-        "weights": [],
+        "weights": weights,
         "enable_baseten_workdir": False,
         "priority": 0,
     }
@@ -379,6 +429,7 @@ def _stored(store, plan: dict) -> dict | None:
         prior.get("schema_version") != "milk.evaluate-job-result.v3"
         or prior.get("job_id") != plan["job_id"]
         or not isinstance(reference, dict)
+        or reference.get("evaluation_job_id") != plan["job_id"]
         or reference.get("branch") != plan["config"]["branch"]
         or reference.get("split") != plan["config"]["split"]
         or not isinstance(prior.get("artifact_keys"), list)
@@ -771,6 +822,25 @@ def _provider_run(store, settings, runtime, client, jobs: dict[str, dict], plan:
     return {"state": "active", "reference": None, "artifacts": _artifacts(store, [intent_key, receipt_key]), "details": {"branch": config["branch"], "split": config["split"], "provider_job_id": provider_job_id, "status": status}}
 
 
+def _run_plans(store, settings, runtime, plans: list[dict], client=None, jobs=None):
+    runs = [_stored(store, plan) for plan in plans]
+    if all(run is not None for run in runs):
+        return runs, client, jobs
+    if client is None:
+        client = baseten.Client(_required("BASETEN_API_KEY"), _integer("MILK_EVALUATE_TIMEOUT_SECONDS", 30, 1, 120))
+        try:
+            listed = client.jobs(plans[0]["config"]["project_id"])
+        except baseten.ProviderError as error:
+            raise ProviderError(str(error), client.calls, ambiguous=error.ambiguous) from error
+        names = [job["name"] for job in listed if isinstance(job.get("name"), str)]
+        if len(names) != len(set(names)):
+            raise ProviderError("multiple Baseten jobs share a deterministic name", client.calls, ambiguous=True)
+        jobs = {job["name"]: job for job in listed if isinstance(job.get("name"), str)}
+    if jobs is None:
+        jobs = {}
+    return [run or _provider_run(store, settings, runtime, client, jobs, plan) for run, plan in zip(runs, plans)], client, jobs
+
+
 def _load_evaluation(store, reference: dict) -> dict:
     value, body = _object(store, reference.get("key", ""))
     if (
@@ -783,6 +853,70 @@ def _load_evaluation(store, reference: dict) -> dict:
     ):
         raise EvaluateError("evaluation reference identity differs")
     return value
+
+
+def _parent_comparison(store, settings, base: dict, parent_base: dict, parent_run: dict, child_run: dict) -> tuple[dict, list[dict]]:
+    parent = _load_evaluation(store, parent_run["reference"])
+    child = _load_evaluation(store, child_run["reference"])
+    case_identity = (parent["case_count"], parent["case_ids_sha256"])
+    if (
+        parent.get("branch") != "bf16"
+        or child.get("branch") != "bf16"
+        or parent.get("split") != "dev"
+        or child.get("split") != "dev"
+        or parent.get("scope_id") != settings.scope_id
+        or child.get("scope_id") != settings.scope_id
+        or parent.get("profile") != settings.profile
+        or child.get("profile") != settings.profile
+        or parent.get("dataset") != base["dataset"]
+        or child.get("dataset") != base["dataset"]
+        or parent.get("policy_digest") != base["policy_digest"]
+        or child.get("policy_digest") != base["policy_digest"]
+        or parent.get("model") != parent_base["model"]
+        or child.get("model") != base["model"]
+        or parent.get("job_id") != parent_run["reference"].get("evaluation_job_id")
+        or child.get("job_id") != child_run["reference"].get("evaluation_job_id")
+        or (child["case_count"], child["case_ids_sha256"]) != case_identity
+    ):
+        raise EvaluateError("parent and reinforce evaluations are not comparable")
+    parent_score = parent["metrics"]["mean_score_bps"]
+    child_score = child["metrics"]["mean_score_bps"]
+    promoted = child_score > parent_score
+    identity = {
+        "schema_version": "milk.parent-comparison-identity.v1",
+        "scope_id": settings.scope_id,
+        "profile": settings.profile,
+        "dataset": base["dataset"],
+        "parent": parent_run["reference"],
+        "child": child_run["reference"],
+    }
+    comparison_id = summary.digest(identity)
+    key = settings.scope_prefix + f"j/evaluate-parent/{comparison_id}/result.json"
+    value = {
+        **identity,
+        "schema_version": "milk.parent-comparison.v1",
+        "comparison_id": comparison_id,
+        "case_count": case_identity[0],
+        "case_ids_sha256": case_identity[1],
+        "parent_mean_score_bps": parent_score,
+        "child_mean_score_bps": child_score,
+        "delta_mean_score_bps": child_score - parent_score,
+        "selected": "child" if promoted else "parent",
+        "child_promoted": promoted,
+    }
+    body = summary.canonical(value)
+    store.create_same(key, body)
+    reference = {
+        "schema_version": "milk.parent-comparison-reference.v1",
+        "comparison_id": comparison_id,
+        "key": key,
+        "sha256": summary.digest(body),
+        "child_promoted": promoted,
+        "parent_mean_score_bps": parent_score,
+        "child_mean_score_bps": child_score,
+        "delta_mean_score_bps": child_score - parent_score,
+    }
+    return reference, _artifacts(store, [key])
 
 
 def _winner(store, policy: dict, runs: list[dict], eligible_branches: list[str]) -> tuple[dict, list[dict]]:
@@ -812,7 +946,7 @@ def _winner(store, policy: dict, runs: list[dict], eligible_branches: list[str])
     return {"branch": winner["branch"], "dev_evaluation_uuid": winner["evaluation_uuid"], "score": score}, evaluations
 
 
-def _finalize(store, settings, base: dict, policy: dict, eligible_branches: list[str], winner: dict, dev_runs: list[dict], sealed_run: dict) -> dict:
+def _finalize(store, settings, base: dict, policy: dict, eligible_branches: list[str], winner: dict, dev_runs: list[dict], sealed_run: dict, parent_comparison: dict | None = None) -> dict:
     sealed = _load_evaluation(store, sealed_run["reference"])
     if sealed["branch"] != winner["branch"] or sealed["split"] != policy["sealed_split"]:
         raise EvaluateError("sealed evaluation does not belong to the selected winner")
@@ -829,6 +963,8 @@ def _finalize(store, settings, base: dict, policy: dict, eligible_branches: list
         "winner": winner,
         "sealed": sealed_run["reference"],
     }
+    if parent_comparison is not None:
+        identity["parent_comparison"] = parent_comparison
     group_identity = summary.digest(identity)
     group_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:evaluation-group:" + group_identity))
     group_key = settings.scope_prefix + f"v/{group_uuid}/manifest.json"
@@ -842,7 +978,10 @@ def _finalize(store, settings, base: dict, policy: dict, eligible_branches: list
         raise EvaluateError("current status identity differs")
     summary._advance(store, status_key, {**status, "evaluation": reference, "next_action": "select-route-provider"})
     result_key = settings.scope_prefix + f"j/evaluate-group/{group_identity}/result.json"
-    result = {"schema_version": "milk.evaluate-group-result.v3", "evaluation": reference, "state": "progressed", "next": "select-route-provider", "artifact_keys": [group_key, status_key, result_key]}
+    artifact_keys = [group_key, status_key, result_key]
+    if parent_comparison is not None:
+        artifact_keys.insert(0, parent_comparison["key"])
+    result = {"schema_version": "milk.evaluate-group-result.v3", "evaluation": reference, "state": "progressed", "next": "select-route-provider", "artifact_keys": artifact_keys}
     store.create_same(result_key, summary.canonical(result))
     return {"state": "progressed", "identity": group_identity, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": 0, "next": "select-route-provider", "details": {"evaluation_group_uuid": group_uuid, "winner": winner, "sealed_evaluation_uuid": sealed["evaluation_uuid"]}}
 
@@ -883,50 +1022,67 @@ def reconcile(store, settings, runtime) -> dict:
     model, model_body = _object(store, model_reference["key"])
     if summary.digest(model_body) != model_reference["sha256"]:
         raise EvaluateError("model manifest digest differs")
+    recipe = _training_recipe(runtime, model)
     policy, policy_digest = _policy()
     base = _settings(settings, dataset_reference, model_reference, model, policy_digest)
     if any(base["dataset"]["counts"].get(split, 0) < 1 for split in ("dev", "calibration", "sealed")):
         return {"state": "idle", "identity": summary.digest({"dataset": base["dataset"], "reason": "evaluation_split_missing"}), "artifacts": [], "provider_calls": 0, "next": "dataset", "details": {"reason": "evaluation_split_missing"}}
 
     eligible_branches = policy["production_eligible_branches"] if settings.profile == "production" else policy["branches"]
-    dev_plans = [_plan(settings, runtime, base, branch, policy["dev_split"]) for branch in policy["branches"]]
-    dev_runs = [_stored(store, plan) for plan in dev_plans]
     client = None
     provider_jobs = None
-    if any(run is None for run in dev_runs):
-        client = baseten.Client(_required("BASETEN_API_KEY"), _integer("MILK_EVALUATE_TIMEOUT_SECONDS", 30, 1, 120))
-        try:
-            listed = client.jobs(base["project_id"])
-        except baseten.ProviderError as error:
-            raise ProviderError(str(error), client.calls, ambiguous=error.ambiguous) from error
-        names = [job["name"] for job in listed if isinstance(job.get("name"), str)]
-        if len(names) != len(set(names)):
-            raise ProviderError("multiple Baseten jobs share a deterministic name", client.calls, ambiguous=True)
-        provider_jobs = {job["name"]: job for job in listed if isinstance(job.get("name"), str)}
-        dev_runs = [run or _provider_run(store, settings, runtime, client, provider_jobs, plan) for run, plan in zip(dev_runs, dev_plans)]
-    artifacts = [artifact for run in dev_runs for artifact in run["artifacts"]]
+    artifacts = []
+    parent_comparison = None
+    if recipe == "reinforce":
+        parent_base = _parent_base(runtime, base)
+        comparison_plans = [
+            _plan(settings, runtime, parent_base, "bf16", policy["dev_split"]),
+            _plan(settings, runtime, base, "bf16", policy["dev_split"]),
+        ]
+        comparison_runs, client, provider_jobs = _run_plans(store, settings, runtime, comparison_plans)
+        artifacts.extend(artifact for run in comparison_runs for artifact in run["artifacts"])
+        if any(run["state"] != "complete" for run in comparison_runs):
+            labels = ("parent_bf16", "child_bf16")
+            return {
+                "state": "active",
+                "identity": summary.digest({"plans": [plan["job_id"] for plan in comparison_plans]}),
+                "artifacts": artifacts,
+                "provider_calls": client.calls if client else 0,
+                "next": "evaluate",
+                "details": {"branches": {label: run["details"] for label, run in zip(labels, comparison_runs)}},
+            }
+        parent_comparison, comparison_artifacts = _parent_comparison(store, settings, base, parent_base, *comparison_runs)
+        artifacts.extend(comparison_artifacts)
+        if not parent_comparison["child_promoted"]:
+            status_key = settings.scope_prefix + "status/current.json"
+            status, unused = _object(store, status_key)
+            if status.get("schema_version") != "milk.status.v2" or status.get("scope_id") != settings.scope_id:
+                raise EvaluateError("current status identity differs")
+            summary._advance(store, status_key, {**status, "next_action": "train"})
+            artifacts.extend(_artifacts(store, [status_key]))
+            return {
+                "state": "idle",
+                "identity": parent_comparison["comparison_id"],
+                "artifacts": artifacts,
+                "provider_calls": client.calls if client else 0,
+                "next": "train",
+                "details": {"reason": "policy_not_improved", **parent_comparison},
+            }
+
+    dev_plans = [_plan(settings, runtime, base, branch, policy["dev_split"]) for branch in policy["branches"]]
+    dev_runs, client, provider_jobs = _run_plans(store, settings, runtime, dev_plans, client, provider_jobs)
+    artifacts.extend(artifact for run in dev_runs for artifact in run["artifacts"])
     if any(run["state"] != "complete" for run in dev_runs):
         return {"state": "active", "identity": summary.digest({"plans": [plan["job_id"] for plan in dev_plans]}), "artifacts": artifacts, "provider_calls": client.calls if client else 0, "next": "evaluate", "details": {"branches": {plan["config"]["branch"]: run["details"] for plan, run in zip(dev_plans, dev_runs)}}}
 
     winner, _ = _winner(store, policy, dev_runs, eligible_branches)
     sealed_plan = _plan(settings, runtime, base, winner["branch"], policy["sealed_split"])
-    sealed_run = _stored(store, sealed_plan)
-    if sealed_run is None:
-        if client is None:
-            client = baseten.Client(_required("BASETEN_API_KEY"), _integer("MILK_EVALUATE_TIMEOUT_SECONDS", 30, 1, 120))
-            try:
-                listed = client.jobs(base["project_id"])
-            except baseten.ProviderError as error:
-                raise ProviderError(str(error), client.calls, ambiguous=error.ambiguous) from error
-            names = [job["name"] for job in listed if isinstance(job.get("name"), str)]
-            if len(names) != len(set(names)):
-                raise ProviderError("multiple Baseten jobs share a deterministic name", client.calls, ambiguous=True)
-            provider_jobs = {job["name"]: job for job in listed if isinstance(job.get("name"), str)}
-        sealed_run = _provider_run(store, settings, runtime, client, provider_jobs or {}, sealed_plan)
+    sealed_runs, client, provider_jobs = _run_plans(store, settings, runtime, [sealed_plan], client, provider_jobs)
+    sealed_run = sealed_runs[0]
     artifacts.extend(sealed_run["artifacts"])
     if sealed_run["state"] != "complete":
         return {"state": "active", "identity": sealed_plan["job_id"], "artifacts": artifacts, "provider_calls": client.calls if client else 0, "next": "evaluate", "details": {"winner": winner, "sealed": sealed_run["details"]}}
-    result = _finalize(store, settings, base, policy, eligible_branches, winner, dev_runs, sealed_run)
+    result = _finalize(store, settings, base, policy, eligible_branches, winner, dev_runs, sealed_run, parent_comparison)
     result["artifacts"] = artifacts + result["artifacts"]
     result["provider_calls"] = client.calls if client else 0
     return result
