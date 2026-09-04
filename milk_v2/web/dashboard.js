@@ -404,20 +404,24 @@ function renderContract(contract = {}) {
 let activityKey = "";
 function renderMan(man) {
   const state = man.state || (man.active ? "working" : man.trajectory_id ? "idle" : "setup");
+  const jobs = (man.local_jobs || []).reduce((total, job) => total + Number(job.count || 0), 0);
+  const jobNames = (man.local_jobs || []).map(job => job.count + " " + job.name).join(" · ");
+  const jobStatus = jobs ? " · " + jobNames + (jobs === 1 ? " job active" : " jobs active") : "";
   const labels = {
     working: man.connection === "discovered" ? "Milk Man online · working outside this page" : "Milk Man online · working" + (man.queued ? " · next instruction queued" : ""),
     queued: "Milk Man online · instruction queued",
     failed: "Milk Man online · last turn failed",
-    idle: "Milk Man online · waiting",
+    idle: "Milk Man online · chat waiting" + jobStatus,
     setup: "Milk Man online · session setup needed",
   };
   light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", (labels[state] || labels.setup) + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
-  el("conversation-state").textContent = state === "setup" ? "online · setup needed" : "online · " + state + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
+  el("conversation-state").textContent = state === "setup" ? "online · setup needed" : "online · " + state + jobStatus + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
   if (!runLoading) {
     runState(man.active ? "Milk Man is working. Output will appear above."
       : man.queued ? "Instruction queued behind the current run."
       : state === "failed" ? "The last turn failed. Review its output, then send a correction."
       : state === "setup" ? "Send an instruction to start a saved local session."
+      : jobs ? "Milk jobs are running outside chat. Their results will appear in object memory."
       : "Milk Man is ready for the next instruction.", state === "failed");
   }
   rows(el("workspaces"), man.workspaces.map(workspace => ({

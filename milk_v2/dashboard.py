@@ -97,9 +97,7 @@ def _within(root: Path, value: object) -> Path | None:
     return path if path == root or root in path.parents else None
 
 
-def _active(trajectory: Path | None) -> bool:
-    if trajectory is None:
-        return False
+def _process_state(trajectory: Path | None) -> tuple[bool, list[dict]]:
     try:
         result = subprocess.run(
             ["ps", "-axo", "command="],
@@ -109,9 +107,20 @@ def _active(trajectory: Path | None) -> bool:
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
-        return False
-    target = str(trajectory).encode()
-    return result.returncode == 0 and any(target in line and b"shellm" in line for line in result.stdout.splitlines())
+        return False, []
+    if result.returncode != 0:
+        return False, []
+    lines = result.stdout.decode("utf-8", "replace").splitlines()
+    target = str(trajectory) if trajectory else ""
+    active = bool(target) and any(target in line and "shellm" in line for line in lines)
+    counts: dict[str, int] = {}
+    pattern = re.compile(r"^(?:\S*/)?python(?:\d+(?:\.\d+)*)?\s+-m\s+milk_v2\.runner\s+run\s+([a-z0-9_-]+)(?:\s|$)", re.I)
+    for line in lines:
+        match = pattern.match(line.strip())
+        if match:
+            name = match.group(1)
+            counts[name] = counts.get(name, 0) + 1
+    return active, [{"name": name, "count": counts[name]} for name in sorted(counts)]
 
 
 def _current_state() -> tuple[dict, Path, Path]:
@@ -149,6 +158,7 @@ def _man_state() -> dict:
             "queued": False,
             "last_exit_code": LAST_EXIT_CODE,
             "trajectory_id": None,
+            "local_jobs": [],
             "workspaces": [],
             "memory": [],
             "activity": [],
@@ -157,7 +167,7 @@ def _man_state() -> dict:
         attached = RUN_PROCESS is not None and RUN_PROCESS.poll() is None
         queued = PENDING_PROMPT is not None
         last_exit_code = LAST_EXIT_CODE
-    discovered = _active(trajectory)
+    discovered, local_jobs = _process_state(trajectory)
     active = attached or discovered
     state = "working" if active else "queued" if queued else "failed" if last_exit_code not in (None, 0) else "idle"
     workspaces = []
@@ -201,6 +211,7 @@ def _man_state() -> dict:
         "queued": queued,
         "last_exit_code": last_exit_code,
         "trajectory_id": current.get("trajectory_id"),
+        "local_jobs": local_jobs,
         "workspaces": workspaces,
         "memory": memories,
         "activity": activity,
