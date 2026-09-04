@@ -267,10 +267,14 @@ Build these capabilities with the same scripts, heartbeat, state, and
 optimization loop. Reuse existing R2 objects and historical implementations;
 do not restart parked large generation runs.
 
-- [ ] Give each scope a durable research objective and resumable next action,
-  with a named baseline, untouched evaluation data, quality and serving
-  targets, and a measured current best. Reuse the existing object store and
-  heartbeat; do not add another orchestrator.
+- [x] Store each scope's research objective, targets, experiment references,
+  next action, and planned wake in object storage through a registered job.
+  Chrome-prompted Milk Man saved its own scope's record, replayed the same
+  write unchanged, and registered a read-only heartbeat watch. The dashboard
+  reads the same record; no new orchestrator was added.
+- [ ] Bind the record to measured baseline and candidate results on untouched
+  evaluation data. Its baseline, evaluation, and best fields are currently
+  unknown; saved notes alone do not qualify a winner.
 - [ ] Prove one small scope-specific research iteration: inspect captured
   data, choose an experiment, run existing jobs, compare on the same held-out
   tasks, retain the result even if it loses, and select the next useful action.

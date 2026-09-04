@@ -33,6 +33,7 @@
       <a href="#loop">watch the loop</a>
       <a href="#jobs-panel">jobs + environment</a>
       <a href="#summaries">saved summaries</a>
+      <a href="#research-panel">research</a>
     </nav>
     <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, environment name, or code block to copy it</small>
 
@@ -96,7 +97,7 @@
     <div class="status-line">
       <b id="volume">waiting for object memory</b>
       <span id="target"></span>
-      <button id="refresh" type="button" title="Check Milk Parlor, read the saved run status, and count every captured conversation now.">count traffic + refresh status</button>
+      <button id="refresh" type="button" title="Check Milk Parlor, read the saved run status, and count every captured request/response exchange now.">count traffic + refresh status</button>
     </div>
     <progress class="meter has-help" id="meter" max="100" value="0" title="Progress is divided evenly across the configured summary thresholds.">0%</progress>
     <div class="ticks" id="ticks" aria-label="Configured summary thresholds"></div>
@@ -119,6 +120,11 @@
     <details id="summaries" open>
       <summary title="Open a saved checkpoint to see aggregate traffic statistics and classifications.">what Milk learned</summary>
       <div class="milestones" id="milestones"></div>
+    </details>
+    <details id="research-panel">
+      <summary title="This scope's saved objective, comparisons, and next experiment. Saved notes are not proof of an improvement.">research <small id="research-state">reading saved objective</small></summary>
+      <p class="section-help">Use this scope's traffic to improve an open-source model. Compare it with a named baseline on the same held-out tasks; keep each result, including losses. These are saved notes; this job does not verify their measurements or run the next experiment.</p>
+      <div class="rows" id="research"></div>
     </details>
     <details>
       <summary title="Current scope, next stored action, and capture-writer totals.">run + object memory</summary>

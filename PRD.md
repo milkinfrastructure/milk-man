@@ -162,6 +162,8 @@ parent UUIDs and content digests form the lineage graph.
 
 ```text
 milk/v2/scopes/<scope_uuid>/
+  research/<research_uuid>/record.json
+  research/current.json
   c/<exchange_uuid>.json.zst
   l/<classifier_digest>/<exchange_digest>.json
   s/<summary_uuid>/{source.json.zst,summary.json}

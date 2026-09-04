@@ -122,13 +122,40 @@ export LLM_MILK_TRAJECTORY_HEADER=1
 ```
 
 The gateway must have that key and upstream provider configured. The scope UUID
-identifies stored conversations; it does not authenticate requests. Saved agent
-work can feed the same summary, evaluation, and training jobs as other traffic.
+identifies stored conversations; it does not authenticate requests. Agent
+exchanges use the same object store. Tool calls and results are retained, but
+training on complete tool trajectories is not implemented yet.
 The opt-in header groups calls by the task UUID supplied by `bin/man`; Parlor
 stores it and removes it before forwarding. Leave it off for direct providers.
 
 State defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/milk-man`; set
 `MILK_MAN_STATE_DIR` to an absolute dedicated directory to move it.
+
+## Research for one scope
+
+Each scope can keep an objective, quality and speed targets, a named baseline,
+held-out tasks, experiment results, and the next action in its object store.
+The dashboard's **research** panel reads the same record. A saved claim is not
+a measured win; compare models on the same tasks before naming a best result.
+
+Use the existing store environment and a small local JSON file:
+
+```bash
+bin/milk jobs
+MILK_RESEARCH_FILE=/private/path/research.json bin/milk run research
+bin/milk run research status
+```
+
+The file contains `parent_revision`, `objective`, `targets`, `baseline`,
+`evaluation`, `best`, `experiments`, `next_action`, and `wake`. Use `null` for
+the first parent and unknown baseline, evaluation, best, or wake. Updates use
+the current revision as their parent. Repeating the same write is a no-op.
+Keep references and compact results here, not raw traffic or credentials.
+
+Status reads the record and a few current stage pointers without inference or
+a bucket scan. The existing heartbeat can watch that command for changes;
+the record does not start jobs by itself. `wake` describes the plan; Milk Man
+registers the actual watch with `bin/man heartbeat wait`.
 
 ## Run jobs
 

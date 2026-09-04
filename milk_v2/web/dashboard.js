@@ -164,7 +164,8 @@ function renderProgress(progress = {}) {
   const points = progress.thresholds || [];
   const checkpoints = progress.checkpoints || [];
   const opened = new Set(Array.from(el("milestones").querySelectorAll("details[open]"), value => value.dataset.uuid));
-  el("volume").textContent = count.toLocaleString() + " conversations captured";
+  el("volume").textContent = count.toLocaleString() + " exchanges captured";
+  el("volume").title = "Each saved request and response is one exchange. An agent trajectory can contain many exchanges; these are not independent training examples.";
   el("target").textContent = progress.next_threshold
     ? processed.toLocaleString() + " summarized · " + (count >= progress.next_threshold ? "ready at " : (progress.next_threshold - count).toLocaleString() + " to ") + progress.next_threshold.toLocaleString()
     : processed.toLocaleString() + " summarized · checkpoints complete";
@@ -179,10 +180,10 @@ function renderProgress(progress = {}) {
     const tick = node("span", "tick" + (checkpoint ? " done" : active ? " active" : ""), point.toLocaleString());
     const remaining = Math.max(0, point - count);
     tick.title = checkpoint
-      ? "Summary checkpoint complete at " + point.toLocaleString() + " conversations."
+      ? "Summary checkpoint complete at " + point.toLocaleString() + " exchanges."
       : count >= point
         ? "Threshold reached; its summary has not committed yet."
-        : remaining.toLocaleString() + " conversations until this summary threshold.";
+        : remaining.toLocaleString() + " exchanges until this summary threshold.";
     tick.setAttribute("aria-label", tick.title);
     ticks.append(tick);
   }
@@ -231,7 +232,7 @@ function renderProgress(progress = {}) {
     } else {
       const title = node("h3");
       title.append(node("i", "pin"), document.createTextNode(point.toLocaleString()));
-      card.append(title, node("small", "", count >= point ? "data crossed; summary waiting" : (point - count).toLocaleString() + " conversations to go"));
+      card.append(title, node("small", "", count >= point ? "data crossed; summary waiting" : (point - count).toLocaleString() + " exchanges to go"));
       card.title = count >= point ? "Milk Man has enough data and is waiting to write this summary." : "Traffic is still accumulating for this checkpoint.";
     }
     el("milestones").append(card);
@@ -556,6 +557,7 @@ function renderCloud(data) {
   renderProgress(milk.progress);
   renderLoop(status);
   renderContract(data.contract || {});
+  renderResearch(milk.research || {});
   rows(el("object"), milk.error ? [{ title: "unavailable", detail: milk.error }] : milk.missing.length ? [{ title: "not configured", detail: milk.missing.join("\n") }] : [
     { title: "next job", detail: nextCopy[status.next_action] || String(status.next_action || "waiting").replaceAll("-", " "), help: "The next deterministic action implied by the stored run status." },
     { title: "run type", detail: status.profile === "mechanics" ? "mechanics · wiring proof only" : status.profile || "unknown", help: "Mechanics traffic proves that components connect; it does not qualify a production route." },
@@ -563,6 +565,31 @@ function renderCloud(data) {
     { title: "capture writer", detail: number(gateway.observed) + " received · " + number(gateway.persisted) + " stored · " + number(gateway.dropped) + " dropped", help: "Milk Parlor totals since its current process started." },
   ], "waiting for status");
   el("foot").textContent = "local only · remote status updated " + data.now;
+}
+
+function renderResearch(value) {
+  const record = value.record;
+  const target = el("research");
+  el("research-state").textContent = value.error || (record ? "saved · " + short(value.revision) : "no objective saved");
+  if (!record) return rows(target, [], value.error || "Ask Milk Man to save a research objective for this scope using the research job.");
+  const opened = new Set(Array.from(target.querySelectorAll("details[open]"), item => item.dataset.field));
+  rows(target, [
+    { title: "objective", detail: record.objective },
+    { title: "next action", detail: record.next_action },
+  ]);
+  const revision = node("div", "row");
+  revision.append(copyButton(short(value.revision), value.revision, "research revision"));
+  target.append(revision);
+  for (const [field, label] of [["targets", "what counts as better"], ["baseline", "recorded baseline"], ["evaluation", "held-out tasks"], ["best", "recorded best · verify measurements"], ["experiments", "experiment history"], ["wake", "planned wake · heartbeat registers it"]]) {
+    const detail = node("details");
+    detail.dataset.field = field;
+    detail.open = opened.has(field);
+    detail.append(node("summary", "", label));
+    const body = node("div", "row");
+    body.append(node("small", "", record[field] == null ? "not recorded" : JSON.stringify(record[field], null, 2)));
+    detail.append(body);
+    target.append(detail);
+  }
 }
 
 let cloudLoading = false;

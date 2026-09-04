@@ -14,8 +14,8 @@ import time
 import urllib.request
 from urllib.parse import urlsplit
 
-from . import config, heartbeat
-from .state import SCHEMA as MAN_STATE_SCHEMA, redact, validate_trajectory, workspace_set
+from . import config, heartbeat, research
+from .state import SCHEMA as MAN_STATE_SCHEMA, redact, redact_message, validate_trajectory, workspace_set
 from .summary import thresholds
 from .store import open_store, settings_from_environment
 
@@ -548,6 +548,7 @@ def _gateway_health() -> dict:
 
 
 def _milk_status(exact_inventory: bool) -> dict:
+    research_state = {"record": None, "revision": None, "error": None}
     required = ["MILK_SCOPE_ID", "MILK_STORE_KIND"]
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
@@ -555,6 +556,10 @@ def _milk_status(exact_inventory: bool) -> dict:
     try:
         settings = settings_from_environment()
         store = open_store(settings)
+        try:
+            research_state = redact_message(research.view(store, settings))
+        except Exception:
+            research_state["error"] = "research record unavailable"
         points = thresholds(settings.profile)
         captured = _capture_count(store, settings.scope_prefix + "c/") if exact_inventory else 0
         item = store.get(settings.scope_prefix + "status/current.json")
@@ -568,6 +573,7 @@ def _milk_status(exact_inventory: bool) -> dict:
         value = {**value, "capture_count": captured}
         return {
             "status": value,
+            "research": research_state,
             "progress": {
                 "capture_count": captured,
                 "processed_count": processed,
@@ -580,6 +586,7 @@ def _milk_status(exact_inventory: bool) -> dict:
         }
     except FileNotFoundError:
         return {
+            "research": research_state,
             "status": {
                 "scope_id": settings.scope_id,
                 "profile": settings.profile,

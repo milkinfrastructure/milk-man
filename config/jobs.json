@@ -55,6 +55,17 @@
       "stop": false,
       "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
     },
+    "research": {
+      "description": "Read status, then create or update MILK_RESEARCH_FILE with its revision as parent_revision. Add a nullable wake condition for the heartbeat; records reference compact results and do not verify a baseline or winner.",
+      "executable": "milk_v2/research.py",
+      "environment": {
+        "required": ["MILK_SCOPE_ID", "MILK_STORE_KIND", "MILK_RESEARCH_FILE"],
+        "optional": ["MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS", "MILK_RESEARCH_JOB_TIMEOUT_SECONDS"]
+      },
+      "status": true,
+      "stop": false,
+      "timeout_env": "MILK_RESEARCH_JOB_TIMEOUT_SECONDS"
+    },
     "inference-ensure": {"handler": "inference-ensure", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": "inference-stop"},
     "inference-status": {"handler": "inference-status", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
     "inference-stop": {"handler": "inference-stop", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
