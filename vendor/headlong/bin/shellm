@@ -46,7 +46,7 @@ native_tools="${MILK_MAN_TOOL_CALLS:-1}"
 python3 - "$run_dir/tools.json" <<'PY'
 import json, sys
 tool = {"type": "function", "function": {
-    "name": "bash", "description": "Execute the next useful Bash commands. Environment variables are already inherited. Set FINAL to a factual report when done or after registering a heartbeat wait.",
+    "name": "bash", "description": "Execute the next useful Bash commands with inherited environment variables. Never sleep or poll in this call. For asynchronous work, launch once, register `man heartbeat wait -- READ_ONLY_STATUS_COMMAND`, and return; the harness yields until that check changes. Set FINAL to a factual report when done.",
     "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"], "additionalProperties": False},
 }}
 with open(sys.argv[1], "w") as handle:
@@ -165,6 +165,19 @@ PY
     recorded_exit="$exit_code"
     (( ! protocol_failed || recorded_exit != 0 )) || recorded_exit=65
     append --type shell-output --content-file "$output" --command-file "$code" --exit-code "$recorded_exit"
+
+    if (( recorded_exit == 0 && ! final_ok )) && [[ ! -f "$final" && -n "${MILK_MAN_HEARTBEAT_FILE:-}" ]] &&
+        python3 - "$MILK_MAN_HEARTBEAT_FILE" "$final" <<'PY'
+from pathlib import Path
+import sys
+from milk_v2.heartbeat import read
+if not read(Path(sys.argv[1])).get("watch"):
+    raise SystemExit(1)
+Path(sys.argv[2]).write_text("Waiting for the registered heartbeat check. Milk Man will resume when it changes or becomes due.\n")
+PY
+    then
+        final_ok=1
+    fi
 
     if (( final_ok )); then
         append --type final --content-file "$final"

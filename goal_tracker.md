@@ -305,6 +305,9 @@ Corrections made by this audit:
 - [x] Chrome shows an always-visible heartbeat strip above chat: state light,
   last check, next check, task wakeups, and idle checks. Disconnects are labeled
   as lost visibility, not proof that the underlying task stopped.
+- [x] Local commit `44502826b` separates heartbeat liveness from dashboard
+  connectivity. Chrome showed stopped, starting, running, and waiting states;
+  the dashboard restart preserved the active deployment and heartbeat owner.
 
 ### P1 one autonomous existing-job task
 
@@ -330,6 +333,12 @@ Corrections made by this audit:
 
 ### P3 lightweight heartbeat continuity
 
+- [~] A successful registered watch now yields without requiring a model-written
+  `FINAL`. This fixes the observed repeated reasoning after watch registration;
+  the next resumed task must verify the automatic handoff live.
+- [x] During the real Modal deployment, the retained status watch advanced idle
+  checks from 49 to 51 with task wakeups fixed at 10. Codex resumed that watch
+  after the driver failed; the provider worker was not restarted.
 - [x] Live idle polling advanced from 9 to 13 with model turns fixed at 2.
   A later task automatically resumed once at its timer, finished at turn 4,
   and returned to idle. Idle code runs no store scan or model request.
@@ -347,6 +356,11 @@ Corrections made by this audit:
 
 ### P4 general model and compute lifecycle
 
+- [!] The first vLLM image built, but Modal could not detect its Python runtime.
+  The serving image now explicitly adds Python 3.12. Milk Man stopped the old
+  profile, observed zero containers, and launched corrected profile
+  `68c05ebcbf60` at 20:42 UTC. Deployment remains in progress; inference and
+  final cleanup are not yet proven.
 - [~] A fixed Modal GLM controller historically proved create, inference
   handoff, stop, and zero; it is not yet a general lifecycle.
 - [!] A fenced-mode attempt read source for 20 iterations without taking the

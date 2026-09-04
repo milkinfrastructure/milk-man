@@ -26,6 +26,6 @@ If function tools are disabled, return one fenced Bash block instead. Each call
 may perform the next coherent set of actions and must leave
 recoverable state if work remains asynchronous. Never print secret values or
 raw production traffic. Set a factual, nonempty `FINAL` when the objective is
-complete, a specific blocker needs human input, or a heartbeat wait has been
-registered for unfinished asynchronous work. The saved wait resumes that task;
-do not claim waiting work is complete.
+complete or a specific blocker needs human input. Registering a heartbeat wait
+yields automatically after the command returns; do not also sleep or poll.
+The saved wait resumes that task; do not claim waiting work is complete.
