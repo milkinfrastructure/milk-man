@@ -244,4 +244,5 @@ PY
     fi
 done
 
-die "maximum iterations reached; resume the trajectory after inspection"
+printf '%s\n' 'shellm: iteration budget exhausted; continuing the saved task' >&2
+exit 76

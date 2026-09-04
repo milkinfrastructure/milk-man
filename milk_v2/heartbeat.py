@@ -15,6 +15,9 @@ import time
 from .state import atomic_json
 
 
+ITERATION_EXHAUSTED = 76
+
+
 def state_path() -> Path:
     if os.environ.get("MILK_MAN_HEARTBEAT_FILE"):
         return Path(os.environ["MILK_MAN_HEARTBEAT_FILE"])
@@ -157,6 +160,14 @@ def main() -> None:
         if not args and delay is None:
             raise ValueError("wait needs --seconds or -- followed by a read-only status command")
         observation = observe(args) if args else None
+        if isinstance(observation, dict) and observation.get("error"):
+            print(
+                "milk-man: heartbeat status command could not start "
+                f"({observation['error']}); pass the executable and its arguments separately after -- "
+                "or use /bin/bash -lc for shell syntax",
+                file=sys.stderr,
+            )
+            raise SystemExit(64)
         with edit(path) as value:
             value["watch"] = {"command": args, "last": observation,
                               "due": time.time() + delay if delay else None}
@@ -241,8 +252,13 @@ def main() -> None:
     with edit(path) as value:
         if action == "finish":
             code = int(args[0])
-            value.update(last_exit_code=code, state="failed" if code else "waiting" if value.get("watch") else "idle",
-                         next_wake=stamp + base, interval=base)
+            if code == ITERATION_EXHAUSTED:
+                if not value.get("watch"):
+                    value["watch"] = {"command": [], "last": None, "due": stamp + base}
+                state = "waiting"
+            else:
+                state = "failed" if code else "waiting" if value.get("watch") else "idle"
+            value.update(last_exit_code=code, state=state, next_wake=stamp + base, interval=base)
             if code == 0 and not value.get("watch"):
                 value.pop("brief", None)
         elif action in ("pause", "resume", "stopped"):
