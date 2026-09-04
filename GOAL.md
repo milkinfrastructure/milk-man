@@ -71,8 +71,9 @@ contract. [goal_tracker.md](goal_tracker.md) is the evidence ledger.
 - [~] Local changes now support script jobs and a dashboard-independent
   heartbeat. Chrome-driven status, script reuse, idle checks, two Modal model
   lifecycles, and restart against a ready provider resource have run. Fully
-  autonomous 120B recovery, inference tuning, and a general Baseten-owned
-  lifecycle remain unproven; see the tracker for exact evidence.
+  autonomous 120B recovery and a general Baseten-owned lifecycle remain
+  unproven. A small comparable inference A/B run selected CUDA graphs and
+  stopped both deployments, with corrections; see the tracker for evidence.
 - [!] Five unselected Cloudflare container generations remained running at the
   last audit and still require exact reconciliation.
 
@@ -228,12 +229,12 @@ hardcoding that model or provider into the harness.
 - [ ] Have Milk Man propose the next configuration from prior measurements,
   execute it, and capture cold start, time to first token, output tokens per
   second, p50/p95 latency, errors/OOM, output correctness, and compute cost.
-- [ ] Compare like-for-like requests and concurrency. Persist exact model,
+- [x] Compare like-for-like requests and concurrency. Persist exact model,
   revision, runtime, resource, serving arguments, endpoint identity, metrics,
   and conclusion for every trial.
 - [ ] Make later experiments respond to measured results rather than replaying
   a fixed matrix.
-- [ ] Retain or reuse the best configuration that meets the task objective;
+- [x] Retain or reuse the best configuration that meets the task objective;
   stop losing trials and verify their resources are absent.
 - [ ] Demonstrate a successful turn through the selected endpoint and resume
   without rerunning completed trials.

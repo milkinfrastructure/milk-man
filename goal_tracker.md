@@ -28,7 +28,8 @@ Status notation:
   model calls through Parlor, and inspect one captured task/tool sequence.
   This is additional agent-training data; retain the existing application scopes.
 - [x] OpenAI driver default changed to `gpt-6-astra`. The running Baseten GLM
-  driver is unchanged until its current inference experiment reaches cleanup.
+  driver remains unchanged. The 120B comparison has finished and its two
+  deployments are stopped; gateway key registration is the next dependency.
 
 - [x] The corrected product goal is autonomous, prompt-driven Milk Man: given
   an objective and configured environment, it uses Bash, existing or newly
@@ -230,7 +231,7 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 | Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, and restart against the same ready H200 server worked | recover during provider startup without Codex correction |
 | Managed GLM Milk Man driver | `[x]` Baseten GLM status turn proven | autonomous multi-step task through the driver |
 | General model lifecycle | `[~]` Qwen/L4 and 120B/H200 each completed three correct calls and verified zero through the same env-selected scripts | complete a Baseten-owned lifecycle and an unassisted provider recovery |
-| Inference autotuning | `[~]` fixed Qwen and 120B configurations have retained measurements; a 120B comparison is active | complete comparable trials, select from results, clean losing resources |
+| Inference autotuning | `[~]` a same-workload 120B A/B comparison selected CUDA graphs, demonstrated the endpoint, and stopped both apps; corrections were required | prove independent adaptive trials and a driver turn through the selected endpoint |
 | Different compute workload | `[x]` Qwen/L4 and 120B/H200 completed without editing the engine | retain generality while adding another provider |
 | Official SDK -> Parlor | `[x]` live for Responses and Chat Completions, including streaming | retain as Milk application input |
 | Key -> scope UUID | `[x]` source and historical live proof | reuse when the application needs a new scope |
@@ -394,7 +395,8 @@ Corrections made by this audit:
   recording a healthy wait. A valid command's nonzero job status remains
   watchable. Exhausting one reasoning turn schedules continuation of the
   saved task; provider/protocol failures are not blindly retried. Narrow
-  no-model checks passed; live turn-exhaustion continuation is not yet proven.
+  no-model checks passed. During the A/B closeout, turn 31 exhausted its
+  allowance and turn 32 automatically resumed the saved experiment and finished.
 
 ### P4 general model and compute lifecycle
 
@@ -473,15 +475,15 @@ Corrections made by this audit:
 
 ### P5 inference autotuning
 
-- [~] Qwen/L4 and 120B/H200 baselines have retained non-streaming end-to-end
-  measurements. No comparable second 120B trial, adaptive decision, or cost
-  comparison is complete.
+- [~] Qwen/L4 and 120B/H200 lifecycles retain non-streaming measurements.
+  The later streaming 120B A/B comparison below is complete; it is a small
+  exact-answer experiment, not general workload or fully autonomous proof.
 - [~] At 21:45 Chrome gave Milk Man the active 120B comparison objective. Its
   first private profile used assignments rather than exports, so profile
   `6aefd` inherited the defaults: concurrency 8 and 60-second scale-down.
   Milk Man corrected the private profile to exports at 21:52, stopped the
   wrong deployment, and resumed the working `e00fd` profile through a saved
-  heartbeat watch. The comparable trial and selection are not complete.
+  heartbeat watch. The mistaken first configuration remains excluded.
 - [x] Baseline A retained three streaming exact-answer successes at 5477.984,
   5437.509, and 5122.564 ms. Its actual workload was `MILK_OK`, not the
   initially requested classification prompt. The alternative must use this
@@ -489,12 +491,26 @@ Corrections made by this audit:
 - [~] Milk Man selected CUDA graphs as its one changed setting and launched
   profile `f3bb494b7d5f`. Chrome corrected its invalid compound status command
   at 22:03. It resumed watching the existing deployment without launching a
-  duplicate. Measurements and cleanup remain open.
+  duplicate. Measurements and cleanup subsequently completed.
+- [x] Same H200, pinned 120B weights, vLLM image, workload digest
+  `f445469140acbdde18ede003ffb31182b0227b3bdc23ba3fa0c3b01570563c0c`,
+  concurrency one, warmup and three measured calls per configuration. Removing
+  only `--enforce-eager` reduced mean end-to-end latency from 5346.019 ms to
+  912.863 ms. Both configurations returned three of three correct answers.
+  The 5.86x result applies only to this workload; it is not decode-only speed.
+- [x] Milk Man repaired its comparison script, selected B, made one successful
+  endpoint demonstration, and saved the result. Receipts live in the private
+  `serve-modal` state directory: `exp-ab-summary.json`,
+  `benchmark-120b-exp-{a,b}-{1,2,3}.json`, and `benchmark-120b-exp-b-demo.json`.
+- [x] Independent Modal checks found A `ap-91PxBNIWl1TM7pHfqOtlAJ` and B
+  `ap-9sYdEZ7mkJfgJN6VnXpJ2w` stopped, each with zero tasks and containers.
+  Weights remain cached. Estimated GPU request cost is not total billed spend.
 - [x] Give Milk Man a measurable latency/throughput/correctness/cost objective.
-- [ ] Run comparable configurations, persist exact identities and metrics, and
-  let later trials respond to measured results.
-- [ ] Retain the best configuration meeting the objective, use its endpoint,
-  stop losing trials, and verify their resources are absent.
+- [x] Run two comparable configurations and persist identities and metrics.
+- [ ] Prove further adaptive trials without Codex correcting the run.
+- [x] Retain the selected configuration, demonstrate its endpoint, stop both
+  trials as requested, and independently verify zero resources.
+- [ ] Use the selected endpoint to drive a Milk Man tool turn.
 - [ ] Resume without rerunning completed experiments.
 
 ### P6 continuity and generality
