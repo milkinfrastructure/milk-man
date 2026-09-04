@@ -20,6 +20,80 @@ contains no runtime, credentials, customer data, job controls, or cloud API.
   Cloudflare Pages. Both domains return the typewriter page with the original
   carton asset and strict static security headers.
 
+## Current execution focus — GLM-5.3-Flash driver (2026-09-03 PT)
+
+Finish the reasoning driver before resuming eval generation. Milk Man must use
+`zai-org/GLM-5.3-Flash` for its own dashboard conversation and tool loop through
+one OpenAI-compatible contract:
+
+```text
+LLM_API_URL=<final request URL, including /chat/completions>
+LLM_MODEL=zai-org/GLM-5.3-Flash
+LLM_API_KEY=<credential injected by the dashboard environment>
+LLM_API_MODE=chat_completions
+LLM_REASONING_EFFORT=max
+```
+
+This driver is separate from the `MILK_SUMMARY_*`, `MILK_EVAL_*`, and
+`MILK_TEACHER_*` job bindings. Changing Milk Man's reasoning endpoint must not
+silently change a data job's inference endpoint.
+
+Use two paths, in this order:
+
+1. **Baseten managed API now.** It is already optimized, has no Milk-owned GPU
+   lifecycle, and currently publishes the lowest direct price of the two
+   reviewed shared endpoints. The exact existing binding is
+   `LLM_API_URL=https://inference.baseten.co/v1/chat/completions`; `/v1` alone
+   is invalid because explicit `LLM_API_URL` is the final request URL.
+2. **Modal dedicated endpoint next.** The fixed `inference-ensure` job creates
+   or reuses `modal endpoint create --name milk-man-glm53 --model
+   zai-org/GLM-5.3-Flash`, records the returned non-secret endpoint binding,
+   and lets later `develop` turns on the same trajectory use it until
+   `inference-stop` terminates the endpoint and clears the binding. Modal
+   chooses the supported serving topology and scales it to zero.
+
+Do not translate the old one-H200 GLM-4.5 application to GLM-5.3-Flash. The
+latest FP8 model is 320B total / 18B active and its weights alone exceed one
+H200. Baseten's published dedicated recipe uses eight H100s; Modal's dedicated
+endpoint deliberately owns this serving choice. A custom SGLang/vLLM image,
+weight hydration, GPU-count search, or Baseten dedicated deployment is added
+only after a provider-managed endpoint fails a measured requirement.
+
+The environment selects one path. An explicit binding that fails never falls
+through to another provider. The model may invoke a named lifecycle job; it
+does not choose provider, endpoint, credentials, GPU count, or serving flags.
+
+Current evidence:
+
+- [x] Dashboard trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a` was restarted
+  with the exact Baseten binding above and retained its session.
+- [x] Its first request exposed the incorrect `/v1` URL as HTTP 404; changing
+  only the environment value to `/v1/chat/completions` fixed it.
+- [x] At `2026-09-04T06:12:26Z`, that same trajectory used
+  `zai-org/GLM-5.3-Flash` with Chat Completions and maximum reasoning, emitted
+  and executed a Bash tool call, and accurately read Milk Man
+  `05ab103c8f1a4280bdf346e348b9edbd6aa5d1e1` plus Milk Parlor
+  `37c0f892cee2bb03277fff6cc107312e36fda672`. No Milk job, R2 write,
+  deployment, route, or GPU lifecycle call occurred.
+- [x] Show the selected non-secret driver provider, model, mode, and reasoning
+  effort in dashboard status so the operator does not infer it from logs.
+- [ ] Make `develop` reuse a valid `controller/current.json` binding on every
+  later turn; a present but invalid or unreachable binding fails closed.
+- [ ] Replace the historical custom Modal application with the fixed Modal
+  Endpoint lifecycle above and prove ensure -> later same-trajectory tool turn
+  -> stop -> endpoint absent/zero.
+- [ ] Compare Baseten managed and Modal dedicated on one small, versioned,
+  tool-using workload. Record cold start, first-token latency, output
+  tokens/second, p50/p95 wall time, tool-call success, token usage, and cost.
+  The OpenRouter screenshot's 52 tokens/second is a comparison point, not proof
+  about either Milk endpoint.
+- [ ] Choose the simpler endpoint that meets the measured requirement, retain
+  its environment recipe, then resume the parked 100-source mechanics lineage.
+
+Sources: [Baseten GLM-5.3-Flash](https://www.baseten.co/library/glm-53-flash/),
+[Modal GLM-5.3-Flash](https://modal.com/library/zai/glm-5-3-flash), and
+[Modal Endpoints](https://modal.com/docs/guide/endpoints).
+
 This is not a legacy migration or parity exercise. Freeze the old work once, define the final contracts, create clean repositories, and copy only functions that directly implement those contracts. Old prefixes, APIs, schedulers, quota code, fixtures, and control-plane behavior are not compatibility targets.
 
 The completed system must prove:
@@ -62,25 +136,25 @@ Milk Man: account -> summarize -> classify -> readiness -> evals
 A separate development loop must prove:
 
 ```text
-OpenAI-compatible bootstrap
-        |
-        v
 local Milk Man reads goal_tracker.md + skills + memory
         |
         v
-Milk Man calls its inference-ensure tool
+exact LLM_* binding selected by environment
         |
-        v
-Modal starts GLM-4.5-Air-FP8 on one H200
+        +-- Baseten managed GLM-5.3-Flash now
         |
+        +-- inference-ensure -> Modal dedicated GLM-5.3-Flash
         v
-same trajectory resumes using that GLM endpoint
+same dashboard trajectory uses that exact endpoint on every turn
         |
         v
 Milk Man edits Milk Man or Milk Parlor
         |
         v
 narrow check -> reviewable commit
+        |
+        v
+owned endpoint stops and reaches zero
 ```
 
 ## Verified starting point — 2026-09-01 snapshot
@@ -227,8 +301,33 @@ This path is complete. It does not alter the historical evidence below.
   wrong methods, an introduced teaching option and an omitted lease-cost
   calculation. Usage was 124,954 tokens, approximately `$0.91` at list price.
   Do not continue or coordinate v26; no downstream or GPU job ran.
-- [ ] Prove v27 with one 64-case shard after requiring complete premises and
-  exact coverage of every requested option, criterion and calculation.
+- [x] Proved v27 with one serial 64-case shard in two maximum-reasoning
+  Responses calls: job identity
+  `2ddc979bfbf7a109b0be2d8a0d64abe278fd6d14f493781dd36b59b7a3863cfc`,
+  revision SHA-256
+  `be7f93a2df6e6f36d2314cfaa71c4b59b9aee42a2a651e100abf9b44ccbd33d4`,
+  and eval UUID `c4b8b053-57a8-5f7b-8367-51a6b3c04f57`. Objects, identities and
+  hashes align; all 64 calculations and exact-label answers are correct; no
+  exact prompt duplicates or free-response answer leakage exist. Direct review
+  found 63 materially correct and 56 fully compliant cases. One webhook answer
+  did not make concurrent deduplication atomic, five answers exceeded their
+  word limits, and two invented names. Do not continue or coordinate v27; no
+  downstream or GPU job ran.
+- [x] Proved v28 with one serial 64-case shard after requiring the teacher to
+  avoid unstated facts, count requested words and validate concurrency claims.
+  Job identity
+  `112962f4a40120ad9d48bd9bc4b0e8ddb38aed90d1c49f15f135505c6ba9985d`,
+  revision SHA-256
+  `c890b8a14b9ac58afdd1654a126eac7d5d2c4b0062f51d126eb579eecfae7a18`,
+  and eval UUID `1cc024b5-6396-53fd-825e-215d3b491be6` bind 64 prepared cases,
+  two maximum-reasoning Responses calls and zero provider calls. All arithmetic,
+  required list counts and concurrency cases passed; no exact duplicate or
+  overt answer leakage exists. Direct review found 60 clean cases and four
+  premise/completeness defects. This proves the v28 format and execution path,
+  not a production corpus; do not fan it out.
+- [ ] Parked until the GLM-5.3-Flash driver slice above is complete: run one
+  current-code mechanics lineage with one case from each of the 100 held-out
+  sources, then continue through downstream jobs before scaling to 10,000.
 
 ## Non-negotiable architecture
 
@@ -415,7 +514,18 @@ MILK_STORE_SESSION_TOKEN
 
 R2 uses the `s3` implementation with its endpoint. An empty session token is omitted.
 
-Inference roles are independent OpenAI-compatible bindings:
+Milk Man's interactive reasoning driver uses one generic binding. An explicit
+`LLM_API_URL` is the complete request URL, not merely an API base:
+
+```text
+LLM_API_URL
+LLM_MODEL
+LLM_API_KEY
+LLM_API_MODE=chat_completions|responses
+LLM_REASONING_EFFORT
+```
+
+Data-job inference roles remain independent OpenAI-compatible bindings:
 
 ```text
 MILK_BOOTSTRAP_BASE_URL / MODEL / API_KEY
@@ -991,35 +1101,49 @@ The full whiteboard sequence is:
 
 The score tuple and tie-break order must be declared in the evaluation config and digested into the job identity. A model cannot choose the winner.
 
-## Modal controller bootstrap
+## GLM-5.3-Flash reasoning endpoint
 
-The first controller is the pinned `zai-org/GLM-4.5-Air-FP8` revision on one H200 using a pinned weight-free SGLang runtime. Its official model card documents OpenAI-compatible SGLang serving and one-H200 FP8 operation, while full 128K context requires more capacity; the first controller therefore uses a reviewed bounded context rather than tuning. [GLM-4.5-Air-FP8 model card](https://huggingface.co/zai-org/GLM-4.5-Air-FP8)
+The normal path is the Baseten managed Model API through the existing `LLM_*`
+contract. It requires no controller resource, custom image, weight download, or
+GPU lifecycle code.
+
+The owned path is one Modal dedicated Endpoint, not the historical custom
+GLM-4.5 SGLang application. Keep the public commands `inference-ensure`,
+`inference-status`, and `inference-stop`, but replace their internal Modal
+implementation rather than carrying both systems.
 
 `milk run inference-ensure` must:
 
-1. Derive a deterministic deployment identity from provider, exact model revision, SGLang image digest, serving arguments, GPU, scope and code revision.
-2. Check for an existing deployment and Modal Volume marker.
-3. Hydrate the pinned model revision into a Modal Volume if absent.
-4. Deploy one H200, minimum containers zero, with a short idle scale-down.
-5. Run authenticated `/v1/models` and bounded Chat Completions smokes.
-6. Write intent, provider receipt, endpoint receipt and result.
-7. Write local `controller/current.json` containing endpoint, model, provider identity, binding digest and API-key environment-variable name—not the key.
-8. Return `complete`.
+1. Derive a stable endpoint name from the fixed model and reviewed environment.
+2. List Modal Endpoints and reuse the exact named endpoint when it already
+   exists; fail if its model or identity differs.
+3. When apply is explicit and it is absent, run Modal's supported equivalent of
+   `modal endpoint create --name milk-man-glm53 --model
+   zai-org/GLM-5.3-Flash` and let Modal select the GPU topology.
+4. Wait for the authenticated `/v1/models` endpoint, then run one bounded
+   Chat Completions tool-call smoke.
+5. Write `controller/current.json` with provider, endpoint ID, base URL, model,
+   resolved model version when exposed, API-key environment-variable name, and
+   binding digest. Never write the credential.
+6. Return one `milk.job-result.v2` object.
 
-`bin/man bootstrap`:
+`bin/man develop` must use explicit `LLM_*` first. When they are absent, it may
+load the exact valid `controller/current.json` binding. If the selected binding
+is invalid or unavailable, it fails; it never falls back to OpenAI, another
+provider, or another model. Delete the alternate `MILK_BOOTSTRAP_*` and static
+`MILK_CONTROLLER_*` driver paths after this cutover. The job-specific
+`MILK_SUMMARY_*`, `MILK_EVAL_*`, and `MILK_TEACHER_*` bindings remain.
 
-1. Creates one trajectory and appends the operator's original task.
-2. Invokes `milk run inference-status` and `milk run inference-ensure` directly, without a model, and records both commands, results and exit codes in that trajectory.
-3. Exits after a dry-run plan; on failure it aborts with the recorded result and never starts Headlong.
-4. On `ready`, validates the exact `controller/current.json`, intent and endpoint identities before warming the controller.
-5. Removes Modal-management, bootstrap and alternate inference credentials from the development process.
-6. Starts Headlong once, on the same trajectory, with the validated controller as its only reasoning endpoint.
-7. Gives the controller the original task and real job outputs as trajectory context; provider selection and controller creation never depend on model compliance.
-8. Proves the first reasoning call reached Modal GLM using the trajectory and Modal request receipt.
+`bin/man bootstrap` creates or resumes one trajectory, runs the deterministic
+status/ensure work before any model call, then starts Headlong on that same
+trajectory with the resulting GLM-5.3-Flash binding. Later dashboard messages
+must resolve the same binding rather than returning to the process's former
+provider.
 
-The first implementation does not search serving configurations. Add `inference-benchmark` only after this fixed controller and the data vertical work end to end.
-
-`milk run inference-stop` terminates the deployment and proves zero active containers; the cached model volume remains.
+`milk run inference-stop` stops the exact Modal Endpoint, verifies it is absent
+or at zero, writes the termination result, and removes `controller/current.json`.
+There is no first-version serving-configuration search. Compare the managed
+paths first; add a small reviewed matrix only after a measured miss.
 
 ## GPU provider contract
 
@@ -1336,7 +1460,11 @@ Acceptance:
 - concurrent identical jobs converge on one identity;
 - no arbitrary executable can enter through config.
 
-### [x] P4 — Modal GLM controller and handoff
+### [x] P4 — Historical Modal GLM-4.5 controller proof
+
+This section records the completed predecessor experiment. It proves the
+lifecycle and same-trajectory concepts, but its model, custom application,
+one-H200 topology, and one-turn binding are not the current target.
 
 Progress 2026-09-01:
 
@@ -1361,7 +1489,7 @@ Allowed donor code:
 - current Modal identity, intent, receipt, teardown and ambiguity lessons;
 - no old gpt-oss/Qwen constants or GPU frontier state machine.
 
-Acceptance:
+Historical acceptance:
 
 - the local OpenAI-backed Milk Man invokes `inference-ensure`;
 - one H200 serves the pinned GLM-4.5-Air-FP8 revision;
@@ -1370,6 +1498,21 @@ Acceptance:
 - `inference-stop` proves zero active Modal containers.
 
 P4 may implement against the P3 CLI contract while P3 is finishing.
+
+### [~] P4B — Current GLM-5.3-Flash driver and Modal Endpoint lifecycle
+
+- [x] The existing generic `LLM_*` driver reached Baseten's managed
+  `zai-org/GLM-5.3-Flash` Chat Completions endpoint from the retained dashboard
+  trajectory and completed a real Bash tool call at maximum reasoning.
+- [ ] Dashboard status exposes the selected non-secret provider, model, API
+  mode, and reasoning effort.
+- [ ] Normal `develop` turns reuse the verified active Modal Endpoint binding
+  written by `inference-ensure`; invalid bindings fail without fallback.
+- [ ] The custom GLM-4.5 Modal application is deleted after the supported Modal
+  Endpoint implementation proves create/reuse, a later tool-using turn, stop,
+  and zero.
+- [ ] A fixed workload compares Baseten managed with Modal dedicated before any
+  custom runtime or GPU-topology work begins.
 
 ### [x] P5 — Summary, classification and readiness
 
@@ -1710,7 +1853,9 @@ Do not add:
 The goal is complete only when:
 
 - Milk Man runs locally, reads its goal/skills/memory, self-edits either repository, resumes, and retains a reviewed commit.
-- Milk Man provisions GLM-4.5-Air-FP8 on Modal and then uses that endpoint for its own next reasoning turn.
+- Milk Man uses GLM-5.3-Flash through the selected managed endpoint, can
+  create/reuse a Modal dedicated Endpoint through its fixed lifecycle job,
+  keeps the same dashboard trajectory on that binding, and stops it to zero.
 - `parlor.milkinfrastructure.com` accepts an operator-issued key through the official SDK and asynchronously writes exact two-sided traffic into R2.
 - Local Milk Man consumes the remote store through environment bindings; an external scheduler may invoke the same one-shot command without changing its behavior.
 - Production-like traffic progresses through summary, classification, readiness and validated eval generation.

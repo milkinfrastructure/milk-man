@@ -146,6 +146,24 @@ def _current_state() -> tuple[dict, Path, Path]:
     return {**current, "workspaces": workspaces}, trajectory, memory
 
 
+def _driver_state() -> dict:
+    hostname = (urlsplit(os.environ.get("LLM_API_URL", "")).hostname or "").lower()
+    if hostname == "inference.baseten.co":
+        provider = "baseten"
+    elif hostname.endswith((".modal.direct", ".modal.run")):
+        provider = "modal"
+    elif hostname == "api.openai.com":
+        provider = "openai"
+    else:
+        provider = "custom"
+    return {
+        "provider": provider,
+        "model": os.environ.get("LLM_MODEL", ""),
+        "api_mode": os.environ.get("LLM_API_MODE", ""),
+        "reasoning_effort": os.environ.get("LLM_REASONING_EFFORT", ""),
+    }
+
+
 def _man_state(include_metadata: bool = True) -> dict:
     try:
         current, trajectory, memory = _current_state()
@@ -158,6 +176,7 @@ def _man_state(include_metadata: bool = True) -> dict:
             "queued": False,
             "last_exit_code": LAST_EXIT_CODE,
             "trajectory_id": None,
+            "driver": _driver_state(),
             "local_jobs": [],
             "workspaces": [],
             "memory": [],
@@ -213,6 +232,7 @@ def _man_state(include_metadata: bool = True) -> dict:
         "queued": queued,
         "last_exit_code": last_exit_code,
         "trajectory_id": current.get("trajectory_id"),
+        "driver": _driver_state(),
         "local_jobs": local_jobs,
         "workspaces": workspaces,
         "memory": memories,

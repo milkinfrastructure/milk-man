@@ -61,7 +61,10 @@ surface substitutions.
 
 Every case must have one determinate answer. Solve each case yourself, then
 re-read its prompt and independently recompute or re-derive `expected` before
-committing. Replace any case whose constraints allow no answer or multiple
+committing. Do not add names or facts absent from the prompt. Count the words
+when a numeric word range is requested, and verify that any concurrency or
+failure-safety mechanism remains correct under simultaneous execution. Replace
+any case whose constraints allow no answer or multiple
 answers, whose units or timeline are ambiguous, or whose requested integer would
 require unstated rounding. For arithmetic, date, inventory, or scheduling cases,
 compute the answer twice from scratch and replace the case if the results differ.

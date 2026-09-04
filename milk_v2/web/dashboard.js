@@ -404,17 +404,20 @@ function renderContract(contract = {}) {
 let activityKey = "";
 function renderMan(man) {
   const state = man.state || (man.active ? "working" : man.trajectory_id ? "idle" : "setup");
+  const driver = man.driver || {};
+  const driverStatus = [driver.provider, driver.model, driver.api_mode && driver.api_mode.replaceAll("_", " "), driver.reasoning_effort]
+    .filter(Boolean).join(" · ");
   const jobs = (man.local_jobs || []).reduce((total, job) => total + Number(job.count || 0), 0);
   const jobNames = (man.local_jobs || []).map(job => job.count + " " + job.name).join(" · ");
   const jobStatus = jobs ? " · " + jobNames + (jobs === 1 ? " job active" : " jobs active") : "";
   const labels = {
-    working: man.connection === "discovered" ? "Milk Man online · working outside this page" : "Milk Man online · working" + (man.queued ? " · next instruction queued" : ""),
+    working: man.connection === "discovered" ? "Milk Man online · working outside this page" : "Milk Man online · working" + jobStatus + (man.queued ? " · next instruction queued" : ""),
     queued: "Milk Man online · instruction queued",
     failed: "Milk Man online · last turn failed",
     idle: "Milk Man online · chat waiting" + jobStatus,
     setup: "Milk Man online · session setup needed",
   };
-  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", (labels[state] || labels.setup) + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
+  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", (labels[state] || labels.setup) + (driverStatus ? " · " + driverStatus : "") + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
   el("conversation-state").textContent = state === "setup" ? "online · setup needed" : "online · " + state + jobStatus + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
   if (!runLoading) {
     runState(man.active ? "Milk Man is working. Output will appear above."

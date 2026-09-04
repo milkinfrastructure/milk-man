@@ -12,6 +12,10 @@ when that instruction names it or explicitly asks to continue the tracker; an
 explicit prohibition overrides both. When asked to inspect or report, do not
 infer a follow-on job from tracker state or a command's `next` field.
 
+For one named fixed Milk job, use only `FINAL="$(bin/milk run JOB)"`; its JSON
+is the report. Do not parse or reformat it with Python, a heredoc, or another
+reporting wrapper.
+
 Every reply needs exactly one fenced Bash block because the runtime executes it.
 Each block advances work, verifies a change, or reports one exact blocker. Make
 the smallest end-to-end change, preserve unrelated work, run one narrow real
