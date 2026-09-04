@@ -40,6 +40,20 @@ redact() {
     python3 -u "$MILK_MAN_STATE_PY" redact
 }
 
+yield_to_pending() {
+    [[ -n "${MILK_MAN_HEARTBEAT_FILE:-}" ]] || return 0
+    if python3 - "$MILK_MAN_HEARTBEAT_FILE" <<'PY'
+from pathlib import Path
+import sys
+from milk_v2.heartbeat import read
+raise SystemExit(0 if read(Path(sys.argv[1])).get("pending") else 1)
+PY
+    then
+        printf '%s\n' 'milk-man: yielding to the pending operator instruction' >&2
+        exit 0
+    fi
+}
+
 append --type prompt --content-file "$prompt_file"
 run_dir="$(mktemp -d "${TMPDIR:-/tmp}/milk-shellm.XXXXXX")"
 chmod 700 "$run_dir"
@@ -79,6 +93,7 @@ note_failure() {
     (( repeat_failures < 3 )) || die "the model repeated the same failing Bash block three times"
 }
 for ((iteration=1; iteration<=maximum; iteration++)); do
+    yield_to_pending
     messages="$run_dir/messages.json"
     "$context" > "$messages"
     response="$run_dir/response"
@@ -88,6 +103,7 @@ for ((iteration=1; iteration<=maximum; iteration++)); do
     else
         "$llm" --system-file "$system_file" --messages-file "$messages" > "$response"
     fi
+    yield_to_pending
 
     code="$run_dir/code"
     message="$run_dir/message.json"

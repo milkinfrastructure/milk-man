@@ -184,6 +184,10 @@ The `serve-modal` executable job has deployed Qwen, served three correct
 responses, and stopped its GPU. See [`goal_tracker.md`](goal_tracker.md).
 An executable job receives `run`, `status`, or `stop`, inherits the current
 environment plus `MILK_JOB_*` metadata, and returns one JSON result on stdout.
+When `serve-modal` completes, `details.driver` gives the API URL, model, mode,
+and credential environment name for a child agent. Use that serving key, not
+the parent's Milk gateway key. `bin/man develop --check` shows the effective
+driver settings and step limit without calling the model.
 
 `bin/milk run benchmark` (or `bin/benchmark` directly) measures a configured chat endpoint. Set
 `MILK_BENCHMARK_BASE_URL`, `MILK_BENCHMARK_MODEL`, and

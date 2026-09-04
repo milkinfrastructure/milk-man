@@ -81,7 +81,7 @@
       "timeout_env": "MILK_BENCHMARK_JOB_TIMEOUT_SECONDS"
     },
     "serve-modal": {
-      "description": "Deploy, inspect, or stop one environment-selected OpenAI-compatible vLLM server on Modal; listed environment names are required for run.",
+      "description": "Deploy, inspect, or stop one environment-selected OpenAI-compatible vLLM server on Modal. When complete, details.driver gives its full API URL, mode, model, and credential environment name for a Milk Man child; never forward the parent's gateway key. Listed environment names are required for run.",
       "executable": "milk_v2/providers/modal_serve.py",
       "environment": {
         "required": ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET", "MILK_MODAL_SERVE_MODEL", "MILK_MODAL_SERVE_REVISION", "MILK_MODAL_SERVE_IMAGE", "MILK_MODAL_SERVE_API_KEY"],

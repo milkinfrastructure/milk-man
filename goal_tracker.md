@@ -21,6 +21,22 @@ Status notation:
   lock. Live status returned `active`, one H200 container, app
   `ap-5OBmVF7Ek1uUyykOziCT2v`, without inference. The selected 120B startup is
   still running; an allocated endpoint is not yet a completed driver proof.
+- [x] The 120B endpoint then powered a real native Milk Man child: one Bash
+  call read R2 research status, one `finish` reported threshold not crossed
+  and no measured best model, exit 0 in 12.781 seconds. Trajectory
+  `c2bc3280-849a-4e93-b7c7-90ede5f98a85`, SHA-256
+  `d7e33a0a3c01acb3b820b686f31218ce30ac111c87edb7a76910887cf933dc15`.
+  Its reported count 20 is summarized exchanges, not the live capture total.
+  This child used the owned endpoint directly; the Astra parent stayed on
+  Parlor. It does not prove captured OSS-driver traffic or a model-quality win.
+- [!] The first child sent an empty API key and failed HTTP 401 before a tool
+  ran. Milk Man retained it and ran the corrected authenticated attempt on the
+  same deployment. Missing flag documentation also required a chat correction.
+  CLI help/check now expose effective limits; serving results identify the
+  credential environment name without returning its value.
+- [x] Queued chat corrections now yield at the next safe model-call boundary,
+  before executing an obsolete response. The live parent logged the yield
+  and consumed the next instruction at turn 46 without an owner restart.
 - [x] Product contract now explicitly targets continuous autoresearch per
   scope UUID, including Milk Man's own traffic, toward a measured best model
   for that workload. This records the requirement, not a completed capability.
@@ -600,7 +616,9 @@ Corrections made by this audit:
 - [ ] Prove further adaptive trials without Codex correcting the run.
 - [x] Retain the selected configuration, demonstrate its endpoint, stop both
   trials as requested, and independently verify zero resources.
-- [ ] Use the selected endpoint to drive a Milk Man tool turn.
+- [x] The selected 120B endpoint drove an independent native Milk Man child
+  through one real research-status Bash call and `finish`. The parent stayed
+  on Astra; this was not a hot switch of the parent's existing trajectory.
 - [ ] Resume without rerunning completed experiments.
 
 ### P6 continuity and generality

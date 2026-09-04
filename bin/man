@@ -228,6 +228,11 @@ print(json.dumps({
     "ok": True,
     "provider": os.environ["MILK_MAN_PROVIDER_SOURCE"],
     "model": os.environ["LLM_MODEL"],
+    "api_mode": os.environ.get("LLM_API_MODE", "chat_completions"),
+    "reasoning_effort": os.environ.get("LLM_REASONING_EFFORT", ""),
+    "max_output_tokens": int(os.environ["LLM_MAX_TOKENS"]),
+    "max_iterations": int(os.environ.get("MILK_MAN_MAX_ITERATIONS", "20")),
+    "native_tools": os.environ.get("MILK_MAN_TOOL_CALLS", "1") == "1",
     "trajectory_id": os.environ["MILK_MAN_TRAJECTORY_ID"],
     "workspace_digest": os.environ["MILK_MAN_WORKSPACE_DIGEST"],
 }, sort_keys=True))

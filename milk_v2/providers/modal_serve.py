@@ -214,6 +214,12 @@ def result(value: dict, state: str, observed: dict | None, calls: int, error: st
         "revision": value["revision"], "served_model": value["served_model"],
         "gpu": value["gpu"], "gpu_count": value["gpu_count"], "observation": observed,
     }
+    if observed and observed.get("endpoint_url"):
+        details["driver"] = {
+            "api_url": observed["endpoint_url"].rstrip("/") + "/v1/chat/completions",
+            "api_mode": "chat_completions", "model": value["served_model"],
+            "api_key_env": "MILK_MODAL_SERVE_API_KEY",
+        }
     output = {"state": state, "identity": value["profile_id"], "provider_calls": calls, "details": details}
     if error:
         output["error"] = error

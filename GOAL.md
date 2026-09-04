@@ -222,8 +222,9 @@ without a separate scheduler service.
 - [x] Repeat with the intended 120B workload. It reused the weight cache and
   weight-free runtime image, made three correct calls, and returned to zero;
   Codex corrections were still required during the sequence.
-- [ ] Allow the same active trajectory to use the resulting OpenAI-compatible
-  endpoint and continue its original objective.
+- [~] The selected 120B endpoint powered a fresh native Milk Man child through
+  a real research-status task. Switching the parent's active trajectory to
+  that endpoint and capturing its traffic through Parlor remains unproved.
 
 Acceptance: a prompt can make Milk Man operate a real model lifecycle without
 hardcoding that model or provider into the harness.
