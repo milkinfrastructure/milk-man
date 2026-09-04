@@ -6,9 +6,12 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 import json, sys
 result = json.load(sys.stdin)
 details = result["details"]
-print(json.dumps({
+progress = {
     "captured": details["capture_count"],
     "summarized": details["processed_count"],
     "next": result["next"],
-}, sort_keys=True))
-'
+}
+if sys.argv[1] == "run":
+    progress = {**{key: result[key] for key in ("state", "identity", "next", "inference_calls", "provider_calls")}, "details": progress}
+print(json.dumps(progress, sort_keys=True))
+' "${1:-}"
