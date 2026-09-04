@@ -63,7 +63,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `759f927e5`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat continuity, two Modal lifecycle proofs, serving failure handling, credential redaction, and dashboard fixes are committed locally, not pushed |
+| `milk-man` | `67b8c3371`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat continuity, two Modal lifecycle proofs, serving failure handling, optional RL parent comparison, and dashboard fixes are committed locally, not pushed |
 | `milk-parlor` | `37c0f892cee2bb03277fff6cc107312e36fda672` | same | clean and deployed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
@@ -375,6 +375,11 @@ Corrections made by this audit:
 - [x] Terminated dashboard PID 93960 and started a new server; heartbeat PID
   94338 remained alive. A subsequent explicit stop removed it, and Bash resume
   created a new owner for the same trajectory without replaying finished work.
+- [x] `67b8c3371` rejects status commands that cannot execute instead of
+  recording a healthy wait. A valid command's nonzero job status remains
+  watchable. Exhausting one reasoning turn schedules continuation of the
+  saved task; provider/protocol failures are not blindly retried. Narrow
+  no-model checks passed; live turn-exhaustion continuation is not yet proven.
 
 ### P4 general model and compute lifecycle
 
@@ -462,6 +467,14 @@ Corrections made by this audit:
   Milk Man corrected the private profile to exports at 21:52, stopped the
   wrong deployment, and resumed the working `e00fd` profile through a saved
   heartbeat watch. The comparable trial and selection are not complete.
+- [x] Baseline A retained three streaming exact-answer successes at 5477.984,
+  5437.509, and 5122.564 ms. Its actual workload was `MILK_OK`, not the
+  initially requested classification prompt. The alternative must use this
+  exact workload; these measurements do not establish broad task quality.
+- [~] Milk Man selected CUDA graphs as its one changed setting and launched
+  profile `f3bb494b7d5f`. Chrome corrected its invalid compound status command
+  at 22:03. It resumed watching the existing deployment without launching a
+  duplicate. Measurements and cleanup remain open.
 - [x] Give Milk Man a measurable latency/throughput/correctness/cost objective.
 - [ ] Run comparable configurations, persist exact identities and metrics, and
   let later trials respond to measured results.
@@ -497,8 +510,10 @@ Corrections made by this audit:
   implemented with rollout/reward records and three environment settings.
   An unchanged policy records `updated:false` and cannot publish a candidate;
   that result replays without provider calls. Source and controller are
-  committed locally. A real Qwen3.5-0.8B run and parent comparison remain open;
-  existing SFT is not counted as RL.
+  committed locally. `59f1e87eb` adds parent-versus-child BF16 evaluation on
+  identical DEV cases; a tie or regression retains the parent and starts no
+  later comparison or route work. A real Qwen3.5-0.8B policy update and live
+  parent comparison remain open; existing SFT is not counted as RL.
 - [ ] Complete a coherent application lineage through proposal, signed route,
   candidate success, fallback, rollback, signed zero, and provider cleanup.
 
