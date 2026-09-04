@@ -337,6 +337,7 @@ def shard(plan: dict, eval_uuid: str, target: int, start: int, end: int) -> dict
         cases.append(
             {
                 **seed,
+                "oracle": "reference" if seed["oracle"] == "schema" else seed["oracle"],
                 "order": ordinal,
                 "case_id": hashlib.sha256(f"{eval_uuid}\0{ordinal}".encode()).hexdigest(),
                 "source_operation": seed["operation"],

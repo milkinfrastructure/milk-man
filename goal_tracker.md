@@ -187,24 +187,29 @@ This path is complete. It does not alter the historical evidence below.
   checkpoint used two inference calls and zero provider lifecycle calls.
 - [x] Restricted dataset source admission to model-completed, two-sided text
   captures. HTTP success alone can no longer admit an incomplete response.
-- [x] Started the current 10,000-case eval revision
+- [x] Stopped v24 revision
   `a2e501131e6193046276314f72fc310b64ac4b742cff53369d4983c70a4b8f9e`
-  (`01959d30-7eb2-54e9-96ed-42824c5e588c`) from checkpoint 106. Directly
-  reviewed samples from prepared shards 0–3 were distinct, useful, correctly
-  solved and bound to the intended DEV sources. Eight concurrent requests
-  produced no rate-limit errors.
-- [x] Drained the run without losing work when OpenAI returned
-  `credit_balance_exhausted`: prepared shards 0–6 and 38–39 remain immutable;
-  shards 7–9 and 34–37 retain their completed attempt-0 batches. Zero eval
-  runner, model request or provider-lifecycle process remains active.
-- [x] Raised the Milk Infrastructure OpenAI organization monthly spend limit
-  from `$120` to `$500`. One exact shard-35 resume then stopped after one call
-  with `credit_balance_exhausted`; the live organization credit balance was
-  `-$9.32`, so no fan-out started and all retained receipts remain unchanged.
-- [ ] Add OpenAI API credits, then resume this exact revision from its retained
-  receipts. Do not change prompts, provider binding or case identity.
-- [ ] Generate this scope's 10,000-case lineage, then continue through the
-  model, proposal, signed-route and zero-capacity proofs.
+  (`01959d30-7eb2-54e9-96ed-42824c5e588c`) after a supervised shard-7
+  continuation. It retains 13 prepared shards and 3,268 unique cases: 2,048
+  DEV, zero calibration and 1,220 sealed. Persisted Responses usage is
+  8,187,387 tokens, approximately `$60.60` at list price. No eval pointer,
+  dataset, provider, training or route state advanced.
+- [x] Structural identity, digests, ordinals and uniqueness passed, and sampled
+  cases were generally useful. Direct audit found two exact/reference output
+  defects and a systemic schema-oracle weakness: generated schemas constrain
+  keys and types but not answer values. This revision is mechanics evidence
+  only; never resume, coordinate or train from it.
+- [x] Milk Man ran shard 7 through the dashboard with exactly two Responses
+  calls and prepared 256 cases. Shard 8 was stopped before any R2 object was
+  written after the schema weakness was identified; no eval runner or model
+  request remains active. One interrupted, unreceipted OpenAI request may still
+  be billable.
+- [ ] Publish v25 as a new immutable revision: generated cases sourced from
+  schema oracles use reference answers, and exact-output prompts require the
+  expected value to follow every label and formatting constraint exactly.
+- [ ] Through the dashboard, run only shard 0 with
+  `MILK_EVAL_SHARD_CASES=64`; audit all 64 cases before authorizing a second
+  batch. Do not coordinate, train, route or start GPU work.
 
 ## Non-negotiable architecture
 
@@ -1470,6 +1475,8 @@ Active source-proportional execution sequence:
   replay made zero inference/provider calls. The revision is historical because
   its source summary contained no train example; the checkpoint-105 lineage
   replaces it.
+- [ ] Prove the v25 semantic correction with one 64-case prepared shard and a
+  direct human review before any fan-out.
 - [ ] Prove 100 eligible held-out sources produce exactly 10,000 useful cases with exactly 100 cases bound to each source.
 
 The prerequisite full-stack mechanics lineage is complete. Run the 10,000-case proof only on a fresh scope and revision; never resume the rejected historical fan-out.
