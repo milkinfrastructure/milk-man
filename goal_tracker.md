@@ -20,6 +20,21 @@ Status notation:
   for that workload. This records the requirement, not a completed capability.
 - [ ] Prove the durable per-scope objective -> experiment -> held-out comparison
   -> current best -> next action loop using existing jobs and heartbeat.
+- [x] The new `research` repository job stores an immutable record plus
+  conditional `research/current.json`. Chrome-prompted Milk Man saved record
+  `f7df310c-5424-5395-bac5-3230932640ed` in its dedicated scope, revision
+  `b8a6ec8043d58bfc5338d0c330f10ac2df8200e7b38bd6bad67612d1bcc31bb1`,
+  and confirmed unchanged replay. Baseline, evaluation, and best remain null;
+  no experiment was invented or imported from the earlier MILK_OK benchmark.
+- [x] Milk Man registered `bin/milk run research status` with its existing
+  heartbeat. Owner 53305 remained alive; idle checks advanced from 148 to 150
+  while model wakeups stayed at 36 and the interval increased to 60 seconds.
+  The job reported zero inference/provider calls. The preceding Astra driver
+  replies were real inference through Parlor; they are not counted as free.
+- [x] Chrome showed the saved research record inline with expandable targets,
+  baseline, held-out tasks, results, and wake plan. Raw capture totals are now
+  labeled exchanges, not independent conversations. No GPU or route was
+  changed in this slice.
 
 - [x] Reserved and validated UUIDv6
   `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a` for `milk-man-autoresearch`.
@@ -94,7 +109,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `b9fbc82b2`, plus this publication checkpoint | `b9fbc82b22671587531b4e5ca9a54abb487a2f45` | autonomous runtime, lifecycle/tuning proofs, gateway-backed Astra, source grouping and progress discovery pushed; local dashboard running |
+| `milk-man` | `8b9d37bcf`, plus this evidence checkpoint | `8b9d37bcff1ad6315be90cccf108f0ea959649bf` | per-scope research record, stable status job, and inline dashboard view pushed; live Astra-backed record and heartbeat proof above |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
@@ -557,6 +572,11 @@ Corrections made by this audit:
 
 ### P7 Milk whiteboard application extensions
 
+- [x] Add a per-scope research record and a stable read-only status action to
+  the existing job catalog; demonstrate save/replay/watch through Chrome.
+- [ ] Run and retain one genuinely measured scope-specific comparison. The
+  research record and dashboard do not verify referenced measurements or
+  qualify a production route by themselves.
 - [ ] Reconcile useful existing traffic and summary objects before new paid
   generation.
 - [ ] Let the heartbeat progress a configured summary threshold with zero-call
@@ -579,6 +599,10 @@ Corrections made by this audit:
 
 ### P8 publish, operate, and qualify
 
+- [x] Pushed research implementation `8b9d37bcff1ad6315be90cccf108f0ea959649bf`
+  and verified remote main. The diff contained no configured credential values.
+  The updated dashboard is running locally; its restart did not stop the
+  separate heartbeat. This was not a new gateway or GPU deployment.
 - [x] Pushed Milk Man through `b9fbc82b2` and Parlor through `2b43cbd`;
   verified both remote main refs. Unpublished diffs contained none of the
   configured credential values. Private capture evidence and keys remain local.
