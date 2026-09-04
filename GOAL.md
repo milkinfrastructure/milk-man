@@ -50,7 +50,10 @@ safe turn boundary without repeating completed work.
 This file is the execution order. [PRD.md](PRD.md) is the stable product
 contract. [goal_tracker.md](goal_tracker.md) is the evidence ledger.
 
-## Verified starting point: 2026-09-04
+## Audit starting point: 2026-09-04
+
+These are the audit's initial observations. Current publication and deployment
+are recorded in the tracker's repository and live snapshots.
 
 - [x] Milk Parlor `37c0f892cee2bb03277fff6cc107312e36fda672` is
   published, deployed, and healthy. Both supported OpenAI protocols are live;
@@ -303,7 +306,7 @@ Milk Man engine, with fine-tuning and RL represented truthfully.
 
 ## P8 — publish and operate
 
-- [ ] Stop the five stale unselected Parlor generations after resolving their
+- [ ] Stop the seven stale unselected Parlor generations after resolving their
   exact Cloudflare identities; retain the selected live generation.
 - [ ] Keep the local dashboard and public docs accurate for someone with no
   prior context. Show the active prompt, heartbeat, logs, environment-name

@@ -68,8 +68,8 @@ Status notation:
   dashboard tool turn.
 - [x] Local commit `ba5c62f47acf3454ca4180392b38fdc0066eca3f`
   adds the autonomous task contract, reusable script dispatch, persistent
-  heartbeat, dashboard reporting, and their retained local proof. It is not
-  published yet.
+  heartbeat, dashboard reporting, and their retained local proof. It is now
+  included in published `b9fbc82b2`.
 - [x] Local Milk Man completed a Chrome-prompted remote progress check and then
   authored and reused `bin/progress` across an automatic ten-second follow-up.
   Both readings were 106 captured / 106 summarized. Four useful memory entries
@@ -94,8 +94,8 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `0476df06a`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | autonomous runtime, lifecycle/tuning proofs, gateway-backed Astra, source grouping and progress discovery committed locally |
-| `milk-parlor` | `2b43cbd`, deployed | `37c0f892cee2bb03277fff6cc107312e36fda672` | trajectory-aware capture image deployed; source publication next |
+| `milk-man` | `b9fbc82b2`, plus this publication checkpoint | `b9fbc82b22671587531b4e5ca9a54abb487a2f45` | autonomous runtime, lifecycle/tuning proofs, gateway-backed Astra, source grouping and progress discovery pushed; local dashboard running |
+| `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
 Published Milk Man audit baseline:
@@ -359,7 +359,7 @@ Corrections made by this audit:
   tracker around autonomous prompt-driven Bash execution.
 - [x] Local commit `ba5c62f47acf3454ca4180392b38fdc0066eca3f`
   retains repository-script dispatch and the heartbeat; P1-P3 below record the
-  Chrome and Bash proof. The commit is not published yet.
+  Chrome and Bash proof. The commit is included in published `b9fbc82b2`.
 - [x] Restart the dashboard from the aligned source and verify truthful task,
   trajectory, driver, heartbeat, current activity, and next-wake state.
 - [x] Chrome shows an always-visible heartbeat strip above chat: state light,
@@ -579,6 +579,9 @@ Corrections made by this audit:
 
 ### P8 publish, operate, and qualify
 
+- [x] Pushed Milk Man through `b9fbc82b2` and Parlor through `2b43cbd`;
+  verified both remote main refs. Unpublished diffs contained none of the
+  configured credential values. Private capture evidence and keys remain local.
 - [ ] Stop seven stale unselected Parlor generations after exact identity
   reconciliation.
 - [ ] Publish concise docs and redacted evidence after the autonomous core is
