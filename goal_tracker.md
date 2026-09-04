@@ -45,12 +45,13 @@ Status notation:
   are retained in trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a`.
 - [x] The independent heartbeat survived a dashboard-server restart, stopped,
   and restarted from Bash with the same trajectory and no new model turn.
-- [~] Idle backoff and timer continuation work locally. Restart during real
-  asynchronous provider work and duplicate-resource prevention remain unproven.
-- [~] The first environment-selected P4 lifecycle is active: a native Bash
-  function turn launched `Qwen/Qwen3-0.6B` on one Modal L4 through
-  `serve-modal`. Deployment is still in progress; inference and cleanup are
-  not proven. Fresh traffic and large eval generation remain later work.
+- [~] Idle backoff and timer continuation work locally. Failed result parsing
+  did not duplicate the first inference call, but process restart during real
+  asynchronous provider work remains unproven.
+- [x] The first environment-selected P4 lifecycle served
+  `Qwen/Qwen3-0.6B` on one Modal L4, completed three correct inference calls,
+  stopped app `ap-joFFZzWQm7cFTdMJ7F0QGz`, and observed zero tasks and zero
+  containers. This is a small lifecycle proof, not 120B or autotuning proof.
 
 ## Repository snapshot
 
@@ -58,7 +59,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `ba5c62f47acf3454ca4180392b38fdc0066eca3f`, plus uncommitted P4 work | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | runtime/docs checkpoint is committed locally but not pushed; current P4 changes remain implementation-in-progress |
+| `milk-man` | `9285bf0f5`, plus P4 serving work | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat and native finish are committed locally; serving and context corrections are being retained next |
 | `milk-parlor` | `37c0f892cee2bb03277fff6cc107312e36fda672` | same | clean and deployed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
@@ -126,13 +127,23 @@ Published Milk Man audit baseline:
 - [x] Run one clean bounded GLM tool turn after the reconciled source is
   published. Evidence: trajectory
   `df36b6bc-1651-4f74-aa40-43da7a8a216a`, 2026-09-04 18:59 UTC, exit 0.
-- [x] Current memory contains four useful retained entries.
+- [x] Current private memory contains seven entries, including the retained
+  small-model lifecycle result.
 - [!] A preceding fenced-mode lifecycle attempt read source for 20 iterations
   without performing a provider action, then exited 70.
-- [~] At 2026-09-04 20:35:03 UTC, the first native Bash function turn launched
-  the environment-configured `Qwen/Qwen3-0.6B` `serve-modal` job on one L4.
-  The deployment was still in progress at the last observation; no successful
-  inference, stop, or zero-resource result is claimed.
+- [x] The first native Bash function turn launched the environment-configured
+  `Qwen/Qwen3-0.6B` `serve-modal` job on one L4 at 2026-09-04 20:35:03 UTC.
+  After repairing the serving image's missing Python runtime, the lifecycle
+  reached inference and cleanup without relaunching the first completed call.
+- [x] Retained `benchmark-run-{1,2,3}.json` records three of three exact-match
+  successes at 1902.449, 1639.6, and 1722.826 ms. Each response reported 86
+  output tokens; these are non-streaming end-to-end timings, not decode speed.
+- [x] Modal app `ap-joFFZzWQm7cFTdMJ7F0QGz` is stopped; the independent final
+  observation returned zero tasks and an empty container list.
+- [x] The native finish path is live-proven. A Chrome closeout prompt at
+  20:53:59 UTC read the three results and provider status, saved memory at
+  20:54:07, emitted one factual final at 20:54:11, and returned the heartbeat
+  to online idle at turn 12 without another deployment or inference call.
 - [!] The private local process is the current credential trust boundary. Jobs
   inherit its environment. Do not claim per-child secret isolation until it is
   actually implemented; do not add a secret broker for this private phase.
@@ -196,11 +207,11 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 | Capability | Current assessment | Next proof |
 | --- | --- | --- |
 | High-level prompt -> existing job | `[x]` Chrome and Bash objectives chose and completed remote progress checks; one timer follow-up continued automatically | repeat an external operation without duplicating it |
-| Repository-script jobs | `[x]` Milk Man authored and reused `bin/progress` from Chrome without an engine change | prove the generic executable-catalog dispatch path |
+| Repository-script jobs | `[x]` Milk Man authored and reused `bin/progress`; `serve-modal` executed through the generic executable catalog | reuse the same dispatch for the next model |
 | Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, stop, and Bash resume worked | recover a real provider operation without duplicate work |
 | Managed GLM Milk Man driver | `[x]` Baseten GLM status turn proven | autonomous multi-step task through the driver |
-| General model lifecycle | `[~]` fixed controller worked historically; current env-selected Qwen/L4 deployment is in progress | complete readiness, inference, stop, and zero proof on that deployment |
-| Inference autotuning | `[ ]` no adaptive measured loop proven | compare configurations, select one from results, clean losing resources |
+| General model lifecycle | `[~]` one env-selected Qwen/L4 lifecycle completed three correct calls and verified zero resources | repeat with the intended 120B workload without hardcoding it |
+| Inference autotuning | `[~]` one fixed configuration has three retained end-to-end measurements | compare configurations, select one from results, clean losing resources |
 | Different compute workload | `[ ]` harness generality not proven | complete a second workload without editing the engine |
 | Official SDK -> Parlor | `[x]` live for Responses and Chat Completions, including streaming | retain as Milk application input |
 | Key -> scope UUID | `[x]` source and historical live proof | reuse when the application needs a new scope |
@@ -322,9 +333,8 @@ Corrections made by this audit:
 
 ### P2 reusable script extensibility
 
-- [~] Local source can dispatch a registered repository-relative executable
-  without adding another fixed Python handler. That generic catalog path is
-  implemented but has not yet run end to end.
+- [x] The registered `serve-modal` executable completed deployment, inference,
+  and cleanup through the generic catalog without another fixed Python handler.
 - [x] Chrome asked for a reusable compact progress command. Milk Man wrote
   `bin/progress`, ran it against remote R2, yielded to a timer, reused it on
   automatic continuation, compared unchanged 106/106 counts, and saved memory.
@@ -345,7 +355,9 @@ Corrections made by this audit:
 - [x] Isolated no-model checks cover owner-lock exclusion, interrupted-task
   recovery, stale-prompt rejection, durable inputs, and replaced-watch races.
   These checks do not prove recovery of a real provider deployment.
-- [ ] Trigger automatic continuation from a real job/object event.
+- [x] The Modal deployment status change resumed turn 11 automatically, which
+  measured inference and stopped the app. The earlier failed turn needed a
+  manually restored watch; uninterrupted launch-to-wait still needs proof.
 - [~] Restarted owner 409 during a real 45-second scheduled wait. Owner 1076
   retained the exact deadline and task, resumed once (turn 6 to 7), ran the
   progress script, and finished at 20:24:27 UTC. Provider-resource recovery is
@@ -356,27 +368,38 @@ Corrections made by this audit:
 
 ### P4 general model and compute lifecycle
 
-- [!] The first vLLM image built, but Modal could not detect its Python runtime.
+- [x] The first vLLM image built, but Modal could not detect its Python runtime.
   The serving image now explicitly adds Python 3.12. Milk Man stopped the old
   profile, observed zero containers, and launched corrected profile
-  `68c05ebcbf60` at 20:42 UTC. Deployment remains in progress; inference and
-  final cleanup are not yet proven.
+  `68c05ebcbf60` at 20:42 UTC.
 - [~] A fixed Modal GLM controller historically proved create, inference
   handoff, stop, and zero; it is not yet a general lifecycle.
 - [!] A fenced-mode attempt read source for 20 iterations without taking the
   provider action and exited 70.
-- [~] At 2026-09-04 20:35:03 UTC, a native Bash function turn launched the
+- [x] At 2026-09-04 20:35:03 UTC, a native Bash function turn launched the
   environment-configured `Qwen/Qwen3-0.6B` `serve-modal` job on one Modal L4.
-  Deployment remains in progress; no inference or cleanup proof exists yet.
-- [ ] Continue that exact operation through readiness, one inference call,
-  status, requested stop, and verified zero resources without relaunching it.
+- [x] Three retained benchmark files each contain one successful exact-match
+  inference: 1902.449, 1639.6, and 1722.826 ms, with 86 output tokens each.
+  A failed report parse after the first response did not duplicate that call.
+- [x] Stopped Modal app `ap-joFFZzWQm7cFTdMJ7F0QGz`; an independent check
+  observed zero tasks and zero containers.
+- [x] A Chrome closeout prompt used the native finish path to read status and
+  memory, report the three results, and return to online idle at turn 12. It
+  made no new deployment or inference call.
 - [ ] Select model, revision, provider, runtime, GPU type/count, serving
   arguments, and cache through environment variables.
 - [ ] Repeat with the intended 120B proving workload without hardcoding it into
   the harness.
+- [!] The first 120B objective reread setup for 15 turns and then returned no
+  function call. It launched no deployment. Native tool history was being
+  flattened into ordinary text; correct that conversation contract before
+  repeating this objective.
 
 ### P5 inference autotuning
 
+- [~] One Qwen/L4 configuration has three retained non-streaming end-to-end
+  measurements. No second configuration, adaptive decision, or cost comparison
+  has run.
 - [ ] Give Milk Man a measurable latency/throughput/correctness/cost objective.
 - [ ] Run comparable configurations, persist exact identities and metrics, and
   let later trials respond to measured results.

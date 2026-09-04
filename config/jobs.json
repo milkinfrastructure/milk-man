@@ -47,6 +47,17 @@
     "inference-ensure": {"handler": "inference-ensure", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": "inference-stop"},
     "inference-status": {"handler": "inference-status", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
     "inference-stop": {"handler": "inference-stop", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
+    "serve-modal": {
+      "description": "Deploy, inspect, or stop one environment-selected OpenAI-compatible vLLM server on Modal; listed environment names are required for run.",
+      "executable": "milk_v2/providers/modal_serve.py",
+      "environment": {
+        "required": ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET", "MILK_MODAL_SERVE_MODEL", "MILK_MODAL_SERVE_REVISION", "MILK_MODAL_SERVE_IMAGE", "MILK_MODAL_SERVE_API_KEY"],
+        "optional": ["MODAL_ENVIRONMENT", "HF_TOKEN", "MILK_MAN_STATE_DIR", "MILK_MODAL_CLI", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_SERVE_APP_PREFIX", "MILK_MODAL_SERVE_VOLUME", "MILK_MODAL_SERVE_SERVED_MODEL", "MILK_MODAL_SERVE_GPU", "MILK_MODAL_SERVE_GPU_COUNT", "MILK_MODAL_SERVE_VLLM_ARGS_JSON", "MILK_MODAL_SERVE_SCALEDOWN_SECONDS", "MILK_MODAL_SERVE_TARGET_CONCURRENCY", "MILK_MODAL_SERVE_STARTUP_TIMEOUT", "MILK_MODAL_SERVE_STOP_TIMEOUT", "MILK_MODAL_SERVE_TIMEOUT_SECONDS"]
+      },
+      "status": true,
+      "stop": true,
+      "timeout_env": "MILK_MODAL_SERVE_TIMEOUT_SECONDS"
+    },
     "summary": {"handler": "summary", "trigger": {"kind": "crossed_capture_threshold", "values_env": "MILK_SUMMARY_THRESHOLDS"}, "bindings": ["store", "summary"], "input_prefixes": ["c", "s"], "output_prefixes": ["j", "l", "s", "readiness", "status"], "system_prompt": "prompts/summary.md", "timeout_env": "MILK_SUMMARY_TIMEOUT_SECONDS", "teardown_handler": null},
     "eval": {"handler": "eval", "trigger": {"kind": "readiness"}, "bindings": ["store", "eval"], "input_prefixes": ["c", "l", "s", "readiness"], "output_prefixes": ["j", "e", "status"], "system_prompt": "prompts/eval.md", "timeout_env": "MILK_EVAL_TIMEOUT_SECONDS", "teardown_handler": null},
     "dataset": {"handler": "dataset", "trigger": {"kind": "eval_ready"}, "bindings": ["store", "teacher"], "input_prefixes": ["c", "e"], "output_prefixes": ["j", "d", "status"], "system_prompt": "prompts/dataset.md", "timeout_env": "MILK_DATASET_TIMEOUT_SECONDS", "teardown_handler": null},

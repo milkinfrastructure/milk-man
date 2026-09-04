@@ -86,7 +86,7 @@ bin/man heartbeat resume
 bin/man heartbeat stop
 ```
 
-`MILK_HEARTBEAT_SECONDS` sets the first idle interval (30 seconds by default).
+`MILK_HEARTBEAT_SECONDS` sets the job-check and first idle interval (30 seconds by default).
 `MILK_HEARTBEAT_MAX_SECONDS` caps exponential idle backoff (300 seconds by
 default). Idle checks do not call the model. A task may register a scheduled
 wake or a read-only status command; changed status resumes the saved task.
@@ -101,7 +101,7 @@ bin/man develop \
 ```
 
 This defaults to `gpt-5.6-sol`, the Responses API, and low reasoning.
-The driver uses one native Bash function call per turn. For an endpoint without
+The driver uses `bash` to work and `finish` to report completion. For an endpoint without
 function calling, explicitly set `MILK_MAN_TOOL_CALLS=0` to use fenced Bash.
 `LLM_API_URL` plus `LLM_MODEL`, with optional `LLM_API_KEY`, selects another
 OpenAI-compatible endpoint. `--resume` continues the latest trajectory for the
@@ -124,10 +124,16 @@ bin/milk jobs
 required and optional environment names for starting a run. Status and stop
 commands use saved resource settings. The catalog can include built-in jobs
 and repository-owned executable jobs from [`config/jobs.json`](config/jobs.json).
-Executable-job dispatch exists in the current development source but remains an
-end-to-end proof item in [`goal_tracker.md`](goal_tracker.md).
+The `serve-modal` executable job has deployed Qwen, served three correct
+responses, and stopped its GPU. See [`goal_tracker.md`](goal_tracker.md).
 An executable job receives `run`, `status`, or `stop`, inherits the current
 environment plus `MILK_JOB_*` metadata, and returns one JSON result on stdout.
+
+`bin/benchmark` measures a configured chat endpoint. Set
+`MILK_BENCHMARK_BASE_URL`, `MILK_BENCHMARK_MODEL`, and
+`MILK_BENCHMARK_API_KEY`; `MILK_BENCHMARK_STREAM=1` also measures time to the
+first visible text. Results are JSON, not raw answers. Any configured hourly
+cost is an estimate for the measured interval, not a provider bill.
 
 Start the built-in traffic loop with an empty local object store:
 

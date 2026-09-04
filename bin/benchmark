@@ -1,0 +1,213 @@
+#!/usr/bin/env python3
+"""Small benchmark for an OpenAI-compatible chat endpoint."""
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import sys
+import time
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
+
+
+class ConfigError(ValueError):
+    pass
+
+
+def integer(name, default, low, high):
+    try:
+        value = int(os.environ.get(name, default))
+    except ValueError as error:
+        raise ConfigError(f"{name} must be an integer") from error
+    if not low <= value <= high:
+        raise ConfigError(f"{name} must be in {low}..{high}")
+    return value
+
+
+def boolean(name):
+    value = os.environ.get(name, "0")
+    if value not in {"0", "1"}:
+        raise ConfigError(f"{name} must be 0 or 1")
+    return value == "1"
+
+
+def optional_rate(name):
+    raw = os.environ.get(name)
+    if raw is None:
+        return None
+    try:
+        value = float(raw)
+    except ValueError as error:
+        raise ConfigError(f"{name} must be a nonnegative number") from error
+    if not math.isfinite(value) or value < 0:
+        raise ConfigError(f"{name} must be a nonnegative number")
+    return value
+
+
+def workload():
+    prompt_name, file_name = "MILK_BENCHMARK_PROMPT", "MILK_BENCHMARK_INPUT_FILE"
+    prompt, source = os.environ.get(prompt_name), os.environ.get(file_name)
+    if prompt is not None and source:
+        raise ConfigError(f"{prompt_name} and {file_name} are mutually exclusive")
+    if source:
+        try:
+            raw = Path(source).read_bytes()
+            if len(raw) > 1_048_576:
+                raise ConfigError(f"{file_name} exceeds 1 MiB")
+            value = json.loads(raw)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ConfigError(f"{file_name} must contain valid JSON") from error
+        if not isinstance(value, dict) or set(value) - {"prompt", "expected"} or not isinstance(value.get("prompt"), str):
+            raise ConfigError(f"{file_name} must be a prompt and optional expected string")
+        prompt, expected = value["prompt"], value.get("expected")
+        if expected is not None and not isinstance(expected, str):
+            raise ConfigError(f"{file_name} expected must be a string")
+    else:
+        prompt = prompt if prompt is not None else "Reply with exactly MILK_OK and nothing else."
+        expected = os.environ.get("MILK_BENCHMARK_EXPECTED", "MILK_OK" if prompt == "Reply with exactly MILK_OK and nothing else." else None)
+    if not prompt or len(prompt.encode()) > 1_048_576:
+        raise ConfigError("benchmark prompt must contain 1 byte to 1 MiB")
+    return prompt, expected, hashlib.sha256(json.dumps({"prompt": prompt, "expected": expected}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def endpoint():
+    base = os.environ.get("MILK_BENCHMARK_BASE_URL", "").rstrip("/")
+    model = os.environ.get("MILK_BENCHMARK_MODEL", "")
+    key = os.environ.get("MILK_BENCHMARK_API_KEY", "")
+    parsed = urlsplit(base)
+    if not base or not model or not key:
+        raise ConfigError("MILK_BENCHMARK_BASE_URL, MILK_BENCHMARK_MODEL, and MILK_BENCHMARK_API_KEY are required")
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ConfigError("MILK_BENCHMARK_BASE_URL is invalid")
+    if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+        raise ConfigError("MILK_BENCHMARK_BASE_URL must use HTTPS outside localhost")
+    if parsed.path.rstrip("/") not in {"", "/v1"}:
+        raise ConfigError("MILK_BENCHMARK_BASE_URL must be an origin or end in /v1")
+    return base + ("" if parsed.path.rstrip("/") == "/v1" else "/v1") + "/chat/completions", model, key
+
+
+def percentile(values, fraction):
+    ordered = sorted(values)
+    return ordered[max(0, math.ceil(len(ordered) * fraction) - 1)] if ordered else None
+
+
+def token_usage(usage):
+    total = usage.get("completion_tokens", usage.get("output_tokens"))
+    details = usage.get("completion_tokens_details") or usage.get("output_tokens_details") or {}
+    reasoning = details.get("reasoning_tokens", 0) if isinstance(details, dict) else 0
+    if type(total) is not int or type(reasoning) is not int or not 0 <= reasoning <= total:
+        raise ValueError("invalid_response")
+    return total - reasoning, reasoning
+
+
+def stream_response(response, started):
+    size, parts, usage, ttft, done = 0, [], {}, None, False
+    for raw in response:
+        size += len(raw)
+        if size > 16_777_216:
+            raise ValueError("response_too_large")
+        line = raw.decode("utf-8").strip()
+        if not line.startswith("data:"):
+            continue
+        body = line[5:].strip()
+        if body == "[DONE]":
+            done = True
+            break
+        event = json.loads(body)
+        if isinstance(event.get("usage"), dict):
+            usage = event["usage"]
+        choices = event.get("choices")
+        if not choices:
+            continue
+        content = choices[0].get("delta", {}).get("content")
+        if content is not None and not isinstance(content, str):
+            raise ValueError("invalid_response")
+        if content:
+            ttft = ttft or max(0.000001, time.perf_counter() - started)
+            parts.append(content)
+    if not done:
+        raise ValueError("incomplete_stream")
+    return "".join(parts), usage, ttft
+
+
+def main():
+    if sys.argv[1:] not in ([], ["run"]):
+        raise ConfigError("usage: benchmark [run]")
+    url, model, key = endpoint()
+    prompt, expected, workload_sha = workload()
+    count = integer("MILK_BENCHMARK_REQUESTS", "3", 1, 1000)
+    maximum = integer("MILK_BENCHMARK_MAX_TOKENS", "32", 1, 131072)
+    timeout = integer("MILK_BENCHMARK_TIMEOUT_SECONDS", "120", 1, 3600)
+    streaming = boolean("MILK_BENCHMARK_STREAM")
+    hourly_rate = optional_rate("MILK_BENCHMARK_COMPUTE_USD_PER_HOUR")
+    config = {"endpoint": url, "model": model, "requests": count, "max_tokens": maximum, "timeout_seconds": timeout, "temperature": 0, "workload_sha256": workload_sha, "expected_supplied": expected is not None}
+    if streaming:
+        config["stream"] = True
+    if hourly_rate is not None:
+        config["estimated_compute_usd_per_hour"] = hourly_rate
+    identity = hashlib.sha256(json.dumps(config, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    request_body = {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": maximum, "temperature": 0}
+    if streaming:
+        request_body.update(stream=True, stream_options={"include_usage": True})
+    payload = json.dumps(request_body, separators=(",", ":")).encode()
+    rows, calls = [], 0
+    benchmark_started = time.perf_counter()
+    for index in range(1, count + 1):
+        started, error, text, usage, ttft = time.perf_counter(), None, None, {}, None
+        try:
+            calls += 1
+            request = Request(url, payload, {"Authorization": f"Bearer {key}", "Content-Type": "application/json", "User-Agent": "milk-man-benchmark/1"})
+            with urlopen(request, timeout=timeout) as response:
+                if streaming:
+                    text, usage, ttft = stream_response(response, started)
+                else:
+                    raw = response.read(16_777_217)
+                    if len(raw) > 16_777_216:
+                        raise ValueError("response_too_large")
+                    data = json.loads(raw)
+                    text, usage = data["choices"][0]["message"]["content"], data.get("usage", {})
+        except HTTPError as failure:
+            error = f"http_{failure.code}"
+        except (TimeoutError, URLError):
+            error = "network_or_timeout"
+        except (UnicodeDecodeError, ValueError, KeyError, IndexError, TypeError, AttributeError):
+            error = "invalid_response"
+        elapsed = max(0.000001, time.perf_counter() - started)
+        row = {"index": index, "latency_ms": round(elapsed * 1000, 3), "elapsed_wall_seconds": round(elapsed, 6)}
+        if ttft is not None:
+            row["ttft_ms"] = round(ttft * 1000, 3)
+        try:
+            visible_tokens, reasoning_tokens = token_usage(usage)
+            tokens = visible_tokens + reasoning_tokens
+            if not isinstance(text, str):
+                raise (ValueError("invalid_response"))
+            row.update(output_tokens=tokens, output_tokens_per_end_to_end_second=round(tokens / elapsed, 3), correct=(text.strip() == expected if expected is not None else None), response_sha256=hashlib.sha256(text.encode()).hexdigest())
+            if reasoning_tokens:
+                row.update(reasoning_tokens=reasoning_tokens, visible_output_tokens=visible_tokens)
+        except (KeyError, IndexError, TypeError, ValueError, AttributeError):
+            error = error or "invalid_response"
+        if error:
+            row["error"] = error
+        rows.append(row)
+    good = [row for row in rows if "error" not in row]
+    latencies = [row["latency_ms"] for row in rows]
+    total_seconds = sum(row["latency_ms"] for row in rows) / 1000
+    elapsed_wall_seconds = max(0.000001, time.perf_counter() - benchmark_started)
+    tokens = sum(row["output_tokens"] for row in good)
+    ttfts = [row["ttft_ms"] for row in good if "ttft_ms" in row]
+    aggregate = {"succeeded": len(good), "failed": count - len(good), "correct": sum(row["correct"] is True for row in good) if expected is not None else None, "latency_ms_p50": percentile(latencies, .50), "latency_ms_p95": percentile(latencies, .95), "ttft_ms_p50": percentile(ttfts, .50), "ttft_ms_p95": percentile(ttfts, .95), "total_elapsed_ms": round(total_seconds * 1000, 3), "elapsed_wall_seconds": round(elapsed_wall_seconds, 6), "output_tokens": tokens, "output_tokens_per_end_to_end_second": round(tokens / total_seconds, 3) if total_seconds else None, "decode_tokens_per_second": None, "timing_scope": "sequential streaming wall time; TTFT is first visible content; decode-only timing unavailable" if streaming else "sequential non-streaming wall time across all attempts; decode-only timing unavailable"}
+    if hourly_rate is not None:
+        aggregate.update(estimated_compute_cost_usd=round(hourly_rate * elapsed_wall_seconds / 3600, 6), estimated_compute_cost_basis="configured hourly rate multiplied by benchmark wall time; estimate only, not a provider bill")
+    details = {"schema_version": "milk.inference-benchmark.v1", "config": config, "requests": rows, "aggregate": aggregate}
+    print(json.dumps({"state": "complete" if good else "failed", "identity": identity, "inference_calls": calls, "details": details}, sort_keys=True, separators=(",", ":")))
+    return 0 if good else 1
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except ConfigError as error:
+        print(json.dumps({"state": "failed", "identity": "configuration", "inference_calls": 0, "error": str(error)}, sort_keys=True, separators=(",", ":")))
+        raise SystemExit(64)
