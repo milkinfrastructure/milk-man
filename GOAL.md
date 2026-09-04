@@ -77,8 +77,9 @@ are recorded in the tracker's repository and live snapshots.
   autonomous 120B recovery and a general Baseten-owned lifecycle remain
   unproven. A small comparable inference A/B run selected CUDA graphs and
   stopped both deployments, with corrections; see the tracker for evidence.
-- [!] Five unselected Cloudflare container generations remained running at the
-  last audit and still require exact reconciliation.
+- [x] Reconciled Cloudflare generations at 23:30 UTC: only the selected
+  `parlor-d82c3cd-capture` instance is running; the other 20 are inactive.
+  No stop or deletion was needed.
 
 Do not discard these implementations or restart large generation work. Adapt
 the current code in small working slices.
@@ -194,9 +195,9 @@ not another bespoke orchestration branch.
   current activity, resource IDs, last observation, and next wake time.
 - [x] Wake on a new prompt, scheduled review, changed object marker, completed
   or failed asynchronous job, or measured service regression.
-- [x] Do not invoke the model or relist an unchanged object prefix while idle.
-  Send compact changed results, not full historical logs, when reasoning
-  resumes.
+- [x] Invoke no model while idle. Check saved metadata and bound any capture
+  listing to the next threshold within this scope, never the whole bucket.
+  Send compact changed results when reasoning resumes.
 - [~] Idle cycles, timer restart, provider status wake, and owner restart
   against an already-ready provider resource are proven. Provider-startup
   recovery without Codex correction remains open; see the tracker.
@@ -312,8 +313,8 @@ Milk Man engine, with fine-tuning and RL represented truthfully.
 
 ## P8 — publish and operate
 
-- [ ] Stop the seven stale unselected Parlor generations after resolving their
-  exact Cloudflare identities; retain the selected live generation.
+- [x] Reconcile unselected Parlor generations and retain the selected live
+  instance. The complete live list shows one running and 20 inactive.
 - [ ] Keep the local dashboard and public docs accurate for someone with no
   prior context. Show the active prompt, heartbeat, logs, environment-name
   readiness, resources, measurements, object progress, and cleanup state.

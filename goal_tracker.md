@@ -15,6 +15,12 @@ Status notation:
 
 ## Executive state
 
+- [x] `36433b983` isolates nested Milk Man heartbeat context and makes
+  subcommand `--help` work. A child no longer inherits the parent's wait file.
+- [x] Read-only Modal serving status now works while startup holds its mutation
+  lock. Live status returned `active`, one H200 container, app
+  `ap-5OBmVF7Ek1uUyykOziCT2v`, without inference. The selected 120B startup is
+  still running; an allocated endpoint is not yet a completed driver proof.
 - [x] Product contract now explicitly targets continuous autoresearch per
   scope UUID, including Milk Man's own traffic, toward a measured best model
   for that workload. This records the requirement, not a completed capability.
@@ -180,9 +186,12 @@ Published Milk Man audit baseline:
   2 GB is ephemeral disk allocation, not image size.
 - [x] Requests route to one secret-selected named container instance. The
   current deployment is not an autoscaling pool.
-- [!] Cloudflare lists 21 named generations: 8 running and 13 inactive. Only
-  `parlor-d82c3cd-capture` is selected. Seven old running generations remain
-  to reconcile and stop; no public administrative endpoint was added.
+- [x] At 23:30 UTC, authenticated `wrangler containers instances` returned the
+  complete list (`next_page_token: null`): 21 named generations, one running,
+  20 inactive. Only selected `parlor-d82c3cd-capture` is running (DO ID
+  `f2ec87295a98be9db4514c70568f2970bb258d8de8ab7d2a10f13190bd14ac39`).
+  The earlier seven-running residue is no longer present. No stop, deletion,
+  deployment, or public administrative endpoint was needed.
 - [ ] Measure gateway capture overhead with one warm capture-on/capture-off
   comparison before making a latency claim. R2 writes are already asynchronous.
 - [ ] Decide later whether deterministic sampling is needed. Current behavior
@@ -644,8 +653,8 @@ Corrections made by this audit:
 - [x] Pushed Milk Man through `b9fbc82b2` and Parlor through `2b43cbd`;
   verified both remote main refs. Unpublished diffs contained none of the
   configured credential values. Private capture evidence and keys remain local.
-- [ ] Stop seven stale unselected Parlor generations after exact identity
-  reconciliation.
+- [x] Reconciled all 21 Parlor generations: only the selected instance is
+  running; 20 are inactive. No stop action was necessary.
 - [ ] Publish concise docs and redacted evidence after the autonomous core is
   proven.
 - [ ] Enforce owner-only merge controls without blocking forks, issues, or pull

@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import fcntl
 import json
 import os
@@ -301,7 +301,7 @@ def main() -> None:
         path = state_root()
         value = tracked(path) if action in {"status", "stop"} else None
         value = value or plan()
-        with locked(path):
+        with nullcontext() if action == "status" else locked(path):
             if action == "run":
                 current = tracked(path)
                 if current and current["profile_id"] != value["profile_id"]:
@@ -319,8 +319,17 @@ def main() -> None:
             elif action == "status":
                 observed = observe(value)
                 record = modal.read_json(path / "current.json") or {}
+                if record.get("plan", {}).get("profile_id") != value["profile_id"]:
+                    record = {}
                 failed = record.get("state") == "failed"
-                state = "failed" if failed else "complete" if observed["app_state"] == "deployed" and observed["endpoint_url"] else "idle"
+                if failed:
+                    state = "failed"
+                elif record.get("state") == "ready" and observed["app_state"] == "deployed" and observed["endpoint_url"]:
+                    state = "complete"
+                elif record.get("state") == "pending" or observed["app_state"] in ACTIVE:
+                    state = "active"
+                else:
+                    state = "idle"
                 error = record.get("error") if failed and isinstance(record.get("error"), str) else None
                 output = result(value, state, observed, observed["provider_calls"], error)
             else:
