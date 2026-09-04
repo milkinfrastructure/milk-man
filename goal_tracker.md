@@ -45,13 +45,17 @@ Status notation:
   are retained in trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a`.
 - [x] The independent heartbeat survived a dashboard-server restart, stopped,
   and restarted from Bash with the same trajectory and no new model turn.
-- [~] Idle backoff and timer continuation work locally. Failed result parsing
-  did not duplicate the first inference call, but process restart during real
-  asynchronous provider work remains unproven.
+- [x] Idle backoff, timer continuation, provider-status wake, and owner restart
+  against the same ready H200 server worked without another deployment.
+- [~] Provider startup recovery still required Codex corrections; the 120B
+  lifecycle is not a fully autonomous proof.
 - [x] The first environment-selected P4 lifecycle served
   `Qwen/Qwen3-0.6B` on one Modal L4, completed three correct inference calls,
   stopped app `ap-joFFZzWQm7cFTdMJ7F0QGz`, and observed zero tasks and zero
   containers. This is a small lifecycle proof, not 120B or autotuning proof.
+- [x] Profile `e00fd2eb8ffa` served `openai/gpt-oss-120b` on one H200,
+  completed three correct calls, survived a heartbeat-owner restart against
+  the same ready server, stopped, and was independently observed at zero.
 
 ## Repository snapshot
 
@@ -59,7 +63,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `bb1d76207`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat continuity, serving failure handling, credential redaction, and benchmark fixes are committed locally, not pushed |
+| `milk-man` | `759f927e5`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat continuity, two Modal lifecycle proofs, serving failure handling, credential redaction, and dashboard fixes are committed locally, not pushed |
 | `milk-parlor` | `37c0f892cee2bb03277fff6cc107312e36fda672` | same | clean and deployed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
@@ -208,11 +212,11 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 | --- | --- | --- |
 | High-level prompt -> existing job | `[x]` Chrome and Bash objectives chose and completed remote progress checks; one timer follow-up continued automatically | repeat an external operation without duplicating it |
 | Repository-script jobs | `[x]` Milk Man authored and reused `bin/progress`; `serve-modal` executed through the generic executable catalog | reuse the same dispatch for the next model |
-| Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, stop, and Bash resume worked | recover a real provider operation without duplicate work |
+| Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, and restart against the same ready H200 server worked | recover during provider startup without Codex correction |
 | Managed GLM Milk Man driver | `[x]` Baseten GLM status turn proven | autonomous multi-step task through the driver |
-| General model lifecycle | `[~]` one env-selected Qwen/L4 lifecycle completed three correct calls and verified zero resources | repeat with the intended 120B workload without hardcoding it |
-| Inference autotuning | `[~]` one fixed configuration has three retained end-to-end measurements | compare configurations, select one from results, clean losing resources |
-| Different compute workload | `[ ]` harness generality not proven | complete a second workload without editing the engine |
+| General model lifecycle | `[~]` Qwen/L4 and 120B/H200 each completed three correct calls and verified zero through the same env-selected scripts | complete a Baseten-owned lifecycle and an unassisted provider recovery |
+| Inference autotuning | `[~]` fixed Qwen and 120B configurations have retained measurements; a 120B comparison is active | complete comparable trials, select from results, clean losing resources |
+| Different compute workload | `[x]` Qwen/L4 and 120B/H200 completed without editing the engine | retain generality while adding another provider |
 | Official SDK -> Parlor | `[x]` live for Responses and Chat Completions, including streaming | retain as Milk application input |
 | Key -> scope UUID | `[x]` source and historical live proof | reuse when the application needs a new scope |
 | Async two-sided capture | `[x]` live counters and exact historical object proof | preserve during application work |
@@ -322,6 +326,9 @@ Corrections made by this audit:
 - [x] `720ddbb81` keeps the objective separate from a correction during active
   work. The heartbeat panel exposes both under **saved task**. Chrome and the
   live API show the owner remains running after a dashboard restart.
+- [x] `759f927e5` removes the false `0 / 0 jobs configured` display. After
+  dashboard PID 31594 restarted, heartbeat owner 28226 remained alive and the
+  dashboard showed 13 loaded jobs, 12 configured.
 
 ### P1 one autonomous existing-job task
 
@@ -446,10 +453,16 @@ Corrections made by this audit:
 
 ### P5 inference autotuning
 
-- [~] One Qwen/L4 configuration has three retained non-streaming end-to-end
-  measurements. No second configuration, adaptive decision, or cost comparison
-  has run.
-- [ ] Give Milk Man a measurable latency/throughput/correctness/cost objective.
+- [~] Qwen/L4 and 120B/H200 baselines have retained non-streaming end-to-end
+  measurements. No comparable second 120B trial, adaptive decision, or cost
+  comparison is complete.
+- [~] At 21:45 Chrome gave Milk Man the active 120B comparison objective. Its
+  first private profile used assignments rather than exports, so profile
+  `6aefd` inherited the defaults: concurrency 8 and 60-second scale-down.
+  Milk Man corrected the private profile to exports at 21:52, stopped the
+  wrong deployment, and resumed the working `e00fd` profile through a saved
+  heartbeat watch. The comparable trial and selection are not complete.
+- [x] Give Milk Man a measurable latency/throughput/correctness/cost objective.
 - [ ] Run comparable configurations, persist exact identities and metrics, and
   let later trials respond to measured results.
 - [ ] Retain the best configuration meeting the objective, use its endpoint,

@@ -49,9 +49,10 @@ contract. [goal_tracker.md](goal_tracker.md) is the evidence ledger.
   candidate, route, fallback, rollback, and teardown mechanics. Those results
   prove useful functions, not one current production-qualified lineage.
 - [~] Local changes now support script jobs and a dashboard-independent
-  heartbeat. Chrome-driven status, script creation/reuse, idle checks, and
-  clean restart have run. General provider lifecycle, provider-wait recovery,
-  and inference tuning remain unproven; see the tracker for exact evidence.
+  heartbeat. Chrome-driven status, script reuse, idle checks, two Modal model
+  lifecycles, and restart against a ready provider resource have run. Fully
+  autonomous 120B recovery, inference tuning, and a general Baseten-owned
+  lifecycle remain unproven; see the tracker for exact evidence.
 - [!] Five unselected Cloudflare container generations remained running at the
   last audit and still require exact reconciliation.
 
@@ -166,28 +167,30 @@ not another bespoke orchestration branch.
 - [x] Do not invoke the model or relist an unchanged object prefix while idle.
   Send compact changed results, not full historical logs, when reasoning
   resumes.
-- [~] Idle cycles, timer restart, and provider status wake are proven; recovery
-  during a provider-owned operation without duplication remains open. See the
-  P3 evidence in the tracker.
+- [~] Idle cycles, timer restart, provider status wake, and owner restart
+  against an already-ready provider resource are proven. Provider-startup
+  recovery without Codex correction remains open; see the tracker.
 
 Acceptance: Milk Man remains available and resumes useful work at low idle cost
 without a separate scheduler service.
 
 ## P4 — general model and compute lifecycle
 
-- [ ] Refactor the current fixed controller lifecycle into reusable,
+- [~] Refactor the current fixed controller lifecycle into reusable,
   provider-native scripts for ensure/reuse, status/logs, inference smoke, and
-  stop. Retain current working behavior while extracting it.
-- [ ] Select provider, model and revision, API mode, runtime/image, GPU
+  stop. The Modal path is reusable; the Baseten-owned path remains open.
+- [~] Select provider, model and revision, API mode, runtime/image, GPU
   type/count, tensor parallelism, context, batching, cache/volume, region, and
-  endpoint identity through environment variables.
+  endpoint identity through environment variables. The completed Modal runs
+  proved the model, revision, runtime, GPU, cache, and serving-argument subset.
 - [ ] Keep Baseten managed inference, Baseten-owned resources, and Modal-owned
   resources available independently. Do not encode an automatic fallback.
-- [ ] First prove the lifecycle on an inexpensive model: inspect existing
+- [x] First prove the lifecycle on an inexpensive model: inspect existing
   state, create or reuse one deployment, call it, inspect failure if any, and
   stop or retain it according to the prompt.
-- [ ] Repeat with the intended 120B workload. Reuse weight caches and a
-  weight-free runtime image.
+- [x] Repeat with the intended 120B workload. It reused the weight cache and
+  weight-free runtime image, made three correct calls, and returned to zero;
+  Codex corrections were still required during the sequence.
 - [ ] Allow the same active trajectory to use the resulting OpenAI-compatible
   endpoint and continue its original objective.
 
@@ -196,7 +199,7 @@ hardcoding that model or provider into the harness.
 
 ## P5 — inference autotuning
 
-- [ ] Accept a measurable objective such as minimum throughput subject to a
+- [x] Accept a measurable objective such as minimum throughput subject to a
   latency, correctness, GPU, or cost constraint.
 - [ ] Have Milk Man propose the next configuration from prior measurements,
   execute it, and capture cold start, time to first token, output tokens per
@@ -216,12 +219,14 @@ leaves one requested winner or zero resources according to the prompt.
 
 ## P6 — prove continuity and generality
 
-- [ ] Restart during an active research task and resume its trajectory,
-  resources, measurements, and next experiment without duplication.
-- [ ] Give Milk Man a different model or compute objective. It may reuse,
+- [~] Restart during an active research task and resume its trajectory,
+  resources, measurements, and next experiment without duplication. Restart
+  against the same ready 120B server is proven; mid-start recovery remains open.
+- [x] Give Milk Man a different model or compute objective. It may reuse,
   adapt, or create scripts, but must not require an edit to the harness engine.
-- [ ] Verify the second workload completes, leaves reusable code and retained
-  conclusions, and cleans up or preserves resources as requested.
+- [x] Verify the second workload completes, leaves reusable code and retained
+  conclusions, and cleans up or preserves resources as requested. Qwen/L4 and
+  120B/H200 both completed and returned to zero; the 120B task was not unassisted.
 
 Acceptance: the agent is a general research and compute operator, not a GLM,
 120B, Qwen, Modal, Baseten, or Milk-pipeline special case.
