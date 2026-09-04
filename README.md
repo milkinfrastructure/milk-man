@@ -154,10 +154,18 @@ the first parent and unknown baseline, evaluation, best, or wake. Updates use
 the current revision as their parent. Repeating the same write is a no-op.
 Keep references and compact results here, not raw traffic or credentials.
 
-Status reads the record and a few current stage pointers without inference or
-a bucket scan. The existing heartbeat can watch that command for changes;
-the record does not start jobs by itself. `wake` describes the plan; Milk Man
-registers the actual watch with `bin/man heartbeat wait`.
+Status reads the record and current stage pointers, then checks whether this
+scope has enough captures for its next `MILK_SUMMARY_THRESHOLDS` checkpoint.
+It lists only that scope's capture keys, stopping at the threshold; it does not
+read conversation bodies or call a model. Below the threshold its output stays
+unchanged. Milk Man can watch it with `bin/man heartbeat wait -- bin/milk run
+research status` and run the summary job when the threshold is crossed.
+The record does not start jobs by itself. `wake` describes the plan; the
+heartbeat registers the actual watch.
+
+Summaries can classify non-streaming Responses and Chat Completions tool calls
+and results. A tool call alone is not a successful task. Streamed tool-event
+reconstruction and training on native tool trajectories remain unfinished.
 
 ## Run jobs
 

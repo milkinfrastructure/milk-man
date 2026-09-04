@@ -190,7 +190,8 @@ function renderProgress(progress = {}) {
     ticks.append(tick);
   }
   el("milestones").replaceChildren();
-  for (const point of points) {
+  const savedPoints = [...new Set([...points, ...checkpoints.map(value => number(value.capture_count))])].sort((a, b) => a - b);
+  for (const point of savedPoints) {
     const checkpoint = checkpoints.find(value => number(value.capture_count) >= point);
     const card = node(checkpoint ? "details" : "div", "checkpoint" + (checkpoint ? " reached" : count >= point ? " crossed" : ""));
     if (checkpoint) {
@@ -208,9 +209,10 @@ function renderProgress(progress = {}) {
       const values = checkpoint.series || {};
       const body = node("div", "summary-body");
       body.append(
-        summaryRow("saved", checkpoint.created_at ? new Date(checkpoint.created_at).toLocaleString() : "timestamp unavailable"),
+        summaryRow("traffic through", checkpoint.created_at ? new Date(checkpoint.created_at).toLocaleString() : "timestamp unavailable", "Completion time of the latest exchange added to this checkpoint."),
         summaryRow("quality", percent(quality.parse_bps) + " parsed · " + percent(quality.success_bps) + " successful · " + percent(quality.duplicate_bps) + " duplicate · " + (quality.capture_gap ? "capture gap" : "continuous capture"), "Structural checks over every captured request and response in this checkpoint."),
         summaryRow("volume", number(counters.unique_contents).toLocaleString() + " unique · " + number(semantic.classified).toLocaleString() + " classified · " + number(semantic.abstained).toLocaleString() + " abstained · peak " + number(counters.max_concurrency).toLocaleString() + " concurrent"),
+        summaryRow("source groups", counters.source_groups ? number(counters.source_groups) + " groups · " + number(counters.trajectory_groups) + " tagged tasks · " + number(counters.untagged_request_groups) + " untagged requests" : "not recorded", "Exchanges within a tagged task stay together. Untagged requests are grouped by request content; group counts do not prove independent tasks."),
         summaryRow("models", counts(traffic.model), "Model names requested by captured applications."),
         summaryRow("endpoints", counts(traffic.endpoint), "Responses and Chat Completions requests in this checkpoint."),
         summaryRow("routes", counts(traffic.route_target), "Requests served by the baseline or an approved candidate."),
@@ -239,7 +241,7 @@ function renderProgress(progress = {}) {
     }
     el("milestones").append(card);
   }
-  if (!points.length) el("milestones").append(node("p", "empty", "no thresholds configured"));
+  if (!savedPoints.length) el("milestones").append(node("p", "empty", "no thresholds configured"));
 }
 
 let selectedStage = null;

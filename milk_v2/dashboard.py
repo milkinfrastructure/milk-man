@@ -427,6 +427,7 @@ def _summary_view(value: dict) -> dict:
                 "captures", "complete", "parsed", "successful", "refusals",
                 "unique_contents", "duplicates", "max_concurrency",
                 "tool_argument_total", "tool_argument_valid",
+                "source_groups", "trajectory_groups", "untagged_request_groups",
             )
         },
         "traffic": {

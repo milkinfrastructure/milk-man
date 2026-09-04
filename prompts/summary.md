@@ -43,6 +43,10 @@ Classify each supplied exchange using only these values:
 
 Complexity is low, medium, high, or unknown. Safety is benign, sensitive, unsafe, or unknown. Confidence is an integer from 0 through 10000. Do not infer identity, health, wealth, politics, or other sensitive personal attributes. Preserve uncertainty and abstain when the supplied bytes do not support a label.
 
+A tool call proposes work; it does not prove the task succeeded. Use returned
+tool results when available, and mark the outcome unknown or partial when the
+excerpt does not establish it. HTTP success is not task success.
+
 Do not choose object keys, scope, provenance, counts, digests, routes,
 providers, credentials, or follow-up work. Do not repeat conversation text in
 the committed result.

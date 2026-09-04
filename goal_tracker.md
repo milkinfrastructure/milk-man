@@ -41,6 +41,18 @@ Status notation:
   Temporary-state execution proved 30/60/120/240-second delays, immediate
   instruction wake, and on-time scheduled wake without sleeping or model use.
   Chrome then showed a real 60-second wait, 156 checks, and still 36 wakeups.
+- [x] Added a scoped capture-threshold probe to `research status`. It lists
+  keys only up to the next threshold, reads no capture bodies, and keeps its
+  output unchanged below the threshold. Dashboard reads remain metadata-only.
+- [x] Chrome-prompted Milk Man saved checkpoint
+  `f0da6783-f36e-5ed0-83c1-3bd685acaf2c` from 18 retained exchanges: five
+  source groups (one tagged trajectory and four untagged request groups).
+  This was structural accounting only: zero classified rows, zero summary
+  inference, zero GPU/provider actions, and readiness false. The driver's
+  Astra calls through Parlor were paid inference. No filler traffic was sent.
+- [~] Native function-call responses contained no classifier text, so the
+  first checkpoint did not perform semantic classification. Correct that
+  parser path and validate a new checkpoint; preserve the first record.
 
 - [x] Reserved and validated UUIDv6
   `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a` for `milk-man-autoresearch`.

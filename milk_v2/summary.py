@@ -19,7 +19,7 @@ import uuid
 from . import eval_plan
 
 
-CODE_VERSION = "milk.summary.v5"
+CODE_VERSION = "milk.summary.v6"
 TAXONOMY_VERSION = "milk.semantic-taxonomy.v2"
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 DOMAINS = ("general", "software", "math_science", "business", "legal", "finance", "health", "creative", "other")
@@ -156,6 +156,64 @@ def _texts(value) -> list[str]:
             if isinstance(item, str) and item:
                 output.append(item)
     return output
+
+
+def _classification_texts(value) -> list[str]:
+    output = []
+    tool_seen = False
+
+    def tool(event: dict) -> None:
+        nonlocal tool_seen
+        tool_seen = True
+        output.append(json.dumps(event, ensure_ascii=False, separators=(",", ":")))
+
+    def visit(node) -> None:
+        if isinstance(node, list):
+            for child in node:
+                visit(child)
+            return
+        if not isinstance(node, dict):
+            return
+        kind = node.get("type")
+        if kind == "function_call":
+            if all(isinstance(node.get(name), str) and node[name] for name in ("call_id", "name", "arguments")):
+                tool({"type": kind, "name": node["name"], "arguments": node["arguments"], "call_id": node["call_id"]})
+            return
+        if kind == "function_call_output":
+            if isinstance(node.get("call_id"), str) and node["call_id"] and isinstance(node.get("output"), str):
+                tool({"type": kind, "call_id": node["call_id"], "output": node["output"]})
+            return
+        if node.get("role") == "tool":
+            if isinstance(node.get("tool_call_id"), str) and node["tool_call_id"] and isinstance(node.get("content"), str):
+                tool({"type": "function_call_output", "call_id": node["tool_call_id"], "output": node["content"]})
+            return
+        for name in ("content", "text", "output_text", "refusal"):
+            item = node.get(name)
+            if isinstance(item, str) and item:
+                output.append(item)
+        for name, child in node.items():
+            if name == "tools":
+                continue
+            if name == "tool_calls" and isinstance(child, list):
+                for call in child:
+                    function = call.get("function") if isinstance(call, dict) else None
+                    if (
+                        isinstance(function, dict)
+                        and isinstance(call.get("id"), str)
+                        and call["id"]
+                        and all(isinstance(function.get(field), str) and function[field] for field in ("name", "arguments"))
+                    ):
+                        tool({"type": "function_call", "name": function["name"], "arguments": function["arguments"], "call_id": call["id"]})
+                continue
+            visit(child)
+
+    if isinstance(value, dict):
+        for name in ("instructions", "input"):
+            item = value.get(name)
+            if isinstance(item, str) and item:
+                output.append(item)
+    visit(value)
+    return output if tool_seen else _texts(value)
 
 
 def _model_completed(endpoint: str, values) -> bool:
@@ -372,8 +430,8 @@ def parse_capture(store, settings, key: str) -> dict:
         "total_ms": total_ms,
         "tps_milli": tps_milli,
         "usage": usage,
-        "request_text": "\n".join(_texts(request_value)),
-        "response_text": "\n".join(_texts(response_values)),
+        "request_text": "\n".join(_classification_texts(request_value)),
+        "response_text": "\n".join(_classification_texts(response_values)),
     }
 
 
@@ -513,7 +571,7 @@ def merge_structural(previous: dict | None, delta: dict, all_source_rows: list[d
 def _sampling(rows: list[dict]) -> list[dict]:
     representative_limit = _integer_environment("MILK_SUMMARY_REPRESENTATIVE_SAMPLE", 256, 1, 2048)
     tail_limit = _integer_environment("MILK_SUMMARY_TAIL_SAMPLE", 64, 0, 512)
-    eligible = [row for row in rows if row["parse"] and row.get("has_request_response_text", row.get("has_text", bool(row.get("request_text") or row.get("response_text"))))]
+    eligible = [row for row in rows if row["parse"] and (row.get("has_request_response_text", row.get("has_text", bool(row.get("request_text") or row.get("response_text")))) or row.get("tool_calls", 0) > 0)]
     representative = sorted(eligible, key=lambda row: digest(("representative:" + row["key"]).encode()))[:representative_limit]
     request_sizes = sorted(row["request_bytes"] for row in eligible)
     long_threshold = max(8192, request_sizes[(len(request_sizes) * 95 - 1) // 100]) if request_sizes else 8192
@@ -565,6 +623,15 @@ def _label_contract(value, sampled: list[dict]) -> list[dict]:
 
 def _utf8_prefix(value: str, maximum: int) -> str:
     return value.encode("utf-8")[:maximum].decode("utf-8", "ignore")
+
+
+def _classifier_excerpt(value: str, maximum: int, tool_exchange: bool) -> str:
+    raw = value.encode("utf-8")
+    if not tool_exchange or len(raw) <= maximum:
+        return _utf8_prefix(value, maximum)
+    marker = b"\n...[middle omitted]...\n"
+    head = (maximum - len(marker)) // 3
+    return raw[:head].decode("utf-8", "ignore") + marker.decode() + raw[-(maximum - len(marker) - head):].decode("utf-8", "ignore")
 
 
 def _prepared_batches(fixed: dict, rows: list[tuple[dict, dict]]) -> list[tuple[dict, list[dict]]]:
@@ -904,7 +971,10 @@ def _read_pointer(store, prefix: str):
     pointer = _json(pointer_object.body, "s/current.json")
     if not isinstance(pointer, dict) or pointer.get("schema_version") != "milk.pointer.v2" or pointer.get("kind") != "summary":
         raise SummaryError("s/current.json is invalid")
-    summary_object = store.get(pointer.get("key", ""))
+    key = pointer.get("key")
+    if prefix != f"milk/v2/scopes/{pointer.get('scope_id')}/" or not isinstance(key, str) or not key.startswith(prefix + "s/"):
+        raise SummaryError("current summary pointer is outside the configured scope")
+    summary_object = store.get(key)
     if digest(summary_object.body) != pointer.get("sha256"):
         raise SummaryError("current summary digest differs")
     summary = _json(summary_object.body, "current summary")
@@ -964,6 +1034,36 @@ def inspect(store, settings) -> dict:
     except FileNotFoundError:
         readiness_pointer = None
     return {"capture_keys": keys, "capture_count": len(keys), "processed_count": len(processed), "next_threshold": next_threshold, "summary_pointer": pointer, "summary": summary, "readiness_pointer": readiness_pointer}
+
+
+def threshold_probe(store, settings) -> dict:
+    pointer, unused_object, current = _read_pointer(store, settings.scope_prefix)
+    processed = 0
+    if current is not None:
+        key = pointer.get("key") if pointer else None
+        processed = current.get("capture_count")
+        if (
+            pointer.get("scope_id") != settings.scope_id
+            or not isinstance(key, str)
+            or not key.startswith(settings.scope_prefix + "s/")
+            or current.get("profile") != settings.profile
+            or type(processed) is not int
+            or processed < 0
+        ):
+            raise SummaryError("current summary is outside the configured scope")
+    next_threshold = next((value for value in thresholds(settings.profile) if value > processed), None)
+    if next_threshold is None:
+        return {"processed_count": processed, "next_threshold": None, "crossed": False}
+
+    count, cursor = 0, None
+    prefix = settings.scope_prefix + "c/"
+    while count < next_threshold:
+        page = store.list(prefix, cursor, min(1000, next_threshold - count))
+        count += len(page.keys)
+        if count >= next_threshold or page.next_cursor is None:
+            break
+        cursor = page.next_cursor
+    return {"processed_count": processed, "next_threshold": next_threshold, "crossed": count >= next_threshold}
 
 
 def _list_all(store, prefix: str):
@@ -1131,8 +1231,8 @@ def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_
                     "status": row["status"],
                     "modalities": row["modalities"],
                     "selection_reasons": entry["reasons"],
-                    "request_text": _utf8_prefix(row["request_text"], limit),
-                    "response_text": _utf8_prefix(row["response_text"], limit),
+                    "request_text": _classifier_excerpt(row["request_text"], limit, row["tool_calls"] > 0),
+                    "response_text": _classifier_excerpt(row["response_text"], limit, row["tool_calls"] > 0),
                 }, entry))
             batch_results = []
             completed_labels = []
@@ -1277,4 +1377,5 @@ def reconcile(store, settings, runtime) -> dict:
     status_key = settings.scope_prefix + "status/current.json"
     artifacts.append({"key": status_key, "sha256": digest(status_value)})
     identity = digest({"schema_version": "milk.summary-reconcile.v2", "scope_id": settings.scope_id, "config_digest": runtime.digest, "capture_keys": all_keys, "processed_keys": sorted(processed), "job_ids": job_ids})
-    return {"state": "progressed" if job_ids else "idle", "identity": identity, "artifacts": artifacts, "inference_calls": calls, "provider_calls": 0, "next": final_state["next_action"], "details": {"capture_count": len(all_keys), "processed_count": len(processed), "next_threshold": next_threshold, "checkpoints": len(job_ids), "ready": bool(readiness_pointer and readiness_pointer.get("ready")), "statistically_qualified": bool(readiness_pointer and readiness_pointer.get("statistically_qualified"))}}
+    semantic = parent_summary.get("semantic", {}).get("cumulative", {}) if parent_summary else {}
+    return {"state": "progressed" if job_ids else "idle", "identity": identity, "artifacts": artifacts, "inference_calls": calls, "provider_calls": 0, "next": final_state["next_action"], "details": {"capture_count": len(all_keys), "processed_count": len(processed), "next_threshold": next_threshold, "checkpoints": len(job_ids), "source_group_count": parent_summary.get("source_group_count", 0) if parent_summary else 0, "classified_count": semantic.get("classified", 0), "ready": bool(readiness_pointer and readiness_pointer.get("ready")), "statistically_qualified": bool(readiness_pointer and readiness_pointer.get("statistically_qualified"))}}

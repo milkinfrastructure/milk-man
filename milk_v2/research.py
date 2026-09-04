@@ -254,6 +254,7 @@ def main() -> None:
             output = run(store, settings)
         else:
             details = view(store, settings)
+            details["summary_threshold"] = summary.threshold_probe(store, settings)
             identity = details["revision"] or summary.digest({"scope_id": settings.scope_id, "profile": settings.profile, "research": None})
             output = _result("idle", identity, details)
         print(json.dumps(redact_message(output), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False))

@@ -45,6 +45,13 @@ generate examples, tune inference, train an open-source base, run a genuine RL
 experiment, evaluate, or wait. Model/provider choices and operating targets
 come from the scope's configuration and environment bindings.
 
+The heartbeat watches `research status`: current records plus a bounded,
+scope-only check of the next capture threshold. More traffic below that
+threshold does not wake the model. Thresholds count stored exchanges; readiness
+must separately account for independent source groups, including whole agent
+trajectories. A summary alone does not prove enough independent training data
+or a better model.
+
 Compare the current baseline and candidate on the same untouched tasks, with
 source conversations and agent trajectories kept together across data splits.
 Keep failed and losing results so later iterations do not repeat them. A new

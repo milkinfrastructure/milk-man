@@ -56,11 +56,11 @@
       "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
     },
     "research": {
-      "description": "Read status, then create or update MILK_RESEARCH_FILE with its revision as parent_revision. Add a nullable wake condition for the heartbeat; records reference compact results and do not verify a baseline or winner.",
+      "description": "Status reads saved research, stage pointers and the next capture threshold without inference. Save via MILK_RESEARCH_FILE: JSON fields parent_revision (status details.revision or null), objective (text), targets (object), baseline/evaluation/best (object or null), experiments (array), next_action (text), wake (object or null). Copy current record fields to update and set parent_revision to its revision. Retain compact references, not raw traffic. Saved claims are not verified wins.",
       "executable": "milk_v2/research.py",
       "environment": {
         "required": ["MILK_SCOPE_ID", "MILK_STORE_KIND", "MILK_RESEARCH_FILE"],
-        "optional": ["MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS", "MILK_RESEARCH_JOB_TIMEOUT_SECONDS"]
+        "optional": ["MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS", "MILK_RESEARCH_JOB_TIMEOUT_SECONDS", "MILK_SUMMARY_THRESHOLDS"]
       },
       "status": true,
       "stop": false,
