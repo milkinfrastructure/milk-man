@@ -180,6 +180,19 @@ This path is complete. It does not alter the historical evidence below.
   checkpoint used two inference calls and zero provider lifecycle calls.
 - [x] Restricted dataset source admission to model-completed, two-sided text
   captures. HTTP success alone can no longer admit an incomplete response.
+- [x] Started the current 10,000-case eval revision
+  `a2e501131e6193046276314f72fc310b64ac4b742cff53369d4983c70a4b8f9e`
+  (`01959d30-7eb2-54e9-96ed-42824c5e588c`) from checkpoint 106. Directly
+  reviewed samples from prepared shards 0–3 were distinct, useful, correctly
+  solved and bound to the intended DEV sources. Eight concurrent requests
+  produced no rate-limit errors.
+- [x] Drained the run without losing work when OpenAI returned
+  `credit_balance_exhausted`: prepared shards 0–6 and 38–39 remain immutable;
+  shards 7–9 and 34–37 retain their completed attempt-0 batches. Zero eval
+  runner, model request or provider-lifecycle process remains active.
+- [ ] Raise the Milk Infrastructure OpenAI organization monthly spend limit
+  above its observed `$155.37` usage, then resume this exact revision from its
+  retained receipts. Do not change prompts, provider binding or case identity.
 - [ ] Generate this scope's 10,000-case lineage, then continue through the
   model, proposal, signed-route and zero-capacity proofs.
 
