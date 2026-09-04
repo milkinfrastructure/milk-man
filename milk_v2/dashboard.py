@@ -139,7 +139,9 @@ def _current_state() -> tuple[dict, Path, Path]:
 
 def _driver_state() -> dict:
     hostname = (urlsplit(os.environ.get("LLM_API_URL", "")).hostname or "").lower()
-    if hostname == "inference.baseten.co":
+    if os.environ.get("LLM_MILK_TRAJECTORY_HEADER") == "1":
+        provider = "milk-parlor"
+    elif hostname == "inference.baseten.co":
         provider = "baseten"
     elif hostname.endswith((".modal.direct", ".modal.run")):
         provider = "modal"
