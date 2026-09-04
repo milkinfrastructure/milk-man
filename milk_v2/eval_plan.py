@@ -3,10 +3,12 @@ from __future__ import annotations
 from collections import Counter
 import hashlib
 import os
+import uuid
 
 
-POLICY_VERSION = "milk.eval-plan.v3"
-SPLIT_VERSION = "milk.split.v2"
+POLICY_VERSION = "milk.eval-plan.v4"
+SPLIT_VERSION = "milk.split.v3"
+SUPPORTED_SPLIT_VERSIONS = frozenset({"milk.split.v2", SPLIT_VERSION})
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 ORACLES = frozenset({"exact", "reference", "schema"})
 OPERATION_SCHEDULE_VERSION = "milk.eval-operation-schedule.v1"
@@ -55,14 +57,35 @@ def generation_counts(plan: dict) -> tuple[int, int]:
     return target, min(target, shard)
 
 
-def split_for(request_sha256: str) -> str:
+def source_group(request_sha256: str, trajectory_id: str | None = None, scope_id: str | None = None) -> dict[str, str]:
     try:
         source = bytes.fromhex(request_sha256)
     except (TypeError, ValueError) as error:
         raise PlanError("request SHA-256 is invalid") from error
     if len(source) != 32:
         raise PlanError("request SHA-256 is invalid")
-    bucket = int.from_bytes(hashlib.sha256(b"milk.split.v2\0" + source).digest()[:2], "big") % 10_000
+    if trajectory_id is None:
+        return {"kind": "request", "sha256": request_sha256}
+    try:
+        trajectory = uuid.UUID(trajectory_id)
+        scope = uuid.UUID(scope_id)
+    except (AttributeError, TypeError, ValueError) as error:
+        raise PlanError("trajectory source group requires valid trajectory and scope UUIDs") from error
+    if trajectory.int == 0 or scope.int == 0:
+        raise PlanError("trajectory source group requires nonzero trajectory and scope UUIDs")
+    group = hashlib.sha256(b"milk.source-group.v1\0" + scope.bytes + trajectory.bytes).hexdigest()
+    return {"kind": "trajectory", "sha256": group}
+
+
+def split_for_group(source_group_sha256: str, kind: str) -> str:
+    try:
+        source = bytes.fromhex(source_group_sha256)
+    except (TypeError, ValueError) as error:
+        raise PlanError("source-group SHA-256 is invalid") from error
+    if len(source) != 32 or kind not in {"request", "trajectory"}:
+        raise PlanError("source group is invalid")
+    salt = b"milk.split.v2\0" if kind == "request" else b"milk.split.v3\0"
+    bucket = int.from_bytes(hashlib.sha256(salt + source).digest()[:2], "big") % 10_000
     if bucket < 8_000:
         return "train"
     if bucket < 9_000:
@@ -70,6 +93,11 @@ def split_for(request_sha256: str) -> str:
     if bucket < 9_500:
         return "calibration"
     return "sealed"
+
+
+def split_for(request_sha256: str, trajectory_id: str | None = None, scope_id: str | None = None) -> str:
+    group = source_group(request_sha256, trajectory_id, scope_id)
+    return split_for_group(group["sha256"], group["kind"])
 
 
 def _allocation(total: int) -> dict[str, int]:
@@ -84,7 +112,8 @@ def contract(profile: str) -> dict:
     return {
         "schema_version": POLICY_VERSION,
         "split_version": SPLIT_VERSION,
-        "split_basis": "request_sha256",
+        "split_basis": "scope_trajectory_or_request_sha256",
+        "untagged_split_version": "milk.split.v2",
         "split_buckets": {"train": [0, 7999], "dev": [8000, 8999], "calibration": [9000, 9499], "sealed": [9500, 9999]},
         "oracles": sorted(ORACLES),
         "representative": _allocation(representative),
@@ -105,8 +134,12 @@ def _eligible(label: dict) -> bool:
     )
 
 
+def _group_sha256(value: dict) -> str:
+    return value.get("source_group_sha256", value["request_sha256"])
+
+
 def _ordered(values: list[dict], salt: str) -> list[dict]:
-    return sorted(values, key=lambda value: hashlib.sha256((salt + value["request_sha256"] + value["content_sha256"]).encode()).digest())
+    return sorted(values, key=lambda value: hashlib.sha256((salt + _group_sha256(value) + value["content_sha256"]).encode()).digest())
 
 
 def _round_robin(values: list[dict], count: int, names: tuple[str, ...], field) -> list[dict]:
@@ -129,7 +162,7 @@ def _round_robin(values: list[dict], count: int, names: tuple[str, ...], field) 
     return selected
 
 
-def build(labels: list[dict], profile: str) -> dict:
+def build(labels: list[dict], profile: str, scope_id: str) -> dict:
     policy = contract(profile)
     distinct: dict[str, dict] = {}
     for label in labels:
@@ -139,17 +172,37 @@ def build(labels: list[dict], profile: str) -> dict:
         content_sha256 = label.get("content_sha256")
         if not isinstance(request_sha256, str) or not isinstance(content_sha256, str):
             continue
+        trajectory_id = label.get("trajectory_id")
         try:
-            split = split_for(request_sha256)
+            group = source_group(request_sha256, trajectory_id, scope_id)
+            split = split_for_group(group["sha256"], group["kind"])
         except PlanError:
+            continue
+        if label.get("source_group_kind", group["kind"]) != group["kind"] or label.get("source_group_sha256", group["sha256"]) != group["sha256"]:
             continue
         if split == "train":
             continue
         oracle = label.get("oracle")
-        candidate = {**label, "oracle": oracle if oracle in ORACLES else "reference", "split": split}
-        prior = distinct.get(request_sha256)
-        if prior is None or content_sha256 < prior["content_sha256"]:
-            distinct[request_sha256] = candidate
+        candidate = {**label, "trajectory_id": trajectory_id, "source_group_kind": group["kind"], "source_group_sha256": group["sha256"], "oracle": oracle if oracle in ORACLES else "reference", "split": split}
+        group_key = group["kind"] + ":" + group["sha256"]
+        prior = distinct.get(group_key)
+        if (
+            prior is None
+            or group["kind"] == "request" and content_sha256 < prior["content_sha256"]
+            or group["kind"] == "trajectory" and (
+                candidate.get("completed_at", "") > prior.get("completed_at", "")
+                or candidate.get("completed_at", "") == prior.get("completed_at", "") and content_sha256 < prior["content_sha256"]
+            )
+        ):
+            distinct[group_key] = candidate
+
+    source_group_count = len(distinct)
+    by_request: dict[str, dict] = {}
+    for candidate in distinct.values():
+        prior = by_request.get(candidate["request_sha256"])
+        if prior is None or (candidate["source_group_sha256"], candidate["content_sha256"]) < (prior["source_group_sha256"], prior["content_sha256"]):
+            by_request[candidate["request_sha256"]] = candidate
+    distinct = {value["source_group_kind"] + ":" + value["source_group_sha256"]: value for value in by_request.values()}
 
     cases: list[dict] = []
     missing: dict[str, int] = {}
@@ -159,7 +212,7 @@ def build(labels: list[dict], profile: str) -> dict:
         representatives = _ordered([value for value in available if "representative" in value.get("selection_reasons", [])], f"representative:{split}:")
         chosen = _round_robin(representatives, policy["representative"][split], OPERATIONS, lambda value: (value.get("operation"),))
         for value in chosen:
-            used.add(value["request_sha256"])
+            used.add(value["source_group_sha256"])
             cases.append({**value, "selection": "representative", "tail_reason": None})
         short = policy["representative"][split] - len(chosen)
         if short:
@@ -167,7 +220,7 @@ def build(labels: list[dict], profile: str) -> dict:
 
         tails = []
         for value in available:
-            if value["request_sha256"] in used:
+            if value["source_group_sha256"] in used:
                 continue
             reasons = [reason for reason in value.get("selection_reasons", []) if reason in TAIL_REASONS]
             if value.get("confidence_basis_points", 10_000) < 7_000:
@@ -178,7 +231,7 @@ def build(labels: list[dict], profile: str) -> dict:
         tails = _ordered(tails, f"tail:{split}:")
         chosen = _round_robin(tails, policy["tail"][split], TAIL_REASONS, lambda value: value["tail_reasons"])
         for value in chosen:
-            used.add(value["request_sha256"])
+            used.add(value["source_group_sha256"])
             cases.append({**value, "selection": "tail", "tail_reason": value["tail_reasons"][0]})
         short = policy["tail"][split] - len(chosen)
         if short:
@@ -189,11 +242,11 @@ def build(labels: list[dict], profile: str) -> dict:
         ("calibration", "representative"), ("calibration", "tail"),
         ("sealed", "representative"), ("sealed", "tail"),
     ))}
-    cases.sort(key=lambda value: (order[(value["split"], value["selection"])], hashlib.sha256((value["request_sha256"] + value["content_sha256"]).encode()).digest()))
+    cases.sort(key=lambda value: (order[(value["split"], value["selection"])], hashlib.sha256((value["source_group_sha256"] + value["content_sha256"]).encode()).digest()))
     for index, value in enumerate(cases):
         value["order"] = index
         value["case_id"] = hashlib.sha256(
-            (POLICY_VERSION + "\0" + value["split"] + "\0" + value["selection"] + "\0" + value["request_sha256"] + "\0" + value["content_sha256"]).encode()
+            (POLICY_VERSION + "\0" + value["split"] + "\0" + value["selection"] + "\0" + value["source_group_sha256"] + "\0" + value["content_sha256"]).encode()
         ).hexdigest()
     sources = []
     for value in distinct.values():
@@ -211,7 +264,7 @@ def build(labels: list[dict], profile: str) -> dict:
     def source_key(value):
         return (
             SPLITS.index(value["split"]),
-            hashlib.sha256(("generation-source:" + value["request_sha256"] + value["content_sha256"]).encode()).digest(),
+            hashlib.sha256(("generation-source:" + value["source_group_sha256"] + value["content_sha256"]).encode()).digest(),
         )
     sources.sort(key=source_key)
     counts = Counter((value["split"], value["selection"]) for value in cases)
@@ -220,6 +273,8 @@ def build(labels: list[dict], profile: str) -> dict:
         "policy": policy,
         "cases": cases,
         "sources": sources,
+        "eligible_capture_count": sum(1 for label in labels if isinstance(label, dict) and _eligible(label)),
+        "source_group_count": source_group_count,
         "counts": {f"{split}.{selection}": counts[(split, selection)] for split in SPLITS for selection in ("representative", "tail")},
         "missing": missing,
         "ready": not missing and len(cases) == policy["total"],
@@ -241,7 +296,7 @@ def select_sources(plan: dict) -> dict:
         available = sorted(
             (value for value in sources if value.get("split") == split),
             key=lambda value: hashlib.sha256(
-                ("generation-selection:" + value["request_sha256"] + value["content_sha256"]).encode()
+                ("generation-selection:" + _group_sha256(value) + value["content_sha256"]).encode()
             ).digest(),
         )
         required = allocation[split]
@@ -256,7 +311,7 @@ def select_sources(plan: dict) -> dict:
             selected,
             key=lambda value: (
                 SPLITS.index(value["split"]),
-                hashlib.sha256(("generation-source:" + value["request_sha256"] + value["content_sha256"]).encode()).digest(),
+                hashlib.sha256(("generation-source:" + _group_sha256(value) + value["content_sha256"]).encode()).digest(),
             ),
         ),
     }

@@ -9,7 +9,7 @@ from . import eval as eval_job
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.dataset.v4"
+CODE_VERSION = "milk.dataset.v5"
 SPLITS = ("train", "dev", "calibration", "sealed")
 
 
@@ -150,7 +150,7 @@ def _eval_context_v2(store, pointer: dict, pointer_body: bytes) -> tuple[dict, s
         or validation.get("eval_object_sha256") != pointer.get("sha256")
         or len(cases) != pointer.get("case_count")
         or not isinstance(source.get("policy"), dict)
-        or source["policy"].get("split_version") != eval_plan.SPLIT_VERSION
+        or source["policy"].get("split_version") not in eval_plan.SUPPORTED_SPLIT_VERSIONS
     ):
         raise DatasetError("current eval identity differs")
     seen_ids, seen_requests = set(), set()
@@ -240,7 +240,7 @@ def _eval_context_v3(store, settings, pointer: dict, pointer_body: bytes) -> tup
         or not 1 <= manifest["shard_case_count"] <= 256
         or revision.get("revision_id") != summary.digest(identity)
         or not isinstance(identity.get("policy"), dict)
-        or identity["policy"].get("split_version") != eval_plan.SPLIT_VERSION
+        or identity["policy"].get("split_version") not in eval_plan.SUPPORTED_SPLIT_VERSIONS
     ):
         raise DatasetError("current eval manifest identity differs")
 
@@ -365,7 +365,37 @@ def _eval_context(store, settings) -> tuple[dict, str, list[dict] | None, dict, 
     return _eval_context_v3(store, settings, pointer, pointer_body)
 
 
-def _train_sources(store, settings, eval_pointer: dict, count: int, text_bytes: int) -> list[dict]:
+def _held_out_hashes(store, eval_pointer: dict, eval_cases: list[dict] | None) -> tuple[set[str], set[str]]:
+    if eval_cases is not None:
+        sources = [
+            {"request_sha256": case.get("source_request_sha256"), "content_sha256": case.get("source_content_sha256")}
+            for case in eval_cases
+        ]
+    else:
+        revision, unused_body = _object(store, eval_pointer.get("revision_key", ""))
+        identity = revision.get("identity") if isinstance(revision, dict) else None
+        sources = identity.get("generation_sources") if isinstance(identity, dict) else None
+        if revision.get("schema_version") != "milk.eval-revision.v3" or not isinstance(sources, list):
+            raise DatasetError("current eval revision sources are invalid")
+    if any(
+        not isinstance(source, dict)
+        or not _digest(source.get("request_sha256"))
+        or not _digest(source.get("content_sha256"))
+        for source in sources
+    ):
+        raise DatasetError("current eval source identity is invalid")
+    return ({source["request_sha256"] for source in sources}, {source["content_sha256"] for source in sources})
+
+
+def _train_sources(
+    store,
+    settings,
+    eval_pointer: dict,
+    count: int,
+    text_bytes: int,
+    held_out_requests: set[str],
+    held_out_contents: set[str],
+) -> list[dict]:
     summary_pointer, unused_pointer_body, summary_value = summary._read_pointer(store, settings.scope_prefix)
     if summary_pointer is None or summary_pointer.get("sha256") != eval_pointer.get("summary_sha256"):
         raise DatasetError("current summary differs from the eval source")
@@ -385,15 +415,31 @@ def _train_sources(store, settings, eval_pointer: dict, count: int, text_bytes: 
         ):
             continue
         try:
-            split = eval_plan.split_for(request_sha256)
+            group = eval_plan.source_group(request_sha256, row.get("trajectory_id"), settings.scope_id)
+            split = eval_plan.split_for_group(group["sha256"], group["kind"])
         except eval_plan.PlanError:
             continue
-        if split != "train":
+        if split != "train" or request_sha256 in held_out_requests or row.get("content_sha256") in held_out_contents:
             continue
-        prior = distinct.get(request_sha256)
-        if prior is None or row.get("content_sha256", "") < prior.get("content_sha256", ""):
-            distinct[request_sha256] = row
-    selected = sorted(distinct.values(), key=lambda row: summary.digest(("milk.dataset.train.v2:" + row["request_sha256"] + row["content_sha256"]).encode()))[:count]
+        if row.get("source_group_kind", group["kind"]) != group["kind"] or row.get("source_group_sha256", group["sha256"]) != group["sha256"]:
+            continue
+        candidate = {**row, "trajectory_id": row.get("trajectory_id"), "source_group_kind": group["kind"], "source_group_sha256": group["sha256"]}
+        group_key = group["kind"] + ":" + group["sha256"]
+        prior = distinct.get(group_key)
+        if (
+            prior is None
+            or group["kind"] == "request" and candidate.get("content_sha256", "") < prior.get("content_sha256", "")
+            or group["kind"] == "trajectory" and (
+                candidate.get("completed_at", "") > prior.get("completed_at", "")
+                or candidate.get("completed_at", "") == prior.get("completed_at", "") and candidate.get("content_sha256", "") < prior.get("content_sha256", "")
+            )
+        ):
+            distinct[group_key] = candidate
+    def selection_key(row: dict) -> str:
+        version = "milk.dataset.train.v2:" if row["source_group_kind"] == "request" else "milk.dataset.train.v3:"
+        return summary.digest((version + row["source_group_sha256"] + row["content_sha256"]).encode())
+
+    selected = sorted(distinct.values(), key=selection_key)[:count]
     prepared = []
     for row in selected:
         parsed = summary.parse_capture(store, settings, row["key"])
@@ -401,7 +447,11 @@ def _train_sources(store, settings, eval_pointer: dict, count: int, text_bytes: 
             parsed["object_sha256"] != row.get("object_sha256")
             or parsed["content_sha256"] != row.get("content_sha256")
             or parsed["request_sha256"] != row.get("request_sha256")
-            or eval_plan.split_for(parsed["request_sha256"]) != "train"
+            or parsed["response_sha256"] != row.get("response_sha256")
+            or parsed["trajectory_id"] != row.get("trajectory_id")
+            or parsed["source_group_kind"] != row.get("source_group_kind")
+            or parsed["source_group_sha256"] != row.get("source_group_sha256")
+            or eval_plan.split_for_group(row["source_group_sha256"], row["source_group_kind"]) != "train"
             or not parsed["request_text"].strip()
             or not parsed["response_text"].strip()
         ):
@@ -412,6 +462,9 @@ def _train_sources(store, settings, eval_pointer: dict, count: int, text_bytes: 
             "source_content_sha256": parsed["content_sha256"],
             "source_object_sha256": parsed["object_sha256"],
             "source_key": parsed["key"],
+            "trajectory_id": row["trajectory_id"],
+            "source_group_kind": row["source_group_kind"],
+            "source_group_sha256": row["source_group_sha256"],
             "input": parsed["request_text"].encode()[:text_bytes].decode("utf-8", "ignore"),
             "reference_response": parsed["response_text"].encode()[:text_bytes].decode("utf-8", "ignore"),
         })
@@ -421,27 +474,27 @@ def _train_sources(store, settings, eval_pointer: dict, count: int, text_bytes: 
 def _target_schema(count: int) -> dict:
     item = {
         "type": "object",
-        "properties": {"source_request_sha256": {"type": "string"}, "target": {"type": "string", "minLength": 1, "maxLength": 16384}},
-        "required": ["source_request_sha256", "target"],
+        "properties": {"source_group_sha256": {"type": "string"}, "target": {"type": "string", "minLength": 1, "maxLength": 16384}},
+        "required": ["source_group_sha256", "target"],
         "additionalProperties": False,
     }
     return {
         "type": "object",
-        "properties": {"schema_version": {"type": "string", "enum": ["milk.teacher-targets.v2"]}, "targets": {"type": "array", "items": item, "minItems": count, "maxItems": count}},
+        "properties": {"schema_version": {"type": "string", "enum": ["milk.teacher-targets.v3"]}, "targets": {"type": "array", "items": item, "minItems": count, "maxItems": count}},
         "required": ["schema_version", "targets"],
         "additionalProperties": False,
     }
 
 
 def _target_contract(value: dict, sources: list[dict]) -> dict:
-    if not isinstance(value, dict) or set(value) != {"schema_version", "targets"} or value.get("schema_version") != "milk.teacher-targets.v2" or not isinstance(value.get("targets"), list) or len(value["targets"]) != len(sources):
+    if not isinstance(value, dict) or set(value) != {"schema_version", "targets"} or value.get("schema_version") != "milk.teacher-targets.v3" or not isinstance(value.get("targets"), list) or len(value["targets"]) != len(sources):
         raise ValueError("teacher returned an invalid target set")
     checked = []
     for source, target in zip(sources, value["targets"]):
-        if not isinstance(target, dict) or set(target) != {"source_request_sha256", "target"} or target.get("source_request_sha256") != source["source_request_sha256"] or not isinstance(target.get("target"), str) or not 1 <= len(target["target"].encode()) <= 16384:
+        if not isinstance(target, dict) or set(target) != {"source_group_sha256", "target"} or target.get("source_group_sha256") != source["source_group_sha256"] or not isinstance(target.get("target"), str) or not 1 <= len(target["target"].encode()) <= 16384:
             raise ValueError("teacher changed source identity, order, or target bounds")
         checked.append(target)
-    return {"schema_version": "milk.teacher-targets.v2", "targets": checked}
+    return {"schema_version": "milk.teacher-targets.v3", "targets": checked}
 
 
 def _artifacts(store, keys: list[str]) -> list[dict]:
@@ -468,8 +521,8 @@ def reconcile(store, settings, runtime) -> dict:
     eval_pointer, eval_pointer_sha256, eval_cases, split_policy, eval_objects = _eval_context(store, settings)
     requested = _integer("MILK_DATASET_TRAIN_EXAMPLES", 128 if settings.profile == "production" else 1, 1, 256)
     text_bytes = _integer("MILK_DATASET_TEXT_BYTES", 2048, 128, 4096)
-    eval_requests = {case["source_request_sha256"] for case in eval_cases or []}
-    sources = _train_sources(store, settings, eval_pointer, requested, text_bytes)
+    held_out_requests, held_out_contents = _held_out_hashes(store, eval_pointer, eval_cases)
+    sources = _train_sources(store, settings, eval_pointer, requested, text_bytes, held_out_requests, held_out_contents)
     if len(sources) < requested:
         identity = summary.digest({"schema_version": "milk.dataset-wait.v2", "eval_pointer_sha256": eval_pointer_sha256, "requested": requested, "available": len(sources)})
         return {"state": "idle", "identity": identity, "artifacts": [], "inference_calls": 0, "provider_calls": 0, "next": "dataset", "details": {"reason": "insufficient_train_sources", "requested": requested, "available": len(sources)}}
@@ -487,14 +540,14 @@ def reconcile(store, settings, runtime) -> dict:
         "eval_uuid": eval_pointer["uuid"],
         "eval_pointer_sha256": eval_pointer_sha256,
         "split_policy": split_policy,
-        "train_sources": [{key: source[key] for key in ("source_key", "source_object_sha256", "source_request_sha256", "source_response_sha256", "source_content_sha256")} for source in sources],
+        "train_sources": [{key: source[key] for key in ("source_key", "source_object_sha256", "source_request_sha256", "source_response_sha256", "source_content_sha256", "trajectory_id", "source_group_kind", "source_group_sha256")} for source in sources],
         "student_base": student_base,
         "settings": settings_value,
         "config_digest": runtime.digest,
     }
     if eval_objects is None:
         identity["eval_object_sha256"] = eval_pointer["sha256"]
-        identity["excluded_eval_request_sha256"] = sorted(eval_requests)
+        identity["excluded_eval_request_sha256"] = sorted(held_out_requests)
     else:
         identity["eval_manifest_key"] = eval_pointer["manifest_key"]
         identity["eval_manifest_sha256"] = eval_pointer["sha256"]
@@ -529,11 +582,11 @@ def reconcile(store, settings, runtime) -> dict:
     for source, target in zip(sources, targets["targets"]):
         train_rows.append({
             "schema_version": "milk.training-example.v2",
-            "example_id": summary.digest({"request": source["source_request_sha256"], "target": summary.digest(target["target"].encode()), "teacher": settings_value}),
+            "example_id": summary.digest({"source_group": source["source_group_sha256"], "source_content": source["source_content_sha256"], "target": summary.digest(target["target"].encode()), "teacher": settings_value}),
             "split": "train",
             "input": source["input"],
             "target": target["target"],
-            **{key: source[key] for key in ("source_key", "source_object_sha256", "source_request_sha256", "source_response_sha256", "source_content_sha256")},
+            **{key: source[key] for key in ("source_key", "source_object_sha256", "source_request_sha256", "source_response_sha256", "source_content_sha256", "trajectory_id", "source_group_kind", "source_group_sha256")},
         })
     train_plain = b"".join(summary.canonical(row) for row in train_rows)
     train_content_sha256 = summary.digest(train_plain)
@@ -572,7 +625,7 @@ def reconcile(store, settings, runtime) -> dict:
         "objects": object_values,
     }
     if eval_objects is None:
-        manifest["excluded_eval_request_sha256"] = sorted(eval_requests)
+        manifest["excluded_eval_request_sha256"] = sorted(held_out_requests)
     else:
         manifest.update({
             "eval_manifest_key": eval_pointer["manifest_key"],

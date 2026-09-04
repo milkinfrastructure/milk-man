@@ -19,7 +19,7 @@ import uuid
 from . import eval_plan
 
 
-CODE_VERSION = "milk.summary.v4"
+CODE_VERSION = "milk.summary.v5"
 TAXONOMY_VERSION = "milk.semantic-taxonomy.v2"
 OPERATIONS = ("answer", "summarize", "extract", "classify", "transform", "generate", "code", "plan_or_tool_use", "conversation", "other")
 DOMAINS = ("general", "software", "math_science", "business", "legal", "finance", "health", "creative", "other")
@@ -243,6 +243,14 @@ def parse_capture(store, settings, key: str) -> dict:
         raise SummaryError(f"{key} exchange_id is invalid") from error
     if parsed_id.version != 7 or not key.endswith(f"/{exchange_id}.json.zst"):
         raise SummaryError(f"{key} exchange identity differs")
+    trajectory_id = value.get("trajectory_id")
+    if trajectory_id is not None:
+        try:
+            parsed_trajectory = uuid.UUID(trajectory_id)
+        except (AttributeError, TypeError, ValueError) as error:
+            raise SummaryError(f"{key} trajectory_id is invalid") from error
+        if parsed_trajectory.int == 0 or str(parsed_trajectory) != trajectory_id:
+            raise SummaryError(f"{key} trajectory_id is invalid")
     started = _utc(value.get("started_at"), "started_at")
     completed = _utc(value.get("completed_at"), "completed_at")
     if completed < started:
@@ -314,6 +322,10 @@ def parse_capture(store, settings, key: str) -> dict:
     request_sha256 = digest(request_body)
     response_sha256 = digest(response_body)
     content_sha256 = digest(request_body + b"\0" + response_body)
+    try:
+        source_group = eval_plan.source_group(request_sha256, trajectory_id, settings.scope_id)
+    except eval_plan.PlanError as error:
+        raise SummaryError(str(error)) from error
     reasoning = request_value.get("reasoning_effort") if isinstance(request_value, dict) else None
     if not isinstance(reasoning, str) and isinstance(request_value, dict) and isinstance(request_value.get("reasoning"), dict):
         reasoning = request_value["reasoning"].get("effort")
@@ -326,6 +338,9 @@ def parse_capture(store, settings, key: str) -> dict:
         "content_sha256": content_sha256,
         "request_sha256": request_sha256,
         "response_sha256": response_sha256,
+        "trajectory_id": trajectory_id,
+        "source_group_kind": source_group["kind"],
+        "source_group_sha256": source_group["sha256"],
         "started_at": value["started_at"],
         "completed_at": value["completed_at"],
         "endpoint": endpoint,
@@ -466,6 +481,10 @@ def merge_structural(previous: dict | None, delta: dict, all_source_rows: list[d
     contents = [row["content_sha256"] for row in all_source_rows]
     merged["counters"]["unique_contents"] = len(set(contents))
     merged["counters"]["duplicates"] = len(contents) - len(set(contents))
+    groups = {(row.get("source_group_kind", "request"), row.get("source_group_sha256", row["request_sha256"])) for row in all_source_rows}
+    merged["counters"]["source_groups"] = len(groups)
+    merged["counters"]["trajectory_groups"] = sum(kind == "trajectory" for kind, unused_sha256 in groups)
+    merged["counters"]["untagged_request_groups"] = sum(kind == "request" for kind, unused_sha256 in groups)
     events = []
     for row in all_source_rows:
         events.append((_utc(row["started_at"], "started_at"), 1))
@@ -906,7 +925,7 @@ def _ancestry(store, settings, summary: dict | None) -> tuple[list[dict], set[st
         if digest(source_object.body) != current.get("source_manifest_sha256"):
             raise SummaryError("summary source manifest digest differs")
         source = _json(_zstd(source_object.body, True), key)
-        if not isinstance(source, dict) or source.get("scope_id") != settings.scope_id or source.get("profile") != settings.profile:
+        if not isinstance(source, dict) or source.get("schema_version") not in {"milk.summary-source.v2", "milk.summary-source.v3"} or source.get("scope_id") != settings.scope_id or source.get("profile") != settings.profile:
             raise SummaryError("summary source manifest identity differs")
         rows = source.get("captures") if isinstance(source, dict) else None
         if not isinstance(rows, list):
@@ -914,8 +933,14 @@ def _ancestry(store, settings, summary: dict | None) -> tuple[list[dict], set[st
         for row in rows:
             if not isinstance(row, dict) or not isinstance(row.get("key"), str) or row["key"] in capture_keys:
                 raise SummaryError("summary source manifest contains an invalid capture")
+            try:
+                source_group = eval_plan.source_group(row.get("request_sha256"), row.get("trajectory_id"), settings.scope_id)
+            except eval_plan.PlanError as error:
+                raise SummaryError("summary source manifest contains an invalid source group") from error
+            if row.get("source_group_kind", source_group["kind"]) != source_group["kind"] or row.get("source_group_sha256", source_group["sha256"]) != source_group["sha256"]:
+                raise SummaryError("summary source manifest source group differs")
             capture_keys.add(row["key"])
-            source_rows.append(row)
+            source_rows.append({**row, "trajectory_id": row.get("trajectory_id"), "source_group_kind": source_group["kind"], "source_group_sha256": source_group["sha256"]})
         parent_key = current.get("parent_summary_key")
         if parent_key is None:
             current = None
@@ -1018,7 +1043,7 @@ def _readiness(settings, summary: dict, summary_sha256: str, labels: list[dict])
     structural_value = summary["structural"]
     semantic = summary["semantic"]["cumulative"]
     try:
-        plan = eval_plan.build(labels, settings.profile)
+        plan = eval_plan.build(labels, settings.profile, settings.scope_id)
     except eval_plan.PlanError as error:
         raise SummaryError(str(error)) from error
     checks = {
@@ -1029,14 +1054,14 @@ def _readiness(settings, summary: dict, summary_sha256: str, labels: list[dict])
         "split_quotas": plan["ready"],
     }
     ready = all(checks.values())
-    identity = {"schema_version": "milk.readiness.v3", "scope_id": settings.scope_id, "profile": settings.profile, "summary_sha256": summary_sha256, "checks": checks, "ready": ready, "statistically_qualified": ready and production, "eval_plan": {"policy": plan["policy"], "counts": plan["counts"], "missing": plan["missing"]}}
+    identity = {"schema_version": "milk.readiness.v3", "scope_id": settings.scope_id, "profile": settings.profile, "summary_sha256": summary_sha256, "checks": checks, "ready": ready, "statistically_qualified": ready and production, "eval_plan": {"policy": plan["policy"], "eligible_capture_count": plan["eligible_capture_count"], "source_group_count": plan["source_group_count"], "counts": plan["counts"], "missing": plan["missing"]}}
     readiness_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:readiness:" + digest(identity)))
     return {**identity, "readiness_uuid": readiness_uuid}
 
 
 def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_rows, processed: set[str], selected_keys: list[str]):
     rows = [parse_capture(store, settings, key) for key in selected_keys]
-    source_fields = ("key", "object_sha256", "content_sha256", "request_sha256", "response_sha256", "exchange_id", "started_at", "completed_at", "parse", "success", "model_completed", "endpoint", "model", "status", "status_class", "modalities", "tool_definitions", "tool_calls", "request_bytes", "response_bytes")
+    source_fields = ("key", "object_sha256", "content_sha256", "request_sha256", "response_sha256", "trajectory_id", "source_group_kind", "source_group_sha256", "exchange_id", "started_at", "completed_at", "parse", "success", "model_completed", "endpoint", "model", "status", "status_class", "modalities", "tool_definitions", "tool_calls", "request_bytes", "response_bytes")
     source_rows = [{
         **{key: row[key] for key in source_fields},
         "has_request_response_text": bool(row["request_text"].strip() and row["response_text"].strip()),
@@ -1058,7 +1083,7 @@ def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_
             parsed = parse_capture(store, settings, source_row["key"])
         if parsed["object_sha256"] != source_row["object_sha256"] or parsed["content_sha256"] != source_row["content_sha256"]:
             raise SummaryError("sampled capture identity differs from its source manifest")
-        entry["row"] = parsed
+        entry["row"] = {**parsed, **{name: source_row[name] for name in ("trajectory_id", "source_group_kind", "source_group_sha256")}}
     classification_sample = []
     seen_contents = set()
     for entry in sampled:
@@ -1191,20 +1216,21 @@ def _checkpoint(store, settings, runtime, parent_pointer, parent_summary, prior_
         label_object = {"schema_version": "milk.semantic-label.v2", "scope_id": settings.scope_id, "profile": settings.profile, "content_sha256": row["content_sha256"], "classifier_config_sha256": classifier_config_sha256, "label": label}
         label_body = canonical(label_object)
         store.create_same(label_key, label_body)
-        enriched_labels.append({**label, "source_key": row["key"], "source_object_sha256": row["object_sha256"], "content_sha256": row["content_sha256"], "request_sha256": row["request_sha256"], "response_sha256": row["response_sha256"], "modalities": row["modalities"], "tool_definitions": row["tool_definitions"], "tool_calls": row["tool_calls"], "success": row["success"], "model_completed": row["model_completed"], "has_request_response_text": bool(row["request_text"].strip() and row["response_text"].strip()), "label_key": label_key, "label_sha256": digest(label_body), "selection_reasons": reasons})
+        enriched_labels.append({**label, "source_key": row["key"], "source_object_sha256": row["object_sha256"], "content_sha256": row["content_sha256"], "request_sha256": row["request_sha256"], "response_sha256": row["response_sha256"], "trajectory_id": row["trajectory_id"], "source_group_kind": row["source_group_kind"], "source_group_sha256": row["source_group_sha256"], "completed_at": row["completed_at"], "modalities": row["modalities"], "tool_definitions": row["tool_definitions"], "tool_calls": row["tool_calls"], "success": row["success"], "model_completed": row["model_completed"], "has_request_response_text": bool(row["request_text"].strip() and row["response_text"].strip()), "label_key": label_key, "label_sha256": digest(label_body), "selection_reasons": reasons})
     delta_structural = structural(rows)
     cumulative_structural = merge_structural(parent_summary.get("structural") if parent_summary else None, delta_structural, all_rows)
     previous_semantic = parent_summary.get("semantic", {}).get("cumulative") if parent_summary else None
     semantic = _semantic_counts(labels, previous_semantic)
-    semantic["sample"] = [{key: label[key] for key in ("source_key", "source_object_sha256", "content_sha256", "request_sha256", "response_sha256", "modalities", "tool_definitions", "tool_calls", "success", "model_completed", "has_request_response_text", "label_key", "label_sha256", "selection_reasons")} for label in enriched_labels]
-    summary_identity = {"scope_id": settings.scope_id, "profile": settings.profile, "parent_summary_sha256": parent_sha256, "source_manifest_logical_sha256": digest({"captures": source_rows}), "capture_count": len(processed) + len(rows), "config_digest": runtime.digest, "prompt_sha256": prompt_sha256, "model_binding_sha256": model_binding_sha256, "structural": cumulative_structural, "semantic": semantic}
+    semantic["sample"] = [{key: label[key] for key in ("source_key", "source_object_sha256", "content_sha256", "request_sha256", "response_sha256", "trajectory_id", "source_group_kind", "source_group_sha256", "completed_at", "modalities", "tool_definitions", "tool_calls", "success", "model_completed", "has_request_response_text", "label_key", "label_sha256", "selection_reasons")} for label in enriched_labels]
+    source_group_count = cumulative_structural["counters"]["source_groups"]
+    summary_identity = {"scope_id": settings.scope_id, "profile": settings.profile, "parent_summary_sha256": parent_sha256, "source_manifest_logical_sha256": digest({"captures": source_rows}), "capture_count": len(processed) + len(rows), "source_group_count": source_group_count, "config_digest": runtime.digest, "prompt_sha256": prompt_sha256, "model_binding_sha256": model_binding_sha256, "structural": cumulative_structural, "semantic": semantic}
     summary_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:summary:" + digest(summary_identity)))
     created_at = max(row["completed_at"] for row in rows)
-    source = {"schema_version": "milk.summary-source.v2", "scope_id": settings.scope_id, "profile": settings.profile, "summary_uuid": summary_uuid, "parent_summary_sha256": parent_sha256, "captures": source_rows}
+    source = {"schema_version": "milk.summary-source.v3", "scope_id": settings.scope_id, "profile": settings.profile, "summary_uuid": summary_uuid, "parent_summary_sha256": parent_sha256, "captures": source_rows}
     source_body = _zstd(canonical(source), False)
     source_key = settings.scope_prefix + f"s/{summary_uuid}/source.json.zst"
     store.create_same(source_key, source_body)
-    summary_value = {"schema_version": "milk.summary.v2", "code_version": CODE_VERSION, "summary_uuid": summary_uuid, "scope_id": settings.scope_id, "profile": settings.profile, "created_at": created_at, "capture_count": len(processed) + len(rows), "source_high_water_key": max(selected_keys), "source_manifest_key": source_key, "source_manifest_sha256": digest(source_body), "parent_summary_key": parent_pointer.get("key") if parent_pointer else None, "parent_summary_sha256": parent_sha256, "config_digest": runtime.digest, "prompt_sha256": prompt_sha256, "model_binding_sha256": model_binding_sha256, "structural": cumulative_structural, "semantic": semantic}
+    summary_value = {"schema_version": "milk.summary.v2", "code_version": CODE_VERSION, "summary_uuid": summary_uuid, "scope_id": settings.scope_id, "profile": settings.profile, "created_at": created_at, "capture_count": len(processed) + len(rows), "source_group_count": source_group_count, "source_high_water_key": max(selected_keys), "source_manifest_key": source_key, "source_manifest_sha256": digest(source_body), "parent_summary_key": parent_pointer.get("key") if parent_pointer else None, "parent_summary_sha256": parent_sha256, "config_digest": runtime.digest, "prompt_sha256": prompt_sha256, "model_binding_sha256": model_binding_sha256, "structural": cumulative_structural, "semantic": semantic}
     summary_body = canonical(summary_value)
     summary_sha256 = digest(summary_body)
     summary_key = settings.scope_prefix + f"s/{summary_uuid}/summary.json"

@@ -10,7 +10,7 @@ import uuid
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.eval.v28"
+CODE_VERSION = "milk.eval.v29"
 GENERATOR_BATCH_CASES = 64
 MAX_GENERATION_ATTEMPTS = 8
 VERDICT_SCHEMA = "milk.eval-verdicts.v3"
@@ -179,11 +179,11 @@ def _labels(store, settings, summary_value: dict) -> list[dict]:
 
 def _plan(store, settings, summary_value: dict, readiness: dict) -> dict:
     try:
-        value = eval_plan.build(_labels(store, settings, summary_value), settings.profile)
+        value = eval_plan.build(_labels(store, settings, summary_value), settings.profile, settings.scope_id)
         selected = eval_plan.select_sources(value)
     except eval_plan.PlanError as error:
         raise EvalError(str(error)) from error
-    expected = {"policy": value["policy"], "counts": value["counts"], "missing": value["missing"]}
+    expected = {"policy": value["policy"], "eligible_capture_count": value["eligible_capture_count"], "source_group_count": value["source_group_count"], "counts": value["counts"], "missing": value["missing"]}
     if readiness.get("eval_plan") != expected or not value["ready"] or readiness.get("ready") is not True:
         raise EvalError("current readiness does not admit the deterministic eval plan")
     return selected
@@ -445,6 +445,9 @@ def _cases(generation: dict, shard_plan: dict, corpus: dict, summary_sha256: str
             "source_request_sha256": planned["request_sha256"],
             "source_response_sha256": planned["response_sha256"],
             "source_content_sha256": planned["content_sha256"],
+            "source_trajectory_id": planned["trajectory_id"],
+            "source_group_kind": planned["source_group_kind"],
+            "source_group_sha256": planned["source_group_sha256"],
             "summary_sha256": summary_sha256,
         })
         hashes.append({"case_id": planned["case_id"], "input_sha256": input_sha256})
@@ -568,14 +571,14 @@ def _complete_status(store, settings, pointer: dict) -> str:
 
 
 def _seed_identity(plan: dict) -> list[dict]:
-    fields = ("case_id", "order", "split", "selection", "tail_reason", "source_key", "source_object_sha256", "request_sha256", "response_sha256", "content_sha256", "label_key", "label_sha256", "operation", "oracle")
+    fields = ("case_id", "order", "split", "selection", "tail_reason", "source_key", "source_object_sha256", "request_sha256", "response_sha256", "content_sha256", "trajectory_id", "source_group_kind", "source_group_sha256", "label_key", "label_sha256", "operation", "oracle")
     return [{key: case[key] for key in fields} for case in plan["cases"]]
 
 
 def _generation_source_identity(plan: dict) -> list[dict]:
     fields = (
         "split", "selection", "tail_reason", "source_key", "source_object_sha256", "request_sha256",
-        "response_sha256", "content_sha256", "label_key", "label_sha256", "operation", "oracle",
+        "response_sha256", "content_sha256", "trajectory_id", "source_group_kind", "source_group_sha256", "label_key", "label_sha256", "operation", "oracle",
     )
     return [{key: source[key] for key in fields} for source in plan["sources"]]
 
@@ -599,8 +602,10 @@ def _revision_identity(settings, runtime, summary_pointer: dict, readiness_point
         "source_seeds": _seed_identity(plan),
         "generation_sources": _generation_source_identity({"sources": generation_sources}),
         "generation_source_count": len(generation_sources),
+        "eligible_capture_count": plan["eligible_capture_count"],
+        "source_group_count": plan["source_group_count"],
         "generation_source_split_counts": {split: source_splits[split] for split in eval_plan.SPLITS},
-        "cases_per_conversation": target // len(generation_sources),
+        "cases_per_source_group": target // len(generation_sources),
         "operation_schedule": eval_plan.OPERATION_SCHEDULE_VERSION,
         "target_case_count": target,
         "target_split_counts": target_splits,
@@ -619,6 +624,10 @@ def _context_rows(plan: dict) -> list[dict]:
             "request_sha256": source["request_sha256"],
             "response_sha256": source["response_sha256"],
             "content_sha256": source["content_sha256"],
+            "trajectory_id": source["trajectory_id"],
+            "source_group_kind": source["source_group_kind"],
+            "source_group_sha256": source["source_group_sha256"],
+            "split": source["split"],
         }
         for source in plan["sources"]
     ]
@@ -633,6 +642,10 @@ def _build_context(store, settings, summary_value: dict, rows: list[dict]) -> di
             or parsed["request_sha256"] != row.get("request_sha256")
             or parsed["response_sha256"] != row.get("response_sha256")
             or parsed["content_sha256"] != row.get("content_sha256")
+            or parsed["trajectory_id"] != row.get("trajectory_id")
+            or parsed["source_group_kind"] != row.get("source_group_kind")
+            or parsed["source_group_sha256"] != row.get("source_group_sha256")
+            or eval_plan.source_group(row["request_sha256"], row.get("trajectory_id"), settings.scope_id) != {"kind": row.get("source_group_kind"), "sha256": row.get("source_group_sha256")}
         ):
             raise EvalError("eval context capture identity differs")
         conversations.append({
@@ -641,7 +654,7 @@ def _build_context(store, settings, summary_value: dict, rows: list[dict]) -> di
             "source_request_sha256": parsed["request_sha256"],
             "source_response_sha256": parsed["response_sha256"],
             "source_content_sha256": parsed["content_sha256"],
-            "split": eval_plan.split_for(parsed["request_sha256"]),
+            "split": row["split"],
             "request": parsed["request_text"],
             "response": parsed["response_text"],
         })
@@ -720,13 +733,46 @@ def _ledger_body(hashes: set[str]) -> bytes:
         raise EvalError("the eval normalized hash is invalid") from error
 
 
-def _case_source_matches(case: object, split: str) -> bool:
+def _case_source_matches(case: object, split: str, revision: dict) -> bool:
     if not isinstance(case, dict) or case.get("schema_version") != "milk.eval-case.v2" or not isinstance(case.get("source_request_sha256"), str):
         return False
-    try:
-        return eval_plan.split_for(case["source_request_sha256"]) == split
-    except eval_plan.PlanError:
+    identity = revision.get("identity", {})
+    sources = [source for source in identity.get("generation_sources", []) if isinstance(source, dict) and source.get("split") == split]
+    counts = identity.get("target_split_counts")
+    ordinal = case.get("order")
+    if (
+        not sources
+        or not isinstance(counts, dict)
+        or any(type(counts.get(name)) is not int or counts[name] < 0 for name in eval_plan.SPLITS)
+        or split not in eval_plan.SPLITS
+        or type(ordinal) is not int
+        or not isinstance(revision.get("eval_uuid"), str)
+    ):
         return False
+    split_start = sum(counts.get(name, 0) for name in eval_plan.SPLITS[:eval_plan.SPLITS.index(split)])
+    split_ordinal = ordinal - split_start
+    if split_ordinal < 0:
+        return False
+    offset = int(summary.digest(f"{revision.get('eval_uuid')}\0{split}".encode())[:16], 16) % len(sources)
+    source = sources[(offset + split_ordinal) % len(sources)]
+    source_example_index = split_ordinal // len(sources)
+    return (
+        source.get("source_key") == case.get("source_key")
+        and source.get("source_object_sha256") == case.get("source_object_sha256")
+        and source.get("request_sha256") == case["source_request_sha256"]
+        and source.get("response_sha256") == case.get("source_response_sha256")
+        and source.get("content_sha256") == case.get("source_content_sha256")
+        and source.get("trajectory_id") == case.get("source_trajectory_id")
+        and source.get("source_group_kind") == case.get("source_group_kind")
+        and source.get("source_group_sha256") == case.get("source_group_sha256")
+        and source.get("selection") == case.get("selection")
+        and source.get("tail_reason") == case.get("tail_reason")
+        and source.get("operation") == case.get("source_operation")
+        and ("reference" if source.get("oracle") == "schema" else source.get("oracle")) == case.get("oracle")
+        and case.get("operation") == eval_plan.GENERATION_OPERATIONS[source_example_index % len(eval_plan.GENERATION_OPERATIONS)]
+        and case.get("source_example_index") == source_example_index
+        and case.get("source_example_count") == identity.get("cases_per_source_group")
+    )
 
 
 def _read_shard(store, revision: dict, split: str, start: int, end: int) -> dict | None:
@@ -766,7 +812,7 @@ def _read_shard(store, revision: dict, split: str, start: int, end: int) -> dict
         or [case.get("case_id") for case in cases if isinstance(case, dict)] != case_ids
         or [case.get("order") for case in cases if isinstance(case, dict)] != list(range(start, end))
         or any(case.get("split") != split for case in cases if isinstance(case, dict))
-        or any(not _case_source_matches(case, split) for case in cases)
+        or any(not _case_source_matches(case, split, revision) for case in cases)
         or validation.get("schema_version") != "milk.eval-validation-shard.v3"
         or validation.get("eval_uuid") != revision["eval_uuid"]
         or validation.get("revision_sha256") != summary.digest(revision)
@@ -1130,7 +1176,8 @@ def _quality_summary(store, shards: list[dict], exact_unique_input_count: int) -
             text = case["input"]
             normalized = _normalized(text)
             tokens = ["#" if token.isdigit() else token for token in normalized.split()]
-            sources[case["source_content_sha256"]] += 1
+            source = (case.get("source_group_kind", "content"), case.get("source_group_sha256", case["source_content_sha256"]))
+            sources[source] += 1
             operations[case["operation"]] += 1
             oracles[case["oracle"]] += 1
             input_bytes.append(len(text.encode()))
@@ -1147,12 +1194,12 @@ def _quality_summary(store, shards: list[dict], exact_unique_input_count: int) -
         return ordered_sizes[max(0, (len(ordered_sizes) * percent + 99) // 100 - 1)]
 
     return {
-        "schema_version": "milk.eval-quality.v1",
+        "schema_version": "milk.eval-quality.v2",
         "case_count": len(input_bytes),
         "exact_unique_input_count": exact_unique_input_count,
         "source_count": len(sources),
         "source_case_counts": [
-            {"source_content_sha256": source, "case_count": count}
+            {"source_group_kind": source[0], "source_group_sha256": source[1], "case_count": count}
             for source, count in sorted(sources.items())
         ],
         "operation_counts": dict(sorted(operations.items())),
@@ -1183,7 +1230,7 @@ def _finalize(store, settings, revision: dict, plan: dict) -> tuple[dict, list[s
     if sum(shard["count"] for shard in shards) != target or len(normalized) != target:
         raise EvalError("eval manifest does not contain the exact target")
     quality = _quality_summary(store, shards, len(normalized))
-    ratio = revision["identity"]["cases_per_conversation"]
+    ratio = revision["identity"]["cases_per_source_group"]
     if quality["source_count"] != revision["identity"]["generation_source_count"] or any(
         item["case_count"] != ratio for item in quality["source_case_counts"]
     ):
