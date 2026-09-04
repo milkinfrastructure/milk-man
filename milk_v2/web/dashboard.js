@@ -548,8 +548,9 @@ function renderCloud(data) {
   el("checked").textContent = (monitor.error ? "status watcher failed " : "status updated ") + new Date(data.now).toLocaleString();
   const jobs = data.contract?.jobs || [];
   const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
-  el("job-count").textContent = readyJobs + " / " + jobs.length + " ready";
-  el("watch-state").textContent = "Describe one outcome. Milk Man chooses the steps. " + readyJobs + " of " + jobs.length + " jobs are configured. Unchanged idle checks use no model. Commands and raw output stay folded.";
+  const jobStatus = data.contract?.error ? "job configuration unavailable" : readyJobs + " / " + jobs.length + " jobs configured";
+  el("job-count").textContent = jobStatus;
+  el("watch-state").textContent = "Describe one outcome. Milk Man chooses the steps. " + jobStatus + ". Unchanged idle checks use no model. Commands and raw output stay folded.";
   const status = milk.status || {};
   renderRun(status);
   renderProgress(milk.progress);
