@@ -208,7 +208,7 @@ def main() -> None:
                 Path(os.environ["MILK_HEARTBEAT_PROMPT_FILE"]).write_text(prompt)
                 print("run")
             else:
-                interval = value.get("interval", base)
+                interval = base if watch else value.get("interval", base)
                 if stamp >= (value.get("next_wake") or 0):
                     value["polls"] = value.get("polls", 0) + 1
                     value["next_wake"] = stamp + interval
