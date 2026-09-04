@@ -391,7 +391,7 @@ Corrections made by this audit:
   made no new deployment or inference call.
 - [x] Select model, revision, provider, runtime, GPU type/count, serving
   arguments, and cache through environment variables.
-- [ ] Repeat with the intended 120B proving workload without hardcoding it into
+- [x] Repeat with the intended 120B proving workload without hardcoding it into
   the harness.
 - [!] The first 120B objective reread setup for 15 turns and then returned no
   function call. It launched no deployment. Native tool history was being
@@ -433,9 +433,16 @@ Corrections made by this audit:
   they are not a successful three-call proof or comparable tuning evidence.
 - [x] `bb1d76207` makes a partially failed benchmark return failure and a
   nonzero exit. Existing failed receipts remain unchanged.
-- [~] Chrome instructed Milk Man to increase only the scale-down window to
+- [x] Chrome instructed Milk Man to increase only the scale-down window to
   600 seconds, retain the cache, run three exact-correct responses, then stop.
-  This retry is in progress; 120B completion remains open.
+  Profile `e00fd2eb8ffa` completed three exact-correct responses in
+  9910.347, 6563.681, and 6511.768 ms, with 69 reported output tokens each.
+  Receipts `benchmark-120b-run-{4,5,6}.json` are retained locally. These are
+  non-streaming lifecycle measurements, not optimized decode speed.
+- [x] Milk Man stopped app `ap-RxnxnsuQhnCB9Ju1K5jMrr`, saved memory, and
+  finished turn 24. An independent provider query confirmed all four 120B
+  attempt apps stopped with zero containers. Earlier recovery required Codex
+  corrections; do not call the full sequence unassisted.
 
 ### P5 inference autotuning
 
@@ -451,10 +458,16 @@ Corrections made by this audit:
 
 ### P6 continuity and generality
 
-- [ ] Complete a second model or compute workload through reused or newly
+- [x] Complete a second model or compute workload through reused or newly
   authored scripts without editing the harness engine.
-- [ ] Preserve the objective, measurements, conclusions, and reusable script
+- [x] Preserve the objective, measurements, conclusions, and reusable script
   across restart.
+- [x] Paused the saved provider-status watch, waited for the local startup
+  process to exit, and restarted owner 10616 as 28226. The same trajectory,
+  objective, latest instruction, cached model, and app were retained. The new
+  owner automatically resumed turn 24, measured inference, and stopped that
+  app without another deployment. This proves restart with a live provider
+  resource, not cancellation/recovery midway through weight loading.
 
 ### P7 Milk whiteboard application extensions
 
@@ -467,7 +480,12 @@ Corrections made by this audit:
   as the chosen application needs them.
 - [ ] Inspect a small output before optional expansion. The prior 100 x 100
   generation target remains one configurable experiment.
-- [ ] Keep Qwen3.5-0.8B SFT and a real RL experiment distinct.
+- [~] The optional one-step length-normalized policy-gradient recipe is
+  implemented with rollout/reward records and three environment settings.
+  An unchanged policy records `updated:false` and cannot publish a candidate;
+  that result replays without provider calls. Source and controller are
+  committed locally. A real Qwen3.5-0.8B run and parent comparison remain open;
+  existing SFT is not counted as RL.
 - [ ] Complete a coherent application lineage through proposal, signed route,
   candidate success, fallback, rollback, signed zero, and provider cleanup.
 
