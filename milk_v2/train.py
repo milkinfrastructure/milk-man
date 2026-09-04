@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import uuid
@@ -17,6 +18,8 @@ BASETEN_BASE_IMAGE = "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime@sha256:c16f4
 TRANSFORMERS_SOURCE = "https://github.com/huggingface/transformers/archive/ac3244569528944b9d5773cafea525cd8a8b63de.zip"
 TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/a454beba54075d4910c9ff776c0411f3cda1429c/images/train/train.py"
 TRAIN_SOURCE_SHA256 = "238e1d710529e209e700995839ee6fcc5c587f0d89ea6095befee248af54ac68"
+REINFORCE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/89875d6b7f8610703a4dfe383c62f84be35a9d2a/images/train/train.py"
+REINFORCE_SOURCE_SHA256 = "a123dea785ad619f76de5a23944004af33fbf1b50657c549ee851860d8afac42"
 
 
 class TrainError(ValueError):
@@ -121,7 +124,13 @@ def _settings(settings, reference: dict) -> dict:
         raise TrainError("MILK_TRAIN_LEARNING_RATE must be numeric") from error
     if not 0 < learning_rate <= 1e-3:
         raise TrainError("MILK_TRAIN_LEARNING_RATE is outside the reviewed range")
-    return {
+    recipe = os.environ.get("MILK_TRAIN_RECIPE", "sft")
+    if recipe not in {"sft", "reinforce"}:
+        raise TrainError("MILK_TRAIN_RECIPE must be sft or reinforce")
+    steps = _integer("MILK_TRAIN_STEPS", 1 if settings.profile == "mechanics" else 64, 1, 1024)
+    if recipe == "reinforce" and steps != 1:
+        raise TrainError("MILK_TRAIN_STEPS must be 1 for reinforce")
+    config = {
         "provider": "baseten",
         "project_id": project_id,
         "release_image": image,
@@ -131,11 +140,20 @@ def _settings(settings, reference: dict) -> dict:
         "accelerator": accelerator,
         "availability_model": "dedicated",
         "runtime_secret_map": secret_map,
-        "steps": _integer("MILK_TRAIN_STEPS", 1 if settings.profile == "mechanics" else 64, 1, 1024),
+        "steps": steps,
         "max_tokens": _integer("MILK_TRAIN_MAX_TOKENS", 2048, 128, 8192),
         "learning_rate": learning_rate,
         "dataset": {key: reference[key] for key in ("uuid", "key", "sha256", "counts")},
     }
+    if recipe == "reinforce":
+        config.update({
+            "recipe": recipe,
+            "train_source_url": REINFORCE_SOURCE_URL,
+            "train_source_sha256": REINFORCE_SOURCE_SHA256,
+            "rollouts": _integer("MILK_TRAIN_ROLLOUTS", 4, 2, 16),
+            "rollout_max_new_tokens": _integer("MILK_TRAIN_ROLLOUT_MAX_NEW_TOKENS", 256, 1, 1024),
+        })
+    return config
 
 
 def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> dict:
@@ -151,6 +169,12 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
         "MILK_TRAIN_MAX_TOKENS": str(config["max_tokens"]),
         "MILK_TRAIN_LEARNING_RATE": str(config["learning_rate"]),
     }
+    if config.get("recipe") == "reinforce":
+        environment.update({
+            "MILK_TRAIN_RECIPE": "reinforce",
+            "MILK_TRAIN_ROLLOUTS": str(config["rollouts"]),
+            "MILK_TRAIN_ROLLOUT_MAX_NEW_TOKENS": str(config["rollout_max_new_tokens"]),
+        })
     environment.update({name: {"name": secret} for name, secret in config["runtime_secret_map"].items()})
     fetch_source = (
         "python -c \"import hashlib,urllib.request;"
@@ -224,16 +248,79 @@ def _completed(store, settings, runtime, client, config: dict, manifest: dict, j
         }
     output, output_body = baseten.fetch_json(result_file["url"], client.timeout)
     expected_base = {"model_repo": runtime.student_base.model_repo, "model_revision": runtime.student_base.model_revision}
+    expected_parent = {"kind": "hf_base", **expected_base}
+    recipe = config.get("recipe", "sft")
     if (
         output.get("schema_version") != "milk.training-output.v2"
         or output.get("job_id") != job_id
         or output.get("dataset_uuid") != manifest.get("dataset_uuid")
         or output.get("student_base") != expected_base
+        or output.get("recipe", "sft") != recipe
+        or (recipe == "reinforce" and output.get("parent") != expected_parent)
+        or (recipe == "sft" and output.get("parent", expected_parent) != expected_parent)
         or output.get("steps") != config["steps"]
         or not isinstance(output.get("files"), list)
         or not any(item.get("path", "").endswith(".safetensors") for item in output["files"] if isinstance(item, dict))
     ):
         raise TrainError("Baseten training output identity differs")
+    reinforce = output.get("reinforce")
+    if recipe == "reinforce":
+        rollouts = reinforce.get("rollouts") if isinstance(reinforce, dict) else None
+        mean = reinforce.get("reward_mean_bps") if isinstance(reinforce, dict) else None
+        deviation = reinforce.get("reward_std_bps") if isinstance(reinforce, dict) else None
+        policy_loss = reinforce.get("policy_loss") if isinstance(reinforce, dict) else None
+        updated = reinforce.get("updated") if isinstance(reinforce, dict) else None
+        skip_reason = reinforce.get("skip_reason") if isinstance(reinforce, dict) else None
+        sampling = reinforce.get("sampling") if isinstance(reinforce, dict) else None
+        if (
+            not isinstance(reinforce, dict)
+            or re.fullmatch(r"[0-9a-f]{64}", reinforce.get("source_request_sha256", "")) is None
+            or re.fullmatch(r"[0-9a-f]{64}", reinforce.get("prompt_sha256", "")) is None
+            or reinforce.get("rollout_count") != config["rollouts"]
+            or not isinstance(rollouts, list)
+            or len(rollouts) != config["rollouts"]
+            or reinforce.get("rollouts_sha256") != summary.digest(rollouts)
+            or not isinstance(mean, (int, float))
+            or isinstance(mean, bool)
+            or not math.isfinite(mean)
+            or not 0 <= mean <= 10_000
+            or not isinstance(deviation, (int, float))
+            or isinstance(deviation, bool)
+            or not math.isfinite(deviation)
+            or not 0 <= deviation <= 10_000
+            or not isinstance(policy_loss, (int, float))
+            or isinstance(policy_loss, bool)
+            or not math.isfinite(policy_loss)
+            or not isinstance(updated, bool)
+            or (updated and (deviation == 0 or skip_reason is not None))
+            or (not updated and (deviation != 0 or policy_loss != 0 or skip_reason != "zero_reward_variance"))
+            or sampling != {"temperature": 1.0, "top_p": 1.0, "top_k": 0, "max_new_tokens": config["rollout_max_new_tokens"]}
+        ):
+            raise TrainError("Baseten reinforce output identity differs")
+    elif reinforce is not None:
+        raise TrainError("Baseten SFT output contains reinforce results")
+    if recipe == "reinforce" and not reinforce["updated"]:
+        result_key = prefix + "result.json"
+        details = {
+            "reason": "zero_reward_variance",
+            "recipe": recipe,
+            "updated": False,
+            "rollouts_sha256": reinforce["rollouts_sha256"],
+            "reward_mean_bps": reinforce["reward_mean_bps"],
+            "reward_std_bps": reinforce["reward_std_bps"],
+        }
+        result = {
+            "schema_version": "milk.train-job-result.v2",
+            "job_id": job_id,
+            "state": "idle",
+            "next": "train",
+            "reason": "zero_reward_variance",
+            "provider_job_id": provider_job["id"],
+            "artifact_keys": [prefix + "intent.json", prefix + "receipt.json", result_key],
+            "details": details,
+        }
+        store.create_same(result_key, summary.canonical(result))
+        return {"state": "idle", "identity": job_id, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": client.calls, "next": "train", "details": details}
     model_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:model:" + summary.digest({"job_id": job_id, "output": output})))
     model_key = settings.scope_prefix + f"m/{model_uuid}/manifest.json"
     model = {
@@ -245,6 +332,8 @@ def _completed(store, settings, runtime, client, config: dict, manifest: dict, j
         "dataset_uuid": manifest["dataset_uuid"],
         "student_base": expected_base,
         "training_kind": "full_bf16",
+        "training_recipe": recipe,
+        "parent": expected_parent,
         "provider": {"name": "baseten", "project_id": config["project_id"], "job_id": provider_job["id"], "status": provider_job["current_status"]},
         "images": {"release": config["release_image"], "provider_base": config["baseten_base_image"]},
         "checkpoint_files": [{key: item.get(key) for key in ("relative_file_name", "size_bytes", "last_modified", "node_rank")} for item in files],
@@ -258,7 +347,7 @@ def _completed(store, settings, runtime, client, config: dict, manifest: dict, j
     result_key = prefix + "result.json"
     result = {"schema_version": "milk.train-job-result.v2", "job_id": job_id, "state": "progressed", "next": "evaluate", "model": reference, "provider_job_id": provider_job["id"], "artifact_keys": [model_key, status_key, result_key]}
     store.create_same(result_key, summary.canonical(result))
-    return {"state": "progressed", "identity": job_id, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": client.calls, "next": "evaluate", "details": {"model_uuid": model_uuid, "provider_job_id": provider_job["id"], "status": provider_job["current_status"]}}
+    return {"state": "progressed", "identity": job_id, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": client.calls, "next": "evaluate", "details": {"model_uuid": model_uuid, "provider_job_id": provider_job["id"], "status": provider_job["current_status"], "recipe": recipe}}
 
 
 def reconcile(store, settings, runtime) -> dict:
@@ -291,9 +380,16 @@ def reconcile(store, settings, runtime) -> dict:
     intent_key, receipt_key, result_key = (prefix + name for name in ("intent.json", "receipt.json", "result.json"))
     try:
         prior, unused = _object(store, result_key)
-        model = prior.get("model")
-        if prior.get("schema_version") != "milk.train-job-result.v2" or prior.get("job_id") != job_id or not isinstance(model, dict):
+        if prior.get("schema_version") != "milk.train-job-result.v2" or prior.get("job_id") != job_id:
             raise TrainError("stored training result is invalid")
+        if prior.get("state") == "idle" and prior.get("reason") == "zero_reward_variance":
+            details = prior.get("details")
+            if not isinstance(details, dict) or details.get("reason") != "zero_reward_variance" or details.get("updated") is not False or prior.get("next") != "train" or not isinstance(prior.get("artifact_keys"), list):
+                raise TrainError("stored no-policy-update result is invalid")
+            return {"state": "idle", "identity": job_id, "artifacts": _artifacts(store, prior["artifact_keys"]), "provider_calls": 0, "next": "train", "details": details}
+        model = prior.get("model")
+        if not isinstance(model, dict):
+            raise TrainError("stored training result has no model")
         status_key = _advance_status(store, settings, model)
         return {"state": "idle", "identity": job_id, "artifacts": _artifacts(store, [*prior["artifact_keys"], status_key]), "provider_calls": 0, "next": "evaluate", "details": {"model_uuid": model["uuid"], "provider_job_id": prior["provider_job_id"], "status": "TRAINING_JOB_COMPLETED"}}
     except FileNotFoundError:
