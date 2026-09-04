@@ -41,6 +41,17 @@ run_dir="$(mktemp -d "${TMPDIR:-/tmp}/milk-shellm.XXXXXX")"
 chmod 700 "$run_dir"
 cleanup() { rm -rf "$run_dir"; }
 trap cleanup EXIT INT TERM
+native_tools="${MILK_MAN_TOOL_CALLS:-1}"
+[[ "$native_tools" == 0 || "$native_tools" == 1 ]] || die "MILK_MAN_TOOL_CALLS must be 0 or 1"
+python3 - "$run_dir/tools.json" <<'PY'
+import json, sys
+tool = {"type": "function", "function": {
+    "name": "bash", "description": "Execute the next useful Bash commands. Environment variables are already inherited. Set FINAL to a factual report when done or after registering a heartbeat wait.",
+    "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"], "additionalProperties": False},
+}}
+with open(sys.argv[1], "w") as handle:
+    json.dump([tool], handle)
+PY
 
 previous_failed_code=""
 repeat_failures=0
@@ -62,16 +73,31 @@ for ((iteration=1; iteration<=maximum; iteration++)); do
     "$context" > "$messages"
     response="$run_dir/response"
     printf 'milk-man: reasoning %d/%d with %s\n' "$iteration" "$maximum" "$LLM_MODEL" >&2
-    "$llm" --system-file "$system_file" --messages-file "$messages" > "$response"
+    if [[ "$native_tools" == 1 ]]; then
+        "$llm" --system-file "$system_file" --messages-file "$messages" --tools-file "$run_dir/tools.json" --json-response > "$response"
+    else
+        "$llm" --system-file "$system_file" --messages-file "$messages" > "$response"
+    fi
 
     code="$run_dir/code"
-    python3 - "$response" "$code" <<'PY'
+    python3 - "$response" "$code" "$native_tools" <<'PY'
+import json
 import re
 import sys
 
 text = open(sys.argv[1]).read()
-match = re.search(r"(?ms)```(?:bash|sh|shell)[ \t]*\r?\n(.*?)(?:```|\Z)", text)
-code = match.group(1) if match else ""
+if sys.argv[3] == "1":
+    calls = json.loads(text)["message"].get("tool_calls", [])
+    if len(calls) != 1 or calls[0]["function"]["name"] != "bash":
+        raise SystemExit("shellm: expected one bash function call")
+    code = json.loads(calls[0]["function"]["arguments"])["code"]
+    if not isinstance(code, str) or not code.strip():
+        raise SystemExit("shellm: bash code must be nonempty text")
+    # Retain one provider-independent Bash trajectory for either API mode.
+    open(sys.argv[1], "w").write("```bash\n" + code + "\n```\n")
+else:
+    match = re.search(r"(?ms)```(?:bash|sh|shell)[ \t]*\r?\n(.*?)(?:```|\Z)", text)
+    code = match.group(1) if match else ""
 open(sys.argv[2], "w").write(code)
 PY
     append --type reasoning --content-file "$response"

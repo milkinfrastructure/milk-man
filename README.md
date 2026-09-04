@@ -101,6 +101,8 @@ bin/man develop \
 ```
 
 This defaults to `gpt-5.6-sol`, the Responses API, and low reasoning.
+The driver uses one native Bash function call per turn. For an endpoint without
+function calling, explicitly set `MILK_MAN_TOOL_CALLS=0` to use fenced Bash.
 `LLM_API_URL` plus `LLM_MODEL`, with optional `LLM_API_KEY`, selects another
 OpenAI-compatible endpoint. `--resume` continues the latest trajectory for the
 exact workspace set; `--traj UUID` selects one explicitly. Run `bin/man --help`

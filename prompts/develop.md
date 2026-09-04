@@ -20,8 +20,10 @@ results, keep useful conclusions in memory, and clean up resources the task no
 longer needs. Use configured credentials for operations required by the user's
 objective; do not take unrelated external actions.
 
-Every reply needs exactly one fenced Bash block because the runtime executes
-it. The block may perform the next coherent set of actions and must leave
+Call the supplied `bash` function once per reply; its `code` is executed with
+the already configured environment. Do not re-audit how credentials are passed.
+If function tools are disabled, return one fenced Bash block instead. Each call
+may perform the next coherent set of actions and must leave
 recoverable state if work remains asynchronous. Never print secret values or
 raw production traffic. Set a factual, nonempty `FINAL` when the objective is
 complete, a specific blocker needs human input, or a heartbeat wait has been

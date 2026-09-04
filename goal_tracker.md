@@ -35,16 +35,22 @@ Status notation:
 - [x] Published Milk Man `38c1b9812e0182ec132d12a3da2460506fa9efd7`
   contains the coherent eleven-job baseline and one successful managed-GLM
   dashboard tool turn.
+- [x] Local commit `ba5c62f47acf3454ca4180392b38fdc0066eca3f`
+  adds the autonomous task contract, reusable script dispatch, persistent
+  heartbeat, dashboard reporting, and their retained local proof. It is not
+  published yet.
 - [x] Local Milk Man completed a Chrome-prompted remote progress check and then
   authored and reused `bin/progress` across an automatic ten-second follow-up.
-  Both readings were 106 captured / 106 summarized. Two useful memory entries
+  Both readings were 106 captured / 106 summarized. Four useful memory entries
   are retained in trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a`.
 - [x] The independent heartbeat survived a dashboard-server restart, stopped,
   and restarted from Bash with the same trajectory and no new model turn.
 - [~] Idle backoff and timer continuation work locally. Restart during real
   asynchronous provider work and duplicate-resource prevention remain unproven.
-- [ ] Next: use an environment-selected serving script for one inexpensive
-  model lifecycle. Fresh traffic and large eval generation remain later work.
+- [~] The first environment-selected P4 lifecycle is active: a native Bash
+  function turn launched `Qwen/Qwen3-0.6B` on one Modal L4 through
+  `serve-modal`. Deployment is still in progress; inference and cleanup are
+  not proven. Fresh traffic and large eval generation remain later work.
 
 ## Repository snapshot
 
@@ -52,7 +58,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `38c1b9812e0182ec132d12a3da2460506fa9efd7`, plus uncommitted runtime/docs work | same | public baseline is cleanly identified; local changes are implementation-in-progress, not proof |
+| `milk-man` | `ba5c62f47acf3454ca4180392b38fdc0066eca3f`, plus uncommitted P4 work | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | runtime/docs checkpoint is committed locally but not pushed; current P4 changes remain implementation-in-progress |
 | `milk-parlor` | `37c0f892cee2bb03277fff6cc107312e36fda672` | same | clean and deployed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
@@ -120,8 +126,13 @@ Published Milk Man audit baseline:
 - [x] Run one clean bounded GLM tool turn after the reconciled source is
   published. Evidence: trajectory
   `df36b6bc-1651-4f74-aa40-43da7a8a216a`, 2026-09-04 18:59 UTC, exit 0.
-- [x] Current memory contains two useful progress-check decisions, written by
-  Milk Man during the 2026-09-04 20:09–20:19 UTC dashboard tasks.
+- [x] Current memory contains four useful retained entries.
+- [!] A preceding fenced-mode lifecycle attempt read source for 20 iterations
+  without performing a provider action, then exited 70.
+- [~] At 2026-09-04 20:35:03 UTC, the first native Bash function turn launched
+  the environment-configured `Qwen/Qwen3-0.6B` `serve-modal` job on one L4.
+  The deployment was still in progress at the last observation; no successful
+  inference, stop, or zero-resource result is claimed.
 - [!] The private local process is the current credential trust boundary. Jobs
   inherit its environment. Do not claim per-child secret isolation until it is
   actually implemented; do not add a secret broker for this private phase.
@@ -184,11 +195,11 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 
 | Capability | Current assessment | Next proof |
 | --- | --- | --- |
-| High-level prompt -> existing job | `[~]` one human-prescribed GLM status tool call worked | one objective chooses and completes the job from dashboard and Bash |
-| Repository-script jobs | `[~]` local implementation changes exist | unseen task creates, runs, repairs if needed, then reuses one script |
-| Lightweight heartbeat | `[~]` local implementation changes exist | several zero-model idle cycles, event wake, interrupted restart, no duplicate work |
+| High-level prompt -> existing job | `[x]` Chrome and Bash objectives chose and completed remote progress checks; one timer follow-up continued automatically | repeat an external operation without duplicating it |
+| Repository-script jobs | `[x]` Milk Man authored and reused `bin/progress` from Chrome without an engine change | prove the generic executable-catalog dispatch path |
+| Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, stop, and Bash resume worked | recover a real provider operation without duplicate work |
 | Managed GLM Milk Man driver | `[x]` Baseten GLM status turn proven | autonomous multi-step task through the driver |
-| General model lifecycle | `[~]` fixed Modal controller lifecycle historically worked | inexpensive model create/reuse/call/stop from one prompt |
+| General model lifecycle | `[~]` fixed controller worked historically; current env-selected Qwen/L4 deployment is in progress | complete readiness, inference, stop, and zero proof on that deployment |
 | Inference autotuning | `[ ]` no adaptive measured loop proven | compare configurations, select one from results, clean losing resources |
 | Different compute workload | `[ ]` harness generality not proven | complete a second workload without editing the engine |
 | Official SDK -> Parlor | `[x]` live for Responses and Chat Completions, including streaming | retain as Milk application input |
@@ -286,8 +297,9 @@ Corrections made by this audit:
 - [x] Prove one managed-GLM dashboard tool turn against remote object state.
 - [x] Align `AGENTS.md`, `GOAL.md`, `PRD.md`, `prompts/develop.md`, and this
   tracker around autonomous prompt-driven Bash execution.
-- [~] Local source now adds repository-script jobs and heartbeat behavior.
-  Syntax/source presence is not end-to-end runtime proof.
+- [x] Local commit `ba5c62f47acf3454ca4180392b38fdc0066eca3f`
+  retains repository-script dispatch and the heartbeat; P1-P3 below record the
+  Chrome and Bash proof. The commit is not published yet.
 - [x] Restart the dashboard from the aligned source and verify truthful task,
   trajectory, driver, heartbeat, current activity, and next-wake state.
 - [x] Chrome shows an always-visible heartbeat strip above chat: state light,
@@ -307,8 +319,9 @@ Corrections made by this audit:
 
 ### P2 reusable script extensibility
 
-- [~] Local source can dispatch a reviewed repository-relative script without
-  adding another fixed Python handler. Execution and reuse are not yet proven.
+- [~] Local source can dispatch a registered repository-relative executable
+  without adding another fixed Python handler. That generic catalog path is
+  implemented but has not yet run end to end.
 - [x] Chrome asked for a reusable compact progress command. Milk Man wrote
   `bin/progress`, ran it against remote R2, yielded to a timer, reused it on
   automatic continuation, compared unchanged 106/106 counts, and saved memory.
@@ -336,8 +349,13 @@ Corrections made by this audit:
 
 - [~] A fixed Modal GLM controller historically proved create, inference
   handoff, stop, and zero; it is not yet a general lifecycle.
-- [ ] From one prompt, operate an inexpensive model through inspect,
-  create/reuse, readiness, inference, status/logs, and requested stop/retain.
+- [!] A fenced-mode attempt read source for 20 iterations without taking the
+  provider action and exited 70.
+- [~] At 2026-09-04 20:35:03 UTC, a native Bash function turn launched the
+  environment-configured `Qwen/Qwen3-0.6B` `serve-modal` job on one Modal L4.
+  Deployment remains in progress; no inference or cleanup proof exists yet.
+- [ ] Continue that exact operation through readiness, one inference call,
+  status, requested stop, and verified zero resources without relaunching it.
 - [ ] Select model, revision, provider, runtime, GPU type/count, serving
   arguments, and cache through environment variables.
 - [ ] Repeat with the intended 120B proving workload without hardcoding it into

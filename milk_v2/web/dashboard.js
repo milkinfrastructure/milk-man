@@ -422,14 +422,19 @@ function renderMan(man) {
   };
   light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", (labels[state] || labels.setup) + (driverStatus ? " · " + driverStatus : "") + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
   const pulse = man.heartbeat || {};
-  light("heartbeat", !man.online ? "down" : state === "failed" ? "degraded" : "up", "heartbeat · " + (man.online ? state : "stopped"));
-  for (const [id, stamp] of [["last", pulse.checked_at], ["next", man.online && state !== "paused" ? pulse.next_wake : null]]) {
+  const heartbeatOnline = pulse.online === true;
+  const heartbeatStarting = !heartbeatOnline && man.connection === "attached" && man.active;
+  const heartbeatRetained = !heartbeatOnline && Boolean(pulse.state || pulse.checked_at || pulse.next_wake);
+  const heartbeatState = heartbeatOnline ? (pulse.state || "idle") : heartbeatStarting ? "starting" : heartbeatRetained ? "stopped" : "not started";
+  light("heartbeat", heartbeatOnline ? (pulse.state === "failed" ? "degraded" : "up") : heartbeatStarting ? "ready" : "down", "heartbeat · " + heartbeatState);
+  const workActive = heartbeatOnline && (pulse.state === "running" || man.active);
+  for (const [id, stamp] of [["last", pulse.checked_at], ["next", heartbeatOnline && !workActive && pulse.state !== "paused" ? pulse.next_wake : null]]) {
     const target = el("heartbeat-" + id);
-    target.textContent = stamp ? new Date(stamp * 1000).toLocaleTimeString() : id === "next" && man.active ? "after current work" : "not scheduled";
+    target.textContent = stamp ? new Date(stamp * 1000).toLocaleTimeString() : id === "next" && workActive ? "after current work" : id === "next" && heartbeatStarting ? "after startup" : "not scheduled";
     target.dateTime = stamp ? new Date(stamp * 1000).toISOString() : "";
   }
   el("heartbeat-count").textContent = (pulse.turns || 0) + " wakeups · " + (pulse.polls || 0) + " idle checks";
-  const nextWake = man.online && pulse.next_wake ? " · next check " + new Date(pulse.next_wake * 1000).toLocaleTimeString() : "";
+  const nextWake = workActive ? " · next check after current work" : heartbeatOnline && pulse.next_wake ? " · next check " + new Date(pulse.next_wake * 1000).toLocaleTimeString() : "";
   el("conversation-state").textContent = (man.online ? "online" : "stopped") + " · " + state + jobStatus + nextWake + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
   el("conversation-state").title = pulse.checked_at ? "Heartbeat last checked " + new Date(pulse.checked_at * 1000).toLocaleString() + ". Unchanged idle checks use no model tokens." : "Heartbeat starts with your next task. Closing this page does not stop it.";
   if (!runLoading) {
