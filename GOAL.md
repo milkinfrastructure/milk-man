@@ -27,6 +27,16 @@ Fine-tuning, reinforcement learning, and signed routing are extensions of the
 agent's general compute and research loop. They do not block proving the core
 agent.
 
+The product north star is continuous autoresearch for each scope UUID: learn
+from that scope's captured traffic and pursue an open-source model that beats
+the best measured baseline for its workload and operating constraints. Each
+scope retains its objective, evaluation set, current best result, experiment
+history, and next action. Milk Man uses the same jobs to generate useful data,
+adapt models, tune inference, compare results, and repeat as new data arrives.
+State-of-the-art is a measured target, not a guaranteed outcome or a claim
+inferred from synthetic data. This applies equally to application traffic and
+Milk Man's own research trajectories.
+
 Milk Man's own reasoning traffic must also pass through Milk Parlor. Give this
 deployment a separate operator key and UUIDv6 scope, named
 `milk-man-autoresearch`, so its requests, responses, tool calls, and returned
@@ -250,6 +260,15 @@ Acceptance: the agent is a general research and compute operator, not a GLM,
 Build these capabilities with the same scripts, heartbeat, state, and
 optimization loop. Reuse existing R2 objects and historical implementations;
 do not restart parked large generation runs.
+
+- [ ] Give each scope a durable research objective and resumable next action,
+  with a named baseline, untouched evaluation data, quality and serving
+  targets, and a measured current best. Reuse the existing object store and
+  heartbeat; do not add another orchestrator.
+- [ ] Prove one small scope-specific research iteration: inspect captured
+  data, choose an experiment, run existing jobs, compare on the same held-out
+  tasks, retain the result even if it loses, and select the next useful action.
+  New traffic must resume this loop without restarting completed work.
 
 - [~] Parlor already authenticates official OpenAI SDK traffic, streams both
   supported protocols, and writes scoped request/response objects

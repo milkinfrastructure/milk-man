@@ -25,6 +25,39 @@ Milk currently supports `POST /v1/responses` and
 `POST /v1/chat/completions`, including streaming. It does not claim the entire
 OpenAI API and does not require a Milk SDK.
 
+The end state is continuous autoresearch per scope UUID: use its captured
+traffic to pursue an open-source model that beats the best measured baseline
+on that scope's tasks, within its latency, throughput, and compute constraints.
+Improving Milk Man itself is one instance of this same product loop.
+
+## Scope-specific research
+
+Each scope keeps a small versioned research record in object storage, with a
+conditional current pointer: objective, metrics, baseline model/configuration,
+held-out evaluation identity, best measured candidate, completed experiments,
+next action, and wake condition. The record references existing summaries,
+datasets, jobs, models, and measurements instead of copying their contents.
+This is state for the existing heartbeat and job runner, not a second service.
+
+Changed traffic advances cumulative summaries at configured thresholds. Milk
+Man uses the summaries and previous experiments to choose the next useful job:
+generate examples, tune inference, train an open-source base, run a genuine RL
+experiment, evaluate, or wait. Model/provider choices and operating targets
+come from the scope's configuration and environment bindings.
+
+Compare the current baseline and candidate on the same untouched tasks, with
+source conversations and agent trajectories kept together across data splits.
+Keep failed and losing results so later iterations do not repeat them. A new
+best must have measured evidence; generating more data or completing training
+is not an improvement by itself. A state-of-the-art claim names its benchmark,
+reference model/configuration, date, and comparable measurements. A win on one
+scope is not a global state-of-the-art claim.
+
+Scopes remain separate unless their operator explicitly authorizes combining
+data. Serving promotion follows the existing route contract. The dashboard
+shows each scope's objective, baseline versus best, latest result, next action,
+and heartbeat without exposing private traffic or credentials.
+
 ## The two loops
 
 ```text

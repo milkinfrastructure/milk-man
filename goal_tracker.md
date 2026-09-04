@@ -15,6 +15,12 @@ Status notation:
 
 ## Executive state
 
+- [x] Product contract now explicitly targets continuous autoresearch per
+  scope UUID, including Milk Man's own traffic, toward a measured best model
+  for that workload. This records the requirement, not a completed capability.
+- [ ] Prove the durable per-scope objective -> experiment -> held-out comparison
+  -> current best -> next action loop using existing jobs and heartbeat.
+
 - [x] Reserved and validated UUIDv6
   `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a` for `milk-man-autoresearch`.
   Its node prefix encodes `milk`; it is not an authentication key.
