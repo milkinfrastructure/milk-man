@@ -243,8 +243,10 @@ hardcoding that model or provider into the harness.
   a fixed matrix.
 - [x] Retain or reuse the best configuration that meets the task objective;
   stop losing trials and verify their resources are absent.
-- [ ] Demonstrate a successful turn through the selected endpoint and resume
-  without rerunning completed trials.
+- [x] Demonstrate a successful native Milk Man turn through the selected
+  endpoint. The 120B child read research status and finished successfully;
+  the Astra parent remained on Parlor.
+- [ ] Resume without rerunning completed trials.
 
 Acceptance: Milk Man improves a live inference configuration from evidence and
 leaves one requested winner or zero resources according to the prompt.

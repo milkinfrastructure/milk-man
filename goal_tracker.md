@@ -19,8 +19,9 @@ Status notation:
   subcommand `--help` work. A child no longer inherits the parent's wait file.
 - [x] Read-only Modal serving status now works while startup holds its mutation
   lock. Live status returned `active`, one H200 container, app
-  `ap-5OBmVF7Ek1uUyykOziCT2v`, without inference. The selected 120B startup is
-  still running; an allocated endpoint is not yet a completed driver proof.
+  `ap-5OBmVF7Ek1uUyykOziCT2v`, without inference. Startup later completed;
+  after the child task Milk Man stopped this app. An independent status call
+  confirmed `stopped`, zero containers, and the retained model cache.
 - [x] The 120B endpoint then powered a real native Milk Man child: one Bash
   call read R2 research status, one `finish` reported threshold not crossed
   and no measured best model, exit 0 in 12.781 seconds. Trajectory
@@ -29,6 +30,25 @@ Status notation:
   Its reported count 20 is summarized exchanges, not the live capture total.
   This child used the owned endpoint directly; the Astra parent stayed on
   Parlor. It does not prove captured OSS-driver traffic or a model-quality win.
+- [x] A fresh Astra child completed the exact same task in 15.110 seconds,
+  exit 0, with one Bash call and `finish`; both returned identical research
+  status. Astra trajectory `801e15ca-127c-4e99-8477-ec7d7ee70640`, SHA-256
+  `8055c5d2c1008367e049bcb2b1f339876f53299028a08956a4dcc9539cdc85a2`.
+  Task SHA-256 `87ad92578a1274fed01da5a85185ac504107f5ee06160b450f7bee39252e8938`.
+  These are single operations checks, not a speed or quality ranking: API
+  mode, reasoning effort, network path, and working-tree snapshot differ.
+  The 120B timing excludes deployment and cleanup. No rerun is needed to
+  retain this limited result; a quality comparison needs untouched tasks.
+- [x] Milk Man appended this operations check to R2 research revision
+  `da39c68f11802b50eff1e4786c9f3ec44af012005468263f95600c3919356c4e`,
+  record `0b876290-3685-5c38-afce-b43134759e79`, then finished turn 48.
+  Baseline, evaluation, and best remain null. The next action is an untouched
+  task comparison, not new generation. Private comparison SHA-256:
+  `baca9923b9994d60fad0462744eb603563da456db1fb1f57c53abcdc36907e58`.
+- [!] Comparison closeout repeated artifact/schema/help reads after both
+  children had finished. One narrowed Chrome instruction completed the saved
+  record and final report. This sequence still needed assistance; autonomous
+  research efficiency remains open.
 - [!] The first child sent an empty API key and failed HTTP 401 before a tool
   ran. Milk Man retained it and ran the corrected authenticated attempt on the
   same deployment. Missing flag documentation also required a chat correction.
@@ -168,7 +188,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `8b9d37bcf`, plus this evidence checkpoint | `8b9d37bcff1ad6315be90cccf108f0ea959649bf` | per-scope research record, stable status job, and inline dashboard view pushed; live Astra-backed record and heartbeat proof above |
+| `milk-man` | runtime `305937281`, plus this evidence checkpoint | runtime `305937281` and its following evidence checkpoint | child driver handoff, heartbeat isolation/steering, startup status, and retained operations comparison verified |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
@@ -305,7 +325,8 @@ Former dashboard scope `aeaa9585-74c8-43ea-b6e5-070b60c40619` (retained unchange
   plus later small pilots. They are immutable research residue, not work to
   continue.
 
-Current dashboard scope `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a`:
+Initial capture proof for the current dashboard scope
+`1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a` (before its summary and 120B task):
 
 - [x] Eleven captured driver exchanges; zero summarized. No data generation,
   training, GPU creation, or route activation was started for this scope.
@@ -337,13 +358,13 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 | Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, and restart against the same ready H200 server worked | recover during provider startup without Codex correction |
 | Managed GLM Milk Man driver | `[x]` Baseten GLM status turn proven | autonomous multi-step task through the driver |
 | General model lifecycle | `[~]` Qwen/L4 and 120B/H200 each completed three correct calls and verified zero through the same env-selected scripts | complete a Baseten-owned lifecycle and an unassisted provider recovery |
-| Inference autotuning | `[~]` a same-workload 120B A/B comparison selected CUDA graphs, demonstrated the endpoint, and stopped both apps; corrections were required | prove independent adaptive trials and a driver turn through the selected endpoint |
+| Inference autotuning | `[~]` a same-workload 120B A/B comparison selected CUDA graphs; its endpoint later ran a native Milk Man task and stopped; corrections were required | prove independent adaptive trials on representative work |
 | Different compute workload | `[x]` Qwen/L4 and 120B/H200 completed without editing the engine | retain generality while adding another provider |
 | Official SDK -> Parlor | `[x]` live for Responses and Chat Completions, including streaming | retain as Milk application input |
 | Key -> scope UUID | `[x]` source and historical live proof | reuse when the application needs a new scope |
 | Async two-sided capture | `[x]` live counters and exact historical object proof | preserve during application work |
-| Summary/classification | `[x]` current 106-source checkpoint | heartbeat-driven threshold and idle replay |
-| Deterministic readiness | `[x]` current mechanics result | retain as application logic |
+| Summary/classification | `[x]` dedicated driver scope: 20 exchanges, eight classified; earlier 106-source checkpoint retained separately | heartbeat-driven threshold and idle replay |
+| Deterministic readiness | `[x]` driver scope remains not ready; historical application mechanics separately proved | retain as application logic |
 | Useful eval generation | `[~]` 98/100 materially correct in best pilot; later pilot 60/64 clean | inspect a small application sample before expansion |
 | 10,000-case experiment | `[ ]` not generated as one accepted current contract | optional configured expansion after small output is useful |
 | Source-separated dataset | `[~]` small mechanics proven | next training workload with no split leakage |
