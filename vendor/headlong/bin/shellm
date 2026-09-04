@@ -51,7 +51,7 @@ python3 - "$run_dir/tools.json" <<'PY'
 import json, sys
 tools = [
     {"type": "function", "function": {
-        "name": "bash", "description": "Execute the next useful Bash commands with inherited environment variables. Never sleep or poll. For asynchronous work, launch once, register `man heartbeat wait -- READ_ONLY_STATUS_COMMAND`, and return; the harness yields until that check changes.",
+        "name": "bash", "description": "Execute the next useful Bash commands with inherited environment variables. Each call starts a fresh shell; save reusable settings in a private environment profile and source it in every call. Never sleep or poll. For asynchronous work, launch once, register `man heartbeat wait -- READ_ONLY_STATUS_COMMAND`, and return; the harness yields until that check changes.",
         "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"], "additionalProperties": False},
     }},
     {"type": "function", "function": {
