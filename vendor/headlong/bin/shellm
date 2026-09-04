@@ -36,6 +36,10 @@ append() {
     python3 "$MILK_MAN_STATE_PY" append --trajectory "$trajectory" "$@"
 }
 
+redact() {
+    python3 -u "$MILK_MAN_STATE_PY" redact
+}
+
 append --type prompt --content-file "$prompt_file"
 run_dir="$(mktemp -d "${TMPDIR:-/tmp}/milk-shellm.XXXXXX")"
 chmod 700 "$run_dir"
@@ -158,7 +162,7 @@ PY
     fi
 
     printf 'milk-man: executing Bash in %s\n' "$workdir" >&2
-    sed 's/^/  /' "$code" >&2
+    redact < "$code" | sed 's/^/  /' >&2
     output="$run_dir/output"
     final="$run_dir/final"
     runner="$run_dir/run"
@@ -183,11 +187,12 @@ PY
     } > "$runner"
 
     set +e
-    (cd "$workdir" && bash "$runner") 2>&1 | tee "$output" >&2
+    (cd "$workdir" && bash "$runner") 2>&1 | redact | tee "$output" >&2
     pipeline_status=("${PIPESTATUS[@]}")
     exit_code="${pipeline_status[0]}"
     set -e
-    (( pipeline_status[1] == 0 )) || die "could not capture command output"
+    (( pipeline_status[1] == 0 )) || die "could not redact command output"
+    (( pipeline_status[2] == 0 )) || die "could not capture command output"
     final_ok=0
     protocol_failed=0
     if [[ -f "$final" ]]; then
@@ -227,7 +232,7 @@ PY
 
     if (( final_ok )); then
         append --type final --content-file "$final"
-        cat "$final"
+        redact < "$final"
         exit 0
     fi
 

@@ -15,7 +15,7 @@ import urllib.request
 from urllib.parse import urlsplit
 
 from . import config, heartbeat
-from .state import SCHEMA as MAN_STATE_SCHEMA, validate_trajectory, workspace_set
+from .state import SCHEMA as MAN_STATE_SCHEMA, redact, validate_trajectory, workspace_set
 from .summary import thresholds
 from .store import open_store, settings_from_environment
 
@@ -35,10 +35,6 @@ MONITOR_STATE: dict | None = None
 LAST_EXACT_CAPTURE: tuple[str, int] | None = None
 
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
-SECRET_ASSIGNMENT = re.compile(
-    r"(?i)(\b(?:authorization|password|token|api[_-]?key|secret(?:[_-]?access[_-]?key)?)\b[\"']?\s*[:=]\s*[\"']?)([^\"'\s,;]+)"
-)
-AUTHORIZATION = re.compile(r"(?i)\b(Bearer|Api-Key)\s+[^\s,;]+")
 
 
 WEB_ROOT = ROOT / "milk_v2" / "web"
@@ -51,12 +47,7 @@ ASSETS = {
 
 
 def _redact(value: object) -> str:
-    text = ANSI.sub("", str(value or ""))
-    for name, secret in os.environ.items():
-        if secret and len(secret) >= 8 and any(word in name.upper() for word in ("KEY", "TOKEN", "SECRET", "PASSWORD")):
-            text = text.replace(secret, "[redacted]")
-    text = AUTHORIZATION.sub(r"\1 [redacted]", text)
-    return SECRET_ASSIGNMENT.sub(r"\1[redacted]", text)
+    return redact(ANSI.sub("", str(value or "")))
 
 
 def _tail(path: Path, limit: int) -> list[dict]:

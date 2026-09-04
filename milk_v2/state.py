@@ -20,10 +20,63 @@ from uuid import UUID, uuid4
 
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 SCHEMA = "milk.man-state.v2"
+SECRET_ENV_NAME = re.compile(r"(?:^|_)(?:API_?KEY|(?:ACCESS|SIGNING|PRIVATE|OPERATOR)_KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?)(?:_|$)", re.I)
+SECRET_ENV_SELECTOR = re.compile(r"_(?:ENV|NAME|FILE|PATH)$", re.I)
+SECRET_ASSIGNMENT = re.compile(
+    r"(?i)(?P<label>(?<![A-Z0-9_-])[\"']?(?P<name>(?:[A-Z0-9]+[_-])*"
+    r"(?:API[_-]?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?)"
+    r"(?:[_-][A-Z0-9]+)*)(?![A-Z0-9_-])[\"']?\s*[:=]\s*)"
+    r"(?P<value>\"(?:\\.|[^\"\r\n])*\"|'(?:\\.|[^'\r\n])*'|[^\s,;]+)"
+)
+AUTHORIZATION = re.compile(r"(?i)\b(Bearer|Api-Key)\s+[^\s,;]+")
 
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+
+
+def redact_assignment(match: re.Match[str]) -> str:
+    if SECRET_ENV_SELECTOR.search(match["name"]):
+        return match.group(0)
+    value = match["value"]
+    quote = value[0] if len(value) >= 2 and value[0] == value[-1] and value[0] in {"\"", "'"} else ""
+    return f"{match['label']}{quote}[redacted]{quote}"
+
+
+def redact(text: str) -> str:
+    for secret in sorted(
+        {
+            value
+            for name, value in os.environ.items()
+            if value and SECRET_ENV_NAME.search(name) and not SECRET_ENV_SELECTOR.search(name)
+        },
+        key=len,
+        reverse=True,
+    ):
+        if len(secret) >= 4:
+            text = text.replace(secret, "[redacted]")
+        else:
+            text = re.sub(rf"(?<![A-Za-z0-9]){re.escape(secret)}(?![A-Za-z0-9])", "[redacted]", text)
+    text = AUTHORIZATION.sub(r"\1 [redacted]", text)
+    return SECRET_ASSIGNMENT.sub(redact_assignment, text)
+
+
+def redact_message(value: object, key: str = "") -> object:
+    if isinstance(value, dict):
+        return {name: redact_message(item, name) for name, item in value.items()}
+    if isinstance(value, list):
+        return [redact_message(item) for item in value]
+    if isinstance(value, str):
+        if key in {"id", "tool_call_id", "name", "role", "type"}:
+            return value
+        if key == "arguments":
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                return redact(value)
+            return json.dumps(redact_message(parsed), ensure_ascii=False, separators=(",", ":"))
+        return redact(value)
+    return value
 
 
 def read_json(path: Path) -> dict:
@@ -184,7 +237,7 @@ def prepare(arguments: argparse.Namespace) -> None:
 
 def append_step(arguments: argparse.Namespace) -> None:
     trajectory = Path(arguments.trajectory)
-    content = Path(arguments.content_file).read_text() if arguments.content_file else ""
+    content = redact(Path(arguments.content_file).read_text() if arguments.content_file else "")
     record: dict = {
         "schema_version": SCHEMA,
         "type": arguments.type,
@@ -193,9 +246,9 @@ def append_step(arguments: argparse.Namespace) -> None:
         "content": content,
     }
     if arguments.command_file:
-        record["command"] = Path(arguments.command_file).read_text()
+        record["command"] = redact(Path(arguments.command_file).read_text())
     if arguments.message_file:
-        record["message"] = read_json(Path(arguments.message_file))
+        record["message"] = redact_message(read_json(Path(arguments.message_file)))
     if arguments.exit_code is not None:
         record["exit"] = arguments.exit_code
     append_json(trajectory, record)
@@ -228,14 +281,14 @@ def context(arguments: argparse.Namespace) -> None:
     pending: tuple[int, str] | None = None
     for record in records(Path(arguments.trajectory)):
         kind = record.get("type")
-        content = str(record.get("content", ""))
+        content = redact(str(record.get("content", "")))
         if kind == "prompt":
             pending = None
             prompt_indexes.append(len(messages))
             messages.append({"role": "user", "content": content})
         elif kind == "reasoning":
             pending = None
-            message = record.get("message")
+            message = redact_message(record.get("message"))
             calls = message.get("tool_calls") if isinstance(message, dict) else None
             if (
                 isinstance(message, dict)
@@ -252,7 +305,7 @@ def context(arguments: argparse.Namespace) -> None:
             else:
                 messages.append({"role": "assistant", "content": content})
         elif kind == "shell-output":
-            command = str(record.get("command", ""))
+            command = redact(str(record.get("command", "")))
             exit_code = record.get("exit")
             shell_indexes.append(len(messages))
             observation = f"Command:\n{command}\nExit: {exit_code}\nOutput:\n{content}"
@@ -320,7 +373,7 @@ def context(arguments: argparse.Namespace) -> None:
 def memory_add(arguments: argparse.Namespace) -> None:
     if arguments.max_entry_bytes <= 0:
         raise ValueError("memory entry byte limit must be positive")
-    text = sys.stdin.read().strip()
+    text = redact(sys.stdin.read().strip())
     if not text:
         raise ValueError("memory entry is empty")
     encoded = text.encode()
@@ -338,7 +391,7 @@ def memory_render(arguments: argparse.Namespace) -> None:
     path = Path(arguments.memory_file)
     if not path.exists():
         return
-    entries = [str(item.get("content", "")) for item in records(path) if item.get("type") == "memory"]
+    entries = [redact(str(item.get("content", ""))) for item in records(path) if item.get("type") == "memory"]
     kept: list[str] = []
     used = 0
     for entry in reversed(entries):
@@ -387,7 +440,16 @@ def parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--memory-file", required=True)
     render_parser.add_argument("--max-bytes", type=int, default=16384)
     render_parser.set_defaults(run=memory_render)
+
+    redact_parser = commands.add_parser("redact")
+    redact_parser.set_defaults(run=lambda _arguments: redact_stream())
     return root
+
+
+def redact_stream() -> None:
+    for line in sys.stdin:
+        sys.stdout.write(redact(line))
+        sys.stdout.flush()
 
 
 def main() -> None:
