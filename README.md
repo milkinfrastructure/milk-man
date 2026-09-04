@@ -157,8 +157,7 @@ remain environment variables; never place their values in repository files.
 
 Durable objects live under `milk/v2/scopes/<scope_uuid>/`. Versioned objects are
 immutable; small conditional `current.json` pointers select active revisions.
-The complete object tree and runtime contract are in
-[`goal_tracker.md`](goal_tracker.md).
+The complete object tree and runtime contract are in [`PRD.md`](PRD.md).
 
 ## Capture traffic with Milk Parlor
 
@@ -205,7 +204,9 @@ The evidence record is maintained in
 - [Job and environment contract](config/jobs.json)
 - [Evaluation policy](config/evaluation.json)
 - [Pinned student model](config/student.json)
-- [Architecture and evidence tracker](goal_tracker.md)
+- [Product contract](PRD.md)
+- [Current execution goal](GOAL.md)
+- [Evidence and progress tracker](goal_tracker.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 - [Third-party model notices](THIRD_PARTY_MODEL_NOTICES.md)

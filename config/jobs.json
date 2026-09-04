@@ -6,8 +6,8 @@
       "optional": ["MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS"]
     },
     "controller": {
-      "required": ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET", "MODAL_PROXY_TOKEN_ID", "MODAL_PROXY_TOKEN_SECRET"],
-      "optional": ["MODAL_ENVIRONMENT", "MILK_MODAL_ENDPOINT_NAME", "MILK_MODAL_ENDPOINT_MODEL", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_CONTROLLER_APPLY", "MILK_MODAL_CONTROLLER_STARTUP_TIMEOUT", "MILK_MODAL_STOP_TIMEOUT", "MILK_MODAL_CLI"]
+      "required": ["MILK_CONTROLLER_BASE_URL", "MILK_CONTROLLER_MODEL", "MILK_CONTROLLER_API_KEY"],
+      "optional": []
     },
     "summary": {
       "required": ["MILK_SUMMARY_BASE_URL", "MILK_SUMMARY_MODEL", "MILK_SUMMARY_API_KEY"],
@@ -23,7 +23,7 @@
     },
     "modal": {
       "required": ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"],
-      "optional": ["MODAL_ENVIRONMENT", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_CLI"]
+      "optional": ["MODAL_ENVIRONMENT", "MILK_CONTROLLER_API_KEY", "MILK_MODAL_CONTROLLER_APPLY", "MILK_MODAL_CONTROLLER_APP_PREFIX", "MILK_MODAL_CONTROLLER_VOLUME", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_CONTROLLER_API_KEY_ENV", "MILK_MODAL_CONTROLLER_STARTUP_TIMEOUT", "MILK_MODAL_STOP_TIMEOUT", "MILK_MODAL_CLI"]
     },
     "baseten": {
       "required": ["BASETEN_API_KEY", "BASETEN_TRAINING_PROJECT_ID", "MILK_TRAIN_IMAGE"],
@@ -44,9 +44,9 @@
   },
   "operate_order": ["summary", "eval", "dataset", "train", "evaluate"],
   "jobs": {
-    "inference-ensure": {"handler": "inference-ensure", "trigger": {"kind": "manual"}, "bindings": ["store", "controller"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": "inference-stop"},
-    "inference-status": {"handler": "inference-status", "trigger": {"kind": "manual"}, "bindings": ["store", "controller"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
-    "inference-stop": {"handler": "inference-stop", "trigger": {"kind": "manual"}, "bindings": ["store", "controller"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
+    "inference-ensure": {"handler": "inference-ensure", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": "inference-stop"},
+    "inference-status": {"handler": "inference-status", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
+    "inference-stop": {"handler": "inference-stop", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
     "summary": {"handler": "summary", "trigger": {"kind": "crossed_capture_threshold", "values_env": "MILK_SUMMARY_THRESHOLDS"}, "bindings": ["store", "summary"], "input_prefixes": ["c", "s"], "output_prefixes": ["j", "l", "s", "readiness", "status"], "system_prompt": "prompts/summary.md", "timeout_env": "MILK_SUMMARY_TIMEOUT_SECONDS", "teardown_handler": null},
     "eval": {"handler": "eval", "trigger": {"kind": "readiness"}, "bindings": ["store", "eval"], "input_prefixes": ["c", "l", "s", "readiness"], "output_prefixes": ["j", "e", "status"], "system_prompt": "prompts/eval.md", "timeout_env": "MILK_EVAL_TIMEOUT_SECONDS", "teardown_handler": null},
     "dataset": {"handler": "dataset", "trigger": {"kind": "eval_ready"}, "bindings": ["store", "teacher"], "input_prefixes": ["c", "e"], "output_prefixes": ["j", "d", "status"], "system_prompt": "prompts/dataset.md", "timeout_env": "MILK_DATASET_TIMEOUT_SECONDS", "teardown_handler": null},
