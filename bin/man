@@ -49,6 +49,10 @@ case "$mode" in
     *) die "unknown command: $1" ;;
 esac
 
+# New agent entries must not inherit their caller's heartbeat ownership or wait.
+unset MILK_MAN_HEARTBEAT_FILE MILK_HEARTBEAT_OWNER \
+    MILK_HEARTBEAT_SYSTEM_FILE MILK_HEARTBEAT_PROMPT_FILE MILK_HEARTBEAT_NEW_TASK
+
 workspaces=()
 state_arguments=()
 resume=0
@@ -57,6 +61,7 @@ check=0
 task_parts=()
 while (( $# )); do
     case "$1" in
+        -h|--help) usage; exit 0 ;;
         --workspace)
             [[ -n "${2:-}" ]] || die "--workspace requires name=/absolute/path"
             workspaces+=("$2")
