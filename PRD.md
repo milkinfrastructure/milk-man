@@ -144,6 +144,14 @@ bytes by length and SHA-256, along with endpoint, status, safe headers, route,
 fallback reason, timing, completion, profile, and scope. Never store
 authorization, cookies, or arbitrary proxy credentials.
 
+Milk Man opts into `X-Milk-Trajectory-Id` for gateway-bound driver calls.
+Parlor stores its validated UUID as optional `trajectory_id` and removes the
+header before forwarding. Summary and dataset jobs keep that scope-bound task
+group together across splits; untagged traffic retains request-based grouping.
+Native tool calls and results are captured intact. Training on those sequences
+is still separate work; a text-only training path must not silently discard
+them or treat repeated context as independent conversations.
+
 Start with one named Cloudflare container. Add a fixed pool or scope sharding
 only after a warm saturation measurement demonstrates the need.
 

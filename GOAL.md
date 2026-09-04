@@ -139,9 +139,11 @@ not a sequence of human-issued commands, drives Milk Man.
 
 ## P1 — complete one autonomous task
 
-- [ ] Route the driver through Parlor using its own Milk key, prove the
+- [x] Route the driver through Parlor using its own Milk key, prove the
   request/response and tool sequence in its UUIDv6 scope, and show the selected
   gateway connection and heartbeat in the dashboard. Preserve other scopes.
+  Live proof on 2026-09-04: Astra through Responses; all five keys still
+  authenticate; eleven exchanges retained, seven with the same trajectory ID.
 
 - [x] Remove the prompt rule that a Milk job must be named by the human.
 - [x] Keep the system prompt short: inspect state once, choose the next useful

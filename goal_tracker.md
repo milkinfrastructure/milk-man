@@ -24,12 +24,27 @@ Status notation:
 - [x] Reserved and validated UUIDv6
   `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a` for `milk-man-autoresearch`.
   Its node prefix encodes `milk`; it is not an authentication key.
-- [ ] Bind a dedicated Milk key to this scope, route the running driver's
+- [x] Bind a dedicated Milk key to this scope, route the running driver's
   model calls through Parlor, and inspect one captured task/tool sequence.
   This is additional agent-training data; retain the existing application scopes.
-- [x] OpenAI driver default changed to `gpt-6-astra`. The running Baseten GLM
-  driver remains unchanged. The 120B comparison has finished and its two
-  deployments are stopped; gateway key registration is the next dependency.
+- [x] Recovered the four existing key bindings from Keychain and exact deploy
+  history, preserved production route revision 7, and appended the new binding.
+  All five keys authenticate after deployment; private recovery files stay
+  outside Git in `~/.config/milk/`.
+- [x] The running driver is now `gpt-6-astra`, Responses, maximum reasoning,
+  through Parlor. Baseten GLM remains an independent configuration option.
+- [x] R2 inspection found eleven complete exchanges in the new scope. Seven
+  include trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a` and parse as one
+  scope-bound source group. Four pre-image exchanges have no trajectory field
+  and were not rewritten. All eight captured Bash calls have captured results;
+  known environment credential values were absent from inspected payloads.
+  Content-free proof: `~/.config/milk/driver-capture-proof.json`.
+- [x] `8d27935fb` carries optional task identity through summary, readiness,
+  eval and dataset preparation, keeps a task in one split, and excludes exact
+  held-out request/content duplicates from training. Narrow in-memory checks
+  passed; no new generation or training ran.
+- [ ] Add native assistant/tool sequence handling before admitting tool-call
+  trajectories to training. Captured tool traffic is not yet training-ready.
 
 - [x] The corrected product goal is autonomous, prompt-driven Milk Man: given
   an objective and configured environment, it uses Bash, existing or newly
@@ -79,8 +94,8 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `67b8c3371`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | heartbeat continuity, two Modal lifecycle proofs, serving failure handling, optional RL parent comparison, and dashboard fixes are committed locally, not pushed |
-| `milk-parlor` | `37c0f892cee2bb03277fff6cc107312e36fda672` | same | clean and deployed |
+| `milk-man` | `0476df06a`, plus this progress checkpoint | `38c1b9812e0182ec132d12a3da2460506fa9efd7` | autonomous runtime, lifecycle/tuning proofs, gateway-backed Astra, source grouping and progress discovery committed locally |
+| `milk-parlor` | `2b43cbd`, deployed | `37c0f892cee2bb03277fff6cc107312e36fda672` | trajectory-aware capture image deployed; source publication next |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
 Published Milk Man audit baseline:
@@ -102,21 +117,20 @@ Published Milk Man audit baseline:
 ## Live Parlor snapshot
 
 - [x] Endpoint: `https://parlor.milkinfrastructure.com`
-- [x] Cloudflare deployment:
-  `020c50ea-375e-4d7f-b4c1-1d19a0f06e12`
-- [x] Worker version: `4515234c-d762-4be6-816a-d4cda7f3582b`
+- [x] Worker version: `158038b4-d675-492c-a635-caaf958b1333`
 - [x] Image:
-  `sha256:7311ba8e6021f9c24277ad35ee5e6aeddc78e944e859ca4df0e933518a0e335e`
+  `sha256:57dd4e003466858294995f8351e24e1436b8a4df65f27cb0b6565ca4d4fc8024`
 - [x] Live check on 2026-09-04 returned status `ok`: Responses and Chat
-  Completions configured; candidate bindings absent; capture writer alive; 106
-  persisted and zero dropped.
+  Completions configured; candidate bindings absent; capture writer alive;
+  seven exchanges persisted by the new instance, zero dropped.
 - [x] The image is already a multi-stage Alpine build with a `scratch` runtime.
-  Cloudflare's displayed 2 GB is ephemeral disk allocation, not image size.
+  Docker reports 2,348,578 bytes for the Linux AMD64 image. Cloudflare's displayed
+  2 GB is ephemeral disk allocation, not image size.
 - [x] Requests route to one secret-selected named container instance. The
   current deployment is not an autoscaling pool.
-- [!] Cloudflare listed 19 named generations: 6 running and 13 inactive. Only
-  one running generation can be selected, leaving five running generations to
-  reconcile and stop.
+- [!] Cloudflare lists 21 named generations: 8 running and 13 inactive. Only
+  `parlor-d82c3cd-capture` is selected. Seven old running generations remain
+  to reconcile and stop; no public administrative endpoint was added.
 - [ ] Measure gateway capture overhead with one warm capture-on/capture-off
   comparison before making a latency claim. R2 writes are already asynchronous.
 - [ ] Decide later whether deterministic sampling is needed. Current behavior
@@ -127,8 +141,9 @@ Published Milk Man audit baseline:
 - [x] Dashboard returned HTTP 200 on `127.0.0.1:8766` on 2026-09-04.
 - [x] Current trajectory:
   `df36b6bc-1651-4f74-aa40-43da7a8a216a`
-- [x] Selected driver: Baseten, `zai-org/GLM-5.3-Flash`, Chat Completions,
-  maximum reasoning.
+- [x] Selected driver: Milk Parlor, `gpt-6-astra`, Responses, maximum reasoning.
+  Heartbeat owner restart preserved the same trajectory and 34 completed
+  wakeups without a new model call. Chrome's next task completed at wakeup 35.
 - [x] At 2026-09-04 18:59 UTC the trajectory completed a managed Baseten
   GLM-5.3-Flash turn at maximum reasoning. It ran exactly one
   `bin/milk status`, read the remote S3 scope, returned assistant text, and
@@ -200,7 +215,7 @@ Scope inventory:
 | `b6df8f84-bcc8-45a8-a89a-14350fdc1f23` | 259 | production-profile capture/summary and signed route history | status is stale; no learned production qualification |
 | `2b08c7d1-5bfe-4f74-9979-c8eec35d73d4` | 19 | early mechanics | retain |
 
-Current dashboard scope `aeaa9585-74c8-43ea-b6e5-070b60c40619`:
+Former dashboard scope `aeaa9585-74c8-43ea-b6e5-070b60c40619` (retained unchanged):
 
 - [x] 106 complete captures and 106 processed classifications.
 - [x] Summary `0630f2fb-6044-59f8-bb41-dcd5de25b876`, digest prefix
@@ -212,6 +227,20 @@ Current dashboard scope `aeaa9585-74c8-43ea-b6e5-070b60c40619`:
 - [~] Thirteen prepared shards contain 3,268 cases from a parked experiment,
   plus later small pilots. They are immutable research residue, not work to
   continue.
+
+Current dashboard scope `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a`:
+
+- [x] Eleven captured driver exchanges; zero summarized. No data generation,
+  training, GPU creation, or route activation was started for this scope.
+- [x] The Chrome progress request completed through Astra and native Bash,
+  reported ten captures at command time, and returned to online idle.
+  Subsequent inventory includes its final model response, bringing the total
+  to eleven. Seven tagged exchanges are one task group, not seven independent
+  conversations.
+- [x] The request exposed missing progress-job discovery. `a1b83d770` and
+  `0476df06a` register the existing script and return its standard job result.
+  Live `bin/milk run progress` returned eleven captured, zero summarized,
+  `next=summary`, with zero inference and provider calls.
 
 Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 
@@ -550,7 +579,7 @@ Corrections made by this audit:
 
 ### P8 publish, operate, and qualify
 
-- [ ] Stop five stale unselected Parlor generations after exact identity
+- [ ] Stop seven stale unselected Parlor generations after exact identity
   reconciliation.
 - [ ] Publish concise docs and redacted evidence after the autonomous core is
   proven.
