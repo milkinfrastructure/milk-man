@@ -286,10 +286,12 @@ do not restart parked large generation runs.
 - [~] Summary, readiness, eval, dataset, Qwen3.5-0.8B training, model
   comparison, proposal, routing, fallback, rollback, and teardown have each
   run in historical mechanics lineages.
-- [ ] Reconcile the useful existing traffic and summary objects before making
-  new paid generation calls.
-- [ ] Let the heartbeat detect a configured threshold and progress a cumulative
-  summary/classification checkpoint with zero-call idle behavior.
+- [x] Reconcile retained traffic before new generation: Milk Man saved a
+  20-exchange checkpoint with eight inspected native-tool classifications.
+  Readiness remains false; this is not a trained or improved model.
+- [~] Summary execution/resume and zero-call replay are proven. The heartbeat
+  now watches raw capture thresholds without inference; a later automatic
+  threshold crossing remains to be observed.
 - [ ] Add or reuse scripts for eval generation, synthetic rollouts, scoring or
   rewards, filtering/deduplication, source-group splitting, dataset building,
   training, merging, quantization, evaluation, serving, and cleanup.

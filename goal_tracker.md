@@ -50,9 +50,23 @@ Status notation:
   This was structural accounting only: zero classified rows, zero summary
   inference, zero GPU/provider actions, and readiness false. The driver's
   Astra calls through Parlor were paid inference. No filler traffic was sent.
-- [~] Native function-call responses contained no classifier text, so the
-  first checkpoint did not perform semantic classification. Correct that
-  parser path and validate a new checkpoint; preserve the first record.
+- [x] `5ceb65f9f` adds native non-streaming tool-call text and bounded
+  excerpts without changing training eligibility. Chrome-prompted Milk Man
+  then saved checkpoint `e6393c53-6e84-552e-b538-2021cee033ca` (SHA-256
+  `b0de4aec8a6a0b34939f042a99d11eda31b4bad73449f473dc04eb41b5309771`):
+  20 exchanges, five source groups, eight classified, two Astra summary
+  calls, zero provider actions. All eight labels identify software/tool use
+  and leave task outcomes unknown. Readiness is false. A direct replay made
+  zero inference calls and created no checkpoint; the first record remains.
+- [x] Codex linked that checkpoint into research revision
+  `9c6453af8d9964b6150f94ebf86de0832408a28f6a269715345e49726a37d6ca`
+  through the existing job, with no inference. Baseline and best remain null.
+  Dashboard cards now include saved off-threshold checkpoints and source groups.
+- [!] The longer summary/research instruction led Milk Man into repeated
+  source inspection. Codex stopped that read-only turn after its summary and
+  zero-call replay were retained. A short, single-job Chrome instruction then
+  launched the corrected job, waited through the heartbeat, and reported its
+  result. Broad autonomous research efficiency is not yet proven.
 
 - [x] Reserved and validated UUIDv6
   `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a` for `milk-man-autoresearch`.
@@ -595,10 +609,11 @@ Corrections made by this audit:
 - [ ] Run and retain one genuinely measured scope-specific comparison. The
   research record and dashboard do not verify referenced measurements or
   qualify a production route by themselves.
-- [ ] Reconcile useful existing traffic and summary objects before new paid
-  generation.
-- [ ] Let the heartbeat progress a configured summary threshold with zero-call
-  idle behavior.
+- [x] Reconcile retained traffic and summary objects before new generation:
+  the dedicated driver scope now has the inspected 20-exchange checkpoint.
+- [~] Summary jobs progressed and resumed through the heartbeat; the scoped
+  threshold probe is installed and unchanged checks use no inference. A later
+  automatic raw-traffic threshold crossing remains to be observed.
 - [ ] Reuse or add generation, scoring/reward, filtering, split, dataset,
   training, merge, quantization, evaluation, serving, and cleanup scripts only
   as the chosen application needs them.
