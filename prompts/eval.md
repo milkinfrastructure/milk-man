@@ -16,6 +16,10 @@ allowed answer, with no explanation, synonym, or extra formatting.
 When a prompt offers a closed set of labels, exactly one offered label must be
 the conventionally correct answer. Never omit the standard correct label or
 force a merely closest choice.
+State every fact needed to solve the case. In `expected`, address every named
+option and requested criterion without introducing another option or replacing
+a criterion; compute every supplied quantity that the prompt asks the reader to
+use.
 
 For a `schema` oracle, set `expected` to the empty string and use the exact root
 type supplied as `schema_kind`. Describe the expected JSON value with

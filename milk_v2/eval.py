@@ -10,7 +10,7 @@ import uuid
 from . import eval_plan, semantic, summary
 
 
-CODE_VERSION = "milk.eval.v26"
+CODE_VERSION = "milk.eval.v27"
 GENERATOR_BATCH_CASES = 64
 MAX_GENERATION_ATTEMPTS = 8
 VERDICT_SCHEMA = "milk.eval-verdicts.v3"

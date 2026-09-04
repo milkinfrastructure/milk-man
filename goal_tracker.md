@@ -221,8 +221,14 @@ This path is complete. It does not alter the historical evidence below.
   omitted that conventional label and forced `Concierge prototype`; do not
   continue or coordinate v25. Usage was 112,405 tokens, approximately `$0.66`
   at list price. No downstream or GPU job ran.
-- [ ] Prove v26 with one 64-case shard after requiring every closed label set to
-  contain exactly one conventionally correct answer.
+- [x] Proved v26 with one serial 64-case shard. All identities, formats and
+  closed label sets passed, but direct review found two material reference
+  defects and two minor omissions: an unstated bag count, comparison of the
+  wrong methods, an introduced teaching option and an omitted lease-cost
+  calculation. Usage was 124,954 tokens, approximately `$0.91` at list price.
+  Do not continue or coordinate v26; no downstream or GPU job ran.
+- [ ] Prove v27 with one 64-case shard after requiring complete premises and
+  exact coverage of every requested option, criterion and calculation.
 
 ## Non-negotiable architecture
 
