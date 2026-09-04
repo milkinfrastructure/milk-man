@@ -41,7 +41,24 @@ harness. An explicit instruction may call a fixed job whose environment is
 configured; Milk Man still cannot choose, sign, or activate a route. Start one
 development task as shown below before using the prompt box on a fresh install.
 
-![Milk Man dashboard](docs/dashboard.png)
+## Dashboard
+
+Connect an app and see whether Milk Man, Milk Parlor, and object memory are
+reachable.
+
+![Milk Man connection and status](docs/dashboard-overview.png)
+
+Give Milk Man one task and follow its response and work details.
+
+![Milk Man conversation](docs/dashboard-conversation.png)
+
+See the current step from captured traffic to a candidate route.
+
+![Milk processing loop](docs/dashboard-loop.png)
+
+Open a checkpoint to see what the captured conversations contain.
+
+![Milk summary checkpoint](docs/dashboard-summary.png)
 
 ## Run a supervised development task
 

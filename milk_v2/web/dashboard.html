@@ -28,13 +28,32 @@
       <small id="run-scope">scope unknown</small>
     </div>
     <nav class="toolbar" aria-label="Dashboard sections">
-      <a href="#connect">connect an app</a>
       <a href="#prompt">talk to Milk Man</a>
+      <a href="#connect">connect an app</a>
       <a href="#loop">watch the loop</a>
       <a href="#jobs-panel">job setup</a>
       <a href="#summaries">saved summaries</a>
     </nav>
     <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, environment name, or code block to copy it</small>
+
+    <details class="chat" id="talk" aria-label="Milk Man conversation" open>
+      <summary title="A normal instruction resumes the saved local session. /bootstrap first starts or finds the reviewed remote controller. Milk Man never signs routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
+      <p class="section-help" id="watch-state">Give Milk Man one task below. Replies stay in the conversation; commands and raw output stay folded under work details.</p>
+      <div class="messages" id="activity" tabindex="0" aria-label="Milk Man transcript">
+        <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
+      </div>
+      <div class="composer" id="prompt">
+        <div class="prompt-head">
+          <label class="prompt-label" for="prompt-text">next instruction</label>
+          <span class="prompt-state" id="prompt-state" role="status" aria-live="polite">Milk Man is ready.</span>
+        </div>
+        <form id="run-form">
+          <textarea id="prompt-text" name="prompt" rows="3" maxlength="16384" aria-describedby="prompt-help prompt-state" placeholder="Give Milk Man one bounded task." required></textarea>
+          <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send</button>
+        </form>
+        <small class="prompt-help" id="prompt-help">Command / Control + Enter sends · Enter makes a new line</small>
+      </div>
+    </details>
 
     <details id="connect">
       <summary title="Install the official OpenAI client, point it at Milk Parlor, and keep the rest of your call.">connect an app <small>official SDK · two values change</small></summary>
@@ -60,20 +79,6 @@
         <span><b>Milk Man</b><small>summaries · evals · training</small></span>
       </div>
       <p class="section-help">Milk currently tunnels <code>POST /v1/responses</code> and <code>POST /v1/chat/completions</code> unchanged. Other OpenAI API endpoints are not claimed.</p>
-    </details>
-
-    <details class="chat" id="talk" aria-label="Milk Man conversation" open>
-      <summary title="A normal instruction resumes the saved local session. /bootstrap first starts or finds the reviewed remote controller. Milk Man never signs routes.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
-      <p class="section-help" id="watch-state">Status checks use no model. Send a normal instruction to resume, or start with <code>/bootstrap</code> to run inference status and ensure before the same session continues on the remote controller.</p>
-      <div class="messages" id="activity">
-        <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
-      </div>
-      <form id="run-form">
-        <label class="prompt-label" for="prompt">tell Milk Man what to do next</label>
-        <textarea id="prompt" name="prompt" maxlength="16384" placeholder="Example: /bootstrap inspect the next unfinished item, make the smallest fix, and report the result." required></textarea>
-        <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send to Milk Man</button>
-      </form>
-      <p class="prompt-state" id="prompt-state" role="status" aria-live="polite"><kbd>Command / Control + Enter</kbd> sends · Enter makes a new line · one instruction may wait.</p>
     </details>
 
     <div class="status-line">

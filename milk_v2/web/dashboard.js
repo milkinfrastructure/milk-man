@@ -432,12 +432,13 @@ function renderMan(man) {
   if (man.memory) rows(el("memory"), man.memory.map(memory => ({ title: memory.ts || "memory", detail: memory.content })), "no saved memory");
 
   const target = el("activity");
+  target.setAttribute("aria-busy", man.active ? "true" : "false");
   const nextActivityKey = String(man.active) + JSON.stringify(man.activity);
   if (nextActivityKey === activityKey) return;
   activityKey = nextActivityKey;
   const follow = target.scrollHeight - target.scrollTop - target.clientHeight < 64;
   const scroll = target.scrollTop;
-  const opened = new Set(Array.from(target.querySelectorAll("details.tool[open]"), value => value.dataset.key));
+  const opened = new Set(Array.from(target.querySelectorAll("details.message[open]"), value => value.dataset.key));
   target.replaceChildren();
   if (!man.activity.length) target.append(node("article", "message milk-man", "No conversation yet."));
   for (let index = 0; index < man.activity.length;) {
@@ -447,8 +448,8 @@ function renderMan(man) {
       while (man.activity[index + group.length]?.type === event.type) group.push(man.activity[index + group.length]);
       const message = node("details", "message tool");
       message.dataset.key = index + ":" + (event.ts || event.type);
-      message.open = opened.has(message.dataset.key) || (man.active && event.type === "process-output");
-      const label = event.type === "process-output" ? "live output" : "tool output";
+      message.open = opened.has(message.dataset.key);
+      const label = event.type === "process-output" ? (man.active ? "working details" : "run details") : "tool details";
       const last = group[group.length - 1];
       message.append(
         node("summary", "", label + " · " + group.length + (group.length === 1 ? " entry" : " entries") + (last.ts ? " · " + last.ts : "")),
@@ -459,6 +460,16 @@ function renderMan(man) {
       continue;
     }
     const role = event.type === "prompt" ? "you" : "milk-man";
+    if (role === "milk-man" && (event.content.length > 1200 || event.content.startsWith("```"))) {
+      const message = node("details", "message milk-man folded");
+      message.dataset.key = index + ":" + (event.ts || event.type);
+      message.open = opened.has(message.dataset.key);
+      const label = event.content.startsWith("```") ? "milk man · proposed command" : "milk man · long reply";
+      message.append(node("summary", "", label + (event.ts ? " · " + event.ts : "")), node("pre", "", event.content));
+      target.append(message);
+      index++;
+      continue;
+    }
     const message = node("article", "message " + role);
     message.append(node("b", "", role.replace("-", " ")), node("pre", "", event.content));
     if (event.ts) message.append(node("time", "", event.ts));
@@ -478,7 +489,7 @@ function runState(message = "", error = false) {
 async function startRun(event) {
   event.preventDefault();
   if (runLoading) return;
-  const prompt = el("prompt").value.trim();
+  const prompt = el("prompt-text").value.trim();
   if (!prompt) return runState("Enter a prompt first.", true);
   runLoading = true;
   runState("Starting Milk Man. Output will appear above.");
@@ -486,7 +497,7 @@ async function startRun(event) {
     const response = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
     const result = await response.json();
     if (!response.ok) throw Error(result.error || "Unable to start Milk Man.");
-    el("prompt").value = "";
+    el("prompt-text").value = "";
     runState(result.state === "queued" ? "Instruction queued behind the current run." : "Milk Man is working. Output will appear above.");
     await refreshLocal();
   } catch (error) {
@@ -512,7 +523,7 @@ function renderCloud(data) {
   const jobs = data.contract?.jobs || [];
   const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
   el("job-count").textContent = readyJobs + " / " + jobs.length + " ready";
-  el("watch-state").textContent = "Status is checked every " + number(monitor.interval_seconds) + " seconds without model use. " + readyJobs + " of " + jobs.length + " jobs have their required environment names; restart after changing them.";
+  el("watch-state").textContent = "Give Milk Man one task at a time. Status checks every " + number(monitor.interval_seconds) + " seconds use no model. " + readyJobs + " of " + jobs.length + " jobs are configured. Commands and raw output stay folded.";
   const status = milk.status || {};
   renderRun(status);
   renderProgress(milk.progress);
@@ -565,7 +576,7 @@ el("refresh").addEventListener("click", () => refreshCloud(true));
 el("stage-scrubber").addEventListener("input", event => selectStage(number(event.target.value) - 1, true));
 document.querySelectorAll("[data-copy]").forEach(button => button.addEventListener("click", () => copyValue(button.dataset.copy, button.dataset.copyLabel)));
 el("run-form").addEventListener("submit", startRun);
-el("prompt").addEventListener("keydown", event => {
+el("prompt-text").addEventListener("keydown", event => {
   if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
     event.preventDefault();
     el("run-form").requestSubmit();
