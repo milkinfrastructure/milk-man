@@ -46,6 +46,8 @@ dashboard after changing its environment.
 The dashboard reads the saved trajectory and heartbeat, sends instructions,
 and shows messages, workspace changes, configured environment names, gateway
 health, and object-store progress. It never displays environment values.
+The heartbeat strip shows the last check, next wake, and idle-check count.
+Open **saved task** to see the objective and latest correction it will resume.
 Closing the page is not a stop command; current heartbeat proof status is in
 [`goal_tracker.md`](goal_tracker.md). On a fresh install, start the first task
 from Bash as shown above so the dashboard has a trajectory to resume.

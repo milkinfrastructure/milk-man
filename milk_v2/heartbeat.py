@@ -83,7 +83,7 @@ def enqueue(path: Path, prompt: str) -> None:
     with edit(path) as value:
         if value.get("pending"):
             raise RuntimeError("one instruction is already pending")
-        value["pending"] = prompt
+        value["pending"] = {"prompt": prompt, "new_task": value.get("state") == "idle"}
     wake(value)
 
 
@@ -104,6 +104,12 @@ def observe(command: list[str]) -> dict:
             return {"exit": result.returncode, "result": data}
         except (OSError, subprocess.TimeoutExpired) as error:
             return {"error": type(error).__name__}
+
+
+def objective(value: dict) -> str:
+    task = str(value.get("task", "")).strip()
+    brief = str(value.get("brief", "")).strip()
+    return task + ("\nLatest operator instruction: " + brief if brief else "")
 
 
 def main() -> None:
@@ -172,7 +178,7 @@ def main() -> None:
             if os.environ.get("MILK_HEARTBEAT_NEW_TASK") == "1":
                 if not prompt:
                     raise ValueError("a new heartbeat task cannot be empty")
-                value["pending"] = prompt
+                value["pending"] = {"prompt": prompt, "new_task": True}
                 value.pop("recover", None)
             elif interrupted:
                 value["recover"] = True
@@ -192,16 +198,31 @@ def main() -> None:
             changed = watch == observed_watch and observation is not None and observation != watch.get("last")
             due = watch.get("due") is not None and stamp >= watch["due"]
             recovering = value.pop("recover", False)
-            pending = None if recovering else value.pop("pending", None)
-            prompt = pending
+            pending_value = None if recovering else value.pop("pending", None)
+            pending = None
+            new_task = False
+            if isinstance(pending_value, dict):
+                pending = pending_value.get("prompt")
+                new_task = pending_value.get("new_task") is True
+            elif isinstance(pending_value, str):
+                pending = pending_value
+                new_task = value.get("state") == "idle" or not value.get("task")
+            prompt = None
             if recovering:
-                prompt = "Resume the interrupted task: " + value.get("task", "") + "\nInspect saved outputs and existing resources first; do not duplicate completed work."
+                prompt = "Resume the interrupted task: " + objective(value) + "\nInspect saved outputs and existing resources first; do not duplicate completed work."
+            elif isinstance(pending, str) and pending.strip():
+                pending = pending.strip()
+                if new_task or not value.get("task"):
+                    value["task"] = pending
+                    value.pop("brief", None)
+                    prompt = pending
+                else:
+                    value["brief"] = pending
+                    prompt = "Continue the saved task: " + objective(value)
             if not prompt and value.get("state") != "paused" and (changed or due):
-                prompt = "Continue the saved task: " + value.get("task", "") + "\n"
+                prompt = "Continue the saved task: " + objective(value) + "\n"
                 prompt += "Scheduled review is due." if due else "Status changed: " + json.dumps(observation, separators=(",", ":"))
             if prompt:
-                if pending:
-                    value["task"] = prompt
                 value.pop("watch", None)
                 value.update(state="running", interval=base, next_wake=None)
                 value["turns"] = value.get("turns", 0) + 1
@@ -222,6 +243,8 @@ def main() -> None:
             code = int(args[0])
             value.update(last_exit_code=code, state="failed" if code else "waiting" if value.get("watch") else "idle",
                          next_wake=stamp + base, interval=base)
+            if code == 0 and not value.get("watch"):
+                value.pop("brief", None)
         elif action in ("pause", "resume", "stopped"):
             value["state"] = {"pause": "paused", "resume": "waiting" if value.get("watch") else "idle", "stopped": "stopped"}[action]
             value["next_wake"] = stamp

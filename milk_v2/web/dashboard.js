@@ -434,6 +434,9 @@ function renderMan(man) {
     target.dateTime = stamp ? new Date(stamp * 1000).toISOString() : "";
   }
   el("heartbeat-count").textContent = (pulse.turns || 0) + " wakeups · " + (pulse.polls || 0) + " idle checks";
+  el("heartbeat-task").textContent = pulse.task || "No task saved yet.";
+  el("heartbeat-brief").hidden = !pulse.brief;
+  el("heartbeat-brief").textContent = pulse.brief ? "Latest instruction: " + pulse.brief : "";
   const nextWake = workActive ? " · next check after current work" : heartbeatOnline && pulse.next_wake ? " · next check " + new Date(pulse.next_wake * 1000).toLocaleTimeString() : "";
   el("conversation-state").textContent = (man.online ? "online" : "stopped") + " · " + state + jobStatus + nextWake + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
   el("conversation-state").title = pulse.checked_at ? "Heartbeat last checked " + new Date(pulse.checked_at * 1000).toLocaleString() + ". Unchanged idle checks use no model tokens." : "Heartbeat starts with your next task. Closing this page does not stop it.";

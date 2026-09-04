@@ -245,6 +245,8 @@ def _man_state(include_metadata: bool = True) -> dict:
         "heartbeat": {
             "online": pulse_alive,
             **{key: pulse.get(key) for key in ("state", "checked_at", "next_wake", "turns", "polls")},
+            "task": _redact(pulse.get("task"))[:16384],
+            "brief": _redact(pulse.get("brief"))[:16384],
         },
         "queued": queued,
         "last_exit_code": last_exit_code,

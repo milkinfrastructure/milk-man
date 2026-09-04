@@ -51,6 +51,8 @@ h1 { margin: .2rem 0 0; font-size: 22px; line-height: 1; }
 .lights { align-items: flex-start; flex-direction: column; gap: .25rem; }
 .heartbeat { display: flex; flex-wrap: wrap; gap: .6rem 1.25rem; padding: .75rem; border: 1px solid var(--white); border-bottom: 0; }
 .heartbeat > span { display: inline-flex; align-items: center; gap: .4rem; }
+.heartbeat-task { width: 100%; }
+.heartbeat-task p { margin: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .signal {
   --lamp: var(--white);
   --face: var(--black);
