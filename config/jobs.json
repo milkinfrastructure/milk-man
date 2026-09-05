@@ -111,7 +111,7 @@
       "timeout_env": "MILK_TRIAL_JOB_TIMEOUT_SECONDS"
     },
     "serve-baseten": {
-      "description": "Deploy, inspect, or stop an environment-selected vLLM server on Baseten. Use a pinned Hugging Face base, or set MILK_BASETEN_SERVE_CHECKPOINT_KEY/SHA256 to a completed Milk model manifest in the configured object store. The base MODEL/REVISION must match. Weights stay outside the image. Run returns during startup; watch status and repeat run only if it requests configuration application, reusing the deployment. Complete means provider readiness, not verified inference. details.driver gives the endpoint, model and credential environment name.",
+      "description": "Deploy, inspect, or stop a vLLM server on Baseten. Use a pinned Hugging Face base or set MILK_BASETEN_SERVE_CHECKPOINT_KEY/SHA256 to a completed Milk model manifest; MODEL/REVISION must match its base. Weights stay outside the image. Run returns during startup. Watch status; repeat run only when configuration application is requested, reusing the deployment. Complete means provider readiness, not inference. details.driver gives the endpoint, model and key environment name.",
       "executable": "milk_v2/providers/baseten_serve.py",
       "environment": {
         "required": ["BASETEN_API_KEY", "MILK_BASETEN_SERVE_MODEL", "MILK_BASETEN_SERVE_REVISION", "MILK_BASETEN_SERVE_IMAGE"],
