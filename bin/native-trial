@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""Request one next action from a captured context; never execute it."""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+from urllib.parse import urlsplit
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from milk_v2 import eval_plan, native_capture
+from milk_v2.state import NAME, atomic_json, now, read_json, redact, redact_message
+
+LLM = ROOT / "vendor/headlong/bin/llm"
+REQUEST_HELPER_INVOCATIONS = 0
+
+
+def digest(value):
+    return hashlib.sha256(value if isinstance(value, bytes) else json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def configuration():
+    raw = Path(os.environ["MILK_NATIVE_TRIAL_FILE"]).expanduser().read_bytes()
+    if len(raw) > 4 * 1024 * 1024 or digest(raw) != os.environ["MILK_NATIVE_TRIAL_SHA256"]:
+        raise ValueError("native artifact size or digest differs")
+    artifact = json.loads(raw)
+    if artifact.get("schema_version") != native_capture.VERSION:
+        raise ValueError("unsupported native artifact")
+    source = artifact["source"]
+    group = eval_plan.source_group(source["request_sha256"], source["trajectory_id"], source["scope_id"])
+    if group["kind"] != "trajectory" or group["kind"] != source["source_group_kind"] or group["sha256"] != source["source_group_sha256"] or source["split"] != eval_plan.split_for_group(group["sha256"], group["kind"]):
+        raise ValueError("native source group or split differs")
+    if os.environ.get("MILK_SCOPE_ID", source["scope_id"]) != source["scope_id"]:
+        raise ValueError("configured scope differs from native source")
+    context, tools = artifact["messages"], artifact["tools"]
+    if not context or context[0].get("role") != "system" or not isinstance(context[0].get("content"), str):
+        raise ValueError("native trial requires one initial text system message")
+    if any(message.get("role") in {"system", "developer"} or not isinstance(message.get("content"), (str, type(None))) for message in context[1:]):
+        raise ValueError("native trial does not convert embedded instructions or content arrays")
+    if not tools:
+        raise ValueError("native trial requires captured function tools")
+    native_capture.tool_sequence(context, [], tools)
+    # Targets remain in the source artifact; only the untouched prefix is sent.
+    inputs = {"system": context[0]["content"], "messages": context[1:], "tools": tools}
+    parsed = urlsplit(os.environ["LLM_API_URL"])
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("LLM_API_URL must be a credential-free HTTP(S) endpoint")
+    if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+        raise ValueError("LLM_API_URL must use HTTPS outside localhost")
+    defaults = {"LLM_API_MODE": "chat_completions", "LLM_REASONING_EFFORT": "", "LLM_MAX_TOKENS": "4096", "LLM_CONNECT_TIMEOUT": "10", "LLM_MAX_TIME": "300"}
+    driver = {name: os.environ.get(name, default) for name, default in defaults.items()}
+    driver.update(LLM_API_URL=os.environ["LLM_API_URL"], LLM_MODEL=os.environ["LLM_MODEL"], LLM_MILK_TRAJECTORY_HEADER="1", MILK_MAN_TRAJECTORY_ID=source["trajectory_id"])
+    timeout = float(driver["LLM_MAX_TIME"]) + 15
+    if driver["LLM_API_MODE"] not in {"responses", "chat_completions"} or not 15 < timeout <= 3615 or int(driver["LLM_MAX_TOKENS"]) < 1:
+        raise ValueError("invalid driver mode, timeout, or output limit")
+    attempt = os.environ.get("MILK_NATIVE_TRIAL_ATTEMPT", "0")
+    if not NAME.fullmatch(attempt) or redact(json.dumps(driver)) != json.dumps(driver):
+        raise ValueError("invalid attempt or credential in driver settings")
+    config = {"schema_version": "milk.native-trial.v1", "source": source, "artifact_sha256": digest(raw), "input_sha256": digest(inputs), "script_sha256": digest(Path(__file__).read_bytes()), "llm_sha256": digest(LLM.read_bytes()), "driver": driver, "attempt": attempt, "tool_choice": "required", "parallel_tool_calls": False, "temperature": 0 if driver["LLM_API_MODE"] == "chat_completions" else "provider_default", "omissions": artifact.get("omissions", {}), "task_success": None}
+    return config, inputs, digest(config), timeout
+
+
+def receipt(identity, directory, result, replay):
+    calls = 0 if replay else result.get("request_helper_invocations", 0)
+    return {"state": result["state"], "identity": identity, "provider_calls": 0, "inference_calls": calls, "details": {"replay": replay, "request_helper_invocations": calls, "call_count_basis": "one request on successful helper completion; failed helper attempts counted conservatively; replay makes no request", "input_sha256": result["input_sha256"], "split": result["split"], "source_group_sha256": result["source_group_sha256"], "elapsed_seconds": result.get("elapsed_seconds"), "result_file": str(directory / "result.json"), "result_sha256": digest((directory / "result.json").read_bytes()), "action_format_valid": result.get("action_format_valid"), "task_success": None, "commands_executed": 0}}
+
+
+def execute(config, inputs, directory, timeout):
+    global REQUEST_HELPER_INVOCATIONS
+    atomic_json(directory / "config.json", config)
+    atomic_json(directory / "input.json", inputs)
+    (directory / "system.txt").write_text(inputs["system"])
+    for name in ("messages", "tools"):
+        (directory / (name + ".json")).write_text(json.dumps(inputs[name], ensure_ascii=False))
+    result = {"state": "failed", "started_at": now(), "input_sha256": config["input_sha256"], "split": config["source"]["split"], "source_group_sha256": config["source"]["source_group_sha256"], "task_success": None, "commands_executed": 0, "request_helper_invocations": 0}
+    process, clock = None, time.monotonic()
+    try:
+        command = [str(LLM), "--system-file", str(directory / "system.txt"), "--messages-file", str(directory / "messages.json"), "--tools-file", str(directory / "tools.json"), "--json-response"]
+        process = subprocess.Popen(command, env=os.environ | config["driver"], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True, close_fds=True)
+        REQUEST_HELPER_INVOCATIONS = 1
+        result["request_helper_invocations"] = 1
+        atomic_json(directory / "started.json", {"pid": process.pid, "started_at": result["started_at"]})
+        output, errors = process.communicate(timeout=timeout)
+        result.update(exit_code=process.returncode, output_sha256=digest(output))
+        if process.returncode:
+            result["error"] = redact(errors.decode(errors="replace"))[-2000:]
+        else:
+            response = json.loads(output)
+            omissions = {"reasoning_items": 0, "encrypted_reasoning_items": 0}
+            message = response["message"]
+            action = {name: message[name] for name in ("role", "content", "tool_calls") if name in message}
+            result.update(state="complete", returned_action=redact_message(action), provider_request_id=response.get("provider_request_id"), usage=response.get("usage"), action_format_valid=False)
+            try:
+                decoded = native_capture.messages([message], "chat_completions", omissions)
+                native_capture.tool_sequence([{"role": "system", "content": inputs["system"]}, *inputs["messages"]], decoded, inputs["tools"])
+                result["action_format_valid"] = True
+            except native_capture.Unsupported as error:
+                result["action_format_error"] = str(error)
+            result["output_omissions"] = omissions
+    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired, KeyboardInterrupt) as error:
+        result["error"] = type(error).__name__
+    finally:
+        if process is not None and process.poll() is None:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.communicate()
+    result.update(finished_at=now(), elapsed_seconds=round(time.monotonic() - clock, 3))
+    atomic_json(directory / "result.json", result)
+    return result
+
+
+def main():
+    if sys.argv[1:] == ["--help"]:
+        print("native-trial [check|run|status]\nRequired: MILK_NATIVE_TRIAL_FILE, MILK_NATIVE_TRIAL_SHA256, LLM_API_URL, LLM_MODEL. Uses LLM_API_KEY and ordinary LLM_* settings. MILK_NATIVE_TRIAL_ID reads an exact saved attempt without launching. Optional MILK_NATIVE_TRIAL_ATTEMPT deliberately starts another attempt. check is offline; status and completed replay never call inference. One visible next action only, no command execution or success claim.")
+        return 0
+    if sys.argv[1:] not in ([], ["check"], ["run"], ["status"]):
+        raise ValueError("usage: native-trial [check|run|status]")
+    explicit = os.environ.get("MILK_NATIVE_TRIAL_ID")
+    if explicit:
+        if len(explicit) != 64 or any(char not in "0123456789abcdef" for char in explicit):
+            raise ValueError("MILK_NATIVE_TRIAL_ID must be an exact saved identity")
+        if sys.argv[1:] == ["check"]:
+            raise ValueError("use status to inspect an exact saved trial")
+        identity, config, inputs, timeout = explicit, None, None, None
+    else:
+        config, inputs, identity, timeout = configuration()
+    if sys.argv[1:] == ["check"]:
+        print(json.dumps({"state": "prepared", "identity": identity, "inference_calls": 0, "provider_calls": 0, "details": {"input_sha256": config["input_sha256"], "source": config["source"], "context_messages": len(inputs["messages"]) + 1, "tools": len(inputs["tools"]), "targets_sent": 0, "task_success": None}}, separators=(",", ":")))
+        return 0
+    state = Path(os.environ.get("MILK_MAN_STATE_DIR", str(Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "milk-man"))).expanduser().resolve()
+    if state == Path("/") or state == Path.home() or state == ROOT or ROOT in state.parents:
+        raise ValueError("native trial state must be dedicated and outside the repository")
+    directory = state / "native-trials" / identity
+    result_file = directory / "result.json"
+    if result_file.exists():
+        result = read_json(result_file)
+        print(json.dumps(receipt(identity, directory, result, True), separators=(",", ":")))
+        return 0 if result["state"] == "complete" else 1
+    if sys.argv[1:] == ["status"] or explicit:
+        print(json.dumps({"state": "blocked" if directory.exists() else "idle", "identity": identity, "inference_calls": 0, "provider_calls": 0, "details": {"run_dir": str(directory), "message": "No completed receipt; inspect the saved process before choosing a new attempt."}}))
+        return 0
+    directory.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        directory.mkdir(mode=0o700)
+    except FileExistsError:
+        raise ValueError("unfinished attempt retained; inspect its process before choosing a new attempt")
+    result = execute(config, inputs, directory, timeout)
+    print(json.dumps(receipt(identity, directory, result, False), separators=(",", ":")))
+    return 0 if result["state"] == "complete" else 1
+
+
+if __name__ == "__main__":
+    os.umask(0o077)
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+    try:
+        raise SystemExit(main())
+    except (KeyError, ValueError, OSError) as error:
+        print(json.dumps({"state": "failed", "identity": "native-trial", "error": redact(str(error)), "inference_calls": REQUEST_HELPER_INVOCATIONS, "provider_calls": 0}, separators=(",", ":")))
+        raise SystemExit(64)

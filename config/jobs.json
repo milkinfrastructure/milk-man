@@ -44,6 +44,17 @@
   },
   "operate_order": ["summary", "eval", "dataset", "train", "evaluate"],
   "jobs": {
+    "native-trial": {
+      "description": "Request one next action from a pinned captured context and tools, withholding its saved answer. Never executes commands. Retains the source group/split and private input/result receipts; completed replay makes no model call. A formatted answer is not proof of task success.",
+      "executable": "bin/native-trial",
+      "environment": {
+        "required": ["MILK_NATIVE_TRIAL_FILE", "MILK_NATIVE_TRIAL_SHA256", "LLM_API_URL", "LLM_MODEL"],
+        "optional": ["LLM_API_KEY", "LLM_API_MODE", "LLM_REASONING_EFFORT", "LLM_MAX_TOKENS", "LLM_CONNECT_TIMEOUT", "LLM_MAX_TIME", "MILK_SCOPE_ID", "MILK_MAN_STATE_DIR", "MILK_NATIVE_TRIAL_ID", "MILK_NATIVE_TRIAL_ATTEMPT", "MILK_NATIVE_TRIAL_JOB_TIMEOUT_SECONDS"]
+      },
+      "status": true,
+      "stop": false,
+      "timeout_env": "MILK_NATIVE_TRIAL_JOB_TIMEOUT_SECONDS"
+    },
     "native-capture": {
       "description": "Extract visible assistant messages/tool targets from one pinned completed native capture. Requires exact MILK_NATIVE_CAPTURE_KEY and MILK_NATIVE_CAPTURE_SHA256. Preserves historical tool IDs/results and source grouping. Reasoning, including ciphertext, is omitted explicitly. Unsupported protocols/history are reported, never flattened. Raw content stays in a private local artifact; stdout contains counts and digests only. This does not prove task success or admit training data.",
       "executable": "milk_v2/native_capture.py",
