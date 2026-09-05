@@ -202,9 +202,10 @@ not another bespoke orchestration branch.
 - [x] Invoke no model while idle. Check saved metadata and bound any capture
   listing to the next threshold within this scope, never the whole bucket.
   Send compact changed results when reasoning resumes.
-- [~] Idle cycles, timer restart, provider status wake, and owner restart
-  against an already-ready provider resource are proven. Provider-startup
-  recovery without Codex correction remains open; see the tracker.
+- [x] Idle cycles, timer restart, provider status wake, and owner restart
+  during real provider startup are proven. The same detached worker and
+  saved watch survived; the restored watch resumed automatically. This does
+  not erase earlier corrections needed to get the experiment launched.
 
 Acceptance: Milk Man remains available and resumes useful work at low idle cost
 without a separate scheduler service.
@@ -247,23 +248,28 @@ hardcoding that model or provider into the harness.
 - [x] Compare like-for-like requests and concurrency. Persist exact model,
   revision, runtime, resource, serving arguments, endpoint identity, metrics,
   and conclusion for every trial.
-- [ ] Make later experiments respond to measured results rather than replaying
-  a fixed matrix.
+- [~] Milk Man proposed prefix caching after the CUDA-graphs result, measured
+  it on the same tiny workload, rejected the slower setting, and saved the
+  result. Corrections were needed; representative unassisted research remains
+  open rather than being inferred from this serving check.
 - [x] Retain or reuse the best configuration that meets the task objective;
   stop losing trials and verify their resources are absent.
 - [x] Demonstrate a successful native Milk Man turn through the selected
   endpoint. The 120B child read research status and finished successfully;
   the Astra parent remained on Parlor.
-- [ ] Resume without rerunning completed trials.
+- [x] Candidate-only recovery reused the completed baseline without new
+  baseline inference. The earlier failed receipt remains unchanged; see the
+  tracker for the required stop-condition fix and Chrome correction.
 
 Acceptance: Milk Man improves a live inference configuration from evidence and
 leaves one requested winner or zero resources according to the prompt.
 
 ## P6 — prove continuity and generality
 
-- [~] Restart during an active research task and resume its trajectory,
-  resources, measurements, and next experiment without duplication. Restart
-  against the same ready 120B server is proven; mid-start recovery remains open.
+- [x] Restart during an active research task and resume its trajectory,
+  resources, measurements, and next experiment without duplication. Owner
+  9907 resumed the same task/watch while detached workers 8869/8870 continued
+  the one pending 120B startup. No second launch was observed.
 - [x] Replace ad-hoc background shells with a reusable detached-command
   helper. Local execution proved that it does not inherit the heartbeat's
   process group or owner lock and that replay does not launch again. Apply it
@@ -339,7 +345,8 @@ Milk Man engine, with fine-tuning and RL represented truthfully.
 - [ ] Keep the local dashboard and public docs accurate for someone with no
   prior context. Show the active prompt, heartbeat, logs, environment-name
   readiness, resources, measurements, object progress, and cleanup state.
-- [ ] Preserve the original dependency-free Milk HTML/CSS design.
+- [x] Preserve the original dependency-free Milk HTML/CSS design. The local
+  dashboard adds accessible help and inline detail without new dependencies.
 - [ ] Make focused commits, push validated source, deploy the updated local and
   hosted surfaces, and record exact revisions and live evidence in the tracker.
 - [ ] Preserve the distinction between historical mechanics, current hosted

@@ -291,7 +291,7 @@ def stop(value: dict, path: Path) -> tuple[dict, int]:
     while time.monotonic() < deadline:
         observed = observe(value)
         calls += observed["provider_calls"]
-        if observed["app_state"] not in ACTIVE and observed["active_containers"] == 0:
+        if observed["app_state"] in {"stopped", "absent"} and observed["active_containers"] == 0:
             (path / "current.json").unlink(missing_ok=True)
             return observed, calls
         time.sleep(3)

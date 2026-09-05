@@ -305,7 +305,7 @@ GPU and serving jobs
 Baseten and Modal use small provider-native scripts behind the same process
 contract, not a large generic cloud framework or silent fallback chain.
 
-The current managed driver is `zai-org/GLM-5.3-Flash` through an
+The managed GLM binding is `zai-org/GLM-5.3-Flash` through an
 environment-selected OpenAI-compatible endpoint. The existing fixed Modal
 controller remains usable while it is extracted into general lifecycle jobs.
 When OpenAI is selected, the default model is `gpt-6-astra`. Both providers can

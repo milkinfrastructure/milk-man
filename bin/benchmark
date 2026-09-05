@@ -83,9 +83,10 @@ def endpoint():
         raise ConfigError("MILK_BENCHMARK_BASE_URL is invalid")
     if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
         raise ConfigError("MILK_BENCHMARK_BASE_URL must use HTTPS outside localhost")
-    if parsed.path.rstrip("/") not in {"", "/v1"}:
+    path = parsed.path.rstrip("/")
+    if path and not path.endswith("/v1"):
         raise ConfigError("MILK_BENCHMARK_BASE_URL must be an origin or end in /v1")
-    return base + ("" if parsed.path.rstrip("/") == "/v1" else "/v1") + "/chat/completions", model, key
+    return base + ("" if path else "/v1") + "/chat/completions", model, key
 
 
 def percentile(values, fraction):

@@ -28,13 +28,37 @@ Status notation:
   replay made zero inference calls. Result SHA-256:
   `7b1bac6692436b974421686e4151fbfddb8f157d0d8ae6d4c150497f5aff6b21`.
   This source belongs to the training split; it is not a held-out quality win.
+- [x] Dashboard UI `7362ec915` is published and running locally. Chrome verified
+  separate chat/data/experiments/settings/setup views, setting-specific help,
+  readable replies, saved comparisons, and draft-only task buttons. Landing
+  and docs `74a87c0` are deployed; production content matches the local files.
+  Idle checks continued without a model turn. No provider work was started
+  by the UI changes.
 - [~] Milk Man chose prefix caching as its next serving experiment, but needed
   a follow-up to stop repeated contract reads. Its precreated empty working
   directory then prevented launch. `bin/background` now claims an empty
   private directory once; local completion and no-duplicate replay passed.
   Codex resumed the same saved worker, not a new experiment. The sequential
-  baseline/candidate comparison has eight requests total and cleanup between
-  profiles; measurements and final zero-compute observation remain pending.
+  baseline/candidate comparison is now complete: eight requests total, with
+  the four completed baseline calls reused during candidate-only recovery.
+  Mean full-reply latency rose from 566.56 to 915.21 ms; first visible text
+  rose from 545.18 to 909.13 ms. The candidate lost. Both configurations
+  returned four correct tiny-workload answers, including warmups. This is
+  not a broad quality finding or fully unassisted research proof.
+- [x] Milk Man saved that completed result in research revision
+  `36904358f7e468a6528a5322fbdfb61122457fa5a6daec99a0efcff5a1f16ba6`
+  and returned to idle. Both app receipts show stopped and zero containers;
+  an independent baseline query repeated that observation after closeout.
+  Private completed summary: `tune-next.OFAuGb/candidate-continuation/execution/summary.json`,
+  SHA-256 `8d0c7d1e792d130f8afaea6d04ce6fe2f7d89bf0a6ad9e7fa9a0eb3070a09052`.
+- [x] Fixed the observed Modal stop race: zero containers while the app is
+  still stopping is no longer reported as completed teardown. The retained
+  candidate continuation exercised the corrected stop path.
+- [x] Optional `agent-trial` outcome checking accepts one trusted repository
+  script and leaves correctness unknown on a failed/changed checker. Local
+  checks covered true, false, malformed output, timeout, changed source, and
+  zero-call replay. This adds scoring, not a gate or a claim of task quality;
+  a real checker-assisted model trial remains open.
 - [x] Restarted owner 99949 during that real provider startup. Owner 9907
   resumed the same trajectory, task, and watch; workers 8869/8870 survived in
   a separate process group. One startup intent remained. The restored watch
@@ -298,9 +322,9 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | runtime `38f07a9b5`, plus this evidence checkpoint | runtime `38f07a9b5` and its following evidence checkpoint | native capture extraction, detached commands, and autonomous owned-120B checkpoint task; Baseten-owned proof and measured research improvement remain open |
+| `milk-man` | published UI `7362ec915`, plus this recovery checkpoint | `7362ec915` | readable dashboard, native action trials, completed serving comparison and startup/restart proof; Baseten-owned proof and measured task-quality improvement remain open |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
-| `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
+| `milk-landing` | `74a87c0`, deployed | `74a87c0` | root and docs verified against production; generated local deployment cache is not published |
 
 Published Milk Man audit baseline:
 `38c1b9812e0182ec132d12a3da2460506fa9efd7`.
@@ -465,7 +489,7 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 | --- | --- | --- |
 | High-level prompt -> existing job | `[x]` Chrome and Bash objectives chose and completed remote progress checks; one timer follow-up continued automatically | repeat an external operation without duplicating it |
 | Repository-script jobs | `[x]` Milk Man authored and reused `bin/progress`; `serve-modal` executed through the generic executable catalog | reuse the same dispatch for the next model |
-| Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, and restart against the same ready H200 server worked | recover during provider startup without Codex correction |
+| Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, and restart during the same pending H200 startup worked | preserve these properties through the next autonomous experiment |
 | Managed GLM Milk Man driver | `[x]` Baseten GLM status turn proven | autonomous multi-step task through the driver |
 | General model lifecycle | `[~]` Qwen/L4 and 120B/H200 each completed three correct calls and verified zero through the same env-selected scripts | complete a Baseten-owned lifecycle and an unassisted provider recovery |
 | Inference autotuning | `[~]` a same-workload 120B A/B comparison selected CUDA graphs; its endpoint later ran a native Milk Man task and stopped; corrections were required | prove independent adaptive trials on representative work |
@@ -750,7 +774,9 @@ Corrections made by this audit:
 - [x] The selected 120B endpoint drove an independent native Milk Man child
   through one real research-status Bash call and `finish`. The parent stayed
   on Astra; this was not a hot switch of the parent's existing trajectory.
-- [ ] Resume without rerunning completed experiments.
+- [x] Candidate-only continuation reused all four completed baseline calls;
+  the old failed receipt remains unchanged. One Chrome correction and the
+  stop-condition repair were needed; recovery was not wholly unassisted.
 
 ### P6 continuity and generality
 

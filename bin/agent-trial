@@ -5,6 +5,7 @@ import collections
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import signal
@@ -53,6 +54,15 @@ def configuration():
         raise ValueError("trial timeout must be positive and at least 15 seconds below job timeout")
     store = {name: os.environ.get(name) for name in ("MILK_SCOPE_PROFILE", "MILK_STORE_KIND", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_PATH_STYLE")}
     config = {"schema_version": "milk.agent-trial.v1", "task_sha256": digest(task), "workspace": str(workspace), "workspace_before": snapshot(workspace), "runtime_before": snapshot(ROOT), "driver": driver, "scope_id": os.environ.get("MILK_SCOPE_ID"), "store": store, "attempt": attempt, "timeout_seconds": timeout}
+    if os.environ.get("MILK_TRIAL_CHECK_SCRIPT"):
+        relative = Path(os.environ["MILK_TRIAL_CHECK_SCRIPT"])
+        checker = (ROOT / relative).resolve()
+        check_timeout = int(os.environ.get("MILK_TRIAL_CHECK_TIMEOUT_SECONDS", "10"))
+        if relative.is_absolute() or ROOT not in checker.parents or not checker.is_file() or not os.access(checker, os.X_OK):
+            raise ValueError("MILK_TRIAL_CHECK_SCRIPT must name an executable inside the repository")
+        if not 1 <= check_timeout <= 60 or timeout + check_timeout > outer_timeout - 20:
+            raise ValueError("checker timeout must be 1..60 seconds and fit within the trial job timeout")
+        config["checker"] = {"script": checker.relative_to(ROOT).as_posix(), "sha256": digest(checker.read_bytes()), "timeout_seconds": check_timeout}
     if redact(json.dumps(config)) != json.dumps(config):
         raise ValueError("nonsecret trial settings contain a credential; use environment authentication")
     return config, task, digest(json.dumps(config, sort_keys=True, separators=(",", ":")).encode())
@@ -60,7 +70,7 @@ def configuration():
 
 def receipt(identity, directory, result, replay=False):
     details = {name: result.get(name) for name in ("elapsed_seconds", "exit_code", "timed_out", "observed_model_replies", "native_tool_counts", "trajectory_id", "trajectory_sha256", "task_sha256")}
-    details.update(result_file=str(directory / "result.json"), result_sha256=digest((directory / "result.json").read_bytes()), replay=replay, report=redact(result.get("report", "")).encode()[:300].decode(errors="ignore"), task_correct=None, call_count_basis="observed driver replies; transport attempts and child job calls are not measured; provider_calls covers this supervisor only")
+    details.update(result_file=str(directory / "result.json"), result_sha256=digest((directory / "result.json").read_bytes()), replay=replay, report=redact(result.get("report", "")).encode()[:300].decode(errors="ignore"), task_correct=result.get("task_correct"), call_count_basis="observed driver replies; transport attempts and child job calls are not measured; provider_calls covers this supervisor only")
     return {"state": result["state"], "identity": identity, "inference_calls": 0 if replay else result["observed_model_replies"], "provider_calls": 0, "details": details}
 
 
@@ -86,6 +96,54 @@ def terminate(process):
         except ProcessLookupError:
             pass
         process.wait()
+
+
+def check_result(config, result, directory):
+    checker = config["checker"]
+    atomic_json(directory / "child-result.json", result)
+    body = (directory / "child-result.json").read_bytes()
+    record = {**checker, "input_sha256": digest(body), "exit_code": None, "verdict": None, "error": None}
+    process = None
+    try:
+        script = (ROOT / checker["script"]).resolve()
+        if ROOT not in script.parents or digest(script.read_bytes()) != checker["sha256"]:
+            record["error"] = "checker_changed"
+            return record
+        process = subprocess.Popen([str(script)], cwd=config["workspace"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True, close_fds=True)
+        output, _ = process.communicate(body, timeout=checker["timeout_seconds"])
+        record["output_sha256"] = digest(output)
+        if process.returncode:
+            record["error"] = "checker_failed"
+            return record
+        if len(output) > 16384:
+            raise ValueError("checker output too large")
+        def unique_object(pairs):
+            value = dict(pairs)
+            if len(value) != len(pairs):
+                raise ValueError("duplicate checker field")
+            return value
+        verdict = json.loads(output, object_pairs_hook=unique_object)
+        if not isinstance(verdict, dict) or not isinstance(verdict.get("task_correct"), bool) or set(verdict) - {"task_correct", "metrics", "reason"}:
+            raise ValueError("invalid checker verdict")
+        metrics, reason = verdict.get("metrics", {}), verdict.get("reason", "")
+        if not isinstance(metrics, dict) or len(metrics) > 32 or any(not NAME.fullmatch(name) or isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) for name, value in metrics.items()):
+            raise ValueError("invalid checker metrics")
+        if not isinstance(reason, str) or len(reason) > 300 or reason and not reason.isprintable():
+            raise ValueError("invalid checker reason")
+        if redact(json.dumps(verdict)) != json.dumps(verdict):
+            raise ValueError("checker verdict contains a credential")
+        record["verdict"] = verdict
+    except subprocess.TimeoutExpired:
+        record["error"] = "checker_timeout"
+    except KeyboardInterrupt:
+        record["error"] = "checker_interrupted"
+    except (OSError, ValueError, OverflowError, RecursionError):
+        record["error"] = "checker_invalid"
+    finally:
+        if process is not None:
+            terminate(process)
+            record["exit_code"] = process.returncode
+    return record
 
 
 def execute(config, task, directory):
@@ -121,6 +179,10 @@ def execute(config, task, directory):
     functions = collections.Counter(call.get("function", {}).get("name", "unknown") for step in steps if step.get("type") == "reasoning" for call in step.get("message", {}).get("tool_calls", []))
     finals = [step.get("content", "") for step in steps if step.get("type") == "final"]
     result = {"schema_version": "milk.agent-trial-result.v1", "state": "complete" if code == 0 and finals else "failed", "started_at": started, "finished_at": now(), "elapsed_seconds": elapsed, "exit_code": code, "timed_out": timed_out, "error": error, "task_sha256": config["task_sha256"], "observed_model_replies": sum(step.get("type") == "reasoning" for step in steps), "native_tool_counts": dict(functions), "shell_exits": [step.get("exit") for step in steps if step.get("type") == "shell-output"], "report": redact(finals[-1]) if finals else "", "trajectory_id": metadata.get("trajectory_id"), "trajectory_file": str(trajectory) if trajectory else None, "trajectory_sha256": digest(trajectory.read_bytes()) if trajectory else None, "workspace_after": snapshot(Path(config["workspace"])), "runtime_after": snapshot(ROOT), "task_correct": None}
+    if config.get("checker"):
+        result["checker"] = check_result(config, result, directory)
+        verdict = result["checker"]["verdict"]
+        result["task_correct"] = verdict["task_correct"] if verdict is not None else None
     atomic_json(directory / "result.json", result)
     return result
 

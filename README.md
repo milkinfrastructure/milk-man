@@ -211,6 +211,15 @@ without another model call. `MILK_TRIAL_ID` retrieves an exact earlier trial;
 use a new `MILK_TRIAL_ATTEMPT` only to deliberately run again. Judge the answer
 against the task: an agent finishing does not mean it answered correctly.
 
+For a measurable task, set `MILK_TRIAL_CHECK_SCRIPT` to a repository-relative
+executable. It reads the child result as JSON on stdin and returns
+`{"task_correct":true,"metrics":{"score":1},"reason":"Task result matched"}`.
+Only `task_correct` is required. The script is pinned before the trial; a
+changed, failed, or invalid checker leaves correctness unknown. It must check
+the actual outcome, not trust the agent's success claim. The default checker
+timeout is 10 seconds (`MILK_TRIAL_CHECK_TIMEOUT_SECONDS`). Without a checker,
+the trial behaves as before. This is optional scoring, not a gate on Milk Man.
+
 To inspect a saved summary, set `MILK_CHECKPOINT_KEY` and
 `MILK_CHECKPOINT_SHA256`, then run `bin/milk run checkpoint`. It verifies the
 summary and its source history and returns counts, not conversation bodies.
