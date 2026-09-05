@@ -21,12 +21,20 @@ Status notation:
   heartbeat owner 9907 and its task/watch running. No extra provider polling
   or dependencies were added.
 - [~] Chrome-prompted Baseten-owned Qwen3-0.6B deployment `qj7d9z2` on model
-  `w7mpx8dw` was accepted with one L4, minimum zero and maximum one replica.
-  It is building; inference and final cleanup are not yet proven. Milk Man
-  needed one correction after repeated source reads. Codex also corrected
-  the private benchmark base URL before execution. The entry prompt now
-  directs jobs to use their advertised contract before inspecting source.
-  Private run: `baseten-owned-qwen3-06b-c1899de-v0181`.
+  `w7mpx8dw` built successfully with one L4, minimum zero and maximum one
+  replica. The model loaded and began vLLM compilation, but did not become
+  ready before the proof cutoff. Zero benchmark calls ran. Milk Man stopped
+  it; an independent provider read confirmed INACTIVE and zero active replicas.
+  Cleanup receipt SHA-256:
+  `649ca420d4cb5bb6742f84dac36608ae2e3e20b8cba507d67ca2143460fb2f56`.
+  Private run: `baseten-owned-qwen3-06b-c1899de-v0181`. A next attempt can
+  reactivate this already-built deployment; no duplicate model or rebuild is
+  needed. Owned Baseten inference remains unproven.
+- [!] This task needed one correction after repeated source reads. Codex also
+  corrected the private benchmark base URL before execution. Later the agent
+  used timer-only status reviews instead of keeping its read-only watch.
+  Prompt guidance now addresses both patterns; unassisted correction remains
+  to be observed. Neither successful submission nor shutdown proves inference.
 - [x] Local dashboard separates the active chat goal from saved traffic stages.
   Commands stay folded; summaries have keyboard/tap help and clickable
   thresholds; research shows conclusions before measurements and references.
@@ -853,8 +861,9 @@ Corrections made by this audit:
 
 - A production route requires the operator signing key at the signing step.
 - Production qualification requires independently collected customer traffic.
-- Account-specific custom-image access can reduce Baseten startup installation
-  time, but it does not block the current weight-hydration path.
+- Baseten accepted the owned-serving custom image in the latest attempt;
+  that entitlement is no longer an assumed blocker. This does not assert
+  separate training-image permissions.
 - GitHub branch protection/ruleset changes require repository-owner authority.
 
 These are application/release boundaries, not per-command gates for an already

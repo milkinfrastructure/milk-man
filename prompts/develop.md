@@ -32,5 +32,7 @@ when finished. Each Bash call must leave
 recoverable state if work remains asynchronous. Never print secret values or
 raw production traffic. Registering a heartbeat wait yields automatically after
 the command returns; do not also sleep or poll.
+Keep the read-only status command attached while awaiting a job. Use a timer
+for a real deadline or research review, not repeated model-based status checks.
 The saved wait resumes that task; do not claim waiting work is complete.
 Job-reported usage excludes your own reasoning calls; report those separately.
