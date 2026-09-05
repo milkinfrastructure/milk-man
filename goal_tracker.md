@@ -15,6 +15,30 @@ Status notation:
 
 ## Executive state
 
+- [x] N3 research record saved and independently read back from R2: revision
+  `7295f274d5b52050dc2eb10318b49b30f6691d72421b328702c27332cf1b88c1`,
+  UUID `11e7a9a7-3d57-5a92-a6da-d6d366c5b466`. Eight experiments retain the
+  previous history and add the failed owned-120B task and successful Astra
+  task. The N1 result reference matches its saved bytes. Baseline, evaluation
+  and best remain null. Unchanged replay returned idle, zero inference/provider
+  calls. Private evidence: `overnight-n3-20260905/{save,readback,replay}/stdout`.
+  The first read used only the runtime environment and failed before any write;
+  loading the existing driver overlay selected the correct mechanics scope.
+- [~] N4 now has a fresh task-free Milk Man owner, PID `62714`, trajectory
+  `706ed10d-73ee-455d-bab9-ae56efe5340d`. The old autonomous task remains stopped.
+  Five idle checks backed off to 300 seconds; the trajectory contains no model
+  replies and no task. The next normal summary threshold remains 1,000.
+  Dashboard HTTP state at port 8766 reports this owner online/idle, 302 saved,
+  200 summarized, eight labeled, the actual latest summary and 23 job entries.
+  Private evidence: `overnight-n4-20260905/proof.json`. Chrome can list existing
+  tabs but attachment and screenshots fail with `Debugger unattached`; visual
+  proof remains open. No redesign or extra prompt was sent to mask that failure.
+- [x] Independent cleanup read at 08:12 UTC: all three recent experimental
+  Modal apps remain stopped and `main` has zero active containers. Baseten
+  deployments `31rd954` and `q9254m6` are inactive with zero replicas and minimum
+  replicas zero. No inference or resource mutation occurred in this check.
+  The local CPU-only idle heartbeat remains available. N1 code is published at
+  `26bdd9326`; N2's useful owned-120B task remains unproven.
 - [x] N1 adds the read-only `benchmark-compare` script job and documents the
   existing serving/benchmark/background commands as the reusable experiment.
   Both real saved receipts passed digest and request-setting checks, with
@@ -74,7 +98,8 @@ Status notation:
   An independent read at 06:52:41 UTC confirmed it stopped and zero active
   containers in Modal `main`. The first local stop command used the wrong CLI
   order and made zero provider calls; the corrected catalog command completed.
-  The main Milk Man owner remains stopped. No new training or data generation.
+  The old Milk Man owner remained stopped at that checkpoint. N4 now runs a
+  separate task-free owner. No new training or data generation.
 - [x] The checkpoint job can include exact saved readiness through paired
   `MILK_READINESS_KEY/SHA256`. One direct R2 execution matched all previously
   inspected facts, verified both digests and their summary link, and made zero
@@ -85,7 +110,7 @@ Status notation:
 - [x] Dashboard and CLI now share exact job commands. All 22 command lists
   matched locally; Chrome showed run/status/stop for Modal serving and confirmed
   the status command copied. The buttons do not submit a task. The dashboard
-  was restarted at port 8766; Milk Man remains stopped with its session saved.
+  was restarted at port 8766; the old Milk Man session was saved and stopped.
 - [x] Stopped Milk Man owner `22651` at the user's request; the process and its
   wrapper have exited. The saved trajectory remains available. Codex will edit
   and run scripts directly, then use Milk Man for the completed workflow proof.

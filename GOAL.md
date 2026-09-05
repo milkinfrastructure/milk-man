@@ -78,7 +78,14 @@ Done: a retained successful task and comparable candidate result, or a precise
 retained failure explaining why comparison was not run. Failure is not product
 completion and must not be converted into a successful checkbox.
 
-### N3 — persist a useful research decision [ ]
+### N3 — persist a useful research decision [x]
+
+Saved revision `7295f274d5b52050dc2eb10318b49b30f6691d72421b328702c27332cf1b88c1`
+with eight retained experiments, including the reusable comparison, failed
+owned-120B task and successful Astra task. R2 readback matched the intended
+record; unchanged replay returned idle with zero inference/provider calls.
+Baseline, evaluation and best remain null. The next action is unchanged idle
+counting and a concrete task-execution fix before another owned-model trial.
 
 Use the existing `research` job to link the exact workload, configuration and
 result digests from N1/N2 into this scope's existing record. Keep prior entries.
@@ -91,7 +98,16 @@ Done: read the saved R2 record back, verify its referenced result identities,
 and replay the same write with zero inference/provider calls. Do not regenerate
 evals, retrain Qwen or invent an RL experiment to fill empty fields tonight.
 
-### N4 — keep the local product useful while idle [ ]
+### N4 — keep the local product useful while idle [~]
+
+Fresh task-free owner `62714`, trajectory
+`706ed10d-73ee-455d-bab9-ae56efe5340d`, is live. Five checks increased its idle
+delay to 300 seconds with zero driver replies or summary launches. The normal
+next summary threshold is 1,000. Dashboard HTTP state identifies this owner,
+302 saved / 200 summarized / eight labeled, the latest 200 summary and 23 jobs.
+Existing Chrome tab listing works, but tab attachment and screenshots both
+fail with `Debugger unattached`. Browser verification remains unfinished;
+do not substitute the HTTP result for visual proof or restart the old task.
 
 Start a fresh task-free heartbeat, preserving the old stopped trajectory.
 Use the normal environment-selected gateway, object store and thresholds;
@@ -109,7 +125,13 @@ Do not introduce a scheduler, new frontend dependencies or a visual redesign.
 Done: a usable live dashboard with real state, a working Bash command for the
 same owner, and no extra model calls caused by opening or refreshing the page.
 
-### N5 — publish and close the window [ ]
+### N5 — publish and close the window [~]
+
+Published the working N1 code at `26bdd9326`. An independent provider read at
+08:12 UTC found the three experimental Modal apps stopped, zero containers in
+Modal `main`, and both Baseten comparison deployments inactive with zero
+replicas. No new paid experiment was started. Only the useful local idle
+heartbeat stays running. Final Chrome verification is still outstanding.
 
 Commit focused working changes and truthful tracker updates. Push only after
 direct execution succeeds. Publish no credentials, private raw conversations,
