@@ -258,6 +258,11 @@ hardcoding that model or provider into the harness.
 
 ## P5 — inference autotuning
 
+- [~] Direct Bash now proves the existing serving/benchmark/stop path on a
+  5,174-token checkpoint-facts workload. Both prefill settings returned three
+  correct measured answers and reached independently verified zero containers.
+  This small comparison names no winner and does not prove an agent-completed
+  task. Retain it; next validate the useful Bash workflow before agent execution.
 - [x] Accept a measurable objective such as minimum throughput subject to a
   latency, correctness, GPU, or cost constraint.
 - [ ] Have Milk Man propose the next configuration from prior measurements,

@@ -58,11 +58,12 @@ hf_token = os.environ.get("HF_TOKEN", "")
 hydrate_secrets = [modal.Secret.from_dict({"HF_TOKEN": hf_token})] if hf_token else []
 
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
+runtime_cache = modal.Volume.from_name(f"{VOLUME_NAME}-vllm", create_if_missing=True)
 hydrate_image = modal.Image.debian_slim(python_version="3.12").pip_install(
     "huggingface_hub==1.27.0"
 ).env(PUBLIC_ENV)
 serve_image = modal.Image.from_registry(IMAGE, add_python="3.12").entrypoint([]).env(
-    {**PUBLIC_ENV, "HF_HUB_OFFLINE": "1"}
+    {**PUBLIC_ENV, "HF_HUB_OFFLINE": "1", "VLLM_CACHE_ROOT": "/root/.cache/vllm"}
 )
 app = modal.App(APP_NAME)
 
@@ -115,7 +116,10 @@ def hydrate() -> dict:
     gpu=f"{GPU}:{GPU_COUNT}" if GPU_COUNT > 1 else GPU,
     cpu=8,
     memory=32768,
-    volumes={"/models": volume.with_mount_options(read_only=True)},
+    volumes={
+        "/models": volume.with_mount_options(read_only=True),
+        "/root/.cache/vllm": runtime_cache,
+    },
     port=8000,
     unauthenticated=True,
     routing_region=ROUTING_REGION,

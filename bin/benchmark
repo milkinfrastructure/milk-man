@@ -184,7 +184,8 @@ def main():
             tokens = visible_tokens + reasoning_tokens
             if not isinstance(text, str):
                 raise (ValueError("invalid_response"))
-            row.update(output_tokens=tokens, output_tokens_per_end_to_end_second=round(tokens / elapsed, 3), correct=(text.strip() == expected if expected is not None else None), response_sha256=hashlib.sha256(text.encode()).hexdigest())
+            input_tokens = usage.get("prompt_tokens", usage.get("input_tokens"))
+            row.update(input_tokens=input_tokens if type(input_tokens) is int and input_tokens >= 0 else None, output_tokens=tokens, output_tokens_per_end_to_end_second=round(tokens / elapsed, 3), correct=(text.strip() == expected if expected is not None else None), response_sha256=hashlib.sha256(text.encode()).hexdigest())
             if reasoning_tokens:
                 row.update(reasoning_tokens=reasoning_tokens, visible_output_tokens=visible_tokens)
         except (KeyError, IndexError, TypeError, ValueError, AttributeError):

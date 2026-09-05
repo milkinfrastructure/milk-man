@@ -18,12 +18,29 @@ Status notation:
 - [x] Stopped Milk Man owner `22651` at the user's request; the process and its
   wrapper have exited. The saved trajectory remains available. Codex will edit
   and run scripts directly, then use Milk Man for the completed workflow proof.
-- [!] The new completed-task 120B comparison did not reach GPU startup. Its
+- [!] Milk Man's new completed-task 120B attempt did not reach GPU startup. Its
   first local command supplied an extra `run` argument and exited 64 with zero
   provider/inference calls. Milk Man repaired that script but spent further
   reasoning on setup; the user stopped it before a second launch. Retain
   `completed-task-tune-20260905/` and reuse its prepared facts and workload.
   No completed-task A/B result exists yet; do not restart the autonomous task.
+- [~] Codex ran the existing serving and benchmark scripts directly. Both
+  prefill settings (1,024 and 2,048 tokens) returned the exact checkpoint facts
+  on three measured calls after one warmup each. Every input was 5,174 tokens.
+  Median total time was 2.124 versus 2.022 seconds; median time to visible text
+  was 1.737 versus 1.702 seconds. This small sequential sample does not establish
+  a winner; output token counts also differed (264 versus 260). It proves fact
+  extraction, not a completed Bash task or autonomous research. Receipts remain
+  under `completed-task-tune-20260905/`; do not repeat these eight calls.
+- [x] Both comparison apps were stopped. An independent Modal read at
+  06:34:28 UTC confirmed both stopped and zero active containers in `main`.
+  Comparison SHA-256:
+  `ce68dc58264c75f1da8f6cc7f436a612fa5788932e84d998ff8fbb22436ce0c5`.
+  The existing research job saved this result in R2 without inference; research
+  revision `49e1dd2a8d4b18fe9c648783032a189b94bfb881ba038332f1d16b48bed033f0`.
+- [~] Added one writable volume for vLLM's runtime cache, leaving model weights
+  read-only. The A/B experiment ran before this change; the next deployment
+  must measure cache reuse. No claim of reduced startup time yet.
 - [x] Job discovery now includes exact run/status/stop commands generated from
   the existing actions. Direct parser checks passed without launching jobs.
   This addresses the observed command ambiguity without a compatibility layer.

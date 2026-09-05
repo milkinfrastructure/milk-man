@@ -204,12 +204,15 @@ Diagnostics go to stderr. Read one job's settings, or omit its name to list all 
 bin/milk jobs serve-modal
 ```
 
-`bin/milk jobs` returns every registered job, its supported actions, and the
-required and optional environment names for starting a run. Status and stop
+Run these commands directly from Bash while developing; Milk Man calls the
+same scripts. `bin/milk jobs` returns every registered job, its exact commands,
+and the required and optional environment names for starting a run. Status and stop
 commands use saved resource settings. The catalog can include built-in jobs
 and repository-owned executable jobs from [`config/jobs.json`](config/jobs.json).
 The `serve-modal` executable job has deployed Qwen, served three correct
 responses, and stopped its GPU. See [`goal_tracker.md`](goal_tracker.md).
+Model weights remain read-only in the selected volume. vLLM's compiled files
+use a separate writable volume named `<model-volume>-vllm` between starts.
 An executable job receives `run`, `status`, or `stop`, inherits the current
 environment plus `MILK_JOB_*` metadata, and returns one JSON result on stdout.
 For a long job, use `bin/background /private/new-run -- bin/milk run NAME`,
@@ -321,8 +324,10 @@ data split and review the answer before claiming an improvement.
 `bin/milk run benchmark` (or `bin/benchmark` directly) measures a configured chat endpoint. Set
 `MILK_BENCHMARK_BASE_URL`, `MILK_BENCHMARK_MODEL`, and
 `MILK_BENCHMARK_API_KEY`; `MILK_BENCHMARK_STREAM=1` also measures time to the
-first visible text. Results are JSON, not raw answers. Any configured hourly
-cost is an estimate for the measured interval, not a provider bill.
+first visible text. Results include the provider's input/output token counts
+and exact-answer checks when an expected answer is supplied. They are JSON,
+not raw answers. Any configured hourly cost estimates the measured interval,
+not the full provider bill.
 
 Start the built-in traffic loop with an empty local object store:
 
