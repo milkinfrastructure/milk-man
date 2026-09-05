@@ -345,7 +345,9 @@ The existing `train` job accepts that manifest through
 `MILK_DATASET_MANIFEST_KEY` and `MILK_DATASET_MANIFEST_SHA256`. Use
 `MILK_TRAIN_RECIPE=sft` and set `MILK_TRAIN_MAX_TOKENS` to fit the full history;
 it trains only on the new assistant answer. It never silently shortens native
-examples. This uses the configured Baseten training account and starts paid
+examples. Set `MILK_TRAIN_STEPS` to the TRAIN row count for one full pass.
+Fewer steps use only the first rows, which can omit a task's final answer.
+This uses the configured Baseten training account and starts paid
 work. Its saved model does not advance the text-eval workflow or activate a
 route. Leaving both manifest variables unset keeps the existing training path.
 The three-step native training run completed on one H100, keeping the full

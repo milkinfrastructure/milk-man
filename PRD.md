@@ -398,8 +398,12 @@ files under `d/<uuid>/`. It does not fabricate text evals or change current
 pointers. The training job can select this manifest explicitly through
 `MILK_DATASET_MANIFEST_KEY/SHA256`; SFT masks the context and learns only the
 new assistant target using the student's actual chat template. Context that
-does not fit is reported, never silently truncated. Native training results
-remain separate from the text-eval route workflow. Completed tool calls alone
+does not fit is reported, never silently truncated. Native SFT runs
+`MILK_TRAIN_STEPS` optimizer steps, cycling through the first
+`min(steps, TRAIN rows)` examples. One complete pass requires at least as many
+steps as TRAIN rows; fewer steps can omit the final action of a task. Results
+record both available and used example counts and remain separate from the
+text-eval route workflow. Completed tool calls alone
 are not successful tasks, and the text-similarity RL reward is not used for
 tool actions. Improvement requires a baseline and comparison on held-out tasks.
 

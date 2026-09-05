@@ -15,6 +15,30 @@ Status notation:
 
 ## Executive state
 
+- [x] Positive-demonstration preparation and training completed September 5.
+  The pinned Qwen tokenizer retained full histories (3,140 / 5,592 / 7,871 /
+  9,208 tokens) and only new assistant targets. Four steps covered the entire
+  TRAIN task, including finish; three would omit the last row. DEV bytes stayed
+  unchanged. Token proof SHA-256:
+  `dcd78004aaa7f37b9e6c4e112af88cbd2b01a06d9dd3994bbfd55e2e189f02bb`.
+  Baseten H100 job `qzyd88w` completed; model
+  `74dcd875-ff13-5066-87de-55e3b3ea6219`, manifest SHA-256
+  `2521f8b7bcdd2ae56a0a3351a51c853fe5eb2eb5f566ddc1181a4a5b1ba35d24`.
+  Training result SHA-256
+  `ae9c5edc319c4a5ad6fb4a531dcfdac3d8e9689039491720ef0808c3ce62867f`.
+  DEV target loss 1.1153 -> 1.0855 is not a task-quality result.
+- [~] One new L4 deployment `q9p5dm63` / `qe9l0lp` is waiting for readiness.
+  Existing detached worker `native-success-20260905.rlmSlv/candidate-worker`
+  owns the single six-reply saved-task check and cleanup. Do not duplicate it.
+  Source is pinned to `c3d756649`; the runtime directory differs from the old
+  base run, and TRAIN includes related DEV ancestry. This is an inspected DEV
+  check, not untouched-task generalization or a checkpoint-only controlled test.
+- [x] Preflight billing in Chrome: Baseten September $34.58; Modal $13.99.
+  Prior carry $274.94, pending $20, retained reservations $25 and new $10 reserve
+  give $378.51 conservatively allocated against the same $500 authorization.
+  Possible overlap remains; this is not literal billed cost. Preflight found
+  all 31 previous training jobs terminal, both old L4 deployments inactive/zero,
+  and zero Modal containers. The new L4 still needs final cleanup evidence.
 - [x] Added `agent-score`: the existing task checker scores a pinned saved
   result without rerunning the model. N0's actual report and completed
   trajectory matched independently inspected metadata. Original receipt
@@ -41,11 +65,10 @@ Status notation:
   without evidence; the score covers the requested report, not that adjective.
   Research revision
   `5906f3321413bb5262b27f1ccead90fce6c803f2aa9fd2b0b0d313ec6414735f`
-  retains all eleven experiments; replay is idle with zero calls. Next is
-  full-context preparation and one controlled positive-demonstration training
-  comparison after refreshed billing. Default local Python and offline uv lack
-  the tokenizer dependencies; preparation and new training have not run. No
-  package install, inference, GPU launch or route change occurred in this step.
+  retains all eleven experiments; replay is idle with zero calls. That selection
+  step used no package install, inference, GPU launch or route change. Subsequent
+  tokenizer preparation and training are complete above; the research record
+  still needs their result and the pending executed-task comparison.
 - [!] The native DEV task was executed once by each model on the same runtime
   `c3d756649`: base 17.927s / six Bash replies; trained 16.433s / six replies.
   Neither read the checkpoint or returned a final answer. Raw unscored verdicts

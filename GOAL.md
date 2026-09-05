@@ -166,7 +166,7 @@ its full acceptance criteria are actually satisfied.
   concrete failure. A plan, model claim, valid JSON or successful process exit
   does not by itself prove task success, better quality or production routing.
 
-## Current continuation — September 5, 18:20 UTC
+## Current continuation — September 5, 18:55 UTC
 
 The concurrent 120B comparison is complete. Milk Man inspected the retained
 baseline, justified the prepared one-setting candidate, launched it once,
@@ -212,17 +212,27 @@ final answer, positive outcome selection and existing training-job acceptance.
 Score and dataset replay made zero model/provider calls. One successful report
 does not make every sentence in its memory perfect or prove model improvement.
 
-Next: prepare one controlled positive-demonstration SFT iteration from this
-retained dataset. Check full context and assistant-target masking with the
-existing Qwen tokenizer/training path before starting compute. Keep the pinned
-Qwen3.5-0.8B base, serving/task settings and held-out task unchanged; the useful
-change is replacing unscored demonstrations with the scored task, not increasing
-volume or reply limits. Reuse the prior executed base failure, and compare the
-new checkpoint on that same held-out task using actual Bash execution and a
-saved-output check. Retain a losing result; do not loop on unchanged failures
-or call one task a general quality win. Refresh cumulative billing and pending
-usage before any paid compute. Continue full P4–P8; neither these data artifacts
-nor the failed earlier comparison complete the product.
+The positive-demonstration preparation and training are complete. The pinned
+Qwen tokenizer retained all context and masked all but the new assistant target
+in four TRAIN rows (3,140–9,208 tokens) and the unchanged DEV row. Four optimizer
+steps included the final finish action; reusing the old three-step setting
+would omit it. Baseten H100 job `qzyd88w` completed and saved model
+`74dcd875-ff13-5066-87de-55e3b3ea6219`. DEV target loss changed from 1.1153 to
+1.0855; this is not executed task success. One full pass and positive selection
+both changed, so this is not a data-only ablation against the old checkpoint.
+
+One already-started L4 check (`q9p5dm63` / `qe9l0lp`) owns its readiness wait,
+single saved-task execution and cleanup in the existing detached worker. Do
+not launch another. Reuse the retained base failure and six-reply/240-second
+limits. The copied runtime source is pinned, but its directory changes PATH
+and system references. The task is previously inspected and its source ancestry
+appears in TRAIN; report a narrow DEV result, never untouched-task generalization.
+
+Mark preparation/training complete and continue the next missing P4 capability
+while this check finishes. Collect its result once, retain failure if it loses,
+and independently verify cleanup. Keep Astra-through-Parlor idle. Refresh
+cumulative billing and pending usage before any further paid compute. Continue
+full P4–P8; completed training does not complete the product.
 
 ## Outcome
 
@@ -614,8 +624,9 @@ do not restart parked large generation runs.
   replies. Both executions and cleanup are retained; task improvement remains
   unproven. Outcome-linked TRAIN selection now retains all four steps of the
   independently checked N0 task, with its original TRAIN group and the old
-  DEV example unchanged. This fixes demonstration selection; no new training
-  or held-out task improvement has yet been measured.
+  DEV example unchanged. A subsequent four-step H100 run completed on this
+  positive dataset with full history and assistant-only targets. Training is
+  complete; actual task improvement and untouched-task evaluation remain open.
 - [x] Summary execution/resume and zero-call replay are proven. The heartbeat
   checks summary milestones independently of a task's resource wait. An isolated
   idle owner detected an already-reached 200 threshold in retained traffic,
