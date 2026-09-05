@@ -15,6 +15,19 @@ Status notation:
 
 ## Executive state
 
+- [!] P5 selection stalled after 20 successful read-only commands and exited
+  76. No decision or GPU launch occurred. Codex stopped the automatic
+  continuation, repaired lost command-result context, and resumed the same
+  task through Chrome at 22:07:24 UTC. Private state:
+  `autotune-choice.GDaYfX/`. Native results retain head/tail and exit status;
+  the actual trajectory renders to 24,978 bytes with two intact tool pairs
+  and the previously missing reference plan. No context-limit increase,
+  packing change or new test files. Live recovery is not yet proven.
+- [~] Current conservative cumulative allocation is $430.83 of $500:
+  previous $419.03, $1.80 uncertainty, and one new $10 candidate reservation.
+  Modal's unwrapped CLI CSV reports $16.65172497 for September 1–5;
+  Baseten displays $34.98 ($35.10 on its budget panel). Actual aggregate
+  billing remains unknown. The candidate reservation is not recorded spend.
 - [x] One Chrome prompt completed the useful model workflow without follow-up
   steering. Astra kept driving through Parlor. Milk Man launched the prepared
   existing-job pipeline, waited on worker `85033` / child `85037`, reviewed the

@@ -119,6 +119,13 @@ Current frontier:
   scope-specific learning and signed-route application. Preserve completed
   baselines and every failed trial. A self-hosted driver remains additional
   functionality, not a prerequisite for operating models.
+- [!] The first P5 selection attempt repeated reads and exhausted 20 replies
+  without choosing a candidate or starting a GPU. Codex stopped that turn.
+- [x] Fixed one demonstrated context loss: native command results now retain
+  their beginning and end, with exit status always visible and no duplicate
+  command. The actual saved session retains the reference measurements within
+  the unchanged context limit. Packing and execution machinery are unchanged.
+  The same task resumed through Chrome; live progress remains to be verified.
 
 ## Overnight execution — September 5, 2026
 

@@ -317,6 +317,7 @@ def context(arguments: argparse.Namespace) -> None:
     native_indexes: set[int] = set()
     pairs: list[tuple[int, int]] = []
     pending: tuple[int, str] | None = None
+    message_limit = max(1024, min(8192, arguments.max_bytes // 3))
     for record in records(Path(arguments.trajectory)):
         kind = record.get("type")
         content = redact(str(record.get("content", "")))
@@ -345,13 +346,24 @@ def context(arguments: argparse.Namespace) -> None:
         elif kind == "shell-output":
             command = redact(str(record.get("command", "")))
             exit_code = record.get("exit")
-            shell_indexes.append(len(messages))
-            observation = f"Command:\n{command}\nExit: {exit_code}\nOutput:\n{content}"
             if pending:
+                # The tool call already contains the command. Retain both ends
+                # of its result and keep the exit status outside truncation.
+                raw = content.encode()
+                if len(raw) > message_limit:
+                    half = message_limit // 2
+                    content = (
+                        raw[:half].decode(errors="replace")
+                        + "\n[shell output middle truncated]\n"
+                        + raw[-half:].decode(errors="replace")
+                    )
+                observation = f"Exit: {exit_code}\nOutput:\n{content}"
                 messages.append({"role": "tool", "tool_call_id": pending[1], "content": observation})
                 pairs.append((pending[0], len(messages) - 1))
                 pending = None
             else:
+                shell_indexes.append(len(messages))
+                observation = f"Command:\n{command}\nExit: {exit_code}\nOutput:\n{content}"
                 messages.append({"role": "user", "content": observation})
         elif kind == "final":
             pending = None
@@ -360,7 +372,6 @@ def context(arguments: argparse.Namespace) -> None:
     # Shell output can be much larger than the task that produced it. Keep the
     # durable trajectory intact, but bound each rendered observation so the
     # active task cannot fall out of the model context.
-    message_limit = max(1024, min(8192, arguments.max_bytes // 3))
     for index in shell_indexes:
         message = messages[index]
         raw = message["content"].encode()
