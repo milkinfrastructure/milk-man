@@ -46,7 +46,7 @@ def configuration():
     if not NAME.fullmatch(attempt):
         raise ValueError("MILK_TRIAL_ATTEMPT must be a short filename-safe label")
     driver = {"LLM_API_URL": url, "LLM_MODEL": os.environ["LLM_MODEL"]}
-    for name, default in {"LLM_API_MODE": "chat_completions", "LLM_REASONING_EFFORT": "", "LLM_MAX_TOKENS": "32768", "LLM_CONNECT_TIMEOUT": "10", "LLM_MAX_TIME": "900", "MILK_MAN_MAX_ITERATIONS": "20", "MILK_MAN_TOOL_CALLS": "1", "MILK_MAN_CONTEXT_BYTES": "32768", "MILK_MAN_MEMORY_BYTES": "4096", "LLM_MILK_TRAJECTORY_HEADER": "0"}.items():
+    for name, default in {"LLM_API_MODE": "chat_completions", "LLM_REASONING_EFFORT": "", "LLM_TOOL_CHOICE": "required", "LLM_MAX_TOKENS": "32768", "LLM_CONNECT_TIMEOUT": "10", "LLM_MAX_TIME": "900", "MILK_MAN_MAX_ITERATIONS": "20", "MILK_MAN_TOOL_CALLS": "1", "MILK_MAN_CONTEXT_BYTES": "32768", "MILK_MAN_MEMORY_BYTES": "4096", "LLM_MILK_TRAJECTORY_HEADER": "0"}.items():
         driver[name] = os.environ.get(name, default)
     timeout = int(os.environ.get("MILK_TRIAL_TIMEOUT_SECONDS", "600"))
     outer_timeout = int(os.environ.get("MILK_TRIAL_JOB_TIMEOUT_SECONDS", "3600"))

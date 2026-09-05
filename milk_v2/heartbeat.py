@@ -36,7 +36,7 @@ def driver_state() -> dict:
         provider = "openai"
     else:
         provider = "custom"
-    return {"provider": provider, **{
+    return {"provider": provider, "tool_choice": os.environ.get("LLM_TOOL_CHOICE", "required"), **{
         field: redact(os.environ.get(name, ""))[:256]
         for field, name in (("model", "LLM_MODEL"), ("api_mode", "LLM_API_MODE"),
                             ("reasoning_effort", "LLM_REASONING_EFFORT"))

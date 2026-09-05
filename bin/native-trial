@@ -52,7 +52,7 @@ def configuration():
         raise ValueError("LLM_API_URL must be a credential-free HTTP(S) endpoint")
     if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
         raise ValueError("LLM_API_URL must use HTTPS outside localhost")
-    defaults = {"LLM_API_MODE": "chat_completions", "LLM_REASONING_EFFORT": "", "LLM_MAX_TOKENS": "4096", "LLM_CONNECT_TIMEOUT": "10", "LLM_MAX_TIME": "300"}
+    defaults = {"LLM_API_MODE": "chat_completions", "LLM_REASONING_EFFORT": "", "LLM_TOOL_CHOICE": "required", "LLM_MAX_TOKENS": "4096", "LLM_CONNECT_TIMEOUT": "10", "LLM_MAX_TIME": "300"}
     driver = {name: os.environ.get(name, default) for name, default in defaults.items()}
     driver.update(LLM_API_URL=os.environ["LLM_API_URL"], LLM_MODEL=os.environ["LLM_MODEL"], LLM_MILK_TRAJECTORY_HEADER="1", MILK_MAN_TRAJECTORY_ID=source["trajectory_id"])
     timeout = float(driver["LLM_MAX_TIME"]) + 15
@@ -61,7 +61,7 @@ def configuration():
     attempt = os.environ.get("MILK_NATIVE_TRIAL_ATTEMPT", "0")
     if not NAME.fullmatch(attempt) or redact(json.dumps(driver)) != json.dumps(driver):
         raise ValueError("invalid attempt or credential in driver settings")
-    config = {"schema_version": "milk.native-trial.v1", "source": source, "artifact_sha256": digest(raw), "input_sha256": digest(inputs), "script_sha256": digest(Path(__file__).read_bytes()), "llm_sha256": digest(LLM.read_bytes()), "driver": driver, "attempt": attempt, "tool_choice": "required", "parallel_tool_calls": False, "temperature": 0 if driver["LLM_API_MODE"] == "chat_completions" else "provider_default", "omissions": artifact.get("omissions", {}), "task_success": None}
+    config = {"schema_version": "milk.native-trial.v1", "source": source, "artifact_sha256": digest(raw), "input_sha256": digest(inputs), "script_sha256": digest(Path(__file__).read_bytes()), "llm_sha256": digest(LLM.read_bytes()), "driver": driver, "attempt": attempt, "tool_choice": driver["LLM_TOOL_CHOICE"], "parallel_tool_calls": False, "temperature": 0 if driver["LLM_API_MODE"] == "chat_completions" else "provider_default", "omissions": artifact.get("omissions", {}), "task_success": None}
     return config, inputs, digest(config), timeout
 
 

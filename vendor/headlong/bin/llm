@@ -87,7 +87,10 @@ if tools_file:
     if not isinstance(tools, list) or not tools:
         raise SystemExit("llm: tools must be a non-empty JSON array")
     payload["tools"] = ([{"type": "function", **tool["function"]} for tool in tools] if mode == "responses" else tools)
-    payload["tool_choice"] = "required"
+    choice = os.environ.get("LLM_TOOL_CHOICE", "required")
+    if choice not in {"auto", "required"}:
+        raise SystemExit("llm: LLM_TOOL_CHOICE must be auto or required")
+    payload["tool_choice"] = choice
     payload["parallel_tool_calls"] = False
     if mode == "chat_completions":
         payload["temperature"] = 0
@@ -206,5 +209,7 @@ if not isinstance(content, str) or not content:
         f"completion_tokens={usage.get('completion_tokens')!r}, "
         f"tool_calls={len(tool_calls) if isinstance(tool_calls, list) else 0})"
     )
+if not completed:
+    raise SystemExit("llm: assistant response was not completed; refusing partial text")
 print(content)
 PY

@@ -8,20 +8,23 @@ Codex edits code directly, finishes one concrete item, verifies the actual
 result, marks its bracket, commits/pushes, and moves to the next unfinished item.
 Keep the complete outcome and P0–P8 acceptance criteria below intact.
 
-Execution order, refreshed September 5 at 21:15 UTC:
+Execution order, refreshed September 5 after the happy-path correction:
 
-1. Retain and publish the completed warm-session change and its failed model
-   tasks. Keep Astra through Parlor as the working idle owner. Do not reopen
-   completed landing, training, or benchmark work.
-2. Finish the shared text-response completion check: truncated model output
-   must not become executable Bash. Use retained responses and one direct
-   local check, with no new inference. Keep malformed native JSON rejected;
-   do not repair model arguments heuristically or silently change API modes.
-3. Continue the next unfinished P4–P8 capability using the existing Bash jobs,
-   environment settings, provider clients, heartbeat and object store. Fix
-   scripts directly, then demonstrate the working workflow through Milk Man.
-   An owned-model retry requires a concrete fix addressing its observed
-   failure; larger limits or another unchanged prompt are not that fix.
+1. Keep Astra through Parlor as the working Milk Man driver. An infrastructure
+   model does not have to replace the driver or execute Bash before Milk Man
+   can use it. Preserve the failed driver trials; do not make another driver
+   swap, parser experiment, race-condition audit or log check the next task.
+2. Complete one useful infrastructure workflow: one prompt has Milk Man use
+   existing jobs to start or reuse the configured model, call it with retained
+   scope data, save the useful result, and stop the experimental resource.
+   Inspect the saved output and final resource state. Keep provider/model
+   selection in environment settings. Reuse existing data and scripts; no new
+   runner, bulk generation, training repeat or format-only benchmark.
+3. Implement the first missing or broken step directly with minimal code,
+   then demonstrate the working path through Milk Man. The shared completion
+   check and native tool-choice configuration are locally verified. Do not
+   expand them into a validation project. A future owned-driver trial remains
+   separate and needs a concrete change addressing its observed failure.
 4. Keep scope-specific research, untouched evaluation, the complete whiteboard
    application, signed routing and public operation in the outcome. Mark each
    actual result, retain failures, commit/push working changes, and move on.
@@ -92,14 +95,19 @@ Current frontier:
   Research revision
   `77b43af399b2180c4b5aad73d8d00831d34c4ef57cf6174b90e69afa6cee5444`
   retains all sixteen experiments. No task-quality win or autonomous handoff.
-- [ ] Finish the response-completion check in the shared Bash-text path using
-  local/retained outputs only. Native finalization replay already passes;
-  live repaired owned-driver completion remains unproven. Do not restart the
-  experiment merely to fill this checkbox.
-- [ ] Continue unproven P4–P8 model operations, useful inference tuning and the
-  scope-specific learning application. Reuse completed work, add only a missing
-  executable capability, then prove that capability through Milk Man. No new
-  model run merely to repeat an already-understood failure.
+- [x] The actual local Bash loop runs completed Chat/Responses text and rejects
+  truncated text before execution. Native tools still work. These checks used
+  local HTTP responses, no paid inference or provider operations.
+- [x] `LLM_TOOL_CHOICE=auto|required` now passes through the driver and retained
+  trial settings; the default stays `required`. Local native execution with
+  `auto` completes. This adds the documented GPT-OSS request option, not proof
+  that the owned model now produces correct tool arguments or finishes tasks.
+- [x] Optional Baseten log-fetch failure preserves the resource status already
+  read. A local check covers the failure; one Chrome-requested live status
+  read found the deployment inactive with zero replicas and no recent logs.
+- [ ] Finish the useful start/use/save/stop workflow above with the working
+  driver. Continue P4–P8 from its result. Changing the driver to a self-hosted
+  model is additional functionality, not a prerequisite for operating models.
 
 ## Overnight execution — September 5, 2026
 

@@ -249,12 +249,16 @@ def execute(action: str, path: Path, client: baseten.Client) -> dict:
             raise ValueError("LOG_SECONDS must be at most 3600")
         if observed.get("id"):
             end = int(time.time() * 1000)
-            logs = client.deployment_logs(observed["model_id"], observed["id"], end - seconds * 1000, end)
-            result["details"]["logs"] = [
-                {"timestamp": row.get("timestamp"), "message": redact(str(row.get("message", "")))[:384]}
-                for row in sorted(logs, key=lambda row: str(row.get("timestamp", "")))[-20:]
-            ]
-            result["details"]["logs_truncated"] = len(logs) > 20 or any(len(str(row.get("message", ""))) > 384 for row in logs)
+            try:
+                logs = client.deployment_logs(observed["model_id"], observed["id"], end - seconds * 1000, end)
+            except baseten.ProviderError:
+                result["details"]["logs_error"] = "Baseten log fetch failed; resource status is unchanged"
+            else:
+                result["details"]["logs"] = [
+                    {"timestamp": row.get("timestamp"), "message": redact(str(row.get("message", "")))[:384]}
+                    for row in sorted(logs, key=lambda row: str(row.get("timestamp", "")))[-20:]
+                ]
+                result["details"]["logs_truncated"] = len(logs) > 20 or any(len(str(row.get("message", ""))) > 384 for row in logs)
             result["provider_calls"] = client.calls
     if action == "stop":
         stopped = observed["status"] == "INACTIVE" and observed.get("active_replica_count") == 0

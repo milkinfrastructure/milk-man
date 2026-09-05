@@ -15,6 +15,23 @@ Status notation:
 
 ## Executive state
 
+- [x] Completed the shared Bash-text response check: actual `bin/man develop`
+  accepts completed Chat/Responses text, rejects truncated text without
+  executing it, and retains native tool execution. `LLM_TOOL_CHOICE=auto`
+  reaches the native request, executes Bash and saves its final answer;
+  omission keeps `required`. Six local HTTP requests total, no paid inference
+  or provider operations in these checks. Private receipts:
+  `completion-boundary.9Xdj7W/receipt.json` and `auto-receipt.json`.
+- [x] Baseten optional log failure no longer discards an already-read resource
+  status. Local check: `completion-boundary.9Xdj7W/logs-receipt.json`.
+  Chrome requested one live status job: deployment `31rd954` was `INACTIVE`,
+  zero replicas, empty logs; two provider reads, no resource mutation or job
+  inference. The supervising Astra turn did use inference. Its final receipt
+  is `completion-boundary.9Xdj7W/live-status.json`; the parent returned idle.
+- [ ] Next: keep Astra through Parlor driving Milk Man and finish one useful
+  start/use/save/stop model workflow with existing jobs and retained scope
+  data. Owned inference is a workload, not a mandatory replacement Bash driver.
+  No further diagnostic-only run or unchanged failed driver trial.
 - [x] Warm-session control uses the existing Modal serving job:
   `MILK_MODAL_SERVE_MIN_CONTAINERS=1` starts a warm container only after weight
   hydration; default zero still scales down. The same H200 container
@@ -49,11 +66,9 @@ Status notation:
   $14.86 and Baseten $34.98, with the higher Baseten panel at $35.10. Carrying
   prior reservations, $0.12 uncertainty and a new $10 reserve leaves $409.03
   conservatively allocated against $500. This is not an actual bill.
-- [ ] Next: finish the shared Bash-text completion check directly from retained
-  or local responses, without new inference, then continue GOAL.md P4–P8.
-  Do not execute malformed/truncated output or repeat the paid trial unchanged.
-  The following entries retain earlier observations; their cleanup timestamps
-  are historical rather than a substitute for this experiment's closeout.
+- [x] The shared completion check is now finished as recorded above. The
+  following entries retain earlier observations; their cleanup timestamps
+  are historical rather than a substitute for a later experiment's closeout.
 - [x] The existing parent trajectory `706ed10d-73ee-455d-bab9-ae56efe5340d`
   ran owned `openai/gpt-oss-120b` on one Modal H200 through its own Parlor scope.
   Five complete R2 exchanges retain request, response and native tool history.

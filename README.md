@@ -144,6 +144,11 @@ bin/man develop \
 This defaults to `gpt-6-astra`, the Responses API, and low reasoning.
 The driver uses `bash` to work and `finish` to report completion. For an endpoint without
 function calling, explicitly set `MILK_MAN_TOOL_CALLS=0` to use fenced Bash.
+For native tools, `LLM_TOOL_CHOICE=auto` lets the endpoint choose a tool or a
+final answer; the default is `required`. Use `auto` for the documented
+[vLLM GPT-OSS tool interface](https://docs.vllm.ai/projects/recipes/en/latest/OpenAI/GPT-OSS.html#harmony-format-support).
+This selects the supported request mode; it does not guarantee valid model
+arguments or task success. Completed replies are required before Bash text runs.
 `LLM_API_URL` plus `LLM_MODEL`, with optional `LLM_API_KEY`, selects another
 OpenAI-compatible endpoint. `--resume` continues the latest trajectory for the
 exact workspace set; `--traj UUID` selects one explicitly. Run `bin/man --help`
