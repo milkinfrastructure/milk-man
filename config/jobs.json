@@ -89,11 +89,11 @@
       "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
     },
     "checkpoint": {
-      "description": "Read saved summary statistics and verified ancestry: topics, tasks, capabilities, languages, sentiment, estimated outcomes, classified sample size, exchange/source-group counts, and text-eval eligibility. Set MILK_CHECKPOINT_KEY and MILK_CHECKPOINT_SHA256. Does not read capture bodies, write objects, call inference, or operate providers. Model-estimated outcomes and HTTP completion are not measured task success; eligibility does not establish dataset admission or split availability.",
+      "description": "Read a pinned summary and its verified ancestry. Set MILK_CHECKPOINT_KEY/SHA256. Optionally set MILK_READINESS_KEY/SHA256 together to read the matching saved admission decision and failed checks in the same result. Counts describe exchanges, independent source groups, the classified sample and text-eval eligibility. No capture bodies, current pointers, writes, inference or provider operations. Saved readiness is historical metadata, not a new admission decision; estimated outcomes do not prove task success.",
       "executable": "bin/checkpoint",
       "environment": {
         "required": ["MILK_CHECKPOINT_KEY", "MILK_CHECKPOINT_SHA256", "MILK_SCOPE_ID", "MILK_STORE_KIND"],
-        "optional": ["MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS"]
+        "optional": ["MILK_READINESS_KEY", "MILK_READINESS_SHA256", "MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS"]
       },
       "status": false,
       "stop": false,

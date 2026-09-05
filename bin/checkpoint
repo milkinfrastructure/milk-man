@@ -34,6 +34,9 @@ def main():
         raise ValueError("usage: checkpoint [run]")
     settings = settings_from_environment()
     key, expected = os.environ["MILK_CHECKPOINT_KEY"], os.environ["MILK_CHECKPOINT_SHA256"]
+    readiness_key, readiness_sha = os.environ.get("MILK_READINESS_KEY"), os.environ.get("MILK_READINESS_SHA256")
+    if bool(readiness_key) != bool(readiness_sha):
+        raise ValueError("MILK_READINESS_KEY and MILK_READINESS_SHA256 must be set together")
     prefix = settings.scope_prefix + "s/"
     if not key.startswith(prefix) or not key.endswith("/summary.json"):
         raise ValueError("checkpoint key must identify a summary in the configured scope")
@@ -79,7 +82,33 @@ def main():
         "text_eval_eligible_exchanges": sum(eval_plan._eligible(row) for row in rows),
         "note": "Summary statistics describe the classified sample, not every exchange; capabilities may overlap. Outcomes are model estimates, not measured task success. Missing statistics are null; non-code language labels are grouped as unknown. HTTP completion does not establish task success. Text eligibility excludes split and held-out selection.",
     }
-    print(json.dumps({"state": "complete", "identity": expected, "inference_calls": 0, "provider_calls": 0, "details": facts}, separators=(",", ":")))
+    if readiness_key:
+        prefix = settings.scope_prefix + "readiness/"
+        if not readiness_key.startswith(prefix) or not readiness_key.endswith(".json"):
+            raise ValueError("readiness key is outside the configured scope")
+        readiness_uuid = readiness_key[len(prefix):-len(".json")]
+        if str(uuid.UUID(readiness_uuid)) != readiness_uuid or not re.fullmatch(r"[0-9a-f]{64}", readiness_sha):
+            raise ValueError("readiness UUID or SHA-256 is invalid")
+        body = store.get(readiness_key).body
+        if summary.digest(body) != readiness_sha:
+            raise ValueError("readiness digest differs")
+        readiness = summary._json(body, "readiness")
+        if not isinstance(readiness, dict) or any(readiness.get(name) != wanted for name, wanted in {
+            "schema_version": "milk.readiness.v3", "readiness_uuid": readiness_uuid,
+            "scope_id": settings.scope_id, "profile": settings.profile, "summary_sha256": expected,
+        }.items()):
+            raise ValueError("readiness does not belong to this checkpoint")
+        checks = readiness.get("checks")
+        if (any(type(readiness.get(name)) is not bool for name in ("ready", "statistically_qualified"))
+            or not isinstance(checks, dict) or any(type(value) is not bool for value in checks.values())):
+            raise ValueError("readiness decisions are invalid")
+        facts.update(summary_sha256=expected, readiness_key=readiness_key, readiness_sha256=readiness_sha,
+                     readiness_digest_verified=True, ready=readiness["ready"],
+                     statistically_qualified=readiness["statistically_qualified"], task_success_known=False,
+                     failed_readiness_checks=sorted(name for name, passed in checks.items() if not passed),
+                     next_action="prepare_text_evals" if readiness["ready"] else "do_not_run_text_evals")
+    identity = summary.digest({"summary": expected, "readiness": readiness_sha}) if readiness_key else expected
+    print(json.dumps({"state": "complete", "identity": identity, "inference_calls": 0, "provider_calls": 0, "details": facts}, separators=(",", ":")))
 
 
 if __name__ == "__main__":

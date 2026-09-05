@@ -265,6 +265,9 @@ To inspect a saved summary, set `MILK_CHECKPOINT_KEY` and
 `MILK_CHECKPOINT_SHA256`, then run `bin/milk run checkpoint`. It verifies the
 summary and its source history and returns counts, not conversation bodies.
 It does not generate data, train, or decide whether an agent succeeded.
+Set `MILK_READINESS_KEY` and `MILK_READINESS_SHA256` together to include the
+matching saved readiness decision and failed checks. Both files are verified;
+the job does not read current pointers or make a new admission decision.
 
 To inspect one captured agent exchange, set `MILK_NATIVE_CAPTURE_KEY` and
 `MILK_NATIVE_CAPTURE_SHA256`, then run `bin/milk run native-capture`. It saves

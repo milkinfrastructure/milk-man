@@ -15,6 +15,11 @@ Status notation:
 
 ## Executive state
 
+- [x] The checkpoint job can include exact saved readiness through paired
+  `MILK_READINESS_KEY/SHA256`. One direct R2 execution matched all previously
+  inspected facts, verified both digests and their summary link, and made zero
+  inference/provider calls. This removes ad-hoc joining code from the agent's
+  task; it does not add a judge or admit data for training.
 - [x] Published the direct-execution and runtime-cache changes at `9dc9b0074`.
   The cache mount is source-verified, not a measured startup improvement.
 - [x] Dashboard and CLI now share exact job commands. All 22 command lists
