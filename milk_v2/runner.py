@@ -83,8 +83,8 @@ def _emit(value: dict, code: int = 0) -> NoReturn:
 
 
 def _parse(argv: list[str]) -> tuple[str, str | None, str | None]:
-    if argv == ["jobs"]:
-        return "jobs", None, None
+    if len(argv) in {1, 2} and argv[0] == "jobs":
+        return "jobs", argv[1] if len(argv) == 2 else None, None
     if argv == ["status"]:
         return "status", None, None
     if argv == ["operate", "--once"]:
@@ -93,12 +93,12 @@ def _parse(argv: list[str]) -> tuple[str, str | None, str | None]:
         return "run", argv[1], "run"
     if len(argv) == 3 and argv[0] == "run" and argv[2] in {"status", "stop"}:
         return "run", argv[1], argv[2]
-    raise UsageError("usage: milk jobs | milk status | milk operate --once | milk run <job> [status|stop]")
+    raise UsageError("usage: milk jobs [name] | milk status | milk operate --once | milk run <job> [status|stop]")
 
 
-def _catalog(runtime) -> dict:
+def _catalog(runtime, name: str | None = None) -> dict:
     rows = []
-    for job in runtime.jobs.values():
+    for job in (runtime.job(name),) if name is not None else runtime.jobs.values():
         required = list(job.environment_required)
         optional = list(job.environment_optional)
         for binding in job.bindings:
@@ -551,7 +551,7 @@ def main(argv: list[str] | None = None) -> None:
         command, job_name, action = _parse(argv)
         runtime = config.load()
         if command == "jobs":
-            _emit(_catalog(runtime))
+            _emit(_catalog(runtime, job_name))
         if command == "run" and job_name is not None:
             job = runtime.job(job_name)
             if job.executable is not None:

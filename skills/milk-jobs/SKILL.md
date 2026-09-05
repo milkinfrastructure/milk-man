@@ -5,8 +5,9 @@ description: Discover and run environment-configured Milk jobs.
 
 # Milk jobs
 
-Use `milk jobs` to discover available jobs, their actions, and environment
-names. Read existing progress with `milk status`. Run a job with
+When the job name is known, use `milk jobs <name>` to read only its actions and
+environment names. Use `milk jobs` for initial discovery. Read existing progress
+with `milk status`. Run a job with
 `milk run <name>`; executable jobs may also expose `status` and `stop` actions.
 
 - Treat stdout as the single `milk.job-result.v2` JSON result and stderr as
