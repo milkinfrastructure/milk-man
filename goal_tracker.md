@@ -15,6 +15,18 @@ Status notation:
 
 ## Executive state
 
+- [x] The dashboard now exposes the watched model server's saved status and
+  replica count, with copyable IDs in inline details. Chrome verified the
+  actual Baseten BUILDING observation; restarting only the dashboard left
+  heartbeat owner 9907 and its task/watch running. No extra provider polling
+  or dependencies were added.
+- [~] Chrome-prompted Baseten-owned Qwen3-0.6B deployment `qj7d9z2` on model
+  `w7mpx8dw` was accepted with one L4, minimum zero and maximum one replica.
+  It is building; inference and final cleanup are not yet proven. Milk Man
+  needed one correction after repeated source reads. Codex also corrected
+  the private benchmark base URL before execution. The entry prompt now
+  directs jobs to use their advertised contract before inspecting source.
+  Private run: `baseten-owned-qwen3-06b-c1899de-v0181`.
 - [x] Local dashboard separates the active chat goal from saved traffic stages.
   Commands stay folded; summaries have keyboard/tap help and clickable
   thresholds; research shows conclusions before measurements and references.
@@ -322,7 +334,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | published UI `7362ec915`, plus this recovery checkpoint | `7362ec915` | readable dashboard, native action trials, completed serving comparison and startup/restart proof; Baseten-owned proof and measured task-quality improvement remain open |
+| `milk-man` | published `ec42c5403`, plus this watched-resource UI checkpoint | `ec42c5403` | readable dashboard, native action trials, completed serving comparison and startup/restart proof; Baseten-owned proof and measured task-quality improvement remain open |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
 | `milk-landing` | `74a87c0`, deployed | `74a87c0` | root and docs verified against production; generated local deployment cache is not published |
 

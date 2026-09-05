@@ -626,6 +626,18 @@ function renderMan(man) {
     : pulse.state === "failed" ? "The last turn failed. Open its result below before continuing."
     : pulse.state === "paused" ? "Paused. Send an instruction to continue."
     : "Ready for your next instruction. Idle checks use no model calls.";
+  const resource = pulse.watch_resource || {};
+  const resourceRow = el("heartbeat-resource");
+  resourceRow.replaceChildren();
+  resourceRow.hidden = !resource.provider_status;
+  if (resource.provider_status) {
+    el("current-work-note").textContent = "Model server " + resource.provider_status.toLowerCase().replaceAll("_", " ")
+      + (Number.isInteger(resource.active_replicas) ? " · " + resource.active_replicas + " active replicas" : "") + ".";
+    resourceRow.append(node("span", "", "Last reported by the watched job. Zero replicas during a build does not mean it has been stopped. "));
+    for (const [key, label] of [["model_id", "model"], ["deployment_id", "deployment"]]) {
+      if (resource[key]) resourceRow.append(copyButton(label + " " + resource[key], resource[key], label + " ID"));
+    }
+  }
   for (const [id, stamp] of [["last", pulse.checked_at], ["next", heartbeatOnline && !workActive && pulse.state !== "paused" ? pulse.next_wake : null]]) {
     const target = el("heartbeat-" + id);
     target.textContent = stamp ? new Date(stamp * 1000).toLocaleTimeString() : id === "next" && workActive ? "after current work" : id === "next" && heartbeatStarting ? "after startup" : "not scheduled";

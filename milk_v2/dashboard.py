@@ -187,6 +187,13 @@ def _man_state(include_metadata: bool = True) -> dict:
     background_watch = bool(watch_command and Path(watch_command[0]).name == "background")
     watch_pid = watched.get("child_pid") if background_watch and isinstance(watched, dict) else None
     pulse_alive = heartbeat.alive(pulse)
+    watch_resource = {}
+    if pulse_alive and pulse.get("state") == "waiting" and isinstance(watched, dict):
+        for key in ("provider_status", "model_id", "deployment_id"):
+            if isinstance(watched.get(key), str):
+                watch_resource[key] = _redact(watched[key])[:128]
+        if type(watched.get("active_replicas")) is int and watched["active_replicas"] >= 0:
+            watch_resource["active_replicas"] = watched["active_replicas"]
     if pulse_alive:
         queued = bool(pulse.get("pending"))
         last_exit_code = pulse.get("last_exit_code")
@@ -252,6 +259,7 @@ def _man_state(include_metadata: bool = True) -> dict:
             "watch_state": watch_state if watch_state in ("unknown", "running", "active", "waiting", "complete", "failed", "stopped") else None,
             "watch_label": "local background job" if background_watch else "status check",
             "watch_pid": watch_pid if type(watch_pid) is int and watch_pid > 1 else None,
+            "watch_resource": watch_resource,
             **{key: pulse.get(key) for key in ("state", "checked_at", "next_wake", "turns", "polls")},
             "task": _redact(pulse.get("task"))[:16384],
             "brief": _redact(pulse.get("brief"))[:16384],

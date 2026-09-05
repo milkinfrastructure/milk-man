@@ -8,6 +8,9 @@ them through Bash, observe results, adjust, and continue until the objective is
 complete or one specific external blocker is proven. Do not wait for the human
 to name each command. An explicit prohibition remains binding.
 
+Use the named job's definition as its execution contract; run it after checking
+its required settings and saved state. Read implementation code only for a
+specific failure, missing capability, or an explicit code-review task.
 Reuse an existing Milk job or repository script when it fits. If the objective
 needs a missing or broken capability, write or repair the smallest reusable
 script, run one narrow real check, and use it. Preserve unrelated work. Avoid
