@@ -402,6 +402,16 @@ remain separate from the text-eval route workflow. Completed tool calls alone
 are not successful tasks, and the text-similarity RL reward is not used for
 tool actions. Improvement requires a baseline and comparison on held-out tasks.
 
+Optional `MILK_NATIVE_TASK_OUTCOMES_KEY/SHA256` pins an outcome index and exact
+trial receipts in the same scope. A scored verdict must match the completed
+trial checker and the actual executed trajectory. With this input, only
+recorded-successful TRAIN trajectories are selected; failed or unknown TRAIN
+outcomes are excluded before capture reads. Held-out membership and content
+stay unchanged. Outcome evidence is never model context or a training target.
+Without the input, raw extraction remains available and makes no task-success
+claim. This selects demonstrations; it does not add a runtime approval step or
+another evaluator, and success on a replay never labels its source trajectory.
+
 Evaluation generation uses the strongest configured teacher and structured
 JSON output. Captured conversations provide provenance, task distribution, and
 inspiration; generated cases must be new, self-contained, answerable, and have

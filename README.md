@@ -305,6 +305,21 @@ that count. Tools and past results stay intact, and tasks keep their original
 data splits. Repeating it reuses the same files without reading conversations
 or calling a model. The result reports the manifest key, hash and split counts.
 
+To select successful training tasks, also set
+`MILK_NATIVE_TASK_OUTCOMES_KEY` and `MILK_NATIVE_TASK_OUTCOMES_SHA256` to a saved
+outcome index in the same scope:
+
+```json
+{"schema_version":"milk.task-outcomes.v1","scope_id":"<scope UUID>","outcomes":[{"trajectory_id":"<executed trajectory UUID>","result":{"key":"<saved trial result key>","sha256":"<result SHA-256>"}}]}
+```
+
+Each result is an existing `agent-trial` receipt. Its scored verdict must match
+its completed checker; an unscored receipt stays unknown. Only successful TRAIN
+tasks are selected. Held-out tasks keep their original membership and content.
+The index and result hashes are pinned; outcomes never enter model inputs.
+Without these variables, extraction stays unchanged. A successful replay of a
+task does not label a different trajectory that originally supplied that task.
+
 The existing `train` job accepts that manifest through
 `MILK_DATASET_MANIFEST_KEY` and `MILK_DATASET_MANIFEST_SHA256`. Use
 `MILK_TRAIN_RECIPE=sft` and set `MILK_TRAIN_MAX_TOKENS` to fit the full history;
@@ -322,9 +337,11 @@ answers before and after training. A lower loss means a closer match to those
 answers, not proof that the agent completes tasks better.
 In this small run, loss on one held-aside example (184 answer tokens) fell
 from 1.1153 to 1.0929. Milk Man then served the trained and original models on
-one L4 each, requested the same next action, and stopped both. Both returned
-valid read-only commands, but neither command was executed. This does not yet
-show that training improved task completion.
+one L4 each, requested the same next action, and stopped both. Those initial
+commands were not executed. A later comparison ran both models on the same
+held-out task through the actual Bash loop. Each used six replies without
+reading the requested checkpoint or producing a final answer. Both failed;
+training has not shown better task completion. Both servers were stopped.
 
 To watch or stop a submitted training run, set `MILK_TRAIN_PROVIDER_JOB_ID`
 to the returned Baseten job ID and use `bin/milk run training-baseten status`

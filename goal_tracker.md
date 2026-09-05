@@ -15,6 +15,35 @@ Status notation:
 
 ## Executive state
 
+- [!] The native DEV task was executed once by each model on the same runtime
+  `c3d756649`: base 17.927s / six Bash replies; trained 16.433s / six replies.
+  Neither read the checkpoint or returned a final answer. Raw unscored verdicts
+  remain null; independent command review found both failed. This is not a
+  quality win or an instruction to retrain. R2 comparison SHA-256:
+  `95f256a0d6218ae300f0b8634783cdf625e369d6727484c051fc23e9ff15a72d`.
+  Private evidence: `native-task-20260905.KNx2un/`. Both exact trial replays
+  made zero calls. Research revision
+  `74a8dcc85997d991e428d3253ed817dd1e724166d081a6f9ce603d68e8953796`
+  retains ten experiments; unchanged research replay was idle with zero calls.
+- [x] Both Baseten deployments `31rd954` / `q9254m6` were independently
+  INACTIVE with zero replicas at 10:54 UTC and again at 17:48 UTC. Modal `main`
+  also returned zero containers. The original task receipts remain unchanged.
+  The experiment's preflight conservatively reserved $368.18 against the
+  cumulative $500 ceiling; post-run billed cost remains unknown. No new paid
+  inference, training or deployment was started while adding outcome selection.
+- [~] `native-dataset` now optionally reads pinned task-outcome/result objects.
+  Recorded-successful TRAIN trajectories are selected; failed/unknown TRAIN
+  is excluded before capture reads. Existing checker/trajectory identity must
+  match. Held-out selection and raw extraction are unchanged; no evaluator or
+  approval workflow was added. R2 dataset `5154a6a0-411a-5507-b3c6-394ac70a78f1`
+  contains zero TRAIN / one DEV; manifest SHA-256
+  `8318dde487c364c70e4f65dfc6e9a0f62752903e73d82267efa1c362797d3a1f`.
+  All held-out bytes match the old dataset, and raw extraction matches all four
+  original split content hashes. Replay reads no captures and makes zero model
+  or provider calls. Successful selection on a scored real source trajectory
+  remains unproven; these replay results cannot label their original source.
+- [x] Corrected the private runtime profile from a malformed combined value to
+  `mechanics`. Store configuration now parses; no key or default scope changed.
 - [x] The concurrent 120B experiment finished on September 5. Milk Man used
   the retained baseline, justified the prepared candidate, launched it once,
   registered a heartbeat wait, resumed, compared exact receipts, saved memory,
@@ -766,11 +795,11 @@ Status notation:
 
 ## Repository snapshot
 
-Current source snapshot:
+Source snapshot before this outcome-selection change:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `1bb1e2175`, plus this evidence update | `1bb1e2175` | concurrent batching proof retained; startup timing locally checked; held-out task improvement remains open |
+| `milk-man` | `c3d756649`, plus this outcome-selection change | `c3d756649` | failed executed native comparison retained; successful training-data selection and task improvement remain open |
 | `milk-parlor` | `162b56e228b74d24606010d11c129a6d1d23e773` | same remote main | source unchanged this run; live driver traffic continues through Parlor; no new deployment claimed here |
 | `milk-landing` | `762d0c7`, deployed | `762d0c7` | mobile and docs verified in Chrome; local deployment cache is not published |
 
@@ -960,7 +989,7 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 | Useful eval generation | `[~]` 98/100 materially correct in best pilot; later pilot 60/64 clean | inspect a small application sample before expansion |
 | 10,000-case experiment | `[ ]` not generated as one accepted current contract | optional configured expansion after small output is useful |
 | Source-separated dataset | `[~]` small mechanics proven | next training workload with no split leakage |
-| Qwen3.5-0.8B SFT | `[~]` native three-step Baseten H100 run completed; base and trained model returned unexecuted actions | compare actual completion of the retained held-out task; do not retrain |
+| Qwen3.5-0.8B SFT | `[~]` three-step training completed; both base and trained models failed the executed DEV task | score retained successful source executions before more training; no unchanged rerun |
 | Explicit RL experiment | `[ ]` existing SFT is not RL | rollout, reward/judge, recipe, baseline, and evaluation when requested |
 | BF16/dynamic FP8 comparison | `[~]` tiny mechanics proven | same ordered evaluation set when selected |
 | Static FP8 | `[~]` mechanics only | never select until independently qualified |

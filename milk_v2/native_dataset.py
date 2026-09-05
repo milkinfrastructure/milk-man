@@ -43,7 +43,53 @@ def configuration(settings):
         "split_executor_sha256": summary.digest(Path(eval_plan.__file__).read_bytes()),
         "summary_executor_sha256": summary.digest(Path(summary.__file__).read_bytes()),
     }
+    outcomes_key = os.environ.get("MILK_NATIVE_TASK_OUTCOMES_KEY", "")
+    outcomes_sha = os.environ.get("MILK_NATIVE_TASK_OUTCOMES_SHA256", "")
+    if outcomes_key or outcomes_sha:
+        if not outcomes_key.startswith(settings.scope_prefix) or not re.fullmatch(r"[0-9a-f]{64}", outcomes_sha):
+            raise ValueError("task outcomes require a scoped object key and SHA-256")
+        identity["task_outcomes"] = {"key": outcomes_key, "sha256": outcomes_sha}
     return identity, checkpoint_uuid
+
+
+def task_outcomes(store, settings, reference):
+    def read(ref):
+        if (not isinstance(ref, dict) or not isinstance(ref.get("key"), str)
+            or not ref["key"].startswith(settings.scope_prefix)
+            or not isinstance(ref.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", ref["sha256"])):
+            raise ValueError("task outcome evidence requires a scoped key and SHA-256")
+        body = store.get(ref["key"]).body
+        if summary.digest(body) != ref["sha256"]:
+            raise ValueError("task outcome evidence digest differs")
+        value = summary._json(body, "task outcome evidence")
+        if not isinstance(value, dict):
+            raise ValueError("task outcome evidence must be an object")
+        return value
+
+    index = read(reference)
+    if (index.get("schema_version") != "milk.task-outcomes.v1"
+        or index.get("scope_id") != settings.scope_id or not isinstance(index.get("outcomes"), list)):
+        raise ValueError("task outcomes identity differs")
+    outcomes = {}
+    for item in index["outcomes"]:
+        if not isinstance(item, dict) or not isinstance(item.get("trajectory_id"), str):
+            raise ValueError("task outcome requires its executed trajectory")
+        group = eval_plan.source_group("0" * 64, item["trajectory_id"], settings.scope_id)["sha256"]
+        if group in outcomes:
+            raise ValueError("duplicate task outcome trajectory")
+        result = read(item.get("result"))
+        correct = result.get("task_correct")
+        if (result.get("schema_version") != "milk.agent-trial-result.v1"
+            or result.get("trajectory_id") != item["trajectory_id"] or "task_correct" not in result
+            or (correct is not None and type(correct) is not bool)):
+            raise ValueError("task outcome must match the executed trajectory and its recorded verdict")
+        if correct is not None:
+            checker = result.get("checker")
+            if (not isinstance(checker, dict) or checker.get("error") is not None or checker.get("exit_code") != 0
+                or not isinstance(checker.get("verdict"), dict) or checker["verdict"].get("task_correct") is not correct):
+                raise ValueError("scored task outcome requires its matching completed checker")
+        outcomes[group] = correct
+    return outcomes
 
 
 def prepare(store, settings, identity, checkpoint_uuid):
@@ -62,6 +108,7 @@ def prepare(store, settings, identity, checkpoint_uuid):
         raise ValueError("checkpoint count differs from its ancestry")
     rows = {split: [] for split in SPLITS}
     selected, unsupported, skipped = Counter(), Counter(), Counter()
+    outcomes = task_outcomes(store, settings, identity["task_outcomes"]) if "task_outcomes" in identity else None
     capture_reads = 0
     for entry in sorted(sources, key=lambda row: (summary._utc(row.get("completed_at"), "completed_at"), row["key"])):
         if not entry["key"].startswith(settings.scope_prefix + "c/"):
@@ -70,6 +117,10 @@ def prepare(store, settings, identity, checkpoint_uuid):
             skipped["trajectory_id_missing"] += 1
             continue
         group = eval_plan.source_group(entry["request_sha256"], entry["trajectory_id"], settings.scope_id)
+        split = eval_plan.split_for_group(group["sha256"], group["kind"])
+        if outcomes is not None and split == "train" and outcomes.get(group["sha256"]) is not True:
+            skipped["task_failed" if outcomes.get(group["sha256"]) is False else "task_outcome_unknown"] += 1
+            continue
         if selected[group["sha256"]] >= identity["policy"]["per_group"]:
             skipped["per_group_limit"] += 1
             continue
@@ -87,7 +138,7 @@ def prepare(store, settings, identity, checkpoint_uuid):
             "response_sha256": summary.digest(response_body), "content_sha256": summary.digest(request_body + b"\0" + response_body),
             "trajectory_id": envelope.get("trajectory_id"), "endpoint": envelope.get("endpoint"),
             "source_group_kind": group["kind"], "source_group_sha256": group["sha256"],
-            "split": eval_plan.split_for_group(group["sha256"], group["kind"]),
+            "split": split,
         }
         if any(source[name] != entry.get(name) for name in (
             "object_sha256", "request_sha256", "response_sha256", "content_sha256", "trajectory_id", "endpoint",

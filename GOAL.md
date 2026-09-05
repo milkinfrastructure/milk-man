@@ -166,7 +166,7 @@ its full acceptance criteria are actually satisfied.
   concrete failure. A plan, model claim, valid JSON or successful process exit
   does not by itself prove task success, better quality or production routing.
 
-## Current continuation — September 5, 10:00 UTC
+## Current continuation — September 5, 17:50 UTC
 
 The concurrent 120B comparison is complete. Milk Man inspected the retained
 baseline, justified the prepared one-setting candidate, launched it once,
@@ -185,11 +185,31 @@ timing-only GPU run. The local environment no longer replaces the harness PATH.
 R2 research revision `2a24374f23b905f64bf1f2d84c27603c298200b9b679dfac5e71b0a69e4d74c2`
 retains all nine experiments; baseline/evaluation/best remain unknown.
 
-Next: inspect the saved native DEV task and existing `agent-trial` checker.
-Implement only what is missing for an executed-task comparison of the original
-Qwen3.5-0.8B and the already-trained checkpoint. Preserve its source-group split
-and exact task. Do not retrain, generate more data, or count another unexecuted
-Bash response as a completed task. Refresh billing before starting compute.
+The executed native DEV comparison is now retained. Base and trained
+Qwen3.5-0.8B each used six Bash replies without reading the requested checkpoint
+or producing a final answer. Both failed; no task-quality improvement was
+measured. The same task, runtime, limits and serving settings were used; only
+the model checkpoint differed. Both existing L4 deployments were stopped and
+independently verified at zero. Do not repeat either trial.
+
+Research revision `74a8dcc85997d991e428d3253ed817dd1e724166d081a6f9ce603d68e8953796`
+retains all ten experiments and both exact task receipts. Best remains unknown.
+The optional native-dataset outcome input now filters TRAIN examples using
+pinned execution verdicts, without changing held-out examples or raw extraction.
+Retained-data execution produced zero qualifying TRAIN rows and the same DEV
+bytes; replay made zero capture/model/provider calls. This does not manufacture
+successful demonstrations from unscored data. No more inference was used.
+
+Next: use retained completed task evidence to establish one genuinely successful
+source trajectory for native learning. Reuse the existing task checker and
+saved outputs; do not rerun a model merely to add a verdict. Keep any derived
+score separate from its immutable original receipt and bind the actual executed
+trajectory, not the trajectory that inspired its task. Confirm its original
+split before selecting it; never move DEV into TRAIN or label a multi-task
+trajectory successful because one turn worked. Prove the successful selection
+before considering another training run. Continue the full P4–P8 work below;
+this failed comparison is not product completion. Refresh billing before any
+new paid compute.
 
 ## Outcome
 
@@ -576,7 +596,11 @@ do not restart parked large generation runs.
   verified inactive with zero active replicas. Closeout needed one correction
   after confused hash comparisons and repeated metadata reads. The tracker
   retains both exact results without claiming a quality winner or wholly
-  unassisted completion.
+  unassisted completion. The subsequent actual Bash comparison also failed:
+  neither base nor trained Qwen completed the same held-out task within six
+  replies. Both executions and cleanup are retained; task improvement remains
+  unproven. Optional outcome-linked TRAIN selection is now implemented, but a
+  genuinely successful selected training trajectory remains to be demonstrated.
 - [x] Summary execution/resume and zero-call replay are proven. The heartbeat
   checks summary milestones independently of a task's resource wait. An isolated
   idle owner detected an already-reached 200 threshold in retained traffic,
