@@ -15,6 +15,17 @@ Status notation:
 
 ## Executive state
 
+- [x] Milk Man saved `native-serving-proof/comparison.json` and its completion
+  memory at 06:04:24 UTC, then returned idle at turn 112. Comparison SHA-256:
+  `b8caf3db61071b820fb31826e9ace8789c3e16a375e71c9e751fdfc2163e6fc3`.
+  Both original result hashes and the matching prepared input are retained.
+  Cleanup finished within the 30-minute allowance; report closeout finished
+  later and required one Codex correction. Neither model is a quality winner.
+- [ ] Next: compare completed, useful tasks and inference settings through the
+  existing `agent-trial`, benchmark and serving jobs. Reuse the 120B lifecycle
+  and previous measurements; do not extend training or generation from this
+  two-request formatting check. Activate the compact closeout prompt on the
+  next safe harness launch and observe whether it avoids repeated metadata reads.
 - [~] Submitted the held-out trained/base comparison through the local
   dashboard in Chrome; `/api/run` returned 202 and the existing owner resumed
   at turn 101. Milk Man created Baseten model `wl51vn73`, deployment `q9254m6`
