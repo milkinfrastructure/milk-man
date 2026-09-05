@@ -15,6 +15,22 @@ Status notation:
 
 ## Executive state
 
+- [x] The second Chrome-prompted Baseten attempt reused model `w7mpx8dw`
+  and deployment `qj7d9z2`, reached ACTIVE on one L4, completed exactly three
+  requests, and stopped within 8m24s. An independent provider read confirmed
+  INACTIVE and zero replicas. Milk Man returned to idle; no rebuild, duplicate
+  model, or additional benchmark ran. Private run: the existing run's
+  `activation-2/`. Benchmark SHA-256:
+  `28294edc00344f0235acc9675a51fdd2d8d0a016248009b49cd7fa92a265cd09`;
+  cleanup verification SHA-256:
+  `73fcd22fd9f0ae3f400cdb136597c78ca7c520b1aded3209bbbba599450261bd`.
+- [!] All three responses failed the exact-answer check. Offline SHA-256
+  comparison proved their content was `<think>\n\n</think>\n\nMILK_OK`.
+  The server returned the answer with empty reasoning tags, not three unknown
+  or incorrect answers. Preserve the failed receipts. Next use the existing
+  `MILK_BASETEN_SERVE_VLLM_ARGS_JSON='["--reasoning-parser","qwen3"]'`
+  binding in a new serving profile; no benchmark normalization or harness
+  rewrite is needed. That corrected profile has not been run.
 - [x] The dashboard now exposes the watched model server's saved status and
   replica count, with copyable IDs in inline details. Chrome verified the
   actual Baseten BUILDING observation; restarting only the dashboard left
@@ -27,9 +43,9 @@ Status notation:
   it; an independent provider read confirmed INACTIVE and zero active replicas.
   Cleanup receipt SHA-256:
   `649ca420d4cb5bb6742f84dac36608ae2e3e20b8cba507d67ca2143460fb2f56`.
-  Private run: `baseten-owned-qwen3-06b-c1899de-v0181`. A next attempt can
-  reactivate this already-built deployment; no duplicate model or rebuild is
-  needed. Owned Baseten inference remains unproven.
+  Private run: `baseten-owned-qwen3-06b-c1899de-v0181`. This first attempt
+  remains an incomplete proof; the separate second attempt above reused its
+  deployment and proved inference and cleanup.
 - [!] This task needed one correction after repeated source reads. Codex also
   corrected the private benchmark base URL before execution. Later the agent
   used timer-only status reviews instead of keeping its read-only watch.
@@ -342,7 +358,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | published `ec42c5403`, plus this watched-resource UI checkpoint | `ec42c5403` | readable dashboard, native action trials, completed serving comparison and startup/restart proof; Baseten-owned proof and measured task-quality improvement remain open |
+| `milk-man` | published `45637874e`, plus this Baseten closeout checkpoint | `45637874e` | readable dashboard, native action trials, serving comparison and startup/restart proof; Baseten-owned inference/cleanup now observed; reasoning separation and measured task-quality improvement remain open |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
 | `milk-landing` | `74a87c0`, deployed | `74a87c0` | root and docs verified against production; generated local deployment cache is not published |
 
@@ -511,7 +527,7 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 | Repository-script jobs | `[x]` Milk Man authored and reused `bin/progress`; `serve-modal` executed through the generic executable catalog | reuse the same dispatch for the next model |
 | Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, and restart during the same pending H200 startup worked | preserve these properties through the next autonomous experiment |
 | Managed GLM Milk Man driver | `[x]` Baseten GLM status turn proven | autonomous multi-step task through the driver |
-| General model lifecycle | `[~]` Qwen/L4 and 120B/H200 each completed three correct calls and verified zero through the same env-selected scripts | complete a Baseten-owned lifecycle and an unassisted provider recovery |
+| General model lifecycle | `[~]` Modal Qwen/L4 and 120B/H200 completed three correct calls and verified zero; Baseten Qwen/L4 completed three requests and verified zero, with empty reasoning tags in answer text | configure Baseten reasoning separation; retain independent providers and prove unassisted recovery |
 | Inference autotuning | `[~]` a same-workload 120B A/B comparison selected CUDA graphs; its endpoint later ran a native Milk Man task and stopped; corrections were required | prove independent adaptive trials on representative work |
 | Different compute workload | `[x]` Qwen/L4 and 120B/H200 completed without editing the engine | retain generality while adding another provider |
 | Official SDK -> Parlor | `[x]` live for Responses and Chat Completions, including streaming | retain as Milk application input |

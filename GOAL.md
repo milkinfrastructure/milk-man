@@ -74,8 +74,10 @@ are recorded in the tracker's repository and live snapshots.
 - [~] Local changes now support script jobs and a dashboard-independent
   heartbeat. Chrome-driven status, script reuse, idle checks, two Modal model
   lifecycles, and restart against a ready provider resource have run. Fully
-  autonomous 120B recovery and a general Baseten-owned lifecycle remain
-  unproven. A small comparable inference A/B run selected CUDA graphs and
+  autonomous 120B recovery remains unproven. Baseten-owned Qwen/L4 now
+  completed three requests and verified shutdown; empty reasoning tags in
+  answer text still need a serving-configuration correction. A small
+  comparable inference A/B run selected CUDA graphs and
   stopped both deployments, with corrections; see the tracker for evidence.
 - [x] Reconciled Cloudflare generations at 23:30 UTC: only the selected
   `parlor-d82c3cd-capture` instance is running; the other 20 are inactive.
@@ -214,13 +216,19 @@ without a separate scheduler service.
 
 - [~] Refactor the current fixed controller lifecycle into reusable,
   provider-native scripts for ensure/reuse, status/logs, inference smoke, and
-  stop. Both executable paths exist; the Baseten-owned live proof remains open.
+  stop. Both paths ran live; Baseten-owned activation, three requests, and
+  verified shutdown completed. Its exact-answer check correctly failed on
+  empty reasoning tags, confirmed from saved hashes without further inference.
 - [~] Select provider, model and revision, API mode, runtime/image, GPU
   type/count, tensor parallelism, context, batching, cache/volume, region, and
   endpoint identity through environment variables. The completed Modal runs
   proved the model, revision, runtime, GPU, cache, and serving-argument subset.
-- [ ] Keep Baseten managed inference, Baseten-owned resources, and Modal-owned
+- [x] Keep Baseten managed inference, Baseten-owned resources, and Modal-owned
   resources available independently. Do not encode an automatic fallback.
+- [ ] Set the existing Baseten vLLM arguments to separate Qwen reasoning
+  (`--reasoning-parser qwen3`) for the next selected serving run. Preserve the
+  old failed receipt and use the resulting new profile identity. Do not change
+  the exact-answer comparison or repeat completed calls to diagnose it.
 - [x] First prove the lifecycle on an inexpensive model: inspect existing
   state, create or reuse one deployment, call it, inspect failure if any, and
   stop or retain it according to the prompt.
