@@ -35,6 +35,13 @@ Current frontier:
   the same frozen runtime and fresh identical workspaces. Keep task completion,
   output correctness and permitted reads separate. No retraining, repeat of
   the failed checkpoint task, or general quality claim from one task.
+- [~] Parlor now accepts an environment-selected upstream for one mechanics
+  scope/protocol without changing shared defaults or signed production routes.
+  The Rust HTTP path and Cloudflare environment forwarding passed direct local
+  checks, including four stored request/response pairs with trajectory IDs.
+  Code is published; hosted activation and a parent driver turn through that
+  scoped binding remain unproven. Use an idle-boundary resume of the existing
+  parent trajectory; no new driver-switch framework is needed.
 - [ ] Continue unproven P4–P8 model operations, useful inference tuning and the
   scope-specific learning application. Reuse completed work, add only a missing
   executable capability, then prove that capability through Milk Man. No new

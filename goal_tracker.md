@@ -15,6 +15,29 @@ Status notation:
 
 ## Executive state
 
+- [~] Parlor `bf9f927` adds `MILK_MECHANICS_UPSTREAMS_JSON`: a registered
+  mechanics scope/protocol selects its own base URL and named API-key envvar.
+  Global defaults and signed production routing remain unchanged. Rust built
+  offline and the actual HTTP path proved selected chat override, unchanged
+  Responses/other scopes/production baseline, four two-sided captures and
+  trajectory retention. Production override configuration was rejected.
+  Worker execution forwarded the named key, omitted an unrelated secret, and
+  rejected a missing key. Independent review found no concrete regression.
+  Private proof: `parlor-scope-smoke.XiEcED/proof.json`. No hosted deployment
+  or parent-model switch yet; existing owner/trajectory can resume at idle.
+- [~] The new held-out benchmark task is reserved in R2 before model use:
+  reservation SHA-256
+  `d5e3c86db8fb95799dde875c365e9f6bf9329e993466b07096fb76fafae924c5`.
+  Its task, input digests and answer values are absent from the four TRAIN
+  rows; the trained model points to that exact dataset. Both arms use frozen
+  runtime `cea39673fb374c29788da1f1f3fc02cc3fadb926` and separate workspaces
+  containing only the same two input receipts. At 19:59 UTC, base worker
+  `58367` / child `58368` is live, observing existing Baseten `qe2l6z2q` /
+  `31rd954` in DEPLOYING. No trial answer yet; trained worker not started.
+  The worker has a readiness deadline and automatic stop. Inspect this handle
+  before any next action; do not start a duplicate. Result/cleanup files are
+  under `heldout-benchmark.q4OFUx/`. Startup logs show vLLM initializing, not
+  an inference failure. This active run is not a completion claim.
 - [x] `bin/score-benchmark-task` uses the existing trial checker hook and
   registered `benchmark-compare` job. It checks the saved comparison and
   target-based decision against pinned receipt bytes, with zero model/provider
