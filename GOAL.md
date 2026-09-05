@@ -1,5 +1,28 @@
 # Current Milk execution goal
 
+## Guiding work
+
+This file is the sole execution guide. Ignore `PRD.md` when selecting work;
+do not delete it. `goal_tracker.md` holds supporting evidence, not another plan.
+Codex edits code directly, finishes one concrete item, verifies the actual
+result, marks its bracket, commits/pushes, and moves to the next unfinished item.
+Keep the complete outcome and P0–P8 acceptance criteria below intact.
+
+Current frontier:
+
+- [x] Responsive landing and docs are published. Do not reopen their design.
+- [x] Positive native-data preparation and four-step Qwen training completed.
+- [!] The new checkpoint failed its six-reply task check: no requested answer.
+  Preserve the result; do not repeat training or this task to force a win.
+- [x] Experimental training finished; all three known Baseten comparison
+  deployments are inactive with zero replicas; Modal reports zero containers.
+- [x] Fixed wrong-checkout imports in Bash jobs, dashboard, heartbeat and
+  summary probes. Direct local checks pass; no paid task was repeated.
+- [ ] Continue unproven P4–P8 model operations, useful inference tuning and the
+  scope-specific learning application. Reuse completed work, add only a missing
+  executable capability, then prove that capability through Milk Man. No new
+  model run merely to repeat an already-understood failure.
+
 ## Overnight execution — September 5, 2026
 
 Window: 00:45–08:45 America/Los_Angeles (07:45–15:45 UTC). This is the
@@ -166,7 +189,7 @@ its full acceptance criteria are actually satisfied.
   concrete failure. A plan, model claim, valid JSON or successful process exit
   does not by itself prove task success, better quality or production routing.
 
-## Current continuation — September 5, 18:55 UTC
+## Current continuation — September 5, 19:10 UTC
 
 The concurrent 120B comparison is complete. Milk Man inspected the retained
 baseline, justified the prepared one-setting candidate, launched it once,
@@ -221,18 +244,25 @@ would omit it. Baseten H100 job `qzyd88w` completed and saved model
 1.0855; this is not executed task success. One full pass and positive selection
 both changed, so this is not a data-only ablation against the old checkpoint.
 
-One already-started L4 check (`q9p5dm63` / `qe9l0lp`) owns its readiness wait,
-single saved-task execution and cleanup in the existing detached worker. Do
-not launch another. Reuse the retained base failure and six-reply/240-second
-limits. The copied runtime source is pinned, but its directory changes PATH
-and system references. The task is previously inspected and its source ancestry
-appears in TRAIN; report a narrow DEV result, never untouched-task generalization.
+The L4 check (`q9p5dm63` / `qe9l0lp`) finished in 24.938 seconds: six Bash
+replies, no checkpoint read and no final answer. The old base also failed.
+Runtime snapshots revealed `bf509d01f`, not the intended `c3d756649`: Python's
+current-directory imports selected main despite invoking another checkout's
+launcher. Core driver source was unchanged, but the environment was not a
+controlled match. The previously inspected task also shares ancestry with TRAIN.
+Do not claim task improvement or untouched-task generalization. Retain both
+failures, and do not buy a rerun to correct the comparison narrative.
 
-Mark preparation/training complete and continue the next missing P4 capability
-while this check finishes. Collect its result once, retain failure if it loses,
-and independently verify cleanup. Keep Astra-through-Parlor idle. Refresh
-cumulative billing and pending usage before any further paid compute. Continue
-full P4–P8; completed training does not complete the product.
+Independent reads at 18:59 UTC confirmed this deployment and both earlier L4
+deployments inactive with zero replicas, training completed, and zero Modal
+containers. The wrong-checkout launcher fix passed direct checks from another
+checkout and a conflicting local package; this includes the nested summary
+probe found in review. No new dependency or repository test file. Research
+revision `eb4ebf4705c042867006d3113647097db8e5cc1434aae93d7b083371aa186d25`
+retains all thirteen experiments; unchanged replay made zero model/provider
+calls. Continue the uncompleted P4–P8 capabilities without reopening this
+training experiment. Keep Astra-through-Parlor idle. Refresh cumulative billing
+and pending usage before any further paid compute.
 
 ## Outcome
 
@@ -281,8 +311,8 @@ summary and learning jobs. The OpenAI driver defaults to `gpt-6-astra`; GLM
 remains an independent environment-selected option. Switch a running task at a
 safe turn boundary without repeating completed work.
 
-This file is the execution order. [PRD.md](PRD.md) is the stable product
-contract. [goal_tracker.md](goal_tracker.md) is the evidence ledger.
+This file defines the outcome and execution order. [goal_tracker.md](goal_tracker.md)
+is the evidence ledger. `PRD.md` is not an execution input.
 
 Codex edits and runs the job scripts directly while developing this system.
 Do not use Milk Man as an intermediary for routine implementation or debugging.

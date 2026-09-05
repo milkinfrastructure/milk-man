@@ -4,9 +4,9 @@ set -euo pipefail
 umask 077
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
-hb() { python3 -m milk_v2.heartbeat "$@"; }
+hb() { python3 "$ROOT/milk_v2/heartbeat.py" "$@"; }
 if [[ "${MILK_HEARTBEAT_OWNER:-}" != "$$" ]]; then
-    exec python3 -m milk_v2.heartbeat own "$ROOT/bin/heartbeat"
+    exec python3 "$ROOT/milk_v2/heartbeat.py" own "$ROOT/bin/heartbeat"
 fi
 sleep_pid=""
 child=""

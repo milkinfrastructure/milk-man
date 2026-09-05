@@ -48,11 +48,11 @@ mode="${1:-}"
 case "$mode" in
     -h|--help|help) usage; exit 0 ;;
     dashboard)
-        exec env PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 -m milk_v2.dashboard
+        exec env PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 "$ROOT/milk_v2/dashboard.py"
         ;;
     heartbeat)
         shift
-        exec env PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 -m milk_v2.heartbeat "$@"
+        exec env PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 "$ROOT/milk_v2/heartbeat.py" "$@"
         ;;
     develop|bootstrap|run) shift ;;
     "") usage >&2; exit 64 ;;
@@ -404,8 +404,9 @@ PY
     [[ -n "$controller_token" ]] || die "$controller_api_key_env is required for the controller handoff"
     MILK_MAN_CONTROLLER_URL="$controller_base_url" MILK_MAN_CONTROLLER_TOKEN="$controller_token" \
     MILK_MAN_CONTROLLER_TIMEOUT="${MILK_MODAL_CONTROLLER_STARTUP_TIMEOUT:-1800}" \
-    PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
-import json, os, time
+    PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 - "$ROOT" <<'PY'
+import json, os, sys, time
+sys.path.insert(0, sys.argv[1])
 from milk_v2.providers.modal_controller import request_until_ready, SERVED_MODEL
 
 body, error = request_until_ready(

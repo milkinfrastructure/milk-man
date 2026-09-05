@@ -9,10 +9,15 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import threading
 import time
 import urllib.request
 from urllib.parse import urlsplit
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    __package__ = "milk_v2"
 
 from . import config, heartbeat, research
 from .state import SCHEMA as MAN_STATE_SCHEMA, redact, redact_message, validate_trajectory, workspace_set

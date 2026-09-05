@@ -2,8 +2,8 @@
 
 Updated: 2026-09-05
 
-This is the concise state ledger. The stable contract is [PRD.md](PRD.md); the
-ordered work is [GOAL.md](GOAL.md). The former 1,874-line tracker remains in Git
+This is the state ledger. [GOAL.md](GOAL.md) is the sole execution guide;
+`PRD.md` is not an execution input. The former 1,874-line tracker remains in Git
 history and is not copied into another archive file.
 
 Status notation:
@@ -27,18 +27,38 @@ Status notation:
   Training result SHA-256
   `ae9c5edc319c4a5ad6fb4a531dcfdac3d8e9689039491720ef0808c3ce62867f`.
   DEV target loss 1.1153 -> 1.0855 is not a task-quality result.
-- [~] One new L4 deployment `q9p5dm63` / `qe9l0lp` is waiting for readiness.
-  Existing detached worker `native-success-20260905.rlmSlv/candidate-worker`
-  owns the single six-reply saved-task check and cleanup. Do not duplicate it.
-  Source is pinned to `c3d756649`; the runtime directory differs from the old
-  base run, and TRAIN includes related DEV ancestry. This is an inspected DEV
-  check, not untouched-task generalization or a checkpoint-only controlled test.
+- [!] New Qwen task check finished: 24.938 seconds, six Bash replies, no
+  checkpoint read or final answer. Result SHA-256
+  `3b7403be869a181745123217f51e099a86a2d942231e648a88db6415f6cbd762`.
+  Actual runtime was `bf509d01f`, workspace `c3d756649`: the module launcher
+  imported main from the caller's directory. Core driver source was unchanged,
+  but this was not a controlled environment. TRAIN includes related DEV
+  ancestry. Raw task_correct remains null; independent command review found
+  failure. Do not rerun training or either task.
+- [x] Independent cleanup at 18:59 UTC: `qe9l0lp`, `31rd954`, `q9254m6` all
+  INACTIVE with zero replicas; Baseten training `qzyd88w` completed; Modal zero
+  containers. Both candidate worker processes exited. Idle parent 62714 stays.
+- [x] Wrong-checkout entry points now execute exact Python files and pin their
+  sibling package while preserving caller working directories. Jobs, dashboard,
+  heartbeat and summary probes use the selected checkout. Direct checks from
+  an old checkout and a conflicting local package pass with zero model/provider
+  calls. Review found the nested summary probe had the same bug; it is fixed
+  and directly checked too. No dependency or repository test file.
+  Private proof: `launcher-check.MLXOSN/proof.json`.
+- [x] Research revision
+  `eb4ebf4705c042867006d3113647097db8e5cc1434aae93d7b083371aa186d25`
+  retains thirteen experiments, including completed training and failed task
+  comparison. R2 comparison SHA-256:
+  `602f058a3f42975d6157c711a6f5960480ddeeb189c170c0e1f44fefcc6f4d98`.
+  Readback matched. Research and exact trial replay made zero model/provider
+  calls; original failed receipt remains unchanged. No winner was selected.
 - [x] Preflight billing in Chrome: Baseten September $34.58; Modal $13.99.
   Prior carry $274.94, pending $20, retained reservations $25 and new $10 reserve
   give $378.51 conservatively allocated against the same $500 authorization.
   Possible overlap remains; this is not literal billed cost. Preflight found
   all 31 previous training jobs terminal, both old L4 deployments inactive/zero,
-  and zero Modal containers. The new L4 still needs final cleanup evidence.
+  and zero Modal containers. Final cleanup is independently verified above;
+  final billed cost remains unknown, not assumed to equal the reservation.
 - [x] Added `agent-score`: the existing task checker scores a pinned saved
   result without rerunning the model. N0's actual report and completed
   trajectory matched independently inspected metadata. Original receipt
@@ -67,8 +87,8 @@ Status notation:
   `5906f3321413bb5262b27f1ccead90fce6c803f2aa9fd2b0b0d313ec6414735f`
   retains all eleven experiments; replay is idle with zero calls. That selection
   step used no package install, inference, GPU launch or route change. Subsequent
-  tokenizer preparation and training are complete above; the research record
-  still needs their result and the pending executed-task comparison.
+  tokenizer preparation, training and failed executed-task comparison are
+  retained in the newer thirteen-experiment record above.
 - [!] The native DEV task was executed once by each model on the same runtime
   `c3d756649`: base 17.927s / six Bash replies; trained 16.433s / six replies.
   Neither read the checkpoint or returned a final answer. Raw unscored verdicts

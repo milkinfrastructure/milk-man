@@ -8,6 +8,10 @@ import subprocess
 import sys
 from typing import NoReturn
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    __package__ = "milk_v2"
+
 from . import config
 from . import dataset as dataset_job
 from . import eval as eval_job

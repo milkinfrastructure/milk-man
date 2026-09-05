@@ -13,6 +13,10 @@ import sys
 import tempfile
 import time
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    __package__ = "milk_v2"
+
 from .state import atomic_json
 
 
@@ -140,7 +144,7 @@ def summary_tick(path: Path, previous: dict, stamp: float) -> dict:
         if not os.environ.get("MILK_SUMMARY_THRESHOLDS"):
             raise ValueError("summary_thresholds_required")
         settings = settings_from_environment()
-        observation = observe([sys.executable, "-m", "milk_v2.heartbeat", "_summary-probe"])
+        observation = observe([sys.executable, str(Path(__file__).resolve()), "_summary-probe"])
         if observation.get("exit") != 0 or not isinstance(observation.get("result"), dict):
             raise ValueError("summary_probe_failed")
         probe = observation["result"]
