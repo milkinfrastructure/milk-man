@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+from copy import deepcopy
 import json
 import os
 from pathlib import Path
 import random
-
-import boto3
-import torch
-import torch.nn.functional as F
-import zstandard
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import uuid
 
 
 MODEL_REPO = "Qwen/Qwen3.5-0.8B"
@@ -44,6 +40,8 @@ def canonical(value: object) -> bytes:
 
 
 def s3():
+    import boto3
+
     return boto3.client(
         "s3",
         endpoint_url=required("MILK_STORE_ENDPOINT"),
@@ -62,21 +60,47 @@ def get(client, key: str, expected: str) -> bytes:
 
 
 def dataset() -> tuple[dict, list[dict]]:
+    import zstandard
+
     client = s3()
     manifest = json.loads(
         get(client, required("MILK_DATASET_MANIFEST_KEY"), required("MILK_DATASET_MANIFEST_SHA256"))
     )
     if (
         not isinstance(manifest, dict)
-        or manifest.get("schema_version") not in {"milk.dataset.v2", "milk.dataset.v3"}
+        or manifest.get("schema_version") not in {"milk.dataset.v2", "milk.dataset.v3", "milk.native-dataset.v1"}
         or manifest.get("scope_id") != required("MILK_SCOPE_ID")
         or manifest.get("student_base", {}).get("model_repo") != MODEL_REPO
         or manifest.get("student_base", {}).get("model_revision") != MODEL_REVISION
     ):
         raise ValueError("dataset manifest identity differs")
+    native = manifest["schema_version"] == "milk.native-dataset.v1"
+    if native:
+        identity = manifest.get("identity")
+        job_id = manifest.get("job_id")
+        if (
+            not isinstance(identity, dict)
+            or identity.get("schema_version") != "milk.native-dataset-identity.v1"
+            or sha256(canonical(identity)) != job_id
+            or manifest.get("dataset_uuid") != str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:native-dataset:" + str(job_id)))
+            or manifest.get("profile") != required("MILK_SCOPE_PROFILE")
+            or any(manifest.get(name) != identity.get(name) for name in (
+                "scope_id", "profile", "student_base", "parent_summary", "decoder_sha256", "executor_sha256",
+            ))
+        ):
+            raise ValueError("native dataset identity differs")
+        prefix = f"milk/v2/scopes/{manifest['scope_id']}/d/{manifest['dataset_uuid']}/"
+        if required("MILK_DATASET_MANIFEST_KEY") != prefix + "manifest.json":
+            raise ValueError("native dataset manifest key differs")
     train = manifest.get("objects", {}).get("train")
     if not isinstance(train, dict) or set(train) != {"key", "sha256", "content_sha256", "count"}:
         raise ValueError("dataset train object is invalid")
+    if native and (
+        type(train["count"]) is not int or train["count"] < 1
+        or manifest.get("counts", {}).get("train") != train["count"]
+        or train["key"] != prefix + "train.jsonl.zst"
+    ):
+        raise ValueError("native dataset train reference differs")
     compressed = get(client, train["key"], train["sha256"])
     plain = zstandard.ZstdDecompressor().decompress(compressed, max_output_size=64 * 1024 * 1024)
     if sha256(plain) != train["content_sha256"]:
@@ -85,6 +109,25 @@ def dataset() -> tuple[dict, list[dict]]:
     if len(rows) != train["count"] or not rows:
         raise ValueError("dataset train count differs")
     for row in rows:
+        if native:
+            source = row.get("source", {}) if isinstance(row, dict) else {}
+            if (
+                not isinstance(row, dict)
+                or row.get("schema_version") != "milk.native-assistant-example.v1"
+                or row.get("split", "train") != "train"
+                or not isinstance(source, dict)
+                or source.get("split") != "train"
+                or source.get("scope_id") != manifest["scope_id"]
+                or source.get("profile") != manifest["profile"]
+                or row.get("decoder_sha256") != manifest["decoder_sha256"]
+                or row.get("training_target") != "visible_assistant_only"
+                or not isinstance(row.get("messages"), list) or not row["messages"]
+                or not isinstance(row.get("tools"), list)
+                or not isinstance(row.get("next_assistant_targets"), list) or not row["next_assistant_targets"]
+                or any(not isinstance(message, dict) or message.get("role") != "assistant" for message in row["next_assistant_targets"])
+            ):
+                raise ValueError("dataset contains an invalid native training example")
+            continue
         if (
             not isinstance(row, dict)
             or row.get("schema_version") != "milk.training-example.v2"
@@ -98,17 +141,64 @@ def dataset() -> tuple[dict, list[dict]]:
     return manifest, rows
 
 
-def tokens(tokenizer, row: dict, maximum: int) -> tuple[torch.Tensor, torch.Tensor]:
+def native_messages(items: list[dict]) -> list[dict]:
+    messages = deepcopy(items)
+    for message in messages:
+        if not isinstance(message, dict) or message.get("role") not in {"system", "user", "assistant", "tool"}:
+            raise ValueError("native message role is not supported by the student template")
+        if message["role"] == "assistant":
+            # Captures omit reasoning. Also stop the template treating visible </think> text as hidden reasoning.
+            message["reasoning_content"] = ""
+        for call in message.get("tool_calls", []):
+            arguments = call["function"]["arguments"]
+            if isinstance(arguments, str):
+                arguments = json.loads(arguments)
+            if not isinstance(arguments, dict):
+                raise ValueError("native tool arguments must be a JSON object")
+            call["function"]["arguments"] = arguments
+    return messages
+
+
+def token_ids(tokenizer, row: dict, maximum: int) -> tuple[list[int], list[int]]:
+    """Prepare CPU token IDs; native history, tools, and targets are never truncated."""
+    if row.get("schema_version") == "milk.native-assistant-example.v1":
+        if row.get("training_target") != "visible_assistant_only":
+            raise ValueError("native training requires visible assistant targets")
+        messages = native_messages(row["messages"])
+        targets = native_messages(row["next_assistant_targets"])
+        if not messages or not targets or any(message["role"] != "assistant" for message in targets):
+            raise ValueError("native training requires context and new assistant targets")
+        template = {"tools": row["tools"], "tokenize": False, "enable_thinking": False}
+        prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, **template)
+        full = tokenizer.apply_chat_template(messages + targets, add_generation_prompt=False, **template)
+        if not full.startswith(prompt):
+            raise ValueError("student template changed native context at the assistant boundary")
+        encoded = tokenizer(full, add_special_tokens=False)["input_ids"]
+        context_ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
+        if encoded[:len(context_ids)] != context_ids:
+            raise ValueError("student tokenizer changed native context at the assistant boundary")
+        if len(encoded) > maximum:
+            raise ValueError(f"native example needs {len(encoded)} tokens; MILK_TRAIN_MAX_TOKENS={maximum}; no truncation applied")
+        labels = [-100] * len(context_ids) + encoded[len(context_ids):]
+        if not labels or all(value == -100 for value in labels):
+            raise ValueError("native example has no assistant target tokens")
+        return encoded, labels
     messages = [{"role": "user", "content": row["input"]}]
     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     full = prompt + row["target"] + (tokenizer.eos_token or "")
-    encoded = tokenizer(full, return_tensors="pt", truncation=True, max_length=maximum)
+    encoded = tokenizer(full, truncation=True, max_length=maximum)["input_ids"]
     prompt_length = len(tokenizer(prompt, truncation=True, max_length=maximum)["input_ids"])
-    labels = encoded["input_ids"].clone()
-    labels[:, : min(prompt_length, labels.shape[1])] = -100
-    if torch.all(labels == -100):
+    labels = [-100] * min(prompt_length, len(encoded)) + encoded[prompt_length:]
+    if all(value == -100 for value in labels):
         raise ValueError("training target was truncated")
-    return encoded["input_ids"].cuda(), labels.cuda()
+    return encoded, labels
+
+
+def tokens(tokenizer, row: dict, maximum: int):
+    import torch
+
+    encoded, labels = token_ids(tokenizer, row, maximum)
+    return torch.tensor([encoded], dtype=torch.long), torch.tensor([labels], dtype=torch.long)
 
 
 def normalized(value: str) -> list[str]:
@@ -129,6 +219,11 @@ def similarity(reference: str, candidate: str) -> float:
 
 
 def reinforce_step(model, tokenizer, row: dict, optimizer, maximum: int) -> tuple[float, dict]:
+    if row.get("schema_version") == "milk.native-assistant-example.v1":
+        raise ValueError("native tool targets do not support the text-similarity reinforce reward")
+    import torch
+    import torch.nn.functional as F
+
     count = integer("MILK_TRAIN_ROLLOUTS", 4, 2, 16)
     new_tokens = integer("MILK_TRAIN_ROLLOUT_MAX_NEW_TOKENS", 256, 1, 1024)
     prompt = tokenizer.apply_chat_template(
@@ -220,6 +315,9 @@ def inventory(root: Path) -> list[dict]:
 
 
 def main() -> None:
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required")
     job_id = required("MILK_TRAIN_JOB_ID")
@@ -229,7 +327,7 @@ def main() -> None:
     steps = integer("MILK_TRAIN_STEPS", 1, 1, 1024)
     if recipe == "reinforce" and steps != 1:
         raise ValueError("MILK_TRAIN_STEPS must be 1 for reinforce")
-    maximum = integer("MILK_TRAIN_MAX_TOKENS", 2048, 128, 8192)
+    maximum = integer("MILK_TRAIN_MAX_TOKENS", 2048, 128, 65536)
     try:
         learning_rate = float(os.environ.get("MILK_TRAIN_LEARNING_RATE", "2e-6"))
     except ValueError as error:
@@ -242,7 +340,10 @@ def main() -> None:
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     manifest, rows = dataset()
+    if recipe == "reinforce" and manifest["schema_version"] == "milk.native-dataset.v1":
+        raise ValueError("native tool targets require SFT; text-similarity reinforce is unsupported")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ROOT, local_files_only=True)
+    batches = [tokens(tokenizer, row, maximum) for row in rows[:min(steps, len(rows))]] if recipe == "sft" else []
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ROOT,
         local_files_only=True,
@@ -258,7 +359,7 @@ def main() -> None:
         losses.append(loss)
     else:
         for step in range(steps):
-            input_ids, labels = tokens(tokenizer, rows[step % len(rows)], maximum)
+            input_ids, labels = (value.cuda() for value in batches[step % len(batches)])
             optimizer.zero_grad(set_to_none=True)
             loss = model(input_ids=input_ids, labels=labels).loss
             if not torch.isfinite(loss):
@@ -282,6 +383,7 @@ def main() -> None:
         "recipe": recipe,
         "steps": steps,
         "examples": len(rows),
+        "examples_used": min(steps, len(rows)),
         "loss_first": losses[0],
         "loss_last": losses[-1],
         "files": files,
@@ -289,7 +391,7 @@ def main() -> None:
     if reinforce is not None:
         result["reinforce"] = reinforce
     (output / "milk-result.json").write_text(json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n")
-    visible = {key: result[key] for key in ("schema_version", "job_id", "dataset_uuid", "recipe", "steps", "examples", "loss_first", "loss_last")}
+    visible = {key: result[key] for key in ("schema_version", "job_id", "dataset_uuid", "recipe", "steps", "examples", "examples_used", "loss_first", "loss_last")}
     if reinforce is not None:
         visible["reinforce"] = {key: reinforce[key] for key in ("rollout_count", "rollouts_sha256", "reward_mean_bps", "reward_std_bps", "policy_loss")}
     print(json.dumps(visible, sort_keys=True, separators=(",", ":")))
