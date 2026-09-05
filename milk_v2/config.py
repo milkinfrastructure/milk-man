@@ -251,6 +251,11 @@ class Job:
     supports_status: bool = False
     supports_stop: bool = False
 
+    @property
+    def commands(self) -> dict[str, str]:
+        actions = ["run", *(["status"] if self.supports_status else []), *(["stop"] if self.supports_stop else [])]
+        return {action: f"bin/milk run {self.name}" + (f" {action}" if action != "run" else "") for action in actions}
+
 
 @dataclass(frozen=True)
 class StudentBase:

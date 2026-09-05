@@ -517,7 +517,7 @@ def _job_contract() -> dict:
             "name": name,
             "description": job.description,
             "trigger": job.trigger["kind"],
-            "command": f"bin/milk run {name}",
+            "commands": job.commands,
             "automatic": name in runtime.operate_order,
             "bindings": list(job.bindings),
             "inputs": list(job.input_prefixes),

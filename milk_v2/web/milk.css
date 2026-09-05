@@ -359,6 +359,10 @@ details[open] > summary::before { content: "- "; }
 .facts .summary-row:nth-child(-n+2) { border-top: 0; }
 .facts .summary-row:nth-child(2n) { border-right: 0; }
 .job-body > .facts { margin-bottom: .75rem; }
+.job-commands { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: .5rem; margin-bottom: 1rem; }
+.command-copy { display: grid; gap: .3rem; min-width: 0; padding: .6rem; text-align: left; }
+.command-copy code { font: inherit; font-size: 14px; overflow-wrap: anywhere; }
+.command-note { font-size: 14px; }
 .pin {
   --lamp: var(--white);
   --face: var(--black);

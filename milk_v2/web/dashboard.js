@@ -705,10 +705,20 @@ function renderContract(contract = {}) {
     );
     const body = node("div", "job-body");
     body.append(node("p", "", jobCopy[job.name] || job.description || "A repository job."));
+    const commands = node("div", "job-commands");
+    for (const name of ["run", "status", "stop"]) {
+      const command = job.commands?.[name];
+      if (typeof command !== "string" || !command.trim()) continue;
+      const button = copyButton("copy " + name, command, name + " command");
+      button.className = "command-copy";
+      button.setAttribute("aria-label", "Copy " + name + " command: " + command);
+      button.replaceChildren(node("b", "", "copy " + name), node("code", "", command));
+      commands.append(button);
+    }
+    if (commands.children.length) body.append(node("p", "command-note", "Copy a command, then run it in Bash with your job settings. These buttons only copy."), commands);
     const facts = node("div", "facts");
     facts.append(
       summaryRow("needed before running", triggerCopy[job.trigger] || String(job.trigger || "manual").replaceAll("_", " "), "A prerequisite, not proof that this action is running or scheduled."),
-      summaryRow("run", job.command, "Run this exact reviewed job explicitly.", job.command),
       summaryRow("scheduling", job.automatic ? "included in the traffic workflow" : "runs when explicitly selected"),
       summaryRow("reads", (job.inputs || []).map(value => prefixCopy[value] || value).join(" · ") || "not listed by this script"),
       summaryRow("writes", (job.outputs || []).map(value => prefixCopy[value] || value).join(" · ") || "not listed by this script"),

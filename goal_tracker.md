@@ -15,6 +15,12 @@ Status notation:
 
 ## Executive state
 
+- [x] Published the direct-execution and runtime-cache changes at `9dc9b0074`.
+  The cache mount is source-verified, not a measured startup improvement.
+- [x] Dashboard and CLI now share exact job commands. All 22 command lists
+  matched locally; Chrome showed run/status/stop for Modal serving and confirmed
+  the status command copied. The buttons do not submit a task. The dashboard
+  was restarted at port 8766; Milk Man remains stopped with its session saved.
 - [x] Stopped Milk Man owner `22651` at the user's request; the process and its
   wrapper have exited. The saved trajectory remains available. Codex will edit
   and run scripts directly, then use Milk Man for the completed workflow proof.
