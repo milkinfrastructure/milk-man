@@ -157,11 +157,11 @@
       "stop": false
     },
     "benchmark": {
-      "description": "Measure configured chat inference: three requests by default, optional streaming time to first visible text, exact expected-answer checks, and JSON measurements without raw answers. Set output-token allowance for reasoning models.",
+      "description": "Measure configured chat inference: three requests and one in flight by default. MILK_BENCHMARK_CONCURRENCY selects simultaneous requests, up to the request count. Reports per-request latency and whole-run throughput separately, optional streaming time to first visible text, and exact expected-answer checks without raw answers. Keep request count, concurrency and workload unchanged when comparing serving settings. Set output-token allowance for reasoning models.",
       "executable": "bin/benchmark",
       "environment": {
         "required": ["MILK_BENCHMARK_BASE_URL", "MILK_BENCHMARK_MODEL", "MILK_BENCHMARK_API_KEY"],
-        "optional": ["MILK_BENCHMARK_REQUESTS", "MILK_BENCHMARK_MAX_TOKENS", "MILK_BENCHMARK_TIMEOUT_SECONDS", "MILK_BENCHMARK_PROMPT", "MILK_BENCHMARK_EXPECTED", "MILK_BENCHMARK_INPUT_FILE", "MILK_BENCHMARK_STREAM", "MILK_BENCHMARK_COMPUTE_USD_PER_HOUR", "MILK_BENCHMARK_JOB_TIMEOUT_SECONDS"]
+        "optional": ["MILK_BENCHMARK_REQUESTS", "MILK_BENCHMARK_CONCURRENCY", "MILK_BENCHMARK_MAX_TOKENS", "MILK_BENCHMARK_TIMEOUT_SECONDS", "MILK_BENCHMARK_PROMPT", "MILK_BENCHMARK_EXPECTED", "MILK_BENCHMARK_INPUT_FILE", "MILK_BENCHMARK_STREAM", "MILK_BENCHMARK_COMPUTE_USD_PER_HOUR", "MILK_BENCHMARK_JOB_TIMEOUT_SECONDS"]
       },
       "status": false,
       "stop": false,

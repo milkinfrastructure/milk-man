@@ -427,6 +427,12 @@ hardcoding that model or provider into the harness.
 
 ## P5 — inference autotuning
 
+- [x] Let the existing benchmark measure concurrent load through
+  `MILK_BENCHMARK_CONCURRENCY`, with whole-run throughput separate from summed
+  request latency. Direct registered-job HTTP/SSE execution proved the requested
+  concurrency, ordered results and failure accounting. Different concurrency
+  suppresses like-for-like comparison. This is local execution evidence;
+  representative cloud tuning and useful-task improvement remain open below.
 - [x] Retain provider-reported input/output/cache/reasoning counts in the
   existing driver trajectory and agent-trial receipt. Direct local execution
   verified both API formats and native/fenced Bash, unknown missing counts,

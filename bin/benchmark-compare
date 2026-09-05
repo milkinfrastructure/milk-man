@@ -70,7 +70,8 @@ def main():
     required = {"model", "workload_sha256", "requests", "max_tokens", "temperature", "timeout_seconds", "expected_supplied"}
     matched = not differences and required <= a.keys() and required <= b.keys()
     metrics = ("latency_ms_p50", "latency_ms_p95", "ttft_ms_p50", "ttft_ms_p95",
-               "output_tokens_per_end_to_end_second", "estimated_compute_cost_usd")
+               "output_tokens_per_end_to_end_second", "output_tokens_per_wall_second",
+               "completed_requests_per_second", "estimated_compute_cost_usd")
     delta = {}
     for metric in metrics:
         before, after = baseline["aggregate"].get(metric), candidate["aggregate"].get(metric)
@@ -81,9 +82,9 @@ def main():
                "all_answers_correct": baseline["all_answers_correct"] and candidate["all_answers_correct"],
                "same_output_token_counts": baseline["output_tokens"] == candidate["output_tokens"] if all(number(v) for v in baseline["output_tokens"] + candidate["output_tokens"]) else None,
                "selected_winner": None, "task_success_proven": False,
-               "limits": ["Descriptive sequential samples, not a statistical winner.",
+               "limits": ["Descriptive samples at matched request concurrency, not a statistical winner.",
                           "Serving revisions and changed GPU settings need separate provider receipts.",
-                          "Throughput uses full request time; decode-only speed is unknown.",
+                          "Per-request rates use summed request time; wall rates use whole-run time. Decode-only speed is unknown.",
                           "Cost estimates cover benchmark wall time, not startup or billed spend.",
                           "Correct answers do not prove an executed agent task."]}
     identity = digest(json.dumps({"baseline": baseline["sha256"], "candidate": candidate["sha256"],

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Small benchmark for an OpenAI-compatible chat endpoint."""
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import os
@@ -139,11 +140,14 @@ def main():
     url, model, key = endpoint()
     prompt, expected, workload_sha = workload()
     count = integer("MILK_BENCHMARK_REQUESTS", "3", 1, 1000)
+    concurrency = integer("MILK_BENCHMARK_CONCURRENCY", "1", 1, count)
     maximum = integer("MILK_BENCHMARK_MAX_TOKENS", "32", 1, 131072)
     timeout = integer("MILK_BENCHMARK_TIMEOUT_SECONDS", "120", 1, 3600)
     streaming = boolean("MILK_BENCHMARK_STREAM")
     hourly_rate = optional_rate("MILK_BENCHMARK_COMPUTE_USD_PER_HOUR")
     config = {"endpoint": url, "model": model, "requests": count, "max_tokens": maximum, "timeout_seconds": timeout, "temperature": 0, "workload_sha256": workload_sha, "expected_supplied": expected is not None}
+    if concurrency != 1:
+        config["concurrency"] = concurrency
     if streaming:
         config["stream"] = True
     if hourly_rate is not None:
@@ -153,12 +157,9 @@ def main():
     if streaming:
         request_body.update(stream=True, stream_options={"include_usage": True})
     payload = json.dumps(request_body, separators=(",", ":")).encode()
-    rows, calls = [], 0
-    benchmark_started = time.perf_counter()
-    for index in range(1, count + 1):
+    def measure(index):
         started, error, text, usage, ttft = time.perf_counter(), None, None, {}, None
         try:
-            calls += 1
             request = Request(url, payload, {"Authorization": f"Bearer {key}", "Content-Type": "application/json", "User-Agent": "milk-man-benchmark/1"})
             with urlopen(request, timeout=timeout) as response:
                 if streaming:
@@ -192,7 +193,14 @@ def main():
             error = error or "invalid_response"
         if error:
             row["error"] = error
-        rows.append(row)
+        return row
+
+    benchmark_started = time.perf_counter()
+    if concurrency == 1:
+        rows = [measure(index) for index in range(1, count + 1)]
+    else:
+        with ThreadPoolExecutor(max_workers=concurrency) as workers:
+            rows = list(workers.map(measure, range(1, count + 1)))
     good = [row for row in rows if "error" not in row]
     latencies = [row["latency_ms"] for row in rows]
     total_seconds = sum(row["latency_ms"] for row in rows) / 1000
@@ -200,11 +208,15 @@ def main():
     tokens = sum(row["output_tokens"] for row in good)
     ttfts = [row["ttft_ms"] for row in good if "ttft_ms" in row]
     aggregate = {"succeeded": len(good), "failed": count - len(good), "correct": sum(row["correct"] is True for row in good) if expected is not None else None, "latency_ms_p50": percentile(latencies, .50), "latency_ms_p95": percentile(latencies, .95), "ttft_ms_p50": percentile(ttfts, .50), "ttft_ms_p95": percentile(ttfts, .95), "total_elapsed_ms": round(total_seconds * 1000, 3), "elapsed_wall_seconds": round(elapsed_wall_seconds, 6), "output_tokens": tokens, "output_tokens_per_end_to_end_second": round(tokens / total_seconds, 3) if total_seconds else None, "decode_tokens_per_second": None, "timing_scope": "sequential streaming wall time; TTFT is first visible content; decode-only timing unavailable" if streaming else "sequential non-streaming wall time across all attempts; decode-only timing unavailable"}
+    aggregate.update(output_tokens_per_wall_second=round(tokens / elapsed_wall_seconds, 3),
+                     completed_requests_per_second=round(len(good) / elapsed_wall_seconds, 3))
+    if concurrency != 1:
+        aggregate["timing_scope"] = "bounded concurrent requests; per-request latency excludes local queue time; total_elapsed_ms sums request times; elapsed_wall_seconds covers the whole run; TTFT is first visible content; decode-only timing unavailable"
     if hourly_rate is not None:
         aggregate.update(estimated_compute_cost_usd=round(hourly_rate * elapsed_wall_seconds / 3600, 6), estimated_compute_cost_basis="configured hourly rate multiplied by benchmark wall time; estimate only, not a provider bill")
     details = {"schema_version": "milk.inference-benchmark.v1", "config": config, "requests": rows, "aggregate": aggregate}
     passed = len(good) == count and (expected is None or all(row["correct"] for row in good))
-    print(json.dumps({"state": "complete" if passed else "failed", "identity": identity, "inference_calls": calls, "details": details}, sort_keys=True, separators=(",", ":")))
+    print(json.dumps({"state": "complete" if passed else "failed", "identity": identity, "inference_calls": len(rows), "details": details}, sort_keys=True, separators=(",", ":")))
     return 0 if passed else 1
 
 

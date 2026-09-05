@@ -15,6 +15,18 @@ Status notation:
 
 ## Executive state
 
+- [x] Added `MILK_BENCHMARK_CONCURRENCY` to the existing benchmark job; default
+  one preserves sequential configuration identities. The job now exposes
+  whole-run tokens/second and completed requests/second without changing the
+  old per-request rate. Four direct registered-job runs against a local HTTP/SSE
+  endpoint proved one/two requests in flight, ordered rows, exact call counts,
+  and one visible 429 failure without retry. Invalid concurrency made no
+  requests. Comparisons at different concurrency suppressed timing deltas.
+  Both retained 120B receipts remain byte-identical and compare with zero calls;
+  their missing whole-run metrics remain unknown. Independent review found no
+  concrete issue. Private evidence: `benchmark-concurrency-hmhlf9lt/proof.json`.
+  This is local mechanics only, not cloud capacity or task-quality evidence.
+  No inference/provider spend, new dependency, test file or resource launch.
 - [x] Mobile landing/docs repair is published at Milk Landing `5b349ee` and
   deployed to `milkinfrastructure.com`. Chrome checked 320/390/768 CSS-pixel
   layouts, no horizontal overflow, 44-pixel buttons, expandable content,

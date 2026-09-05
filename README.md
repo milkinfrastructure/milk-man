@@ -360,6 +360,14 @@ belong in separate directories and must not enter the measured comparison.
 Use the serving job's advertised `status` while it starts and `stop` when done;
 benchmark completion does not stop a GPU.
 
+Set `MILK_BENCHMARK_CONCURRENCY=2` to keep up to two requests in flight; the
+default is one. Keep this value and the workload fixed when comparing serving
+settings. `output_tokens_per_wall_second` measures the whole run's throughput;
+per-request latency includes server waiting but not the local request queue.
+`output_tokens_per_end_to_end_second` keeps its existing meaning: tokens
+divided by the sum of request times, not the concurrent run's throughput.
+Old receipts remain unchanged; measurements they lack stay unknown.
+
 Compare saved receipts without making any requests:
 
 ```bash
