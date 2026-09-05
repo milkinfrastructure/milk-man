@@ -15,6 +15,17 @@ Status notation:
 
 ## Executive state
 
+- [~] Milk Man submitted corrected Baseten model `wl51k7e3`, deployment
+  `wxe4k60`, with `--reasoning-parser qwen3` on one L4. An independent read
+  confirmed BUILDING, minimum zero and maximum one replica. Profile:
+  `75cb7eb42504899bb853b505c44e9966a76023fdf4d7d38898b449bea4e6410f`.
+  The same Chrome task watches readiness, then runs three requests once and
+  stops. Its cutoff is 2026-09-05 03:24:19 UTC; no inference has run yet.
+  Private run: `baseten-owned-qwen3-06b-c1899de-v0181/reasoning-parser-qwen3`.
+- [x] Fixed the observed `man heartbeat wait --help` failure: help now returns
+  before accessing task state or attempting to execute `--help`. Both top-level
+  and wait help exit successfully with a nonexistent state path. Codex supplied
+  this small fix during the serving task; the task is not wholly unassisted.
 - [x] The second Chrome-prompted Baseten attempt reused model `w7mpx8dw`
   and deployment `qj7d9z2`, reached ACTIVE on one L4, completed exactly three
   requests, and stopped within 8m24s. An independent provider read confirmed
@@ -30,7 +41,8 @@ Status notation:
   or incorrect answers. Preserve the failed receipts. Next use the existing
   `MILK_BASETEN_SERVE_VLLM_ARGS_JSON='["--reasoning-parser","qwen3"]'`
   binding in a new serving profile; no benchmark normalization or harness
-  rewrite is needed. That corrected profile has not been run.
+  rewrite is needed. The corrected profile is now building as recorded above;
+  its answer check and shutdown are not yet complete.
 - [x] The dashboard now exposes the watched model server's saved status and
   replica count, with copyable IDs in inline details. Chrome verified the
   actual Baseten BUILDING observation; restarting only the dashboard left
@@ -358,7 +370,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | published `45637874e`, plus this Baseten closeout checkpoint | `45637874e` | readable dashboard, native action trials, serving comparison and startup/restart proof; Baseten-owned inference/cleanup now observed; reasoning separation and measured task-quality improvement remain open |
+| `milk-man` | published `ad182a1d5`, plus heartbeat help and this checkpoint | `ad182a1d56763a3d059489aa7850fb286accaa04` | dashboard coverage, charts, measurements, and inline detail published; corrected Baseten profile building; measured task-quality improvement remains open |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
 | `milk-landing` | `74a87c0`, deployed | `74a87c0` | root and docs verified against production; generated local deployment cache is not published |
 
@@ -371,12 +383,17 @@ Published Milk Man audit baseline:
   runtime, or orchestration code.
 - [x] Milk Man repository Actions are absent; jobs run from `bin/milk` and
   prompt-driven Headlong runs from `bin/man`.
+- [x] Signed-in Chrome verified Milk Man Actions disabled. Milk Parlor Actions
+  were still enabled; disabled, saved, and verified after reload on September 4.
+  All 12 historical Parlor runs were complete; none were started or cancelled.
 - [!] Milk Man has 93 local branches and 44 worktrees from prior iterations.
   They are local clutter, not product architecture; clean them only after the
   retained commits and evidence are safely published.
-- [!] GitHub `main` is currently unprotected. Anyone may fork, open issues, and
-  submit pull requests, but owner-only merge policy is not yet enforced by a
-  branch ruleset.
+- [!] Chrome shows a classic `main` protection rule on Milk Man; its exact push
+  restrictions and administrator enforcement remain unverified. Milk Parlor
+  `main` is unprotected. Both repositories allow forks and issues. Access-setting
+  inspection requires the owner's GitHub passkey; owner-only merge control is
+  not yet proven.
 
 ## Live Parlor snapshot
 
@@ -888,7 +905,9 @@ Corrections made by this audit:
 - Baseten accepted the owned-serving custom image in the latest attempt;
   that entitlement is no longer an assumed blocker. This does not assert
   separate training-image permissions.
-- GitHub branch protection/ruleset changes require repository-owner authority.
+- GitHub access-setting inspection requires the owner's passkey reauthentication.
+  Milk Man has a classic `main` rule; Parlor does not. Exact owner-only merge
+  enforcement remains to be verified and configured.
 
 These are application/release boundaries, not per-command gates for an already
 configured Milk Man task. Nothing else currently justifies restarting an old

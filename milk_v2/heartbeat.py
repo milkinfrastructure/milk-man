@@ -116,7 +116,15 @@ def objective(value: dict) -> str:
 
 
 def main() -> None:
-    action, *args = sys.argv[1:]
+    arguments = sys.argv[1:]
+    if not arguments or arguments[0] in {"-h", "--help", "help"} or (
+        len(arguments) == 2 and arguments[1] in {"-h", "--help"}
+    ):
+        print("Usage: man heartbeat status|pause|resume|stop\n"
+              "       man heartbeat wait [--seconds N] [-- READ_ONLY_COMMAND ...]\n"
+              "Wait for a changed status, a deadline, or both. Register the wait and return; idle checks use no model calls.")
+        return
+    action, *args = arguments
     path = state_path()
     if action == "own":
         lock = os.open(str(path) + ".owner.lock", os.O_CREAT | os.O_RDWR, 0o600)
