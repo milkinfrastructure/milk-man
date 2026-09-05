@@ -103,6 +103,7 @@ const views = {
   jobs: ["Tools and settings", "Find an action and the settings it needs. Opening one runs nothing."],
   connect: ["Keep your OpenAI calls", "Point the official SDK at Milk Parlor. Your application still calls the same API."],
 };
+let chatVisited = false;
 function showView() {
   const target = el(location.hash.slice(1));
   const view = target?.dataset.view || "talk";
@@ -115,7 +116,10 @@ function showView() {
   el("view-description").textContent = views[view][1];
   const panel = target || el("talk");
   if (panel.tagName === "DETAILS") panel.open = true;
-  if (view === "talk") requestAnimationFrame(latestReply);
+  if (view === "talk" && !chatVisited) {
+    chatVisited = true;
+    requestAnimationFrame(latestReply);
+  }
 }
 function draftPrompt(text) {
   location.hash = "talk";
@@ -165,16 +169,6 @@ function seriesCount(stat = {}) {
   if (!Number.isInteger(stat.count) || stat.count <= 0 || !Number.isFinite(stat.mean_milli)) return "not recorded";
   const average = (stat.mean_milli / 1000).toLocaleString(undefined, {maximumFractionDigits: 1});
   return average + " average" + (Number.isFinite(stat.min) && Number.isFinite(stat.max) ? " · " + stat.min.toLocaleString() + "–" + stat.max.toLocaleString() + " observed" : "") + " · " + stat.count.toLocaleString() + " exchanges";
-}
-
-function fillPercent(count, points) {
-  if (!points.length) return 0;
-  let prior = 0;
-  for (let index = 0; index < points.length; index++) {
-    if (count < points[index]) return 100 * (index + (count - prior) / (points[index] - prior)) / points.length;
-    prior = points[index];
-  }
-  return 100;
 }
 
 function duration(value) {
@@ -276,7 +270,7 @@ function replyBody(text) {
 
 function latestReply() {
   const target = el("activity");
-  const latest = Array.from(target.querySelectorAll("article.message.milk-man")).at(-1) || target.lastElementChild;
+  const latest = Array.from(target.querySelectorAll("article.result")).at(-1) || target.lastElementChild;
   if (latest) target.scrollTop += latest.getBoundingClientRect().top - target.getBoundingClientRect().top - 16;
 }
 
@@ -303,7 +297,7 @@ function distributionChart(label, values, total, help) {
   more.dataset.chart = label;
   more.append(node("summary", "", "Show " + Math.max(0, entries.length - 5) + " more"));
   for (const [index, [name, count]] of entries.entries()) {
-    const row = node("span", "bar");
+    const row = node("span", "bar" + (name === "unknown" ? " unknown" : ""));
     const caption = node("small", "", plainLabel(name));
     const known = Number.isFinite(count) && count >= 0;
     caption.append(node("i", "", known ? count.toLocaleString() : "not recorded"));
@@ -325,7 +319,7 @@ function distributionChart(label, values, total, help) {
   return chart;
 }
 
-let progressKey, selectedCheckpoint;
+let progressKey, selectedCheckpoint, savedProgress = {};
 function selectCheckpoint(uuid, open = true) {
   const cards = Array.from(el("milestones").querySelectorAll(".checkpoint"));
   const selected = cards.find(card => card.dataset.uuid === uuid) || cards[0];
@@ -335,7 +329,14 @@ function selectCheckpoint(uuid, open = true) {
   cards.forEach(card => { card.hidden = card !== selected; });
   if (open) selected.open = true;
   const index = cards.indexOf(selected);
-  el("checkpoint-position").textContent = index === 0 ? "Latest saved summary" : "Earlier summary · totals above still show the latest";
+  const checkpoint = savedProgress.checkpoints.find(value => value.uuid === selectedCheckpoint);
+  const total = checkpoint.capture_count, classified = checkpoint.semantic?.classified;
+  el("summary-count").textContent = Number.isInteger(total) ? total.toLocaleString() : "not recorded";
+  el("labeled-count").textContent = Number.isInteger(classified) ? classified.toLocaleString() : "not recorded";
+  el("summary-basis").textContent = index === 0 ? "latest saved summary" : "earlier saved summary";
+  el("sample-basis").textContent = Number.isInteger(total) ? "out of " + total.toLocaleString() + " summarized exchanges" : "sample size not recorded";
+  el("checkpoint-position").textContent = index === 0 ? "Latest summary selected. Counts and charts match this version." : "Earlier summary selected. Saved traffic and the next milestone remain current.";
+  document.querySelectorAll(".tick").forEach(tick => tick.classList.toggle("selected", tick.dataset.checkpoint === selectedCheckpoint));
 }
 function renderProgress(progress = {}) {
   const key = JSON.stringify(progress);
@@ -346,14 +347,12 @@ function renderProgress(progress = {}) {
   const processed = number(progress.processed_count);
   const points = progress.thresholds || [];
   const checkpoints = [...new Map((progress.checkpoints || []).map(item => [item.uuid, item])).values()].sort((a, b) => number(b.capture_count) - number(a.capture_count));
+  savedProgress = { ...progress, checkpoints };
   const displayed = new Set(Array.from(el("milestones").querySelectorAll(".checkpoint"), value => value.dataset.uuid));
   const detailKey = value => value.dataset.detail || (value.dataset.chart ? value.closest(".checkpoint").dataset.uuid + ":" + value.dataset.chart : value.dataset.uuid);
   const opened = new Set(Array.from(el("milestones").querySelectorAll("details[open]"), detailKey));
   el("volume").textContent = counted ? count.toLocaleString() : "not counted";
-  el("summary-count").textContent = Number.isInteger(progress.processed_count) ? processed.toLocaleString() : "not counted";
-  const classified = checkpoints[0]?.semantic?.classified;
-  el("labeled-count").textContent = Number.isInteger(classified) ? classified.toLocaleString() : "not recorded";
-  el("pending-count").textContent = counted && Number.isInteger(progress.processed_count) ? processed > count ? "The summary is newer than this traffic count. Refresh to recount saved exchanges." : processed.toLocaleString() + " of " + count.toLocaleString() + " saved exchanges summarized · " + (count - processed).toLocaleString() + " waiting for a summary" : "Summary coverage not recorded.";
+  el("pending-count").textContent = counted && Number.isInteger(progress.processed_count) ? processed > count ? "The latest summary is newer than this traffic count. Refresh to recount saved exchanges." : "Latest summary covers " + processed.toLocaleString() + " of " + count.toLocaleString() + " saved exchanges · " + (count - processed).toLocaleString() + " not yet summarized" : "Latest summary coverage not recorded.";
   el("collection-meter").replaceChildren(countBar(progress.processed_count, progress.capture_count, "saved exchanges summarized"));
   el("volume").title = "Each saved request and response is one exchange. An agent trajectory can contain many exchanges; these are not independent training examples.";
   el("target").textContent = !points.length ? "none configured" : !counted ? "count traffic to refresh" : progress.next_threshold
@@ -362,16 +361,14 @@ function renderProgress(progress = {}) {
   el("count-checked").textContent = progress.counted_at
     ? "Last counted " + new Date(progress.counted_at).toLocaleString()
     : counted ? "Saved count; select ‘refresh counts’ to count again." : "No traffic count available yet.";
-  const fill = Math.max(0, Math.min(100, fillPercent(count, points)));
-  el("meter").value = fill;
-  el("meter").textContent = Math.round(fill) + "%";
   const ticks = el("ticks");
   ticks.replaceChildren();
   for (const point of points) {
     const checkpoint = checkpoints.findLast(value => number(value.capture_count) >= point);
     const active = !checkpoint && (count >= point || number(progress.next_threshold) === point);
-    const tick = node("button", "tick" + (checkpoint ? " done" : active ? " active" : ""), point.toLocaleString());
+    const tick = node("button", "tick" + (checkpoint ? " done" : active ? " active" : ""));
     tick.type = "button";
+    if (checkpoint) tick.dataset.checkpoint = checkpoint.uuid;
     const remaining = Math.max(0, point - count);
     tick.title = checkpoint
       ? "Summary checkpoint complete at " + point.toLocaleString() + " exchanges."
@@ -380,6 +377,10 @@ function renderProgress(progress = {}) {
         ? "Threshold reached; its summary has not been saved. This does not mean a job is running."
         : remaining.toLocaleString() + " exchanges until this summary threshold.";
     tick.setAttribute("aria-label", tick.title);
+    const meter = node("span", "milestone-meter"), fill = node("i");
+    fill.style.width = counted ? Math.max(0, Math.min(100, count / point * 100)) + "%" : "0%";
+    meter.append(fill);
+    tick.append(node("b", "", point.toLocaleString()), meter, node("small", "", checkpoint ? "summary saved ↗" : !counted ? "not counted" : count >= point ? "summary due" : remaining.toLocaleString() + " more exchanges"));
     tick.addEventListener("click", () => {
       el("summaries").open = true;
       const card = Array.from(el("milestones").querySelectorAll(".checkpoint")).find(item => checkpoint && item.dataset.uuid === checkpoint.uuid);
@@ -401,9 +402,9 @@ function renderProgress(progress = {}) {
       card.open = opened.has(checkpoint.uuid) || (!displayed.has(checkpoint.uuid) && index === 0);
       const disclosure = node("summary", "checkpoint-head");
       disclosure.title = "Read the summary of these saved request and response pairs.";
-      const savedAt = checkpoint.created_at ? new Date(checkpoint.created_at).toLocaleString() : "date not recorded";
-      disclosure.append(document.createTextNode(point.toLocaleString() + " exchanges in this summary"), node("small", "", "Saved " + savedAt));
-      const option = node("option", "", (index === 0 ? "Latest · " : "") + point.toLocaleString() + " exchanges · " + savedAt);
+      const capturedThrough = checkpoint.created_at ? new Date(checkpoint.created_at).toLocaleString() : "date not recorded";
+      disclosure.append(document.createTextNode(point.toLocaleString() + " exchanges in this summary"), node("small", "", "Latest included exchange · " + capturedThrough));
+      const option = node("option", "", (index === 0 ? "Latest · " : "") + point.toLocaleString() + " exchanges · through " + capturedThrough);
       option.value = checkpoint.uuid;
       picker.append(option);
       const quality = checkpoint.quality || {};
@@ -428,7 +429,8 @@ function renderProgress(progress = {}) {
       sample.append(
         distributionChart("Skills needed", semantic.capability, semantic.classified, "One exchange can need several skills, so these counts can add up to more than the sample size."),
         summaryRow("Suggested answer checks", counts(semantic.oracle), "Suggested ways to grade these tasks, not checks that have already run."),
-        summaryRow("Language and tone", counts(semantic.language) + " · " + counts(semantic.sentiment), "Languages and broad sentiment labels detected in the classified sample."),
+        distributionChart("Tone", semantic.sentiment, semantic.classified, "Model-assigned sentiment in the same labeled sample, not a customer satisfaction score."),
+        summaryRow("Languages", counts(semantic.language), "Languages detected in the classified sample."),
         summaryRow("Related requests", [["source_groups", "source groups"], ["trajectory_groups", "tagged task"], ["untagged_request_groups", "untagged requests"]].map(([key, label]) => (Number.isInteger(counters[key]) ? counters[key].toLocaleString() : "unknown") + " " + label).join(" · "), "Exchanges from one tagged task stay together. Untagged requests are grouped by matching request content. Correlated exchanges and these groups are not proof of independent tasks."),
         summaryRow("Left unlabeled", Number.isInteger(semantic.abstained) ? semantic.abstained.toLocaleString() : "not recorded", "Sampled exchanges the model declined to classify. Exchanges outside the sample are not included in this count.")
       );
@@ -452,17 +454,21 @@ function renderProgress(progress = {}) {
       identity.append(helpHeading("Saved summary ID", "Copies the full ID used to find this summary in storage."), copyButton(short(checkpoint.uuid), checkpoint.uuid, "summary ID"));
       measurements.append(identity);
       const sampleSize = semantic.classified;
-      const lead = node("p", "sample-note", Number.isInteger(sampleSize) ? sampleSize > 0 ? "Labels cover " + sampleSize.toLocaleString() + " of " + point.toLocaleString() + " exchanges. Counts and timings below cover the summary; these charts cover only the labeled sample." : "Traffic counts only. No topic or task labels were saved in this summary." : "The labeled sample size was not recorded. Do not treat these labels as a summary of all traffic.");
-      card.append(disclosure, lead);
+      const lead = node("p", "sample-note", Number.isInteger(sampleSize) ? sampleSize > 0 ? "A model labeled " + sampleSize.toLocaleString() + " of these " + point.toLocaleString() + " exchanges. The charts describe that sample, not all saved traffic." : "Traffic counts only. No topic or task labels were saved in this summary." : "The labeled sample size was not recorded. Do not treat these labels as a summary of all traffic.");
+      card.append(disclosure, node("h3", "", "What the sample tells us"), lead);
       if (Number.isInteger(semantic.classified)) card.append(countBar(semantic.classified, checkpoint.capture_count, "exchanges labeled in this summary"));
       if (number(semantic.classified)) card.append(body);
       const allStats = node("div", "row");
       allStats.append(node("p", "", "Available summary fields returned to this dashboard. Percentiles (p50, p95, p99) are histogram upper bounds and can exceed the observed maximum. Divide mean_milli by 1,000 for the average. tps_milli is the end-to-end output rate × 1,000, not decode speed."), recordFields(checkpoint));
-      card.append(section("More labels + related requests", "sample", sample), section("Response speed", "timing", responseStats(values, "timing")), section("Token usage", "tokens", responseStats(values, "tokens")), section("Requests + collection quality", "delivery", measurements), section("Available summary fields + references", "all", allStats));
+      card.append(section("Skills, tone and related requests", "sample", sample), section("How long did replies take?", "timing", responseStats(values, "timing")), section("How many tokens were used?", "tokens", responseStats(values, "tokens")), section("Which requests were counted?", "delivery", measurements), section("Available summary fields + references", "all", allStats));
       el("milestones").append(card);
   }
   el("milestones").querySelectorAll("details[data-chart]").forEach(detail => { detail.open = opened.has(detailKey(detail)); });
   if (!checkpoints.length) {
+    el("summary-count").textContent = Number.isInteger(progress.processed_count) ? processed.toLocaleString() : "not counted";
+    el("labeled-count").textContent = "not recorded";
+    el("summary-basis").textContent = "no saved summary to open";
+    el("sample-basis").textContent = "no saved labels to read";
     picker.append(node("option", "", "No summaries yet"));
     el("checkpoint-position").textContent = "";
     el("milestones").append(node("p", "empty", "No summary saved yet. The next milestone is shown above."));
@@ -714,7 +720,7 @@ function renderMan(man) {
     setup: "session setup needed",
   };
   light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", man.online ? labels[state] || labels.setup : man.trajectory_id ? "offline · session saved" : "no session yet");
-  el("driver-detail").textContent = "Model: " + (driverStatus || "not configured") + ". Session: " + (man.trajectory_id || "not started") + ".";
+  el("driver-detail").textContent = "Dashboard model configuration: " + (driverStatus || "not configured") + ". Session: " + (man.trajectory_id || "not started") + ".";
   el("active-model").textContent = (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
   const pulse = man.heartbeat || {};
   const heartbeatOnline = pulse.online === true;
@@ -758,12 +764,12 @@ function renderMan(man) {
   el("heartbeat-task").textContent = pulse.task || "No task saved yet.";
   el("heartbeat-brief").hidden = !pulse.brief;
   el("heartbeat-brief").textContent = pulse.brief ? "Latest instruction: " + pulse.brief : "";
-  el("conversation-state").textContent = state + (man.queued ? " · next instruction queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
+  el("conversation-state").textContent = (man.online ? labels[state] || state : "agent offline") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
   el("conversation-state").title = pulse.checked_at ? "Heartbeat last checked " + new Date(pulse.checked_at * 1000).toLocaleString() + ". Unchanged idle checks use no model tokens." : "Heartbeat starts with your next task. Closing this page does not stop it.";
   if (!runLoading) {
     runState(el("prompt-text").value.trim() ? "Unsent message · review it, then send to Milk Man."
-      : man.active ? "Milk Man is working. Output will appear above."
-      : man.queued ? "Instruction queued behind the current run."
+      : man.queued ? "Your next instruction is queued. Milk Man is finishing the current work."
+      : man.active ? "Milk Man is working. A follow-up will wait its turn."
       : state === "failed" ? "The last turn failed. Review its output, then send a correction."
       : state === "waiting" ? "Milk Man will continue when the watched job changes or its next review is due."
       : state === "paused" ? "Automatic continuation is paused. Send an instruction to continue."
@@ -794,45 +800,61 @@ function renderMan(man) {
   if (!man.activity.length) target.append(node("article", "message milk-man", "No conversation yet."));
   for (let index = 0; index < man.activity.length;) {
     const event = man.activity[index];
-    if (["shell-output", "process-output"].includes(event.type)) {
+    if (event.type === "prompt" && event.content.startsWith("Continue the saved task:")) {
+      const resumed = node("details", "resume-note");
+      resumed.dataset.key = "resume:" + index + ":" + event.ts;
+      resumed.open = opened.has(resumed.dataset.key);
+      const title = node("summary", "", "Task resumed");
+      if (event.ts) title.append(node("time", "", event.ts + " UTC"));
+      resumed.append(title, node("pre", "", event.content));
+      target.append(resumed);
+      index++;
+      continue;
+    }
+    if (!["prompt", "final"].includes(event.type)) {
       const group = [event];
-      while (man.activity[index + group.length]?.type === event.type) group.push(man.activity[index + group.length]);
-      const message = node("details", "message tool");
-      message.dataset.key = index + ":" + (event.ts || event.type);
+      while (man.activity[index + group.length] && !["prompt", "final"].includes(man.activity[index + group.length].type)) group.push(man.activity[index + group.length]);
+      const message = node("details", "work-log");
+      message.dataset.key = "work:" + index + ":" + (event.ts || event.type);
       message.open = opened.has(message.dataset.key);
-      const label = event.type === "process-output" ? "live process log" : "command output";
-      const last = group[group.length - 1];
-      const exits = group.map(value => value.content.match(/\nexit (\S+)$/)?.[1]).filter(Boolean);
-      message.append(
-        node("summary", "", label + (exits.length ? " · exit " + exits.join(", ") : " · " + group.length + " lines") + (last.ts ? " · " + last.ts + " UTC" : "")),
-        node("pre", "", group.map(value => value.content).join("\n\n"))
-      );
+      const commands = group.filter(value => value.type === "shell-output").length;
+      const updates = group.length - commands;
+      const failures = group.filter(value => value.type === "shell-output" && /\nexit (?!0\s*$)\S+\s*$/.test(value.content)).length;
+      const update = group.filter(value => !["shell-output", "process-output"].includes(value.type)).map(value => value.content.split("```")[0].trim().split(/\n\s*\n/)[0]).filter(Boolean).at(-1);
+      if (update) {
+        const preview = node("article", "message work-update");
+        preview.append(node("b", "", "Milk Man · update"), node("p", "", update.length > 240 ? update.slice(0, 240) + "…" : update));
+        target.append(preview);
+      }
+      const heading = node("summary", "", "Work details");
+      heading.append(node("small", "", [commands ? commands + " command" + (commands === 1 ? "" : "s") : "", updates ? updates + " update" + (updates === 1 ? "" : "s") : "", failures ? failures + " nonzero exit" + (failures === 1 ? "" : "s") : ""].filter(Boolean).join(" · ")));
+      message.append(heading);
+      group.forEach((entry, part) => {
+        const detail = node("details", "work-entry");
+        detail.dataset.key = message.dataset.key + ":" + part;
+        detail.open = opened.has(detail.dataset.key);
+        const exit = entry.type === "shell-output" ? entry.content.match(/\nexit (\S+)\s*$/)?.[1] : null;
+        const label = entry.type === "shell-output" ? "Command output" : entry.type === "process-output" ? "Process log" : "Model step";
+        const title = node("summary", "", label + (exit != null ? " · exit " + exit : ""));
+        if (entry.ts) title.append(node("time", "", entry.ts + " UTC"));
+        detail.append(title, node("pre", "", entry.content));
+        message.append(detail);
+      });
       target.append(message);
       index += group.length;
       continue;
     }
     const role = event.type === "prompt" ? "you" : "milk-man";
-    if ((role === "you" && event.content.length > 500) || (role === "milk-man" && event.type !== "final" && (event.content.length > 1200 || event.content.includes("```")))) {
-      const message = node("details", "message " + role + " folded");
-      message.dataset.key = index + ":" + (event.ts || event.type);
-      message.open = opened.has(message.dataset.key);
-      const intro = event.content.split("```")[0].trim();
-      if (role === "milk-man" && intro) {
-        const reply = node("article", "message milk-man");
-        reply.append(node("b", "", "milk man"), node("p", "", intro.slice(0, 1200)));
-        target.append(reply);
-      }
-      const label = role === "you" ? "instruction · " + event.content.split(/\n|(?<=[.!?])\s/)[0].slice(0, 100) : "command + full reply";
-      message.append(node("summary", "", label + (event.ts ? " · " + event.ts + " UTC" : "")), node("pre", "", event.content));
-      target.append(message);
-      index++;
-      continue;
-    }
-    const message = node("article", "message " + role);
+    const message = node("article", "message " + role + (event.type === "final" ? " result" : ""));
     const heading = node("div", "message-heading");
-    heading.append(node("b", "", role === "you" ? "You" : event.type === "final" ? "Milk Man · result" : "Milk Man"));
+    heading.append(node("b", "", role === "you" ? "You" : "Milk Man"));
     if (event.ts) heading.append(node("time", "", event.ts + " UTC"));
-    message.append(heading, event.type === "final" ? replyBody(event.content) : node("pre", "", event.content));
+    message.append(heading);
+    if (role === "you" && event.content.length > 500) {
+      const full = node("details", "reply-code");
+      full.append(node("summary", "", "Full instruction"), node("pre", "", event.content));
+      message.append(node("p", "", event.content.slice(0, 300) + "…"), full);
+    } else message.append(event.type === "final" ? replyBody(event.content) : node("p", "", event.content));
     message.querySelectorAll("details").forEach((detail, part) => {
       detail.dataset.key = index + ":" + event.ts + ":reply:" + part;
       detail.open = opened.has(detail.dataset.key);
@@ -840,10 +862,11 @@ function renderMan(man) {
     target.append(message);
     index++;
   }
-  const latest = Array.from(target.querySelectorAll("article.message.milk-man")).at(-1);
+  const latest = Array.from(target.querySelectorAll("article.result")).at(-1);
   if (latest) latest.classList.add("latest-reply");
-  el("message-position").textContent = newFinal && !follow ? "New result below" : "Recent conversation · commands folded";
-  el("latest-message").classList.toggle("unread", newFinal && !follow);
+  const unread = !follow && (newFinal || el("latest-message").classList.contains("unread"));
+  el("message-position").textContent = unread ? "New reply · your reading position was kept" : "Instructions + replies · work details folded";
+  el("latest-message").classList.toggle("unread", unread);
   if (follow && (initial || newFinal)) latestReply();
   else if (follow) target.scrollTop = target.scrollHeight;
   else target.scrollTop = scroll;
@@ -894,7 +917,7 @@ function renderCloud(data) {
   const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
   const jobStatus = data.contract?.error ? "job configuration unavailable" : readyJobs + " / " + jobs.length + " have required settings here";
   el("job-count").textContent = jobStatus;
-  el("watch-state").textContent = "Replies here · commands folded · follow-ups welcome while it works";
+  el("watch-state").textContent = "Follow-ups wait their turn";
   const status = milk.status || {};
   renderRun(status, milk.progress);
   renderProgress(milk.progress);

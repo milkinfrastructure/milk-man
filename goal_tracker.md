@@ -920,6 +920,16 @@ Corrections made by this audit:
 
 ### P8 publish, operate, and qualify
 
+- [x] Refined the local dashboard in the existing three web files. Chat groups
+  commands into expandable work logs and labels heartbeat continuations as
+  task resumes. The selected summary controls its counts and charts; saved
+  collection coverage stays separate. Individual milestone meters use
+  `MILK_SUMMARY_THRESHOLDS` and distinguish due summaries from saved ones.
+  Chrome verified the 20/100 summary selection, milestone navigation, inline
+  scheduling help, and current chat layout. Original colors, typography and
+  embossed controls remain. No dependencies or test files were added; no
+  provider action or model call was started by this UI work. The existing
+  heartbeat stayed waiting at turn 88 while its idle checks continued.
 - [x] Redesigned the local dashboard with a dedicated chat/composer and compact
   task/heartbeat panel, saved-summary selector, sample charts, inline help,
   and separate saved/summarized/labeled counts. Chrome verified the current
