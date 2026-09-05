@@ -23,17 +23,17 @@
       <div><b class="field-heading">gateway <button class="help" type="button" title="Milk Parlor forwards your OpenAI SDK calls to the configured model. After each eligible exchange ends, it saves the request and response in the background. Reachable does not mean a GPU is running." aria-label="About the gateway">?</button></b><span><i class="signal" id="gateway-signal"></i><b id="gateway-state">gateway unchecked</b></span><small>routes model calls · captures traffic</small></div>
       <div><b class="field-heading">saved data <button class="help" type="button" title="The configured object store holds traffic, summaries, and experiment results under your scope ID. Readable means this process can read it; it does not mean every job is complete." aria-label="About saved data">?</button></b><span><i class="signal" id="store-signal"></i><b id="store-state">object store unchecked</b></span><small>remembers traffic · keeps results</small></div>
     </section>
-    <nav class="toolbar" aria-label="Dashboard sections">
-      <a href="#talk">conversation</a>
-      <a href="#connect">connect an app</a>
-      <a href="#traffic">traffic + progress</a>
-      <a href="#jobs-panel">jobs + environment</a>
-      <a href="#summaries">saved summaries</a>
-      <a href="#research-panel">research</a>
+    <nav class="toolbar view-nav" aria-label="Dashboard views">
+      <a href="#talk" title="Give a task, read replies, and see whether Milk Man is working or waiting.">talk to Milk Man</a>
+      <a href="#traffic" title="Count saved exchanges and open the summaries made from them.">data + summaries</a>
+      <a href="#research-panel" title="Read experiment results and comparisons. Saved results are not live GPU status.">experiments</a>
+      <a href="#jobs-panel" title="Find an available job and the environment settings it needs.">tools + settings</a>
+      <a href="#connect" title="Connect an application using the official OpenAI SDK.">connect an app</a>
     </nav>
-    <small class="copy-state" id="copy-state" role="status" aria-live="polite">Dotted underlines copy values. Open a row for details. Hover, focus, or tap ? for help.</small>
+    <small class="copy-state" id="copy-state" role="status" aria-live="polite">Hover or tap ? for help. Dotted values copy when clicked.</small>
+    <div class="view-heading"><h2 id="view-title">Your workspace</h2><p id="view-description">Describe an outcome. Milk Man chooses the commands and reports back here.</p></div>
 
-    <section class="heartbeat" aria-label="Milk Man heartbeat">
+    <section class="heartbeat" data-view="talk" aria-label="Milk Man heartbeat">
       <span title="One local process keeps this task available. Closing this page does not stop it."><i class="signal" id="heartbeat-signal"></i><b id="heartbeat-state">heartbeat · connecting</b></span>
       <span>last check <time id="heartbeat-last">not checked</time></span>
       <span>next check <time id="heartbeat-next">not scheduled</time></span>
@@ -47,7 +47,7 @@
       </details>
     </section>
 
-    <details class="chat" id="talk" aria-label="Milk Man conversation" open>
+    <details class="chat" id="talk" data-view="talk" aria-label="Milk Man conversation" open>
       <summary title="Recent instructions and replies stay visible while Milk Man continues. Older work remains in the saved session. Expand work details to inspect commands and their output.">conversation <small id="conversation-state">finding session</small></summary>
       <p class="section-help" id="watch-state">Describe one outcome below. Milk Man chooses the steps. Replies stay in the conversation; commands and raw output stay folded under work details.</p>
       <div class="messages" id="activity" tabindex="0" aria-label="Milk Man transcript">
@@ -61,14 +61,14 @@
         </div>
         <form id="run-form">
           <textarea id="prompt-text" name="prompt" rows="3" maxlength="16384" aria-describedby="prompt-help prompt-state" placeholder="Example: Inspect our saved summary and explain what we should try next." required></textarea>
-          <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send</button>
+          <button id="run" type="submit" title="Send this instruction to Milk Man. It can run commands and paid jobs using the configured environment.">send to Milk Man</button>
         </form>
         <small class="prompt-help" id="prompt-help">Command / Control + Enter sends · Enter makes a new line</small>
         <div class="drafts"><small>start with</small><button type="button" data-draft="Explain the current task, what has finished, and what you are waiting for. Do not start new work.">explain current work</button><button type="button" data-draft="Read the existing summary checkpoint and explain what it tells us. Do not generate more data or start compute.">read saved summary</button><small>fills the message · you send it</small></div>
       </div>
     </details>
 
-    <details id="connect">
+    <details id="connect" data-view="connect">
       <summary title="Install the official OpenAI client, point it at Milk Parlor, and keep the rest of your call.">connect an app <small>official SDK · two values change</small></summary>
       <p class="section-help">Install <code>openai</code>, not a Milk SDK. Keep your existing Responses or Chat Completions call; only the base URL and operator-issued key change.</p>
       <div class="connection-line" aria-label="Your application sends an OpenAI request through Milk Parlor to its configured model provider.">
@@ -79,7 +79,7 @@
       <div class="connect-grid">
         <section>
           <b>1 · point the SDK at Milk Parlor</b>
-          <button class="copy-block" type="button" data-copy="export OPENAI_BASE_URL=https://parlor.milkinfrastructure.com/v1&#10;export OPENAI_API_KEY='your Milk key'" data-copy-label="Milk connection settings"><code>export OPENAI_BASE_URL=<br>https://parlor.milkinfrastructure.com/v1<br>export OPENAI_API_KEY='your Milk key'</code></button>
+          <button class="copy-block" type="button" title="Copy both environment assignments. Replace the placeholder with the Milk key supplied by the gateway operator." data-copy="export OPENAI_BASE_URL=https://parlor.milkinfrastructure.com/v1&#10;export OPENAI_API_KEY='your Milk key'" data-copy-label="Milk connection settings"><code>export OPENAI_BASE_URL=https://parlor.milkinfrastructure.com/v1<br>export OPENAI_API_KEY='your Milk key'</code></button>
         </section>
         <section>
           <b>2 · keep the OpenAI call</b>
@@ -92,9 +92,10 @@
         <span><b>Milk Man</b><small>summaries · evals · training</small></span>
       </div>
       <p class="section-help">Milk currently tunnels <code>POST /v1/responses</code> and <code>POST /v1/chat/completions</code> unchanged. Other OpenAI API endpoints are not claimed.</p>
+      <details class="local-setup"><summary>local agent setup</summary><p class="section-help">The dashboard resumes a saved Milk Man session. Start the first task with <code>bin/man run --workspace milk-man="$PWD" -- "your task"</code>, then open <code>bin/man dashboard</code> in a second terminal with the same environment. <a href="https://github.com/milkinfrastructure/milk-man#quickstart">Full setup instructions ↗</a></p></details>
     </details>
 
-    <section id="traffic" class="traffic-section" aria-label="Traffic and learning progress">
+    <section id="traffic" class="traffic-section" data-view="traffic" aria-label="Traffic and learning progress">
     <h2 class="section-title">Saved traffic → model research <button class="help" type="button" title="One exchange is a request and its response. Milk Man groups related exchanges, summarizes them, and can use separate jobs to train and compare models. These saved records are separate from the chat task; more traffic alone does not prove a better model." aria-label="About traffic and learning progress">?</button></h2>
     <div class="run-strip" aria-label="Saved traffic workflow">
       <b id="run-profile">finding run</b>
@@ -111,9 +112,10 @@
     <div class="ticks" id="ticks" aria-label="Configured summary thresholds"></div>
     <small class="checked" id="checked">never checked</small>
     <small class="meter-note">Each tick is a configured summary checkpoint. Click one to inspect it. Equal spacing shows milestones, not a linear count.</small>
+    <div class="drafts"><button type="button" id="data-question" data-draft="Read the current traffic count and latest summary. Explain the next useful step and what is missing. Do not generate data or start compute.">ask about the next step</button><small>Prepares a chat message. Nothing runs until you send it.</small></div>
     </section>
 
-    <details id="loop">
+    <details id="loop" data-view="traffic">
       <summary title="Each stage reads the previous stage's saved result. A completed stage does not mean the full loop or a better model is proven.">all nine data steps <small>what each step does and when it runs</small></summary>
       <div class="route-control">
         <label for="stage-scrubber"><b>milk line</b><output id="stage-output" for="stage-scrubber">finding the live stage</output></label>
@@ -122,32 +124,33 @@
       </div>
       <div class="rail" id="rail"></div>
     </details>
-    <details class="jobs" id="jobs-panel">
+    <details class="jobs" id="jobs-panel" data-view="jobs">
       <summary title="See every registered job and whether this dashboard process inherited its required environment names.">jobs + environment <small id="job-count">checking configuration</small></summary>
       <p class="section-help">Each action is a script Milk Man can run. Settings choose its model, storage, or GPU provider. Open an action, then use ? to understand a setting or click its name to copy it. Values stay private.</p>
       <p class="section-help"><span class="pin" aria-hidden="true"></span> Settings present does not mean running. Provider access is checked when the job runs. Restart the process after changing its environment.</p>
       <div class="job-search"><label for="job-search">find an action</label><input id="job-search" type="search" placeholder="model, summary, Modal…" aria-controls="jobs"><small id="job-matches" role="status"></small></div>
       <div class="job-list" id="jobs"></div>
     </details>
-    <details id="summaries" open>
+    <details id="summaries" data-view="traffic" open>
       <summary title="Open a checkpoint to read what was learned from its captured requests and responses. Earlier checkpoints stay available.">what the traffic tells us <small>open a saved summary below</small></summary>
       <div class="milestones" id="milestones"></div>
     </details>
-    <details id="research-panel">
+    <details id="research-panel" data-view="research">
       <summary title="The research objective and saved results for this scope. A measured comparison is needed before calling a model better.">research results <small id="research-state">reading saved objective</small></summary>
       <p class="section-help">What was tried, what happened, and what to try next. These are saved results, not a live list of running GPUs. Speed and answer quality are separate comparisons.</p>
       <div class="rows" id="research"></div>
+      <div class="drafts"><button type="button" data-draft="Read the saved research results. Explain the latest result, what is still unknown, and one useful next experiment. Do not launch an experiment or change resources.">ask about these results</button><small>Prepares a message for Milk Man.</small></div>
     </details>
-    <details>
+    <details data-view="traffic">
       <summary title="Current scope, next stored action, and capture-writer totals.">run + object memory</summary>
       <p class="section-help">Every run is isolated by a scope ID. Derived records stay linked to the captures and earlier checkpoints that produced them.</p>
       <div class="rows" id="object"></div>
     </details>
-    <details>
+    <details data-view="talk">
       <summary title="Exact local Git workspaces available to the current Milk Man task.">code Milk Man can edit</summary>
       <div class="rows" id="workspaces"></div>
     </details>
-    <details>
+    <details data-view="talk">
       <summary title="Small durable notes carried into later turns for this exact workspace set.">saved decisions</summary>
       <div class="rows" id="memory"></div>
     </details>

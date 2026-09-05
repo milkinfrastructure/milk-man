@@ -96,6 +96,36 @@ function copyButton(display, value, label) {
   return button;
 }
 
+const views = {
+  talk: ["Your workspace", "Describe an outcome. Milk Man chooses the commands and reports back here."],
+  traffic: ["What has been collected?", "Requests and answers become saved summaries. Open a checkpoint to read what was learned."],
+  research: ["What did the experiments show?", "Compare results before choosing what to try next. Losing experiments stay in the record too."],
+  jobs: ["What can Milk Man do?", "Find a tool, check its settings, then ask Milk Man to use it. Opening a tool runs nothing."],
+  connect: ["Keep your OpenAI calls", "Point the official SDK at Milk Parlor. Your application still calls the same API."],
+};
+function showView() {
+  const target = el(location.hash.slice(1));
+  const view = target?.dataset.view || "talk";
+  document.querySelectorAll("[data-view]").forEach(section => { section.hidden = section.dataset.view !== view; });
+  document.querySelectorAll(".view-nav a").forEach(link => {
+    if (el(link.hash.slice(1))?.dataset.view === view) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+  el("view-title").textContent = views[view][0];
+  el("view-description").textContent = views[view][1];
+  const panel = target || el("talk");
+  if (panel.tagName === "DETAILS") panel.open = true;
+  if (view === "talk") requestAnimationFrame(latestReply);
+}
+function draftPrompt(text) {
+  location.hash = "talk";
+  showView();
+  const prompt = el("prompt-text");
+  if (prompt.value.trim()) runState("Your unsent message was kept. Clear it to use a suggested task.");
+  else { prompt.value = text; runState("Draft ready. Review it, then send when you want Milk Man to act."); }
+  prompt.focus();
+}
+
 function rows(target, values, empty) {
   target.replaceChildren();
   if (!values.length) return target.append(node("p", "empty", empty));
@@ -542,7 +572,12 @@ function renderContract(contract = {}) {
     optional.dataset.job = job.name;
     optional.open = controls.has(job.name);
     optional.append(node("summary", "", "optional settings"), environmentList("optional environment", job.optional || [], true));
-    body.append(optional);
+    const action = node("button", "", "ask Milk Man about this tool");
+    action.type = "button";
+    action.dataset.draft = "Explain how to use the " + job.name + " job with our current environment, including any missing settings. Do not run it or change resources.";
+    const actions = node("div", "drafts");
+    actions.append(action, node("small", "", "Prepares a message; it does not run the job."));
+    body.append(optional, actions);
     card.append(heading, body);
     target.append(card);
   }
@@ -568,7 +603,7 @@ function renderMan(man) {
     idle: "Milk Man online · ready for a task" + jobStatus,
     setup: "Milk Man online · session setup needed",
   };
-  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", labels[state] || labels.setup);
+  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", man.online ? labels[state] || labels.setup : man.trajectory_id ? "Milk Man offline · session saved" : "Start a session from Bash");
   el("driver-detail").textContent = "Model: " + (driverStatus || "not configured") + ". Session: " + (man.trajectory_id || "not started") + ".";
   el("active-model").textContent = "chat model: " + (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
   const pulse = man.heartbeat || {};
@@ -603,12 +638,13 @@ function renderMan(man) {
   el("conversation-state").textContent = state + (man.queued ? " · next instruction queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
   el("conversation-state").title = pulse.checked_at ? "Heartbeat last checked " + new Date(pulse.checked_at * 1000).toLocaleString() + ". Unchanged idle checks use no model tokens." : "Heartbeat starts with your next task. Closing this page does not stop it.";
   if (!runLoading) {
-    runState(man.active ? "Milk Man is working. Output will appear above."
+    runState(el("prompt-text").value.trim() ? "Unsent message · review it, then send to Milk Man."
+      : man.active ? "Milk Man is working. Output will appear above."
       : man.queued ? "Instruction queued behind the current run."
       : state === "failed" ? "The last turn failed. Review its output, then send a correction."
       : state === "waiting" ? "Milk Man will continue when the watched job changes or its next review is due."
       : state === "paused" ? "Automatic continuation is paused. Send an instruction to continue."
-      : state === "setup" ? "Send an instruction to start a saved local session."
+      : state === "setup" ? "Start your first session from Bash; see connect an app → local agent setup."
       : jobs ? "Milk jobs are running outside chat. Their results will appear in object memory."
       : "Milk Man is ready for the next instruction.", state === "failed");
   }
@@ -738,8 +774,8 @@ function renderCloud(data) {
   renderContract(data.contract || {});
   renderResearch(milk.research || {});
   rows(el("object"), milk.error ? [{ title: "unavailable", detail: milk.error }] : milk.missing.length ? [{ title: "not configured", detail: milk.missing.join("\n") }] : [
-    { title: "next job", detail: nextCopy[status.next_action] || String(status.next_action || "waiting").replaceAll("-", " "), help: "The next deterministic action implied by the stored run status." },
-    { title: "run type", detail: status.profile === "mechanics" ? "mechanics · wiring proof only" : status.profile || "unknown", help: "Mechanics traffic proves that components connect; it does not qualify a production route." },
+    { title: "next data step", detail: nextCopy[status.next_action] || String(status.next_action || "waiting").replaceAll("-", " "), help: "The next action suggested by saved data, not proof that a job is scheduled or running." },
+    { title: "data policy", detail: status.profile === "mechanics" ? "development settings" : status.profile || "unknown", help: "The selected rules for trying the workflow. This does not identify the origin of the traffic or establish model quality." },
     { title: "scope", detail: status.scope_id ? short(status.scope_id) : "unknown", help: status.scope_id || "No scope is configured." },
     { title: "capture writer", detail: !["up", "degraded"].includes(gateway.state) ? "unavailable · last totals unknown" : number(gateway.observed) + " received · " + number(gateway.persisted) + " stored · " + number(gateway.dropped) + " dropped", help: "Milk Parlor totals since its current process started, across its configured scopes. Not this scope's stored traffic count." },
   ], "waiting for status");
@@ -888,24 +924,22 @@ async function refreshLocal() {
     light("heartbeat", "down", "heartbeat · connection lost");
     el("heartbeat-next").textContent = "unknown while disconnected";
     el("current-work-note").textContent = "Dashboard connection lost. The task may still be running; reconnect before sending another instruction.";
+    el("conversation-state").textContent = "connection lost";
+    runState("Cannot reach the local dashboard server. Your task may still be running.", true);
   }
 }
 
 el("refresh").addEventListener("click", () => refreshCloud(true));
 el("job-search").addEventListener("input", filterJobs);
-document.querySelectorAll(".toolbar a").forEach(link => link.addEventListener("click", () => {
-  const section = el(link.hash.slice(1));
-  if (section?.tagName === "DETAILS") section.open = true;
-}));
+window.addEventListener("hashchange", showView);
+showView();
 el("latest-message").addEventListener("click", latestReply);
 el("stage-scrubber").addEventListener("input", event => selectStage(number(event.target.value) - 1, true));
 document.querySelectorAll("[data-copy]").forEach(button => button.addEventListener("click", () => copyValue(button.dataset.copy, button.dataset.copyLabel)));
-document.querySelectorAll("[data-draft]").forEach(button => button.addEventListener("click", () => {
-  const prompt = el("prompt-text");
-  if (prompt.value.trim()) return prompt.focus();
-  prompt.value = button.dataset.draft;
-  prompt.focus();
-}));
+document.addEventListener("click", event => {
+  const button = event.target.closest?.("[data-draft]");
+  if (button) draftPrompt(button.dataset.draft);
+});
 el("run-form").addEventListener("submit", startRun);
 el("prompt-text").addEventListener("keydown", event => {
   if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -931,7 +965,7 @@ function hideHelp() {
   }
 }
 function showHelp(target) {
-  const owner = target.closest?.("[title], [data-help]");
+  const owner = target.closest?.(".help, .copy, .tick, .view-nav a, [data-tooltip]");
   if (!owner) return;
   clearTimeout(helpTimer);
   hideHelp();
