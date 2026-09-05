@@ -23,21 +23,52 @@ Status notation:
   trajectory retention. Production override configuration was rejected.
   Worker execution forwarded the named key, omitted an unrelated secret, and
   rejected a missing key. Independent review found no concrete regression.
-  Private proof: `parlor-scope-smoke.XiEcED/proof.json`. No hosted deployment
-  or parent-model switch yet; existing owner/trajectory can resume at idle.
-- [~] The new held-out benchmark task is reserved in R2 before model use:
+  Private proof: `parlor-scope-smoke.XiEcED/proof.json`.
+  Image `sha256:8e959d53c042e9233ae600db08d78c0da45d30ab9bb09aca3b74bc4bcef9326d`
+  is 2,361,709 bytes, built for linux/amd64 using cached dependencies and the
+  existing two-layer scratch runtime. Published Parlor `cfedcca` pins it.
+  Worker version `f05f3ffe-039e-41be-bc7c-8aaf7295b910` selects
+  `parlor-bf9f927-scoped`; live health and own-scope authentication returned
+  200. No actual scope override is configured; hosted scoped routing and the
+  parent-model switch remain unproven. Astra owner `62714` remains alive.
+  A Wrangler unmatched instance row is not independent proof of zero capacity.
+  At 20:17 UTC the raw API showed this DO with `deployment_id:null` and no
+  instance rows, so its running image could not be independently observed.
+  Do not promote the configured image digest to a running-image claim.
+- [x] The new held-out benchmark task was reserved in R2 before model use:
   reservation SHA-256
   `d5e3c86db8fb95799dde875c365e9f6bf9329e993466b07096fb76fafae924c5`.
   Its task, input digests and answer values are absent from the four TRAIN
   rows; the trained model points to that exact dataset. Both arms use frozen
   runtime `cea39673fb374c29788da1f1f3fc02cc3fadb926` and separate workspaces
-  containing only the same two input receipts. At 19:59 UTC, base worker
-  `58367` / child `58368` is live, observing existing Baseten `qe2l6z2q` /
-  `31rd954` in DEPLOYING. No trial answer yet; trained worker not started.
-  The worker has a readiness deadline and automatic stop. Inspect this handle
-  before any next action; do not start a duplicate. Result/cleanup files are
-  under `heldout-benchmark.q4OFUx/`. Startup logs show vLLM initializing, not
-  an inference failure. This active run is not a completion claim.
+  containing only the same two input receipts. Base worker `58367` and trained
+  worker `60792` completed their one trial and automatic stop. Independent
+  provider reads at 20:16 UTC confirmed all three Baseten deployments inactive
+  with zero replicas and no Modal containers. Private result/cleanup files:
+  `heldout-benchmark.q4OFUx/`. No retraining or repeated checkpoint task.
+- [!] Both new benchmark-analysis tasks failed. Base: 83.982 seconds, six Bash
+  replies, no comparison job or decision file, no finish; it copied the inputs
+  over comparison.json. Result SHA-256
+  `d39b043188f0d0bf302d58ea5c9e82abdc918f861437bd051b69e7ce583d9101`.
+  Trained: 22.898 seconds, five Bash replies, no outputs or finish; it read the
+  tool source outside permitted reads and invoked the Python script with Bash
+  three times. Result SHA-256
+  `adb7752b4e66d3af89d8297ed9cce7f59fc5c87185468101e06cd6ed7a2722bc`.
+  Both pinned input sets and frozen runtime stayed unchanged. Both output
+  checks returned false. Exact-ID replays returned the failures with zero
+  inference/provider calls. This is model task failure, not deployment failure.
+  No repeated run, retraining, larger allowance or quality claim follows it.
+- [x] R2 comparison SHA-256
+  `15b5bf66472fc635f95eadbdf06453c396442f0ff3434e93cd2a9f9357ae1ad6`
+  retains task, input, runtime, both configs/results/trajectories, command
+  review and cleanup. Research revision
+  `9cdd65d174f9d3389829568fab8e7893a6bb0c1240382ec4479dc361e0afe4c0`
+  preserves all fourteen experiments. Readback matches; baseline/evaluation/
+  best remain null because this task provides no qualifying winner and the
+  trained run exceeded its read boundary. Parent stayed on Astra via Parlor;
+  experimental children used Baseten directly, not the scoped gateway.
+  Unchanged research replay returned idle, checked zero objects and made zero
+  inference/provider calls.
 - [x] `bin/score-benchmark-task` uses the existing trial checker hook and
   registered `benchmark-compare` job. It checks the saved comparison and
   target-based decision against pinned receipt bytes, with zero model/provider
@@ -45,13 +76,13 @@ Status notation:
   altered JSON; canonical JSON comparison fixes it. The direct check initially
   omitted the scope environment and correctly disagreed with the saved wrapper;
   selecting the intended scope passed. No new test framework or dependency.
-- [~] Prepared one new benchmark-analysis task outside the training examples,
+- [x] Prepared one new benchmark-analysis task outside the training examples,
   task SHA-256
   `ed0e1b9f9b8463240d7605547c59f41496f58102e0f523c666bb3824fe338544`.
-  No new trial or resource has started yet. Both arms will use one runtime,
-  isolated identical inputs and the same six-reply allowance; completion and
-  actual command review supplement the output score. One task cannot establish
-  general improvement. Private state: `heldout-benchmark.q4OFUx/`.
+  Both completed arms used one runtime, isolated identical inputs and the same
+  six-reply allowance. Completion and actual command review supplement the
+  output score. One task cannot establish general improvement. Private state:
+  `heldout-benchmark.q4OFUx/`.
 - [x] Refreshed Chrome billing: Baseten September $34.98, Modal $13.99.
   Prior carry $274.94, pending $20, retained reservations $25 + $10, and this
   comparison's $10 reserve total $388.91 conservatively allocated against the

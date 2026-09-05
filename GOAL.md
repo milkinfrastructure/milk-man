@@ -28,20 +28,26 @@ Current frontier:
   comparison, checked on R2 before publication. All thirteen experiments
   remain; unchanged replay rereads none of these objects. This does not supply
   an untouched evaluation or a winner; those requirements below remain open.
-- [~] Added a small saved-benchmark task scorer through the existing trial
-  checker hook. Direct execution checks the real comparison and rejects
-  boolean/number substitutions without inference. Next: one new task, absent
-  from the completed SFT data, on the original and already-trained Qwen using
-  the same frozen runtime and fresh identical workspaces. Keep task completion,
-  output correctness and permitted reads separate. No retraining, repeat of
-  the failed checkpoint task, or general quality claim from one task.
+- [x] Added the saved-benchmark task scorer through the existing trial hook.
+  Direct execution checks the real comparison and rejects boolean/number
+  substitutions without inference. Original and already-trained Qwen ran one
+  new task absent from the completed SFT data, on the same frozen runtime and
+  fresh identical inputs. Both results and cleanup are retained in R2.
+- [!] Neither model completed that new task. Base copied input files instead
+  of comparing them; trained read the launcher and repeatedly ran a Python
+  script with Bash. Neither wrote the required outputs or finished. Trained
+  also exceeded the task's permitted reads. No quality win; no rerun or more
+  training. All three Baseten deployments and Modal are independently at zero.
 - [~] Parlor now accepts an environment-selected upstream for one mechanics
   scope/protocol without changing shared defaults or signed production routes.
   The Rust HTTP path and Cloudflare environment forwarding passed direct local
   checks, including four stored request/response pairs with trajectory IDs.
-  Code is published; hosted activation and a parent driver turn through that
-  scoped binding remain unproven. Use an idle-boundary resume of the existing
-  parent trajectory; no new driver-switch framework is needed.
+  Code and the 2.36 MB image are published and deployed. Live health and the
+  existing own-scope key work; no scope override is configured yet. Actual
+  hosted scoped routing and a parent driver turn remain unproven. Next use
+  one explicitly selected endpoint and resume the existing parent trajectory
+  at idle, preserving Astra as the known working driver configuration and
+  other scopes. Do not introduce a new driver-switch framework.
 - [ ] Continue unproven P4–P8 model operations, useful inference tuning and the
   scope-specific learning application. Reuse completed work, add only a missing
   executable capability, then prove that capability through Milk Man. No new
@@ -635,9 +641,14 @@ do not restart parked large generation runs.
   unchanged replay checked zero. Wrong scopes, hashes and current pointers
   were rejected without publishing. This checks file identity, not task
   correctness or evaluation independence; baseline/evaluation/best stay null.
-- [ ] Bind the record to measured baseline and candidate results on untouched
-  evaluation data. Its baseline, evaluation, and best fields are currently
-  unknown; saved notes alone do not qualify a winner.
+- [~] Bind the record to measured baseline and candidate results on untouched
+  evaluation data. One new task was reserved before inference, checked absent
+  from the completed SFT data and run on base and trained Qwen. Both failed;
+  trained also read outside its task boundary. Research revision
+  `9cdd65d174f9d3389829568fab8e7893a6bb0c1240382ec4479dc361e0afe4c0`
+  retains both exact executions and all fourteen experiments. This one-task
+  negative result is not general model quality; baseline/evaluation/best stay
+  unknown. A clean comparison and useful improvement remain unproven.
 - [ ] Prove one small scope-specific research iteration: inspect captured
   data, choose an experiment, run existing jobs, compare on the same held-out
   tasks, retain the result even if it loses, and select the next useful action.
