@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Compare two pinned benchmark receipts without making requests."""
+
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from milk_v2.state import redact_message
+
+
+def digest(body):
+    return hashlib.sha256(body).hexdigest()
+
+
+def number(value):
+    return type(value) in (int, float) and math.isfinite(value) and value >= 0
+
+
+def load(name):
+    prefix = "MILK_COMPARE_" + name.upper()
+    expected = os.environ[prefix + "_SHA256"]
+    if not re.fullmatch(r"[0-9a-f]{64}", expected):
+        raise ValueError(prefix + "_SHA256 must be a SHA-256 digest")
+    with Path(os.environ[prefix + "_FILE"]).open("rb") as source:
+        body = source.read(1_048_577)
+    if len(body) > 1_048_576 or digest(body) != expected:
+        raise ValueError(name + " receipt size or digest differs")
+    value = json.loads(body)
+    details = value["details"]
+    config, rows, aggregate = details["config"], details["requests"], details["aggregate"]
+    if details["schema_version"] != "milk.inference-benchmark.v1" or value["state"] not in {"complete", "failed"}:
+        raise ValueError(name + " is not a completed benchmark receipt")
+    identity = digest(json.dumps(config, sort_keys=True, separators=(",", ":")).encode())
+    if value["identity"] != identity or type(config["requests"]) is not int or config["requests"] < 1:
+        raise ValueError(name + " benchmark identity differs")
+    if not isinstance(rows, list) or [row["index"] for row in rows] != list(range(1, config["requests"] + 1)):
+        raise ValueError(name + " request count differs")
+    succeeded = sum("error" not in row for row in rows)
+    correct = sum(row.get("correct") is True and "error" not in row for row in rows)
+    if aggregate["succeeded"] != succeeded or aggregate["failed"] != len(rows) - succeeded:
+        raise ValueError(name + " success counts differ")
+    expected_supplied = config.get("expected_supplied") is True
+    if aggregate["correct"] != (correct if expected_supplied else None):
+        raise ValueError(name + " correctness count differs")
+    passed = expected_supplied and correct == len(rows)
+    if value["state"] == "complete" and (succeeded != len(rows) or expected_supplied and not passed):
+        raise ValueError(name + " completion disagrees with its requests")
+    return {"sha256": expected, "identity": identity, "state": value["state"],
+            "config": config, "aggregate": aggregate, "all_answers_correct": passed,
+            "input_tokens": [row.get("input_tokens") for row in rows],
+            "output_tokens": [row.get("output_tokens") for row in rows]}
+
+
+def main():
+    if sys.argv[1:] == ["--help"]:
+        print("benchmark-compare [run]\nSet MILK_COMPARE_BASELINE_FILE/SHA256 and MILK_COMPARE_CANDIDATE_FILE/SHA256 to saved benchmark receipts. Reads only; no model or provider calls. Reports observed differences, not a quality winner. Use the existing serve job's stop command to clean up compute.")
+        return
+    if sys.argv[1:] not in ([], ["run"]):
+        raise ValueError("usage: benchmark-compare [run]")
+    baseline, candidate = load("baseline"), load("candidate")
+    a, b = baseline["config"], candidate["config"]
+    # Endpoint/rate may change with the serving profile; request settings may not.
+    keys = (a.keys() | b.keys()) - {"endpoint", "estimated_compute_usd_per_hour"}
+    differences = {key: [a.get(key), b.get(key)] for key in sorted(keys) if a.get(key) != b.get(key)}
+    required = {"model", "workload_sha256", "requests", "max_tokens", "temperature", "timeout_seconds", "expected_supplied"}
+    matched = not differences and required <= a.keys() and required <= b.keys()
+    metrics = ("latency_ms_p50", "latency_ms_p95", "ttft_ms_p50", "ttft_ms_p95",
+               "output_tokens_per_end_to_end_second", "estimated_compute_cost_usd")
+    delta = {}
+    for metric in metrics:
+        before, after = baseline["aggregate"].get(metric), candidate["aggregate"].get(metric)
+        delta[metric] = round((after / before - 1) * 100, 3) if matched and number(before) and before > 0 and number(after) else None
+    details = {"schema_version": "milk.benchmark-comparison.v1", "baseline": baseline,
+               "candidate": candidate, "request_settings_match": matched,
+               "request_setting_differences": differences, "candidate_change_percent": delta,
+               "all_answers_correct": baseline["all_answers_correct"] and candidate["all_answers_correct"],
+               "same_output_token_counts": baseline["output_tokens"] == candidate["output_tokens"] if all(number(v) for v in baseline["output_tokens"] + candidate["output_tokens"]) else None,
+               "selected_winner": None, "task_success_proven": False,
+               "limits": ["Descriptive sequential samples, not a statistical winner.",
+                          "Serving revisions and changed GPU settings need separate provider receipts.",
+                          "Throughput uses full request time; decode-only speed is unknown.",
+                          "Cost estimates cover benchmark wall time, not startup or billed spend.",
+                          "Correct answers do not prove an executed agent task."]}
+    identity = digest(json.dumps({"baseline": baseline["sha256"], "candidate": candidate["sha256"],
+                                 "script": digest(Path(__file__).read_bytes())}, sort_keys=True).encode())
+    print(json.dumps(redact_message({"state": "complete", "identity": identity,
+                                    "inference_calls": 0, "provider_calls": 0, "details": details}),
+                     sort_keys=True, separators=(",", ":"), allow_nan=False))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (KeyError, ValueError, TypeError, AttributeError, OSError) as error:
+        print(json.dumps({"state": "failed", "identity": "comparison", "inference_calls": 0,
+                          "provider_calls": 0, "error": str(error) if isinstance(error, ValueError) and not isinstance(error, json.JSONDecodeError) else type(error).__name__}))
+        raise SystemExit(64)

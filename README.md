@@ -338,6 +338,37 @@ and exact-answer checks when an expected answer is supplied. They are JSON,
 not raw answers. Any configured hourly cost estimates the measured interval,
 not the full provider bill.
 
+Keep each measurement in its own private run directory:
+
+```bash
+# With the chosen endpoint and workload environment already configured:
+bin/background /private/experiment/baseline -- bin/milk run benchmark
+bin/background /private/experiment/baseline status
+```
+
+Reusing that directory does not repeat inference. Its `stdout` is the saved
+benchmark receipt. For a candidate, change the intended serving setting, keep
+the request settings unchanged, and use a different run directory. Warmups
+belong in separate directories and must not enter the measured comparison.
+Use the serving job's advertised `status` while it starts and `stop` when done;
+benchmark completion does not stop a GPU.
+
+Compare saved receipts without making any requests:
+
+```bash
+export MILK_COMPARE_BASELINE_FILE=/private/experiment/baseline/stdout
+export MILK_COMPARE_BASELINE_SHA256='<sha256 of that file>'
+export MILK_COMPARE_CANDIDATE_FILE=/private/experiment/candidate/stdout
+export MILK_COMPARE_CANDIDATE_SHA256='<sha256 of that file>'
+bin/milk run benchmark-compare
+```
+
+The comparison reports request differences, exact-answer results and timing
+changes. Missing measurements stay unknown. It names no winner: keep the
+serving profiles and decide whether the sample supports your conclusion.
+This measures inference responses, not whether an agent completed a Bash task;
+use `agent-trial` for that.
+
 Start the built-in traffic loop with an empty local object store:
 
 ```bash

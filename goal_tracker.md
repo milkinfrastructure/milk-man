@@ -15,6 +15,19 @@ Status notation:
 
 ## Executive state
 
+- [x] N1 adds the read-only `benchmark-compare` script job and documents the
+  existing serving/benchmark/background commands as the reusable experiment.
+  Both real saved receipts passed digest and request-setting checks, with
+  three correct answers each. Input tokens match; output counts differ, so
+  the job explicitly selects no winner and makes no agent-task success claim.
+  Execution and detached replay made zero inference/provider calls. Wrong
+  digests were rejected; different workloads suppressed comparison deltas.
+  One independent review found no P0/P1 issue. No new runner, dependency or
+  test file was added. Receipt: private `overnight-n1-20260905/comparison/stdout`,
+  SHA-256 `a2e4b5468fe534cc22291fdb297b066cbe8920f10f2ddb5da43a3592858cdad8`.
+- [!] N2 remains unproven. The new read-only comparison does not address the
+  owned 120B driver's observed task-execution failure. No changed paid task or
+  serving comparison was launched; retain the failure and proceed to N3/N4.
 - [x] Saved the ordered overnight execution window in `GOAL.md`: September 5,
   00:45–08:45 PDT. It preserves the full product goal, uses direct Codex edits,
   reuses completed experiments and keeps the existing $500 authorization.

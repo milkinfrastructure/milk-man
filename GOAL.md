@@ -20,7 +20,14 @@ compared with the already inspected immutable facts. The summary milestone
 200 and zero-driver idle heartbeat are also proven. Do not repeat these runs.
 Exact references are in `goal_tracker.md`.
 
-### N1 — make the completed experiment reusable [ ]
+### N1 — make the completed experiment reusable [x]
+
+Implemented `benchmark-compare` as a read-only script job. It reads the two
+pinned receipts, checks matching request settings and correctness, and reports
+descriptive changes without choosing a winner. Existing serving jobs and
+`bin/background` already provide execution, status, replay and cleanup; no
+second lifecycle runner was needed. The retained comparison and its unchanged
+replay made zero inference/provider calls. Details are in the tracker.
 
 Inspect the existing `completed-task-tune-20260905/serve.sh`, `measure.sh`, and
 comparison result in private local state. Move only the reusable execution
@@ -39,7 +46,12 @@ comparison without inference or deployment, and inspect the resulting compact
 comparison. Retain both inputs and their limitations; do not manufacture a
 winner from the small old sample. No fixture suite or new validator framework.
 
-### N2 — prove useful execution, then compare one change [ ]
+### N2 — prove useful execution, then compare one change [!]
+
+The managed Astra task is complete, but N1 does not repair the owned 120B
+driver's failure to invoke the named job. Another unchanged paid run is not
+justified. No new baseline or candidate was launched. Keep this item open and
+proceed to N3/N4; do not count the managed task as a controlled 120B comparison.
 
 Use the reusable path for one useful, bounded model task, not another
 `MILK_OK` or JSON-format-only check. The checkpoint report is the existing

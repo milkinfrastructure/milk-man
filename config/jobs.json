@@ -146,6 +146,16 @@
     "inference-ensure": {"handler": "inference-ensure", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": "inference-stop"},
     "inference-status": {"handler": "inference-status", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
     "inference-stop": {"handler": "inference-stop", "trigger": {"kind": "manual"}, "bindings": ["store", "modal"], "input_prefixes": ["j"], "output_prefixes": ["j", "status"], "system_prompt": null, "timeout_env": "MILK_CONTROLLER_TIMEOUT_SECONDS", "teardown_handler": null},
+    "benchmark-compare": {
+      "description": "Compare two saved benchmark receipts using exact file digests. No inference or provider calls. Reports matching request settings, correctness, timings and observed percentage changes; never declares a quality winner. Keep serving profile receipts separately. Use the original serving job's stop command for cleanup.",
+      "executable": "bin/benchmark-compare",
+      "environment": {
+        "required": ["MILK_COMPARE_BASELINE_FILE", "MILK_COMPARE_BASELINE_SHA256", "MILK_COMPARE_CANDIDATE_FILE", "MILK_COMPARE_CANDIDATE_SHA256"],
+        "optional": []
+      },
+      "status": false,
+      "stop": false
+    },
     "benchmark": {
       "description": "Measure configured chat inference: three requests by default, optional streaming time to first visible text, exact expected-answer checks, and JSON measurements without raw answers. Set output-token allowance for reasoning models.",
       "executable": "bin/benchmark",
