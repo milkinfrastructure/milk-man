@@ -15,6 +15,16 @@ Status notation:
 
 ## Executive state
 
+- [x] Restarted the idle local owner after publishing `38f07a9b5`; the same
+  trajectory resumed with 57 turns and no new model call. Owner 99949 loaded
+  the detached-command guidance and remained connected in Chrome. This was
+  an idle restart, not a provider-startup interruption.
+- [x] Chrome-prompted Milk Man saved both new results through `research`.
+  Independent R2 verification confirmed revision
+  `dfc90c22df70fc059788b81fe4b77a1af0939518b7218f8d1b63108d283d34c5`,
+  record `bc57f059-c669-59f1-b931-ad72b12f9ece`, with four retained experiment
+  entries. Baseline, evaluation, and best remain unknown. The write job made
+  zero inference/provider calls; its Astra driver replies were paid.
 - [x] Chrome-prompted Milk Man completed the owned checkpoint task without a
   follow-up instruction: launched/reused cached `openai/gpt-oss-120b` on one
   H200, resumed automatically after startup, ran the frozen child, and stopped
@@ -244,8 +254,9 @@ Status notation:
   and restarted from Bash with the same trajectory and no new model turn.
 - [x] Idle backoff, timer continuation, provider-status wake, and owner restart
   against the same ready H200 server worked without another deployment.
-- [~] Provider startup recovery still required Codex corrections; the 120B
-  lifecycle is not a fully autonomous proof.
+- [~] Earlier provider startup recovery required Codex corrections. The later
+  owned checkpoint lifecycle completed without a follow-up instruction;
+  restarting during provider startup remains unproved.
 - [x] The first environment-selected P4 lifecycle served
   `Qwen/Qwen3-0.6B` on one Modal L4, completed three correct inference calls,
   stopped app `ap-joFFZzWQm7cFTdMJ7F0QGz`, and observed zero tasks and zero
@@ -260,7 +271,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | runtime `68fe2aea0`, plus this evidence checkpoint | runtime `68fe2aea0` and its following evidence checkpoint | reusable agent trials, compact job lookup, verified checkpoint job; Baseten-owned live proof and unassisted research comparison remain open |
+| `milk-man` | runtime `38f07a9b5`, plus this evidence checkpoint | runtime `38f07a9b5` and its following evidence checkpoint | native capture extraction, detached commands, and autonomous owned-120B checkpoint task; Baseten-owned proof and measured research improvement remain open |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 
