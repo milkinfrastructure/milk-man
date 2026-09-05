@@ -15,6 +15,18 @@ Status notation:
 
 ## Executive state
 
+- [~] `serve-baseten` now accepts an exact saved model manifest through
+  `MILK_BASETEN_SERVE_CHECKPOINT_KEY/SHA256`. Its plan loads the completed
+  Baseten job's `rank-0/merged/` checkpoint, retaining the tokenizer and base
+  identity. Real R2 metadata and pinned Truss parsing passed with zero
+  inference/provider calls; the existing Hugging Face profile is unchanged.
+  The native checkpoint needs vLLM's released text-only Qwen support; this
+  trial selects 0.28.0 CUDA 12.9 by image digest, not the older 0.18.1 image.
+  Serving and generated held-out action comparison are still unproven.
+- [x] Exported the one held-out DEV example unchanged from the retained
+  dataset: SHA-256 `7b1a75e0c5aecb60e357c13860d6128db607a7e96ad06ea4ff6471bc9fbc2ae7`.
+  The existing `native-trial check` withheld the target and preserved its
+  DEV group. No new data or inference was generated.
 - [x] Corrected native SFT job `wg8glgq` completed on Baseten and Milk Man
   collected its model and result. Baseten recorded completion at
   2026-09-05 05:02:18 UTC; a later independent read agreed and found zero

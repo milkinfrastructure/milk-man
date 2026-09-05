@@ -224,8 +224,16 @@ driver settings and step limit without calling the model.
 `serve-baseten` provides the same run/status/stop workflow for an owned Baseten
 server. Set its model, exact model revision, runtime image and GPU through the
 catalog's `MILK_BASETEN_SERVE_*` settings. Weights mount from Baseten's cache,
-not from the image. This path is implemented; its live deployment proof is
-still pending. Managed Baseten inference remains a separate option.
+not from the image. A small Qwen deployment has completed inference and shutdown;
+managed Baseten inference remains a separate option.
+
+To serve a model trained by Milk, also set `MILK_BASETEN_SERVE_CHECKPOINT_KEY`
+and `MILK_BASETEN_SERVE_CHECKPOINT_SHA256` to its saved model manifest. The usual
+`MILK_STORE_*` settings select storage. Keep `MODEL` and `REVISION` equal to the
+manifest's training base. Baseten loads the completed job's `rank-0/merged/`
+checkpoint, including its tokenizer, directly into the server; no local weight
+download or new image is needed. Omit both checkpoint settings to serve the
+original base model. Status and stop reuse the saved deployment settings.
 
 To compare an agent on a real task, set `MILK_TRIAL_TASK_FILE` and
 `MILK_TRIAL_WORKSPACE`, configure the usual `LLM_*` values, and run

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ if __package__ in {None, ""}:
 from milk_v2.providers import baseten
 from milk_v2.providers.modal_controller import atomic_json, digest, now, read_json, state_root
 from milk_v2.providers.modal_serve import locked
+from milk_v2.store import open_store, settings_from_environment
 
 
 IDENTIFIER = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
@@ -39,6 +41,30 @@ def number(name: str, default: int, minimum: int = 1) -> int:
     return value
 
 
+def checkpoint(model: str, revision: str) -> dict | None:
+    key = os.environ.get("MILK_BASETEN_SERVE_CHECKPOINT_KEY")
+    expected = os.environ.get("MILK_BASETEN_SERVE_CHECKPOINT_SHA256")
+    if key is None and expected is None:
+        return None
+    settings = settings_from_environment()
+    if (not key or not expected or not re.fullmatch(r"[0-9a-f]{64}", expected)
+            or not re.fullmatch(re.escape(settings.scope_prefix) + r"m/[0-9a-f-]{36}/manifest\.json", key)):
+        raise ValueError("set CHECKPOINT_KEY and CHECKPOINT_SHA256 to an exact model manifest in this scope")
+    raw = open_store(settings).get(key).body
+    if hashlib.sha256(raw).hexdigest() != expected:
+        raise ValueError("checkpoint manifest digest differs")
+    value = json.loads(raw)
+    if not isinstance(value, dict) or value.get("schema_version") != "milk.model.v2":
+        raise ValueError("checkpoint must be a Milk model manifest")
+    provider = value.get("provider") or {}
+    if (not isinstance(provider, dict) or provider.get("name") != "baseten" or provider.get("status") != "TRAINING_JOB_COMPLETED"
+            or not IDENTIFIER.fullmatch(str(provider.get("job_id", "")))
+            or value.get("student_base") != {"model_repo": model, "model_revision": revision}
+            or key != settings.scope_prefix + f"m/{value.get('model_uuid')}/manifest.json"):
+        raise ValueError("checkpoint provider, base model, revision or model UUID differs")
+    return {"key": key, "sha256": expected, "model_uuid": value["model_uuid"], "provider": provider}
+
+
 def plan() -> dict:
     model, revision, image = setting("MODEL"), setting("REVISION"), setting("IMAGE")
     if not re.fullmatch(r"[\w.-]+/[\w.-]+", model) or not re.fullmatch(r"[0-9a-f]{40,64}", revision):
@@ -55,6 +81,8 @@ def plan() -> dict:
     ):
         raise ValueError("VLLM_ARGS_JSON must be arguments without job-owned model, binding, or key flags")
     served = setting("SERVED_MODEL", model)
+    trained = checkpoint(model, revision)
+    model_path = f"/tmp/training_checkpoints/{trained['provider']['job_id']}/rank-0/merged" if trained else "/models/milk"
     weights = {"source": f"hf://{model}@{revision}", "mount_location": "/models/milk"}
     secret = os.environ.get("MILK_BASETEN_SERVE_HF_SECRET_NAME")
     if secret:
@@ -75,7 +103,7 @@ def plan() -> dict:
         "base_image": {"image": image},
         "docker_server": {
             "start_command": shlex.join([
-                "vllm", "serve", "/models/milk", "--served-model-name", served,
+                "vllm", "serve", model_path, "--served-model-name", served,
                 "--host", "0.0.0.0", "--port", "8000", "--tensor-parallel-size", str(count), *arguments,
             ]),
             "server_port": 8000, "predict_endpoint": "/v1/chat/completions",
@@ -85,13 +113,21 @@ def plan() -> dict:
         "resources": {"accelerator": f"{gpu}:{count}", "use_gpu": True},
         "runtime": {"predict_concurrency": concurrency, "streaming_read_timeout": 120},
     }
-    if secret:
+    if trained:
+        del config["weights"]
+        config["training_checkpoints"] = {
+            "download_folder": "/tmp/training_checkpoints",
+            "artifact_references": [{"training_job_id": trained["provider"]["job_id"], "paths": ["rank-0/merged/*"]}],
+        }
+    elif secret:
         config["secrets"] = {secret: None}
     value = {
         "provider": "baseten", "model": model, "revision": revision, "served_model": served,
         "gpu": gpu, "gpu_count": count, "image": image, "truss_version": baseten.TRUSS_VERSION,
         "team": os.environ.get("BASETEN_TEAM_NAME"), "config": config, "autoscaling": autoscaling,
     }
+    if trained:
+        value["checkpoint"] = trained
     identity = digest(value)
     return {**value, "profile_id": identity, "model_name": f"milk-serve-{identity[:20]}", "deployment_name": identity[:32]}
 
