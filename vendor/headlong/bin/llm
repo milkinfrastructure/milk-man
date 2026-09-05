@@ -157,6 +157,7 @@ if sys.argv[4]:
     with open(sys.argv[4], "w") as handle:
         json.dump(value.get("usage") if isinstance(value.get("usage"), dict) else {}, handle)
 if os.environ.get("LLM_API_MODE", "chat_completions") == "responses":
+    completed = value.get("status") == "completed"
     tool_calls, texts = [], []
     for item in value.get("output", []):
         if item.get("type") == "function_call":
@@ -169,6 +170,7 @@ if os.environ.get("LLM_API_MODE", "chat_completions") == "responses":
 else:
     try:
         message = value["choices"][0]["message"]
+        completed = value["choices"][0].get("finish_reason") == "stop"
     except (KeyError, IndexError, TypeError) as error:
         raise SystemExit(f"llm: invalid OpenAI-compatible response: {error}")
 if sys.argv[3] == "1":
@@ -181,6 +183,7 @@ if sys.argv[3] == "1":
             request_id = header_value.strip()
     print(json.dumps({
         "message": message,
+        "completed": completed,
         "provider_request_id": request_id,
         "usage": value.get("usage", {}),
     }, ensure_ascii=False, separators=(",", ":")))

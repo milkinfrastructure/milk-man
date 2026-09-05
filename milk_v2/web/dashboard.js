@@ -762,8 +762,9 @@ function renderMan(man) {
     setup: "session setup needed",
   };
   light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", man.online ? labels[state] || labels.setup : man.trajectory_id ? "offline · session saved" : "no session yet");
-  el("driver-detail").textContent = "Dashboard model configuration: " + (driverStatus || "not configured") + ". Session: " + (man.trajectory_id || "not started") + ".";
-  el("active-model").textContent = (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
+  const driverSource = driver.source === "heartbeat" ? "Running agent" : "Dashboard setting";
+  el("driver-detail").textContent = driverSource + ": " + (driverStatus || "not configured") + ". Session: " + (man.trajectory_id || "not started") + ".";
+  el("active-model").textContent = driverSource + " · " + (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
   const pulse = man.heartbeat || {};
   const heartbeatOnline = pulse.online === true;
   const heartbeatStarting = !heartbeatOnline && man.connection === "attached" && man.active;

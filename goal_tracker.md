@@ -15,7 +15,32 @@ Status notation:
 
 ## Executive state
 
-- [~] Parlor `bf9f927` adds `MILK_MECHANICS_UPSTREAMS_JSON`: a registered
+- [x] The existing parent trajectory `706ed10d-73ee-455d-bab9-ae56efe5340d`
+  ran owned `openai/gpt-oss-120b` on one Modal H200 through its own Parlor scope.
+  Five complete R2 exchanges retain request, response and native tool history.
+  Four Bash actions wrote the correct comparison report; the fifth model reply
+  was its final answer. This was a Codex-operated switch, using bounded history.
+- [!] The old harness rejected that text-only final. The fix accepts explicit
+  completed text, safely quotes it, and preserves native tool calls. Exact
+  response replay accepts `stop`, rejects `length`, and makes zero inference
+  calls. The one live continuation received HTTP 503 after idle scale-down;
+  it is not evidence of successful live repair or autonomous recovery.
+- [x] A separate loopback-only replay through actual `bin/man develop` exited
+  zero and saved the retained final answer to its own trajectory. No new model
+  calls. Receipt: `parent-scoped-120b.xgneLC/final-replay.json`.
+- [x] Modal app `ap-PggvlDPbrDKbRXtogX170R` stopped at 20:39 UTC. Independent
+  reads show zero Modal containers and three inactive Baseten deployments,
+  each with zero replicas. The same parent is back on Astra/Responses through
+  Parlor. Chrome shows the owner's actual model, not the dashboard setting.
+  Temporary scoped forwarding was cleared and `MILK_OWN_MODEL_API_KEY` removed
+  from Cloudflare; the private source credential was not deleted.
+  Private receipts: `parent-scoped-120b.xgneLC/`.
+  R2 report SHA-256: `af125040e3d74e9e3f80482614a5c704015d059c31a0631b23a2d9381734ce5e`.
+  Research revision `794fa73aa485f3967a15950aa830529a4e7b079cddb2f35b19f6ccce0a6aa24a`
+  retains fifteen experiments; baseline/evaluation/best remain unchanged.
+  Current experiment reserved $10; cumulative conservative allocation $398.91
+  of $500, including previous pending/reserved amounts. Not an actual bill.
+- [x] Parlor `bf9f927` adds `MILK_MECHANICS_UPSTREAMS_JSON`: a registered
   mechanics scope/protocol selects its own base URL and named API-key envvar.
   Global defaults and signed production routing remain unchanged. Rust built
   offline and the actual HTTP path proved selected chat override, unchanged
@@ -27,10 +52,12 @@ Status notation:
   Image `sha256:8e959d53c042e9233ae600db08d78c0da45d30ab9bb09aca3b74bc4bcef9326d`
   is 2,361,709 bytes, built for linux/amd64 using cached dependencies and the
   existing two-layer scratch runtime. Published Parlor `cfedcca` pins it.
-  Worker version `f05f3ffe-039e-41be-bc7c-8aaf7295b910` selects
-  `parlor-bf9f927-scoped`; live health and own-scope authentication returned
-  200. No actual scope override is configured; hosted scoped routing and the
-  parent-model switch remain unproven. Astra owner `62714` remains alive.
+  Worker `c7272474-c4e6-451b-bf0c-0a60913b8bb1` proved the scoped override live.
+  Restore deployment `ddac22e9-eb21-4aad-85bb-348c9a84af74` cleared it and
+  selected `parlor-bf9f927-scoped`; the temporary credential was then deleted.
+  Current post-deletion Worker version: `6178ccc5-9ff7-4914-86ec-293bfc72812c`.
+  Live health is healthy. The parent-model transport switch is proven above;
+  clean repaired task completion is not.
   A Wrangler unmatched instance row is not independent proof of zero capacity.
   At 20:17 UTC the raw API showed this DO with `deployment_id:null` and no
   instance rows, so its running image could not be independently observed.

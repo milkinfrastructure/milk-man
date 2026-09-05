@@ -12,15 +12,35 @@ import subprocess
 import sys
 import tempfile
 import time
+from urllib.parse import urlsplit
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     __package__ = "milk_v2"
 
-from .state import atomic_json
+from .state import atomic_json, redact
 
 
 ITERATION_EXHAUSTED = 76
+
+
+def driver_state() -> dict:
+    hostname = (urlsplit(os.environ.get("LLM_API_URL", "")).hostname or "").lower()
+    if os.environ.get("LLM_MILK_TRAJECTORY_HEADER") == "1":
+        provider = "milk-parlor"
+    elif hostname == "inference.baseten.co":
+        provider = "baseten"
+    elif hostname.endswith((".modal.direct", ".modal.run")):
+        provider = "modal"
+    elif hostname == "api.openai.com":
+        provider = "openai"
+    else:
+        provider = "custom"
+    return {"provider": provider, **{
+        field: redact(os.environ.get(name, ""))[:256]
+        for field, name in (("model", "LLM_MODEL"), ("api_mode", "LLM_API_MODE"),
+                            ("reasoning_effort", "LLM_REASONING_EFFORT"))
+    }}
 
 
 def state_path() -> Path:
@@ -277,7 +297,7 @@ def main() -> None:
         with edit(path) as value:
             interrupted = value.get("state") == "running"
             prompt = Path(os.environ["MILK_HEARTBEAT_PROMPT_FILE"]).read_text().strip()
-            value.update(pid=os.getppid(), state="waiting" if value.get("watch") else "idle", interval=base, next_wake=stamp)
+            value.update(pid=os.getppid(), state="waiting" if value.get("watch") else "idle", interval=base, next_wake=stamp, driver=driver_state())
             if os.environ.get("MILK_HEARTBEAT_NEW_TASK") == "1":
                 if not prompt:
                     raise ValueError("a new heartbeat task cannot be empty")

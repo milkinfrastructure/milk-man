@@ -118,8 +118,17 @@ import sys
 
 text = open(sys.argv[1]).read()
 if sys.argv[3] == "1":
-    message = json.loads(text)["message"]
-    calls = message.get("tool_calls", [])
+    response = json.loads(text)
+    message = response["message"]
+    calls = message.get("tool_calls") or []
+    content = message.get("content")
+    if not calls and response.get("completed") is True and isinstance(content, str) and content.strip() and "\0" not in content:
+        # A normal completed answer is final too; never treat truncation as finish.
+        with open(sys.argv[4], "w") as handle:
+            json.dump(message, handle, ensure_ascii=False, separators=(",", ":"))
+        open(sys.argv[1], "w").write(content)
+        open(sys.argv[2], "w").write("FINAL=" + shlex.quote(content.strip()))
+        raise SystemExit(0)
     if len(calls) != 1:
         raise SystemExit("shellm: expected one function call")
     call = calls[0]

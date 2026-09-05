@@ -142,26 +142,6 @@ def _current_state() -> tuple[dict, Path, Path]:
     return {**current, "workspaces": workspaces}, trajectory, memory
 
 
-def _driver_state() -> dict:
-    hostname = (urlsplit(os.environ.get("LLM_API_URL", "")).hostname or "").lower()
-    if os.environ.get("LLM_MILK_TRAJECTORY_HEADER") == "1":
-        provider = "milk-parlor"
-    elif hostname == "inference.baseten.co":
-        provider = "baseten"
-    elif hostname.endswith((".modal.direct", ".modal.run")):
-        provider = "modal"
-    elif hostname == "api.openai.com":
-        provider = "openai"
-    else:
-        provider = "custom"
-    return {
-        "provider": provider,
-        "model": os.environ.get("LLM_MODEL", ""),
-        "api_mode": os.environ.get("LLM_API_MODE", ""),
-        "reasoning_effort": os.environ.get("LLM_REASONING_EFFORT", ""),
-    }
-
-
 def _man_state(include_metadata: bool = True) -> dict:
     try:
         current, trajectory, memory = _current_state()
@@ -174,7 +154,7 @@ def _man_state(include_metadata: bool = True) -> dict:
             "queued": False,
             "last_exit_code": LAST_EXIT_CODE,
             "trajectory_id": None,
-            "driver": _driver_state(),
+            "driver": {**heartbeat.driver_state(), "source": "dashboard"},
             "heartbeat": {"online": False},
             "local_jobs": [],
             "workspaces": [],
@@ -192,6 +172,11 @@ def _man_state(include_metadata: bool = True) -> dict:
     background_watch = bool(watch_command and Path(watch_command[0]).name == "background")
     watch_pid = watched.get("child_pid") if background_watch and isinstance(watched, dict) else None
     pulse_alive = heartbeat.alive(pulse)
+    driver = heartbeat.driver_state()
+    driver_source = "dashboard"
+    if pulse_alive and isinstance(pulse.get("driver"), dict):
+        driver = {key: _redact(pulse["driver"].get(key))[:256] for key in driver}
+        driver_source = "heartbeat"
     watch_resource = {}
     if pulse_alive and pulse.get("state") == "waiting" and isinstance(watched, dict):
         for key in ("provider_status", "model_id", "deployment_id"):
@@ -276,7 +261,7 @@ def _man_state(include_metadata: bool = True) -> dict:
         "queued": queued,
         "last_exit_code": last_exit_code,
         "trajectory_id": current.get("trajectory_id"),
-        "driver": _driver_state(),
+        "driver": {**driver, "source": driver_source},
         "local_jobs": local_jobs,
         "workspaces": workspaces,
         "memory": memories,

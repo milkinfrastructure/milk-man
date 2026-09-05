@@ -20,9 +20,8 @@ Current frontier:
   summary probes. Direct local checks pass; no paid task was repeated.
 - [x] Added optional recent Modal log reads to the existing status job.
   Default status makes no log request; failed log reads cannot restart an app.
-  Retained-app CLI read returned 20 lines without compute. That older app no
-  longer appears in status; verify automatic attachment on the next useful run,
-  not by buying a logging-only deployment.
+  The owned 120B run attached 20 recent lines, exposing idle scale-down and
+  the later cold start. Original startup phases are now measured in that run.
 - [x] Research saves can bind exact scoped objects. The retained Qwen
   comparison now includes both run configurations and results plus its saved
   comparison, checked on R2 before publication. All thirteen experiments
@@ -38,16 +37,29 @@ Current frontier:
   script with Bash. Neither wrote the required outputs or finished. Trained
   also exceeded the task's permitted reads. No quality win; no rerun or more
   training. All three Baseten deployments and Modal are independently at zero.
-- [~] Parlor now accepts an environment-selected upstream for one mechanics
+- [x] Parlor now accepts an environment-selected upstream for one mechanics
   scope/protocol without changing shared defaults or signed production routes.
-  The Rust HTTP path and Cloudflare environment forwarding passed direct local
-  checks, including four stored request/response pairs with trajectory IDs.
-  Code and the 2.36 MB image are published and deployed. Live health and the
-  existing own-scope key work; no scope override is configured yet. Actual
-  hosted scoped routing and a parent driver turn remain unproven. Next use
-  one explicitly selected endpoint and resume the existing parent trajectory
-  at idle, preserving Astra as the known working driver configuration and
-  other scopes. Do not introduce a new driver-switch framework.
+  The existing parent resumed on owned 120B through its scoped Parlor key.
+  Five complete request/response captures retain the same trajectory and tool
+  history. The requested report is correct. Dashboard model state now comes
+  from the running owner, not the dashboard's separate environment.
+- [!] The report-producing turn did not finish cleanly: the old parser rejected
+  its completed text answer. The minimal fix accepts completed text and rejects
+  truncated text; replay of the retained response used zero inference calls.
+  One live continuation hit HTTP 503 after Modal idle scale-down. Do not claim
+  live repair success, autonomous handoff, or a quality win.
+- [x] The actual `bin/man develop` loop replayed that retained response through
+  a loopback-only HTTP endpoint, exited zero, and saved its final answer in a
+  separate private trajectory. No new inference, provider call, or live replay.
+- [x] The same parent is restored to Astra through Parlor, idle. Temporary
+  scoped routing and its Cloudflare credential were removed. Independent
+  provider reads at 20:39 UTC show zero Modal containers and all three known
+  Baseten comparison deployments inactive with zero replicas.
+- [ ] Next close the owned-driver session gap using the existing
+  `MILK_MODAL_SERVE_SCALEDOWN_SECONDS` and readiness path: a bounded interactive
+  session must remain usable while its task is active, then stop. Local
+  finalization is already proven. No new controller, repeated
+  training/benchmark, or blind retry of the failed continuation.
 - [ ] Continue unproven P4–P8 model operations, useful inference tuning and the
   scope-specific learning application. Reuse completed work, add only a missing
   executable capability, then prove that capability through Milk Man. No new
@@ -231,10 +243,10 @@ independently checked at zero capacity.
 This small batching result does not repair N2 or prove better agent behavior.
 Do not repeat either completed profile.
 
-The existing Modal serving job now retains startup-phase durations. Local
-checks cover new/reused deployments and unchanged status reads; actual phase
-timings remain unmeasured until the next useful serving run. Do not buy a
-timing-only GPU run. The local environment no longer replaces the harness PATH.
+The existing Modal serving job now retains startup-phase durations. The later
+parent-driver run measured 3.659 seconds for deployment, 4.864 for cached
+weights, and 302.783 for readiness (311.306 total). These are client-observed
+phases, not billed GPU duration. The local environment no longer replaces PATH.
 R2 research revision `2a24374f23b905f64bf1f2d84c27603c298200b9b679dfac5e71b0a69e4d74c2`
 retains all nine experiments; baseline/evaluation/best remain unknown.
 
@@ -522,7 +534,7 @@ without a separate scheduler service.
   on `serve-modal status`, reusing the installed CLI and existing redaction.
   Reads are bounded and optional; logs are private. Ordinary status and absent
   app handling ran live, and the retained app ID returned 20 lines directly.
-  Active-job attachment remains to be observed during a useful serving run.
+  The parent-driver run also attached 20 recent lines through this status job.
 - [~] Refactor the current fixed controller lifecycle into reusable,
   provider-native scripts for ensure/reuse, status/logs, inference smoke, and
   stop. Both paths ran live; Baseten-owned activation, three requests, and
@@ -548,8 +560,12 @@ without a separate scheduler service.
   weight-free runtime image, made three correct calls, and returned to zero;
   Codex corrections were still required during the sequence.
 - [~] The selected 120B endpoint powered a fresh native Milk Man child through
-  a real research-status task. Switching the parent's active trajectory to
-  that endpoint and capturing its traffic through Parlor remains unproved.
+  a real research-status task. The existing parent later resumed through its
+  scoped Parlor key, kept its bounded tool history, wrote the correct report,
+  and produced five complete captures. Its final reply exposed a parser bug;
+  the fix passes retained-response replay. Live repaired completion remains
+  unproved after the continuation hit an idle cold-start 503. Astra was restored
+  and compute stopped. This was a Codex-operated handoff, not autonomous setup.
 - [x] A later Chrome checkpoint task completed without command-by-command
   correction: owned 120B startup, heartbeat resume, one native child task,
   automatic stop, and an independent zero-container observation. The child

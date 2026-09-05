@@ -51,7 +51,11 @@ and shows messages, workspace changes, configured environment names, gateway
 health, and object-store progress. It never displays environment values.
 The heartbeat strip shows the last check, next wake, and idle-check count.
 Open **Full task + activity counts** for the complete instruction. The model
-setting appears beside chat. The current task is separate from saved data.
+beside chat comes from the running heartbeat. If no owner reports its model,
+the page labels the dashboard setting instead. Change a model at an idle
+boundary: stop the heartbeat, load the new environment, and resume the same
+trajectory and workspaces. Saved history and memory remain. The current task
+is separate from saved data.
 Click a checkpoint for its summary; focus or tap `?` to explain a field.
 Research shows each experiment's conclusion before its detailed measurements.
 Closing the page is not a stop command; current heartbeat proof status is in
@@ -244,6 +248,10 @@ The serving result also records deployment, weight-loading, and readiness times
 in `details.observation.startup`. Status keeps those original measurements.
 They include provider checks and may use warm caches; they are not GPU-only
 startup time or billed duration. Older runs without timings remain unknown.
+Modal can scale an idle model down while Milk Man is still online. Set
+`MILK_MODAL_SERVE_SCALEDOWN_SECONDS` for the intended work session before
+deployment, check readiness before using it, and explicitly stop it afterward.
+An idle heartbeat does not keep a GPU warm or prove its endpoint is ready.
 
 To read recent Modal startup logs without starting compute:
 `MILK_MODAL_SERVE_LOG_LINES=20 bin/milk run serve-modal status`.
