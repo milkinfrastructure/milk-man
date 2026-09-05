@@ -15,6 +15,25 @@ Status notation:
 
 ## Executive state
 
+- [x] `bin/score-benchmark-task` uses the existing trial checker hook and
+  registered `benchmark-compare` job. It checks the saved comparison and
+  target-based decision against pinned receipt bytes, with zero model/provider
+  calls. Independent review found Python boolean/number equality could accept
+  altered JSON; canonical JSON comparison fixes it. The direct check initially
+  omitted the scope environment and correctly disagreed with the saved wrapper;
+  selecting the intended scope passed. No new test framework or dependency.
+- [~] Prepared one new benchmark-analysis task outside the training examples,
+  task SHA-256
+  `ed0e1b9f9b8463240d7605547c59f41496f58102e0f523c666bb3824fe338544`.
+  No new trial or resource has started yet. Both arms will use one runtime,
+  isolated identical inputs and the same six-reply allowance; completion and
+  actual command review supplement the output score. One task cannot establish
+  general improvement. Private state: `heldout-benchmark.q4OFUx/`.
+- [x] Refreshed Chrome billing: Baseten September $34.98, Modal $13.99.
+  Prior carry $274.94, pending $20, retained reservations $25 + $10, and this
+  comparison's $10 reserve total $388.91 conservatively allocated against the
+  same cumulative $500 authorization. Possible overlap is retained; this is
+  not literal billed cost. No new training is planned.
 - [x] Research revision
   `d06e5a68fac31fc74783dc82632d889b57fd7714399bfcb41f61911b59ff2f43`
   adds checked `object_refs` to the existing failed Qwen comparison: baseline

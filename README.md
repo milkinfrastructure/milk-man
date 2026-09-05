@@ -281,6 +281,12 @@ without another model call. `MILK_TRIAL_ID` retrieves an exact earlier trial;
 use a new `MILK_TRIAL_ATTEMPT` only to deliberately run again. Judge the answer
 against the task: an agent finishing does not mean it answered correctly.
 
+`bin/score-benchmark-task` uses the existing checker hook for a small research
+task: save `comparison.json` and choose a profile in `decision.json`. Its JSON
+task pins baseline/candidate input files and hashes plus throughput/latency
+targets. The scorer reruns only the local comparison, not inference. Use fresh
+workspaces with identical inputs for each model; keep this task out of training.
+
 Trials retain input, output, cached and reasoning token counts reported for
 recorded driver replies. A total is unknown if any reply omits that count;
 `usage_coverage` shows how many replies reported it. Cached and reasoning tokens

@@ -28,6 +28,13 @@ Current frontier:
   comparison, checked on R2 before publication. All thirteen experiments
   remain; unchanged replay rereads none of these objects. This does not supply
   an untouched evaluation or a winner; those requirements below remain open.
+- [~] Added a small saved-benchmark task scorer through the existing trial
+  checker hook. Direct execution checks the real comparison and rejects
+  boolean/number substitutions without inference. Next: one new task, absent
+  from the completed SFT data, on the original and already-trained Qwen using
+  the same frozen runtime and fresh identical workspaces. Keep task completion,
+  output correctness and permitted reads separate. No retraining, repeat of
+  the failed checkpoint task, or general quality claim from one task.
 - [ ] Continue unproven P4–P8 model operations, useful inference tuning and the
   scope-specific learning application. Reuse completed work, add only a missing
   executable capability, then prove that capability through Milk Man. No new

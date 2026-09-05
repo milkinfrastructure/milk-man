@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Score a saved benchmark-comparison task without model or provider calls."""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def same(left, right):
+    return json.dumps(left, sort_keys=True, allow_nan=False) == json.dumps(right, sort_keys=True, allow_nan=False)
+
+
+def main():
+    result = json.load(sys.stdin)
+    body = Path(os.environ["MILK_TRIAL_TASK_FILE"]).read_bytes()
+    if hashlib.sha256(body).hexdigest() != result["task_sha256"]:
+        raise ValueError("task changed")
+    task = json.loads(body)
+    workspace = Path(os.environ["MILK_TRIAL_WORKSPACE"]).resolve()
+    environment = os.environ.copy()
+    for name in ("baseline", "candidate"):
+        source = task["inputs"][name]
+        path = (workspace / source["file"]).resolve()
+        if workspace not in path.parents:
+            raise ValueError("task input must stay inside its workspace")
+        environment["MILK_COMPARE_" + name.upper() + "_FILE"] = str(path)
+        environment["MILK_COMPARE_" + name.upper() + "_SHA256"] = source["sha256"]
+    expected = json.loads(subprocess.run(
+        [str(ROOT / "bin/milk"), "run", "benchmark-compare"], env=environment,
+        capture_output=True, check=True, timeout=5,
+    ).stdout)
+    details, targets = expected["details"], task["targets"]
+    eligible = []
+    for name in ("baseline", "candidate"):
+        trial = details[name]
+        metrics = trial["aggregate"]
+        rate = metrics.get("output_tokens_per_wall_second")
+        latency = metrics.get("latency_ms_p95")
+        if (details["request_settings_match"] and trial["all_answers_correct"]
+            and rate is not None and latency is not None
+            and rate >= targets["min_tokens_per_second"] and latency <= targets["max_latency_ms_p95"]):
+            eligible.append((name, rate))
+    selected = max(eligible, key=lambda item: item[1])[0] if eligible else None
+    decision = {"selected_profile": selected, "request_settings_match": details["request_settings_match"],
+                "all_answers_correct": details["all_answers_correct"]}
+    try:
+        comparison_matches = same(json.loads((workspace / "comparison.json").read_bytes()), expected)
+        decision_matches = same(json.loads((workspace / "decision.json").read_bytes()), decision)
+    except (OSError, ValueError):
+        comparison_matches = decision_matches = False
+    print(json.dumps({"task_correct": comparison_matches and decision_matches,
+                      "metrics": {"comparison_matches": int(comparison_matches), "decision_matches": int(decision_matches)},
+                      "reason": "Saved outputs checked against pinned inputs and task targets"}))
+
+
+if __name__ == "__main__":
+    main()
