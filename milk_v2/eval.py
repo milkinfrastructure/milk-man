@@ -65,6 +65,8 @@ def current_matches(
     target: int | None = None,
     shard_cases: int | None = None,
     revision_id: str | None = None,
+    *,
+    require_current_code: bool = True,
 ) -> bool:
     summary_pointer, unused_summary, readiness_pointer, unused_readiness, readiness_pointer_sha256 = _current(store, settings)
     try:
@@ -91,11 +93,11 @@ def current_matches(
         raise EvalError("current eval manifest is invalid") from error
     if not isinstance(manifest, dict):
         raise EvalError("current eval manifest identity differs")
-    # A prior eval revision is a stale candidate, not a corrupt current one.
-    # Its immutable artifacts remain readable, but it cannot satisfy this code.
+    # Generation must match this executor; downstream jobs can reuse a saved
+    # revision with the same schema and verified identities without regenerating.
     if (
         manifest.get("schema_version") != "milk.eval-manifest.v3"
-        or manifest.get("code_version") != CODE_VERSION
+        or (require_current_code and manifest.get("code_version") != CODE_VERSION)
     ):
         return False
     if target is not None and manifest.get("target_case_count") != target:
@@ -132,7 +134,9 @@ def current_matches(
         or revision.get("context_sha256") != manifest.get("context_sha256")
         or not isinstance(identity, dict)
         or identity.get("schema_version") != "milk.eval-revision-identity.v3"
-        or identity.get("code_version") != CODE_VERSION
+        or not isinstance(manifest.get("code_version"), str)
+        or not manifest["code_version"]
+        or identity.get("code_version") != manifest.get("code_version")
         or revision.get("revision_id") != summary.digest(identity)
         or eval_uuid != str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:eval-revision:" + revision.get("revision_id", "")))
         or identity.get("scope_id") != settings.scope_id

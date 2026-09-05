@@ -363,7 +363,7 @@ def _status(store, settings, runtime):
         "statistically_qualified": bool(observed["readiness_pointer"] and observed["readiness_pointer"].get("statistically_qualified")),
     }
     details["eval_current"] = details["ready"] and eval_job.current_matches(store, settings)
-    dataset_reference = dataset_job.current(store, settings, runtime) if details["eval_current"] else None
+    dataset_reference = dataset_job.current(store, settings, runtime) if details["ready"] else None
     details["dataset_current"] = dataset_reference is not None
     details["training_ready"] = bool(dataset_reference and dataset_job.training_ready(dataset_reference.get("counts")))
     if dataset_reference is not None:

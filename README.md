@@ -504,6 +504,11 @@ ready, then exits. It stops after evaluation at `select-route-provider`; it does
 not choose, sign, or activate a route. An idle run makes zero inference and
 provider calls.
 
+Saved datasets, models and evaluations remain usable after generator code
+changes. Status can report `eval_current: false` while the saved dataset,
+model and proposal remain available. Their file hashes and linked inputs must
+still match; this does not certify old examples as better training data.
+
 Provider proposal jobs are explicit and separate. A credential being present
 never starts a provider job, and failure in one provider does not select another.
 Milk Man writes unsigned proposals only; the operator-controlled Milk Parlor

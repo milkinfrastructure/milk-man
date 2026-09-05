@@ -15,6 +15,31 @@ Status notation:
 
 ## Executive state
 
+- [x] Current-runtime P7 selection repaired: `eval.current_matches` now keeps
+  generation-version matching separate from saved-artifact selection. Dataset
+  selection accepts the existing schema only with exact file hashes, scope,
+  profile, linked inputs and matching manifest/revision executor versions.
+  Generation remains strict. Status no longer hides a saved dataset solely
+  because the generator changed. No new dependency or test file was added.
+  Direct R2 execution for mechanics scope
+  `c47a7dd1-05fb-47fc-bfbe-1ba014ffa77b` returned
+  `eval_current=false`, dataset/training/evaluation/proposal current, and
+  `next=operator-sign-route`, with zero inference/provider calls or writes.
+  Dataset `af6004f0-923e-5abd-977f-ed654f5966c6`, model
+  `d0677ba8-b72b-54e1-be3d-49eed424058b`, evaluation
+  `0859095f-1c49-550b-b6d2-dcbd93e0acb9`, proposal
+  `008d3ba1-06f9-53eb-9bb2-d9cd8b10d9ae` remain unchanged.
+  The saved evaluation policy and Qwen base match current configuration;
+  `route._inputs` accepts the sealed dynamic-FP8 winner. This proves selection,
+  not provider liveness, model improvement or production qualification.
+- [!] Chrome dashboard task submitted at 23:08:08 UTC failed before any Bash
+  execution. The retained run log says HTTP 429, `insufficient_quota`,
+  `credit_balance_exhausted`: OpenAI has no remaining credits. Owner `4017`
+  reports failed / exit 70 with Astra medium through Parlor. There is no new
+  reasoning result, generation, GPU job or route write. Do not classify this
+  as throttling, retry it, or silently select another provider. Resume the
+  read-only demonstration after the operator restores the driver's balance.
+  Dashboard Chrome tab `1025730670` remains open with the actual failed state.
 - [x] User-directed correction: keep new work on the current Milk Man runtime;
   old measurements are historical references, not a reason to run old code.
   The `capture-learning.o1Ofod` trial was stopped during Baseten startup before

@@ -79,7 +79,7 @@ def current(store, settings, runtime) -> dict | None:
         status, unused_status_body = _object(store, settings.scope_prefix + "status/current.json")
     except FileNotFoundError:
         return None
-    if not eval_job.current_matches(store, settings):
+    if not eval_job.current_matches(store, settings, require_current_code=False):
         return None
     reference = status.get("dataset")
     if not isinstance(reference, dict):

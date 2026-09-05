@@ -44,6 +44,16 @@ Execution order, refreshed September 5 after the happy-path correction:
 
 Current frontier:
 
+- [x] Current code can select the retained 100-case mechanics dataset, trained
+  model, sealed dynamic-FP8 evaluation and unsigned proposal without rerunning
+  generation. The saved v24 artifacts pass their exact hashes and linked-input
+  checks; generating new data still requires the current v29 contract. Direct
+  R2 execution made zero inference/provider calls and writes.
+- [!] The Chrome-requested Milk Man verification failed before Bash with
+  OpenAI `credit_balance_exhausted`. Astra remains at medium through Parlor;
+  no fallback or retry was launched. Restore the driver's OpenAI balance to
+  demonstrate this selection through Milk Man, then continue signed routing.
+  The direct code fix is proven; this agent turn and route activation are not.
 - [x] Responsive landing and docs are published. Do not reopen their design.
 - [x] Positive native-data preparation and four-step Qwen training completed.
 - [!] The new checkpoint failed its six-reply task check: no requested answer.
