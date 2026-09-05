@@ -251,6 +251,26 @@ def prepare(arguments: argparse.Namespace) -> None:
     os.chmod(output, 0o600)
 
 
+def token_usage(value: dict) -> dict:
+    """Keep only observed counts; missing or malformed provider fields stay unknown."""
+    result = {}
+    for field, alternatives in {
+        "input_tokens": (("input_tokens",), ("prompt_tokens",)),
+        "output_tokens": (("output_tokens",), ("completion_tokens",)),
+        "cached_tokens": (("input_tokens_details", "cached_tokens"), ("prompt_tokens_details", "cached_tokens")),
+        "reasoning_tokens": (("output_tokens_details", "reasoning_tokens"), ("completion_tokens_details", "reasoning_tokens")),
+    }.items():
+        result[field] = None
+        for path in alternatives:
+            count = value
+            for key in path:
+                count = count.get(key) if isinstance(count, dict) else None
+            if type(count) is int and count >= 0:
+                result[field] = count
+                break
+    return result
+
+
 def append_step(arguments: argparse.Namespace) -> None:
     trajectory = Path(arguments.trajectory)
     content = redact(Path(arguments.content_file).read_text() if arguments.content_file else "")
@@ -265,6 +285,8 @@ def append_step(arguments: argparse.Namespace) -> None:
         record["command"] = redact(Path(arguments.command_file).read_text())
     if arguments.message_file:
         record["message"] = redact_message(read_json(Path(arguments.message_file)))
+    if arguments.usage_file:
+        record["usage"] = token_usage(read_json(Path(arguments.usage_file)))
     if arguments.exit_code is not None:
         record["exit"] = arguments.exit_code
     append_json(trajectory, record)
@@ -439,6 +461,7 @@ def parser() -> argparse.ArgumentParser:
     append_parser.add_argument("--content-file")
     append_parser.add_argument("--command-file")
     append_parser.add_argument("--message-file")
+    append_parser.add_argument("--usage-file")
     append_parser.add_argument("--exit-code", type=int)
     append_parser.set_defaults(run=append_step)
 

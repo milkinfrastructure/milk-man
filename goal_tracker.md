@@ -15,6 +15,15 @@ Status notation:
 
 ## Executive state
 
+- [x] Driver usage retention is implemented in the existing `llm` -> `shellm`
+  -> trajectory -> `agent-trial` path. Responses and Chat Completions each ran
+  native and fenced Bash locally; missing/invalid fields stayed unknown.
+  Only numeric counts persist; model context is unchanged. Replay made zero
+  requests, and the retained Astra result remains byte-identical at
+  `024880e453017a35fc73352098d2625906d626366cd7055fec763a247a586738`.
+  Private proof: `driver-usage-20260905/proof.json`. This is local protocol
+  mechanics, with no real inference or provider calls. One independent review
+  found no material correctness issue. No new dependency or test file.
 - [x] N3 research record saved and independently read back from R2: revision
   `7295f274d5b52050dc2eb10318b49b30f6691d72421b328702c27332cf1b88c1`,
   UUID `11e7a9a7-3d57-5a92-a6da-d6d366c5b466`. Eight experiments retain the

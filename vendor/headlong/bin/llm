@@ -9,15 +9,17 @@ die() { printf 'llm: %s\n' "$*" >&2; exit 70; }
 system_file=""
 messages_file=""
 tools_file=""
+usage_file=""
 json_response=0
 while (( $# )); do
     case "$1" in
         --system-file) system_file="${2:?--system-file requires a path}"; shift 2 ;;
         --messages-file) messages_file="${2:?--messages-file requires a path}"; shift 2 ;;
         --tools-file) tools_file="${2:?--tools-file requires a path}"; shift 2 ;;
+        --usage-file) usage_file="${2:?--usage-file requires a path}"; shift 2 ;;
         --json-response) json_response=1; shift ;;
         -h|--help)
-            printf '%s\n' 'Usage: llm --system-file FILE --messages-file FILE [--tools-file FILE --json-response]'
+            printf '%s\n' 'Usage: llm --system-file FILE --messages-file FILE [--tools-file FILE --json-response] [--usage-file FILE]'
             exit 0
             ;;
         *) die "unknown argument: $1" ;;
@@ -145,12 +147,15 @@ PY
     die "HTTP $http_code: $detail"
 fi
 
-python3 - "$response" "$headers" "$json_response" <<'PY'
+python3 - "$response" "$headers" "$json_response" "$usage_file" <<'PY'
 import json
 import os
 import sys
 
 value = json.load(open(sys.argv[1]))
+if sys.argv[4]:
+    with open(sys.argv[4], "w") as handle:
+        json.dump(value.get("usage") if isinstance(value.get("usage"), dict) else {}, handle)
 if os.environ.get("LLM_API_MODE", "chat_completions") == "responses":
     tool_calls, texts = [], []
     for item in value.get("output", []):

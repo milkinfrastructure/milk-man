@@ -97,11 +97,12 @@ for ((iteration=1; iteration<=maximum; iteration++)); do
     messages="$run_dir/messages.json"
     "$context" > "$messages"
     response="$run_dir/response"
+    usage="$run_dir/usage.json"
     printf 'milk-man: reasoning %d/%d with %s\n' "$iteration" "$maximum" "$LLM_MODEL" >&2
     if [[ "$native_tools" == 1 ]]; then
-        "$llm" --system-file "$system_file" --messages-file "$messages" --tools-file "$run_dir/tools.json" --json-response > "$response"
+        "$llm" --system-file "$system_file" --messages-file "$messages" --tools-file "$run_dir/tools.json" --json-response --usage-file "$usage" > "$response"
     else
-        "$llm" --system-file "$system_file" --messages-file "$messages" > "$response"
+        "$llm" --system-file "$system_file" --messages-file "$messages" --usage-file "$usage" > "$response"
     fi
     yield_to_pending
 
@@ -159,9 +160,9 @@ else:
 open(sys.argv[2], "w").write(code)
 PY
     if [[ "$native_tools" == 1 ]]; then
-        append --type reasoning --content-file "$response" --message-file "$message"
+        append --type reasoning --content-file "$response" --message-file "$message" --usage-file "$usage"
     else
-        append --type reasoning --content-file "$response"
+        append --type reasoning --content-file "$response" --usage-file "$usage"
     fi
 
     if [[ ! -s "$code" ]]; then

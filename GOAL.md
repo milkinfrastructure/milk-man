@@ -427,6 +427,11 @@ hardcoding that model or provider into the harness.
 
 ## P5 — inference autotuning
 
+- [x] Retain provider-reported input/output/cache/reasoning counts in the
+  existing driver trajectory and agent-trial receipt. Direct local execution
+  verified both API formats and native/fenced Bash, unknown missing counts,
+  and unchanged zero-call replay. This improves task measurements; it does
+  not repair or repeat the failed owned-120B task or establish a quality win.
 - [~] Direct Bash now proves the existing serving/benchmark/stop path on a
   5,174-token checkpoint-facts workload. Both prefill settings returned three
   correct measured answers and reached independently verified zero containers.

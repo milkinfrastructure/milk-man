@@ -69,7 +69,7 @@ def configuration():
 
 
 def receipt(identity, directory, result, replay=False):
-    details = {name: result.get(name) for name in ("elapsed_seconds", "exit_code", "timed_out", "observed_model_replies", "native_tool_counts", "trajectory_id", "trajectory_sha256", "task_sha256")}
+    details = {name: result.get(name) for name in ("elapsed_seconds", "exit_code", "timed_out", "observed_model_replies", "native_tool_counts", "usage", "usage_coverage", "trajectory_id", "trajectory_sha256", "task_sha256")}
     details.update(result_file=str(directory / "result.json"), result_sha256=digest((directory / "result.json").read_bytes()), replay=replay, report=redact(result.get("report", "")).encode()[:300].decode(errors="ignore"), task_correct=result.get("task_correct"), call_count_basis="observed driver replies; transport attempts and child job calls are not measured; provider_calls covers this supervisor only")
     return {"state": result["state"], "identity": identity, "inference_calls": 0 if replay else result["observed_model_replies"], "provider_calls": 0, "details": details}
 
@@ -179,6 +179,13 @@ def execute(config, task, directory):
     functions = collections.Counter(call.get("function", {}).get("name", "unknown") for step in steps if step.get("type") == "reasoning" for call in step.get("message", {}).get("tool_calls", []))
     finals = [step.get("content", "") for step in steps if step.get("type") == "final"]
     result = {"schema_version": "milk.agent-trial-result.v1", "state": "complete" if code == 0 and finals else "failed", "started_at": started, "finished_at": now(), "elapsed_seconds": elapsed, "exit_code": code, "timed_out": timed_out, "error": error, "task_sha256": config["task_sha256"], "observed_model_replies": sum(step.get("type") == "reasoning" for step in steps), "native_tool_counts": dict(functions), "shell_exits": [step.get("exit") for step in steps if step.get("type") == "shell-output"], "report": redact(finals[-1]) if finals else "", "trajectory_id": metadata.get("trajectory_id"), "trajectory_file": str(trajectory) if trajectory else None, "trajectory_sha256": digest(trajectory.read_bytes()) if trajectory else None, "workspace_after": snapshot(Path(config["workspace"])), "runtime_after": snapshot(ROOT), "task_correct": None}
+    replies = [step for step in steps if step.get("type") == "reasoning"]
+    result["usage"], result["usage_coverage"] = {}, {}
+    for field in ("input_tokens", "output_tokens", "cached_tokens", "reasoning_tokens"):
+        counts = [step.get("usage", {}).get(field) for step in replies]
+        observed = [count for count in counts if type(count) is int and count >= 0]
+        result["usage_coverage"][field] = len(observed)
+        result["usage"][field] = sum(observed) if observed and len(observed) == len(replies) else None
     if config.get("checker"):
         result["checker"] = check_result(config, result, directory)
         verdict = result["checker"]["verdict"]
