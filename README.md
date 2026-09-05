@@ -189,6 +189,20 @@ and credential environment name for a child agent. Use that serving key, not
 the parent's Milk gateway key. `bin/man develop --check` shows the effective
 driver settings and step limit without calling the model.
 
+`serve-baseten` provides the same run/status/stop workflow for an owned Baseten
+server. Set its model, exact model revision, runtime image and GPU through the
+catalog's `MILK_BASETEN_SERVE_*` settings. Weights mount from Baseten's cache,
+not from the image. This path is implemented; its live deployment proof is
+still pending. Managed Baseten inference remains a separate option.
+
+To compare an agent on a real task, set `MILK_TRIAL_TASK_FILE` and
+`MILK_TRIAL_WORKSPACE`, configure the usual `LLM_*` values, and run
+`bin/milk run agent-trial`. It records the task, code, timing, tool use and
+answer in private state. Repeating the same trial returns its saved receipt
+without another model call. `MILK_TRIAL_ID` retrieves an exact earlier trial;
+use a new `MILK_TRIAL_ATTEMPT` only to deliberately run again. Judge the answer
+against the task: an agent finishing does not mean it answered correctly.
+
 `bin/milk run benchmark` (or `bin/benchmark` directly) measures a configured chat endpoint. Set
 `MILK_BENCHMARK_BASE_URL`, `MILK_BENCHMARK_MODEL`, and
 `MILK_BENCHMARK_API_KEY`; `MILK_BENCHMARK_STREAM=1` also measures time to the

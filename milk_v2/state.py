@@ -154,9 +154,25 @@ def git_snapshot(path: str) -> dict:
 
     head = git("rev-parse", "HEAD")
     status = git("status", "--porcelain=v1", "-z", "--untracked-files=all")
+    content = hashlib.sha256()
+    content.update(head or b"")
+    content.update(git("diff", "--no-ext-diff", "--binary", "HEAD") or b"")
+    for name in sorted((git("ls-files", "--others", "--exclude-standard", "-z") or b"").split(b"\0")):
+        if not name:
+            continue
+        file = Path(path) / os.fsdecode(name)
+        value = hashlib.sha256()
+        if file.is_symlink():
+            value.update(os.fsencode(os.readlink(file)))
+        else:
+            with file.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(65536), b""):
+                    value.update(chunk)
+        content.update(name + b"\0" + value.digest())
     return {
         "head": head.decode().strip() if head else None,
         "dirty_sha256": hashlib.sha256(status or b"").hexdigest(),
+        "content_sha256": content.hexdigest() if head is not None else None,
         "dirty": bool(status),
     }
 

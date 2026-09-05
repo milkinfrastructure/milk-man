@@ -6,8 +6,6 @@ import math
 import os
 from pathlib import Path
 import re
-import subprocess
-import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -18,7 +16,7 @@ from .providers import baseten, modal_gpu
 
 
 CODE_VERSION = "milk.route-propose.v6"
-TRUSS_VERSION = "0.18.28"
+TRUSS_VERSION = baseten.TRUSS_VERSION
 BRANCHES = {"bf16", "dynamic_fp8", "static_fp8"}
 IMAGE = re.compile(r"ghcr\.io/milkinfrastructure/milk-man-serve@sha256:[0-9a-f]{64}\Z")
 IDENTIFIER = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
@@ -289,90 +287,13 @@ def _push(config: dict, model_name: str, deployment_name: str) -> dict:
     ):
         raise RouteError("Baseten credential or team name is invalid")
     timeout = _integer("MILK_ROUTE_TIMEOUT_SECONDS", 600, 30, 1800)
-    with tempfile.TemporaryDirectory(prefix="milk-route-") as directory:
-        root = Path(directory)
-        truss = root / "truss"
-        home = root / "home"
-        truss.mkdir(mode=0o700)
-        home.mkdir(mode=0o700)
-        (truss / "config.yaml").write_bytes(summary.canonical(config))
-        trussrc = home / ".trussrc"
-        trussrc.write_text(
-            "[baseten]\n"
-            "remote_provider = baseten\n"
-            "auth_type = api_key\n"
-            f"api_key = {api_key}\n"
-            "remote_url = https://app.baseten.co\n"
+    try:
+        return baseten.push(
+            config, model_name, deployment_name, timeout=timeout,
+            labels={"milk-artifact-sha256": config["environment_variables"]["MILK_CANDIDATE_ARTIFACT_SHA256"]},
         )
-        trussrc.chmod(0o600)
-        command = [
-            "uvx",
-            "--from",
-            f"truss=={TRUSS_VERSION}",
-            "truss",
-            "push",
-            str(truss),
-            "--remote",
-            "baseten",
-            "--model-name",
-            model_name,
-            "--deployment-name",
-            deployment_name,
-            "--no-wait",
-            "--non-interactive",
-            "--disable-truss-download",
-            "--output",
-            "json",
-            "--labels",
-            json.dumps(
-                {"milk-artifact-sha256": config["environment_variables"]["MILK_CANDIDATE_ARTIFACT_SHA256"]},
-                separators=(",", ":"),
-            ),
-        ]
-        if team:
-            command.extend(("--team", team))
-        environment = {
-            "HOME": str(home),
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-            "TMPDIR": directory,
-            "UV_CACHE_DIR": os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache" / "uv")),
-            "UV_NO_PROGRESS": "1",
-        }
-        try:
-            completed = subprocess.run(
-                command,
-                cwd=truss,
-                env=environment,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=timeout,
-            )
-        except (OSError, subprocess.TimeoutExpired) as error:
-            raise ProviderError(
-                f"Baseten submission outcome is ambiguous: {error}", 1, ambiguous=True
-            ) from error
-        if len(completed.stdout.encode()) > MAX_PROVIDER_OUTPUT_BYTES:
-            raise ProviderError("Truss returned oversized output", 1, ambiguous=True)
-        try:
-            value = json.loads(completed.stdout)
-        except json.JSONDecodeError:
-            value = None
-        if completed.returncode != 0:
-            detail = _safe_detail(completed.stderr)
-            if "Custom base images not supported for your organization" in detail:
-                raise ProviderError(
-                    "Baseten custom base images are not enabled for this organization",
-                    1,
-                    code="custom_base_image_not_enabled",
-                )
-            raise ProviderError(
-                f"Truss submission failed: {detail or 'no detail'}", 1, ambiguous=True
-            )
-        if not isinstance(value, dict):
-            raise ProviderError("Truss returned invalid JSON", 1, ambiguous=True)
-        return value
+    except baseten.ProviderError as error:
+        raise ProviderError(str(error), 1, ambiguous=error.ambiguous, code=error.code) from error
 
 
 def _matching_deployment(client: baseten.Client, model_name: str, deployment_name: str):

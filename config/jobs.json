@@ -44,6 +44,28 @@
   },
   "operate_order": ["summary", "eval", "dataset", "train", "evaluate"],
   "jobs": {
+    "agent-trial": {
+      "description": "Run one Milk Man child on a task file and workspace using LLM_* settings. Returns a compact receipt with elapsed time, tool counts, final report and private evidence references; consume this receipt instead of dumping trajectories. Process completion is not a task-quality verdict. The same trial replays its saved result without model calls; use a new MILK_TRIAL_ATTEMPT only for an intentional new attempt. Status or replay by MILK_TRIAL_ID reads that exact saved trial.",
+      "executable": "bin/agent-trial",
+      "environment": {
+        "required": ["MILK_TRIAL_TASK_FILE", "MILK_TRIAL_WORKSPACE", "LLM_API_URL", "LLM_MODEL"],
+        "optional": ["LLM_API_KEY", "LLM_API_MODE", "LLM_REASONING_EFFORT", "LLM_MAX_TOKENS", "LLM_MILK_TRAJECTORY_HEADER", "MILK_MAN_MAX_ITERATIONS", "MILK_MAN_TOOL_CALLS", "MILK_MAN_CONTEXT_BYTES", "MILK_MAN_MEMORY_BYTES", "MILK_MAN_STATE_DIR", "MILK_TRIAL_ATTEMPT", "MILK_TRIAL_ID", "MILK_TRIAL_TIMEOUT_SECONDS", "MILK_TRIAL_JOB_TIMEOUT_SECONDS"]
+      },
+      "status": true,
+      "stop": false,
+      "timeout_env": "MILK_TRIAL_JOB_TIMEOUT_SECONDS"
+    },
+    "serve-baseten": {
+      "description": "Deploy, inspect, or stop an environment-selected vLLM server on Baseten. Cached weights stay outside the image. Run returns during startup; watch status and repeat run only if it requests configuration application. This reuses the same deployment. Complete means provider readiness, not verified inference. details.driver gives the endpoint, model and credential environment name.",
+      "executable": "milk_v2/providers/baseten_serve.py",
+      "environment": {
+        "required": ["BASETEN_API_KEY", "MILK_BASETEN_SERVE_MODEL", "MILK_BASETEN_SERVE_REVISION", "MILK_BASETEN_SERVE_IMAGE"],
+        "optional": ["BASETEN_TEAM_NAME", "MILK_MAN_STATE_DIR", "MILK_BASETEN_SERVE_GPU", "MILK_BASETEN_SERVE_GPU_COUNT", "MILK_BASETEN_SERVE_SERVED_MODEL", "MILK_BASETEN_SERVE_VLLM_ARGS_JSON", "MILK_BASETEN_SERVE_HF_SECRET_NAME", "MILK_BASETEN_SERVE_CONCURRENCY", "MILK_BASETEN_SERVE_MIN_REPLICAS", "MILK_BASETEN_SERVE_MAX_REPLICAS", "MILK_BASETEN_SERVE_SCALEDOWN_SECONDS", "MILK_BASETEN_SERVE_PUSH_TIMEOUT_SECONDS", "MILK_BASETEN_SERVE_API_TIMEOUT_SECONDS", "MILK_BASETEN_SERVE_TIMEOUT_SECONDS"]
+      },
+      "status": true,
+      "stop": true,
+      "timeout_env": "MILK_BASETEN_SERVE_TIMEOUT_SECONDS"
+    },
     "progress": {
       "description": "Read the current scope's captured count, summarized count, and next job. This job does not write objects or call a model or provider.",
       "executable": "bin/progress",

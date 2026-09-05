@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+"""Run one retained Milk Man child; replay never repeats its work."""
+
+import collections
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import threading
+import time
+from urllib.parse import urlsplit
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from milk_v2.state import NAME, atomic_json, git_snapshot, now, read_json, records, redact
+
+
+def digest(value):
+    return hashlib.sha256(value).hexdigest()
+
+
+def snapshot(path):
+    result = git_snapshot(str(path))
+    if not result["head"]:
+        raise ValueError("MILK_TRIAL_WORKSPACE must be a Git worktree")
+    return result
+
+
+def configuration():
+    task_file = Path(os.environ["MILK_TRIAL_TASK_FILE"]).expanduser().resolve()
+    task = task_file.read_bytes()
+    if not 0 < len(task) <= 65536 or b"\0" in task:
+        raise ValueError("task must contain 1..65536 UTF-8 bytes without NUL")
+    task.decode("utf-8")
+    workspace = Path(os.environ["MILK_TRIAL_WORKSPACE"]).expanduser().resolve()
+    url = os.environ["LLM_API_URL"]
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"https", "http"} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or redact(url) != url:
+        raise ValueError("LLM_API_URL must be a credential-free HTTP(S) endpoint")
+    attempt = os.environ.get("MILK_TRIAL_ATTEMPT", "0")
+    if not NAME.fullmatch(attempt):
+        raise ValueError("MILK_TRIAL_ATTEMPT must be a short filename-safe label")
+    driver = {"LLM_API_URL": url, "LLM_MODEL": os.environ["LLM_MODEL"]}
+    for name, default in {"LLM_API_MODE": "chat_completions", "LLM_REASONING_EFFORT": "", "LLM_MAX_TOKENS": "32768", "LLM_CONNECT_TIMEOUT": "10", "LLM_MAX_TIME": "900", "MILK_MAN_MAX_ITERATIONS": "20", "MILK_MAN_TOOL_CALLS": "1", "MILK_MAN_CONTEXT_BYTES": "32768", "MILK_MAN_MEMORY_BYTES": "4096", "LLM_MILK_TRAJECTORY_HEADER": "0"}.items():
+        driver[name] = os.environ.get(name, default)
+    timeout = int(os.environ.get("MILK_TRIAL_TIMEOUT_SECONDS", "600"))
+    outer_timeout = int(os.environ.get("MILK_TRIAL_JOB_TIMEOUT_SECONDS", "3600"))
+    if not 1 <= timeout <= outer_timeout - 15:
+        raise ValueError("trial timeout must be positive and at least 15 seconds below job timeout")
+    store = {name: os.environ.get(name) for name in ("MILK_SCOPE_PROFILE", "MILK_STORE_KIND", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_PATH_STYLE")}
+    config = {"schema_version": "milk.agent-trial.v1", "task_sha256": digest(task), "workspace": str(workspace), "workspace_before": snapshot(workspace), "runtime_before": snapshot(ROOT), "driver": driver, "scope_id": os.environ.get("MILK_SCOPE_ID"), "store": store, "attempt": attempt, "timeout_seconds": timeout}
+    if redact(json.dumps(config)) != json.dumps(config):
+        raise ValueError("nonsecret trial settings contain a credential; use environment authentication")
+    return config, task, digest(json.dumps(config, sort_keys=True, separators=(",", ":")).encode())
+
+
+def receipt(identity, directory, result, replay=False):
+    details = {name: result.get(name) for name in ("elapsed_seconds", "exit_code", "timed_out", "observed_model_replies", "native_tool_counts", "trajectory_id", "trajectory_sha256", "task_sha256")}
+    details.update(result_file=str(directory / "result.json"), result_sha256=digest((directory / "result.json").read_bytes()), replay=replay, report=redact(result.get("report", "")).encode()[:300].decode(errors="ignore"), task_correct=None, call_count_basis="observed driver replies; transport attempts and child job calls are not measured; provider_calls covers this supervisor only")
+    return {"state": result["state"], "identity": identity, "inference_calls": 0 if replay else result["observed_model_replies"], "provider_calls": 0, "details": details}
+
+
+def copy_log(source, target):
+    with target.open("w") as output:
+        for line in iter(source.readline, b""):
+            output.write(redact(line.decode("utf-8", errors="replace")))
+            output.flush()
+    source.close()
+
+
+def terminate(process):
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+    except ProcessLookupError:
+        pass
+    finally:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
+
+
+def execute(config, task, directory):
+    atomic_json(directory / "config.json", config)
+    (directory / "task.txt").write_bytes(task)
+    child_env = os.environ | config["driver"] | {"MILK_MAN_STATE_DIR": str(directory / "state")}
+    started, clock = now(), time.monotonic()
+    process, threads, error, timed_out, code = None, [], None, False, 125
+    try:
+        process = subprocess.Popen([str(ROOT / "bin/man"), "develop", "--workspace", "trial=" + config["workspace"], "--", task.decode("utf-8")], cwd=config["workspace"], env=child_env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        atomic_json(directory / "started.json", {"started_at": started, "pid": process.pid, "owner_pid": os.getpid()})
+        for source, name in ((process.stdout, "stdout"), (process.stderr, "stderr")):
+            thread = threading.Thread(target=copy_log, args=(source, directory / name), daemon=True)
+            thread.start()
+            threads.append(thread)
+        code = process.wait(timeout=config["timeout_seconds"])
+    except subprocess.TimeoutExpired:
+        timed_out, code = True, 124
+    except KeyboardInterrupt:
+        error, code = "interrupted", 130
+    except OSError as failure:
+        error = type(failure).__name__
+    finally:
+        if process is not None:
+            terminate(process)
+        for thread in threads:
+            thread.join(timeout=5)
+    elapsed = round(time.monotonic() - clock, 3)
+    current = directory / "state/current.json"
+    metadata = read_json(current) if current.exists() else {}
+    trajectory = Path(metadata["trajectory_file"]) if metadata else None
+    steps = records(trajectory) if trajectory else []
+    functions = collections.Counter(call.get("function", {}).get("name", "unknown") for step in steps if step.get("type") == "reasoning" for call in step.get("message", {}).get("tool_calls", []))
+    finals = [step.get("content", "") for step in steps if step.get("type") == "final"]
+    result = {"schema_version": "milk.agent-trial-result.v1", "state": "complete" if code == 0 and finals else "failed", "started_at": started, "finished_at": now(), "elapsed_seconds": elapsed, "exit_code": code, "timed_out": timed_out, "error": error, "task_sha256": config["task_sha256"], "observed_model_replies": sum(step.get("type") == "reasoning" for step in steps), "native_tool_counts": dict(functions), "shell_exits": [step.get("exit") for step in steps if step.get("type") == "shell-output"], "report": redact(finals[-1]) if finals else "", "trajectory_id": metadata.get("trajectory_id"), "trajectory_file": str(trajectory) if trajectory else None, "trajectory_sha256": digest(trajectory.read_bytes()) if trajectory else None, "workspace_after": snapshot(Path(config["workspace"])), "runtime_after": snapshot(ROOT), "task_correct": None}
+    atomic_json(directory / "result.json", result)
+    return result
+
+
+def main():
+    if sys.argv[1:] not in ([], ["run"], ["status"]):
+        raise ValueError("usage: agent-trial [run|status]")
+    action = sys.argv[1] if len(sys.argv) > 1 else "run"
+    base = Path(os.environ.get("MILK_MAN_STATE_DIR", str(Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "milk-man"))).expanduser().resolve() / "agent-trials"
+    explicit = os.environ.get("MILK_TRIAL_ID")
+    if explicit:
+        if len(explicit) != 64 or any(c not in "0123456789abcdef" for c in explicit):
+            raise ValueError("MILK_TRIAL_ID must be an exact saved identity")
+        identity, config, task = explicit, None, None
+    else:
+        config, task, identity = configuration()
+    directory = base / identity
+    result_file = directory / "result.json"
+    if result_file.exists():
+        result = read_json(result_file)
+        print(json.dumps(receipt(identity, directory, result, replay=True), separators=(",", ":")))
+        return 0 if result["state"] == "complete" else 1
+    if action == "status" or explicit:
+        state = "idle" if not directory.exists() else "blocked"
+        if (directory / "run.lock").exists():
+            with (directory / "run.lock").open("r") as lock:
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    state = "active"
+        print(json.dumps({"state": state, "identity": identity, "inference_calls": 0, "provider_calls": 0, "details": {"result_file": str(result_file), "message": "No completed receipt; inspect the retained process before choosing a new attempt."}}, separators=(",", ":")))
+        return 0
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with (directory / "run.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise ValueError("this trial already has an active owner")
+        if result_file.exists():
+            result = read_json(result_file)
+            print(json.dumps(receipt(identity, directory, result, replay=True), separators=(",", ":")))
+            return 0 if result["state"] == "complete" else 1
+        if (directory / "config.json").exists():
+            raise ValueError("unfinished trial retained; inspect its process before a new attempt")
+        result = execute(config, task, directory)
+    print(json.dumps(receipt(identity, directory, result), separators=(",", ":")))
+    return 0 if result["state"] == "complete" else 1
+
+
+if __name__ == "__main__":
+    os.umask(0o077)
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+    try:
+        raise SystemExit(main())
+    except (KeyError, ValueError, OSError) as error:
+        print(json.dumps({"state": "failed", "identity": "configuration", "inference_calls": 0, "provider_calls": 0, "error": redact(str(error))}, separators=(",", ":")))
+        raise SystemExit(64)

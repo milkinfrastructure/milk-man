@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -8,12 +12,14 @@ import urllib.request
 
 API = "https://api.baseten.co/v1"
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+TRUSS_VERSION = "0.18.28"
 
 
 class ProviderError(RuntimeError):
-    def __init__(self, message: str, *, ambiguous: bool = False):
+    def __init__(self, message: str, *, ambiguous: bool = False, code: str | None = None):
         super().__init__(message)
         self.ambiguous = ambiguous
+        self.code = code
 
 
 class Client:
@@ -102,6 +108,79 @@ class Client:
         value = self._request("GET", f"/models/{model_id}/deployments/{deployment_id}")
         if value.get("id") != deployment_id or value.get("model_id") != model_id:
             raise ProviderError("Baseten deployment identity differs")
+        return value
+
+    def set_active(self, model_id: str, deployment_id: str, active: bool) -> dict:
+        action = "activate" if active else "deactivate"
+        value = self._request("POST", f"/models/{model_id}/deployments/{deployment_id}/{action}")
+        if value.get("success") is not True:
+            raise ProviderError(f"Baseten {action} response did not confirm success", ambiguous=True)
+        return value
+
+    def autoscale(self, model_id: str, deployment_id: str, settings: dict) -> dict:
+        value = self._request("PATCH", f"/models/{model_id}/deployments/{deployment_id}/autoscaling_settings", settings)
+        if value.get("status") != "ACCEPTED":
+            raise ProviderError("Baseten autoscaling update was not accepted", ambiguous=True)
+        return value
+
+
+def push(config: dict, model_name: str, deployment_name: str, *, labels: dict, timeout: int) -> dict:
+    """Reuse the pinned Truss CLI; keys exist only in its private temporary home."""
+    api_key = os.environ.get("BASETEN_API_KEY", "")
+    team = os.environ.get("BASETEN_TEAM_NAME")
+    if not api_key or any(ord(c) < 33 for c in api_key) or (
+        team is not None and (not team or any(ord(c) < 32 for c in team))
+    ):
+        raise ProviderError("Baseten credential or team name is invalid")
+    with tempfile.TemporaryDirectory(prefix="milk-truss-") as directory:
+        root = Path(directory)
+        truss, private_home = root / "truss", root / "home"
+        truss.mkdir(mode=0o700)
+        private_home.mkdir(mode=0o700)
+        (truss / "config.yaml").write_text(json.dumps(config, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n")
+        trussrc = private_home / ".trussrc"
+        trussrc.write_text(
+            "[baseten]\nremote_provider = baseten\nauth_type = api_key\n"
+            f"api_key = {api_key}\nremote_url = https://app.baseten.co\n"
+        )
+        trussrc.chmod(0o600)
+        command = [
+            "uvx", "--from", f"truss=={TRUSS_VERSION}", "truss", "push", str(truss),
+            "--remote", "baseten", "--model-name", model_name,
+            "--deployment-name", deployment_name, "--no-wait", "--non-interactive",
+            "--disable-truss-download", "--output", "json", "--labels",
+            json.dumps(labels, separators=(",", ":")),
+        ]
+        if team:
+            command.extend(("--team", team))
+        environment = {
+            "HOME": str(private_home), "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            "TMPDIR": directory, "UV_NO_PROGRESS": "1",
+            "UV_CACHE_DIR": os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache" / "uv")),
+        }
+        try:
+            completed = subprocess.run(
+                command, cwd=truss, env=environment, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise ProviderError(f"Baseten submission outcome is ambiguous: {error}", ambiguous=True) from error
+        if len(completed.stdout.encode()) > MAX_RESPONSE_BYTES:
+            raise ProviderError("Truss returned oversized output", ambiguous=True)
+        if completed.returncode != 0:
+            detail = " ".join(completed.stderr.split())[-1024:].replace(api_key, "[redacted]")
+            if "Custom base images not supported for your organization" in detail:
+                raise ProviderError(
+                    "Baseten custom base images are not enabled for this organization",
+                    code="custom_base_image_not_enabled",
+                )
+            raise ProviderError(f"Truss submission failed: {detail or 'no detail'}", ambiguous=True)
+        try:
+            value = json.loads(completed.stdout)
+        except json.JSONDecodeError as error:
+            raise ProviderError("Truss returned invalid JSON", ambiguous=True) from error
+        if not isinstance(value, dict):
+            raise ProviderError("Truss returned invalid JSON", ambiguous=True)
         return value
 
 

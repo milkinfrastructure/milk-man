@@ -209,7 +209,7 @@ without a separate scheduler service.
 
 - [~] Refactor the current fixed controller lifecycle into reusable,
   provider-native scripts for ensure/reuse, status/logs, inference smoke, and
-  stop. The Modal path is reusable; the Baseten-owned path remains open.
+  stop. Both executable paths exist; the Baseten-owned live proof remains open.
 - [~] Select provider, model and revision, API mode, runtime/image, GPU
   type/count, tensor parallelism, context, batching, cache/volume, region, and
   endpoint identity through environment variables. The completed Modal runs
