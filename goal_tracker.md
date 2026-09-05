@@ -15,6 +15,35 @@ Status notation:
 
 ## Executive state
 
+- [x] One Chrome prompt completed the useful model workflow without follow-up
+  steering. Astra kept driving through Parlor. Milk Man launched the prepared
+  existing-job pipeline, waited on worker `85033` / child `85037`, reviewed the
+  report and returned idle at 21:47:40 UTC. Codex authored the prepared script;
+  this is execution/review evidence, not independent script-design evidence.
+- [x] `openai/gpt-oss-120b` ran on one cached Modal H200 in app
+  `ap-qGijFzB2ZhwnMFF2LrPKqx`. One tool-free request used 539 prompt and 637
+  completion tokens. Startup was 190.151 seconds; the full pipeline took
+  210.554 seconds and stopped at 21:45:20 UTC. These are elapsed times, not
+  billed GPU duration; the supervising Astra calls are separate.
+- [x] The report matches the checkpoint's 200 exchanges, eight source groups,
+  eight classified examples, 80 text-eligible and 120 tool-bearing exchanges.
+  It overstates capability tags once as demonstrated ability and slightly
+  exceeds the requested 200 words. Both reviewers retained the limitations;
+  no paid retry. It interprets the existing checkpoint, not a new summary or
+  measured model improvement. Independent provider checks found zero Modal
+  containers and all three known Baseten deployments inactive/zero replicas.
+- [x] R2 research revision
+  `cb98b3ccecb853384be58cbe70d08f09c1a2808f779482108cb9d962fa6f6242`
+  preserves all seventeen experiments and exact report/input/run/stop/review
+  references. Report SHA-256:
+  `b3325408ebdf8ae473b697fc0babd980b4fb6c9bab8b93f7e102b59be567c335`.
+  Private receipts: `model-workload.STOgnk/`. A new $10 reserve brings the
+  conservative cumulative allocation to $419.03 of $500, with prior pending
+  allocations retained. Displayed billing remains $14.86 Modal, $34.98 Baseten
+  ($35.10 on its budget panel); actual total billing is not established.
+- [ ] Next: P5 independent selection of one useful serving change from saved
+  measurements, preserving the baseline and exact workload. Do not repeat the
+  completed report, training, failed driver trials or unchanged configurations.
 - [x] Completed the shared Bash-text response check: actual `bin/man develop`
   accepts completed Chat/Responses text, rejects truncated text without
   executing it, and retains native tool execution. `LLM_TOOL_CHOICE=auto`
@@ -28,10 +57,9 @@ Status notation:
   zero replicas, empty logs; two provider reads, no resource mutation or job
   inference. The supervising Astra turn did use inference. Its final receipt
   is `completion-boundary.9Xdj7W/live-status.json`; the parent returned idle.
-- [ ] Next: keep Astra through Parlor driving Milk Man and finish one useful
-  start/use/save/stop model workflow with existing jobs and retained scope
-  data. Owned inference is a workload, not a mandatory replacement Bash driver.
-  No further diagnostic-only run or unchanged failed driver trial.
+- [x] The useful start/use/save/stop workflow is complete above. Owned inference
+  is a workload, not a mandatory replacement Bash driver. No further
+  diagnostic-only run or unchanged failed driver trial.
 - [x] Warm-session control uses the existing Modal serving job:
   `MILK_MODAL_SERVE_MIN_CONTAINERS=1` starts a warm container only after weight
   hydration; default zero still scales down. The same H200 container

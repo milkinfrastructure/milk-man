@@ -14,12 +14,13 @@ Execution order, refreshed September 5 after the happy-path correction:
    model does not have to replace the driver or execute Bash before Milk Man
    can use it. Preserve the failed driver trials; do not make another driver
    swap, parser experiment, race-condition audit or log check the next task.
-2. Complete one useful infrastructure workflow: one prompt has Milk Man use
-   existing jobs to start or reuse the configured model, call it with retained
-   scope data, save the useful result, and stop the experimental resource.
-   Inspect the saved output and final resource state. Keep provider/model
-   selection in environment settings. Reuse existing data and scripts; no new
-   runner, bulk generation, training repeat or format-only benchmark.
+2. The useful start/use/save/stop workflow is complete: Milk Man ran the
+   prepared script, waited through its heartbeat, reviewed the model's report,
+   and finished without follow-up steering. Reuse that path. Next, continue P5
+   by having Milk Man select one serving change from retained measurements,
+   reuse the saved baseline and workload, and run only a justified candidate.
+   Keep provider/model selection in environment settings. No new runner,
+   bulk generation, training repeat or format-only benchmark.
 3. Implement the first missing or broken step directly with minimal code,
    then demonstrate the working path through Milk Man. The shared completion
    check and native tool-choice configuration are locally verified. Do not
@@ -105,9 +106,19 @@ Current frontier:
 - [x] Optional Baseten log-fetch failure preserves the resource status already
   read. A local check covers the failure; one Chrome-requested live status
   read found the deployment inactive with zero replicas and no recent logs.
-- [ ] Finish the useful start/use/save/stop workflow above with the working
-  driver. Continue P4–P8 from its result. Changing the driver to a self-hosted
-  model is additional functionality, not a prerequisite for operating models.
+- [x] One Chrome prompt had Astra Milk Man launch the existing scripts, wait
+  through its heartbeat, review the result and finish. One cached 120B/H200
+  deployment made one tool-free request using the retained 200-exchange
+  checkpoint; its report has correct counts and a recorded capability-wording
+  caveat. The pipeline stopped in 210.554 seconds. Independent provider reads
+  found zero Modal containers and all three known Baseten deployments inactive.
+  Codex supplied the script and saved the report/receipts to R2; this does not
+  prove independent script design, a new summary checkpoint or a quality win.
+  The same Astra parent is idle. Research now retains seventeen experiments.
+- [ ] Continue P5's independently selected useful serving change, then P7/P8's
+  scope-specific learning and signed-route application. Preserve completed
+  baselines and every failed trial. A self-hosted driver remains additional
+  functionality, not a prerequisite for operating models.
 
 ## Overnight execution — September 5, 2026
 

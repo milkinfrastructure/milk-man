@@ -246,9 +246,20 @@ then watch `bin/background /private/new-run status` with the heartbeat. The
 command keeps running if Milk Man restarts. Reusing that directory never starts
 another command; logs and the exit receipt stay private in that directory.
 When `serve-modal` completes, `details.driver` gives the API URL, model, mode,
-and credential environment name for a child agent. Use that serving key, not
-the parent's Milk gateway key. `bin/man develop --check` shows the effective
+and credential environment name for model calls or an optional child agent.
+Use that serving key, not the parent's Milk gateway key.
+`bin/man develop --check` shows the effective
 driver settings and step limit without calling the model.
+
+Milk Man's driver and the model it operates are separate. Keep the working
+driver while a child command uses the served model to process data. The existing
+`vendor/headlong/bin/llm --system-file SYSTEM --messages-file MESSAGES --usage-file USAGE`
+accepts `LLM_API_URL`, `LLM_MODEL`, `LLM_API_MODE`, and `LLM_API_KEY` for that
+command only. `MESSAGES` is a JSON array of messages. Without `--tools-file`,
+the model returns text; it cannot run Bash. Save stdout as the result and check
+the exit status. Use `bin/background` for long calls and the original serving
+job's `stop` command for cleanup. Changing the parent driver is not required.
+
 The serving result also records deployment, weight-loading, and readiness times
 in `details.observation.startup`. Status keeps those original measurements.
 They include provider checks and may use warm caches; they are not GPU-only
