@@ -20,8 +20,8 @@ TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-ma
 TRAIN_SOURCE_SHA256 = "238e1d710529e209e700995839ee6fcc5c587f0d89ea6095befee248af54ac68"
 REINFORCE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/89875d6b7f8610703a4dfe383c62f84be35a9d2a/images/train/train.py"
 REINFORCE_SOURCE_SHA256 = "a123dea785ad619f76de5a23944004af33fbf1b50657c549ee851860d8afac42"
-NATIVE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/e3255a13906e7d159ce0d5278b5367f727e2e06f/images/train/train.py"
-NATIVE_SOURCE_SHA256 = "f79b3842395b869596f9934b3e70237a7a40b5b104fcc52cd8b316adbc662793"
+NATIVE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/4541d980c5e0672f09ac9ce5c68c2b2f0f65e704/images/train/train.py"
+NATIVE_SOURCE_SHA256 = "b81e78059866d8318f6e0a9c7d7dfd3e76ea224931ee1ab72643b0eb849fbc8c"
 
 
 class TrainError(ValueError):
