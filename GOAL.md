@@ -297,6 +297,12 @@ do not restart parked large generation runs.
 - [x] Reconcile retained traffic before new generation: Milk Man saved a
   20-exchange checkpoint with eight inspected native-tool classifications.
   Readiness remains false; this is not a trained or improved model.
+- [~] Preserve native assistant examples without flattening tool history.
+  `native-capture` extracted one pinned Responses exchange into 28 context
+  messages, two tools, and one next assistant tool-call target. Prior tool
+  results remain paired; hidden reasoning is explicitly omitted. Native
+  dataset selection, assistant-only training, and held-out agent-task
+  evaluation remain unfinished. Extraction does not establish task success.
 - [~] Summary execution/resume and zero-call replay are proven. The heartbeat
   now watches raw capture thresholds without inference; a later automatic
   threshold crossing remains to be observed.

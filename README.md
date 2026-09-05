@@ -209,6 +209,15 @@ To inspect a saved summary, set `MILK_CHECKPOINT_KEY` and
 summary and its source history and returns counts, not conversation bodies.
 It does not generate data, train, or decide whether an agent succeeded.
 
+To inspect one captured agent exchange, set `MILK_NATIVE_CAPTURE_KEY` and
+`MILK_NATIVE_CAPTURE_SHA256`, then run `bin/milk run native-capture`. It saves
+the visible messages, tool definitions, previous tool results, and next
+assistant answer in a private local file. The terminal receives only counts
+and references. Hidden reasoning is explicitly omitted. Non-streaming text
+and function calls are supported; unsupported content is reported rather than
+flattened. This preserves an example, not proof that the task succeeded or
+that the example should be used for training.
+
 `bin/milk run benchmark` (or `bin/benchmark` directly) measures a configured chat endpoint. Set
 `MILK_BENCHMARK_BASE_URL`, `MILK_BENCHMARK_MODEL`, and
 `MILK_BENCHMARK_API_KEY`; `MILK_BENCHMARK_STREAM=1` also measures time to the

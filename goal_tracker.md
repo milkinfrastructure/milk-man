@@ -15,6 +15,16 @@ Status notation:
 
 ## Executive state
 
+- [x] Added `native-capture`, reusing the existing capture integrity checks.
+  A repeated exact-key R2 read produced the same private artifact:
+  `a1227941b1b58a403b3e124d999486e1e539b23f9c9ba43b4aceafc1f791ecf9`.
+  Capture `01a06e91-db01-79f1-b70a-2b038cf1924f` contains 28 ordered context
+  messages, ten matched historical tool results, two tool definitions, and
+  one next assistant tool-call target. Encrypted reasoning is explicitly
+  omitted. No inference, provider action, or object-store write occurred.
+  The old text parser returned identical output on this object. This is
+  visible-only example extraction: task success and training admission remain
+  unproven; native Chat and streaming have no live extraction proof.
 - [x] Added reusable `agent-trial` and independent `serve-baseten` scripts in
   `57b7584ff`. Trials retain exact task, code-content identity, driver settings,
   elapsed time, tool counts, and private results. Baseten-owned deployment is

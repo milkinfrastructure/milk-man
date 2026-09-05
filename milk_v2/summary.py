@@ -287,7 +287,7 @@ def _usage(response_values) -> dict:
     return {key: value for key, value in values.items() if type(value) is int and value >= 0}
 
 
-def parse_capture(store, settings, key: str) -> dict:
+def read_capture(store, settings, key: str):
     stored = store.get(key)
     value = _json(_zstd(stored.body, True), key)
     if not isinstance(value, dict) or value.get("schema_version") != "milk.exchange.v2":
@@ -315,6 +315,13 @@ def parse_capture(store, settings, key: str) -> dict:
         raise SummaryError(f"{key} completes before it starts")
     request_body = _decode_side(value.get("request"), "request")
     response_body = _decode_side(value.get("response"), "response")
+    return stored, value, request_body, response_body
+
+
+def parse_capture(store, settings, key: str) -> dict:
+    stored, value, request_body, response_body = read_capture(store, settings, key)
+    exchange_id = value.get("exchange_id")
+    trajectory_id = value.get("trajectory_id")
     request_value = None
     response_values = None
     request_ok = response_ok = True
