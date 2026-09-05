@@ -15,6 +15,21 @@ Status notation:
 
 ## Executive state
 
+- [x] Saved the ordered overnight execution window in `GOAL.md`: September 5,
+  00:45–08:45 PDT. It preserves the full product goal, uses direct Codex edits,
+  reuses completed experiments and keeps the existing $500 authorization.
+- [x] One bounded Astra-through-Parlor task ran `bin/milk run checkpoint`,
+  saved the requested report and finished without intervention: 84.489 seconds,
+  four model replies (three Bash calls and one finish), zero GPU operations.
+  The actual report exactly matched the previously inspected 100-exchange
+  checkpoint/readiness facts. Workspace and runtime were unchanged; all trial
+  processes exited. This is a useful managed-driver task, not a native-training
+  quality win or a controlled comparison with the earlier owned-120B failure.
+  Result: private `checkpoint-astra-20260905/trials/agent-trials/bfa1400e84cc8669b2a202c970952e0916cef1034d33c9378c69448f7b2a6a16/result.json`,
+  SHA-256 `024880e453017a35fc73352098d2625906d626366cd7055fec763a247a586738`.
+  Report SHA-256:
+  `cf7e2f9f318adbf0acd1c170e967e45860e57f2d30336b2534c27ea5854f3921`.
+  The old autonomous owner remains stopped. Do not repeat this completed task.
 - [x] Automatic summary execution is now live-proven on retained traffic.
   An isolated idle heartbeat detected the temporary 200 threshold, ran one
   summary job and advanced 100 to 200 out of 302 saved exchanges. It made two

@@ -1,5 +1,133 @@
 # Current Milk execution goal
 
+## Overnight execution — September 5, 2026
+
+Window: 00:45–08:45 America/Los_Angeles (07:45–15:45 UTC). This is the
+ordered execution slice of the full goal below, not a new definition of product
+completion. Stop sooner if the tasks finish. Do not consume eight hours merely
+because they are available.
+
+Codex implements and runs code directly. Milk Man demonstrates a working job;
+it is not the intermediary for edits. Keep one implementation task active and
+use at most one independent reviewer. Do not restart the old autonomous owner.
+
+### N0 — retain the working baseline [x]
+
+The current Astra-through-Parlor task ran the existing checkpoint job, saved
+the correct report and finished without intervention: four model replies,
+84.489 seconds, no GPU operations or source changes. The saved report was
+compared with the already inspected immutable facts. The summary milestone
+200 and zero-driver idle heartbeat are also proven. Do not repeat these runs.
+Exact references are in `goal_tracker.md`.
+
+### N1 — make the completed experiment reusable [ ]
+
+Inspect the existing `completed-task-tune-20260905/serve.sh`, `measure.sh`, and
+comparison result in private local state. Move only the reusable execution
+logic missing from the repository into an existing job or one small script
+job. Use `bin/benchmark`, `agent-trial`, `serve-modal`/`serve-baseten`,
+`bin/background`, and the current catalog; do not create another runner.
+
+The job must accept environment-selected settings and an exact saved workload,
+reuse completed baseline results, record changed settings and measurements,
+and expose status and cleanup. Private credentials and paths are not public
+defaults. Readiness waiting must use the existing detached-process/heartbeat
+mechanism. A repeated command must read its saved receipt, not buy another run.
+
+Done: invoke its help/configuration from Bash, reuse the retained completed
+comparison without inference or deployment, and inspect the resulting compact
+comparison. Retain both inputs and their limitations; do not manufacture a
+winner from the small old sample. No fixture suite or new validator framework.
+
+### N2 — prove useful execution, then compare one change [ ]
+
+Use the reusable path for one useful, bounded model task, not another
+`MILK_OK` or JSON-format-only check. The checkpoint report is the existing
+workload; success means the saved file contains the correct facts and the task
+actually ends. Reuse the source data and inspected expected result.
+
+Before a paid run, state the exact change from the failed owned-120B task and
+why it addresses an observed failure. If N1 supplies no such change, do not
+repeat that failure: retain the blocker for this item and proceed to N3/N4.
+Keep Astra/Parlor as the known working driver; the owned model is an explicit
+separate experiment, not a silent replacement. Keep the same pinned model,
+task, workspace, API mode, reply allowance and correctness rule when comparing
+serving settings. Change one setting only.
+
+Run one baseline first. Inspect the actual saved output before any candidate.
+Only a correct baseline permits one candidate. Allow at most one corrected
+attempt across this item, and only after a concrete code/configuration fix.
+Use the existing six-reply and 240-second task limits. Measure task completion,
+elapsed time, model/tool calls, failures and available token/startup/cost data;
+label unavailable measurements unknown. A tie or weak sample means no winner.
+Stop each experimental service and independently verify zero active capacity.
+
+Done: a retained successful task and comparable candidate result, or a precise
+retained failure explaining why comparison was not run. Failure is not product
+completion and must not be converted into a successful checkbox.
+
+### N3 — persist a useful research decision [ ]
+
+Use the existing `research` job to link the exact workload, configuration and
+result digests from N1/N2 into this scope's existing record. Keep prior entries.
+Record the measured conclusion, limitations and one specific next experiment.
+Set baseline/evaluation/best only when the referenced evidence supports those
+fields. This checkpoint workload is not a held-out native-training improvement.
+An unsuccessful experiment is still worth retaining; never label it a winner.
+
+Done: read the saved R2 record back, verify its referenced result identities,
+and replay the same write with zero inference/provider calls. Do not regenerate
+evals, retrain Qwen or invent an RL experiment to fill empty fields tonight.
+
+### N4 — keep the local product useful while idle [ ]
+
+Start a fresh task-free heartbeat, preserving the old stopped trajectory.
+Use the normal environment-selected gateway, object store and thresholds;
+do not lower thresholds or pump traffic to force another summary. Confirm one
+owner, increasing idle delay and zero driver calls while nothing changes.
+Keep automatic summary jobs separate from driver reasoning.
+
+In existing Chrome, connect the dashboard to that actual owner and verify:
+online/idle versus stopped, last/next check, saved versus summarized versus
+labeled counts, the actual latest summary, and job commands/settings. Repair
+only observed failures directly. If a job fails, preserve its error and show
+the failed state; never hide it behind an online light or launch retry loops.
+Do not introduce a scheduler, new frontend dependencies or a visual redesign.
+
+Done: a usable live dashboard with real state, a working Bash command for the
+same owner, and no extra model calls caused by opening or refreshing the page.
+
+### N5 — publish and close the window [ ]
+
+Commit focused working changes and truthful tracker updates. Push only after
+direct execution succeeds. Publish no credentials, private raw conversations,
+machine-specific run files or model weights. Refresh README screenshots only
+when the visible UI changed, after inspecting them for private content. Deploy
+only changed surfaces; no GitHub Actions or unrelated repository settings work.
+
+Before 08:45 PDT, stop unfinished experimental compute and verify its provider
+state. Report exact commits, working commands, completed items, retained
+failures and the next uncompleted item. The broader goal stays active unless
+its full acceptance criteria are actually satisfied.
+
+### Rules that prevent another overnight loop
+
+- Carry forward the existing **$500 total development authorization**. The
+  05:48 UTC balance snapshot is stale; refresh provider usage before new paid
+  compute, account for pending usage, and never treat $500 as a fresh budget.
+- Before each action, name its intended output and what decision that output
+  changes. Skip actions that only repeat an unchanged report or old proof.
+- Reuse exact run/resource IDs. A timeout observing a job is not evidence that
+  it stopped. Check the same handle before retrying or creating anything.
+- Do not repeat the same command after the same failure without a specific
+  changed input or fix. Do not expand prompts, token limits, data volume or GPU
+  size simply to make a failing run pass.
+- Inspect small outputs once. No new tests, broad audits, benchmark campaigns,
+  migrations, automatic model fallback, bulk generation or speculative code.
+- Only `[x]` observed outcomes; use `[~]` for partial work and `[!]` for a
+  concrete failure. A plan, model claim, valid JSON or successful process exit
+  does not by itself prove task success, better quality or production routing.
+
 ## Outcome
 
 Make Milk Man an autonomous, prompt-driven Bash agent that can deploy,
