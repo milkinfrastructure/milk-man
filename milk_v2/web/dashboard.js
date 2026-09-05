@@ -97,8 +97,8 @@ function copyButton(display, value, label) {
 }
 
 const views = {
-  talk: ["Chat", "Give Milk Man a task. Follow its work here."],
-  traffic: ["Collected data", "Requests and answers saved by Milk Parlor. Summaries describe what is in them."],
+  talk: ["Chat", "Give Milk Man a task. Read its replies and check its progress here."],
+  traffic: ["Data and summaries", "Every exchange is a request and its response. A summary counts them; a model labels a sample."],
   research: ["Experiment results", "See what changed, how it performed, and what remains untested."],
   jobs: ["Tools and settings", "Find an action and the settings it needs. Opening one runs nothing."],
   connect: ["Keep your OpenAI calls", "Point the official SDK at Milk Parlor. Your application still calls the same API."],
@@ -156,6 +156,17 @@ function percent(basisPoints) {
   return (number(basisPoints) / 100).toFixed(number(basisPoints) % 100 ? 2 : 0) + "%";
 }
 
+function qualityCount(value, total, basisPoints) {
+  const ratio = Number.isInteger(value) && Number.isInteger(total) ? value.toLocaleString() + " / " + total.toLocaleString() : "count not recorded";
+  return ratio + (Number.isFinite(basisPoints) ? " · " + percent(basisPoints) : "");
+}
+
+function seriesCount(stat = {}) {
+  if (!Number.isInteger(stat.count) || stat.count <= 0 || !Number.isFinite(stat.mean_milli)) return "not recorded";
+  const average = (stat.mean_milli / 1000).toLocaleString(undefined, {maximumFractionDigits: 1});
+  return average + " average" + (Number.isFinite(stat.min) && Number.isFinite(stat.max) ? " · " + stat.min.toLocaleString() + "–" + stat.max.toLocaleString() + " observed" : "") + " · " + stat.count.toLocaleString() + " exchanges";
+}
+
 function fillPercent(count, points) {
   if (!points.length) return 0;
   let prior = 0;
@@ -185,10 +196,10 @@ function countBar(value, total, label) {
   return bar;
 }
 
-function responseStats(values) {
+function responseStats(values, group) {
   const wrapper = node("div", "table-scroll");
   const table = node("table", "experiment-comparison");
-  table.append(node("caption", "", "Measured across the exchanges in this summary. Times include the model provider."));
+  table.append(node("caption", "", group === "tokens" ? "Provider-reported tokens. Samples can differ when usage was not returned." : "Timings for the summarized exchanges, including the model provider."));
   const head = node("tr");
   for (const title of ["Measurement", "Average", "Observed range", "Approx. 95% below", "Samples"]) {
     const cell = node("th"); cell.scope = "col";
@@ -200,10 +211,13 @@ function responseStats(values) {
   for (const [key, label, format, help] of [
     ["total_ms", "Full response", duration, "Request start to complete response."],
     ["ttft_ms", "First response byte", duration, "For a non-streaming request, this can be the full wait. It is not always the first generated token."],
-    ["tps_milli", "Output tokens / second", value => (value / 1000).toFixed(1), "Recorded generation rate where token counts were available."],
+    ["tps_milli", "End-to-end output rate", value => (value / 1000).toFixed(1) + " tok/s", "Output tokens divided by full request time, including waiting. This is not the model's decode speed."],
     ["input_tokens", "Input tokens", value => value.toLocaleString(undefined, {maximumFractionDigits: 1}), "Input tokens reported by the provider."],
     ["output_tokens", "Output tokens", value => value.toLocaleString(undefined, {maximumFractionDigits: 1}), "Output tokens reported by the provider."],
+    ["cached_tokens", "Cached input tokens", value => value.toLocaleString(undefined, {maximumFractionDigits: 1}), "Input tokens reported as served from cache. These are part of input usage, not extra tokens."],
+    ["reasoning_tokens", "Reasoning tokens", value => value.toLocaleString(undefined, {maximumFractionDigits: 1}), "Reasoning tokens reported by the provider, where available. These may be part of output usage; do not add them to output tokens."],
   ]) {
+    if (group === "tokens" ? !key.endsWith("_tokens") : key.endsWith("_tokens")) continue;
     const stat = values[key] || {};
     const measured = Number.isFinite(stat.count) && stat.count > 0;
     const row = node("tr"), heading = node("th"); heading.scope = "row";
@@ -230,14 +244,17 @@ function helpHeading(label, help) {
 // Render only text and simple tables. Model output never becomes executable HTML.
 function replyBody(text) {
   const body = node("div", "reply-body");
-  const blocks = text.split(/\n\s*\n/);
+  const blocks = text.split(/(```[\s\S]*?(?:```|$))/).flatMap(block => block.startsWith("```") ? [block] : block.split(/\n\s*\n/)).filter(block => block.trim());
   const long = text.length > 1500 && blocks.length > 3;
   const rest = node("details", "reply-rest");
   rest.append(node("summary", "", "rest of reply + saved references"));
   blocks.forEach((block, index) => {
     const lines = block.trim().split("\n");
     let part;
-    if (lines.length > 2 && /^\|?\s*:?-{3,}/.test(lines[1]) && lines[0].includes("|")) {
+    if (block.startsWith("```")) {
+      part = node("details", "reply-code");
+      part.append(node("summary", "", "Code + commands"), node("pre", "", block.replace(/^```[^\n]*\n?/, "").replace(/```\s*$/, "")));
+    } else if (lines.length > 2 && /^\|?\s*:?-{3,}/.test(lines[1]) && lines[0].includes("|")) {
       part = node("div", "table-scroll");
       const table = node("table", "experiment-comparison");
       lines.filter((_, i) => i !== 1).forEach((line, rowIndex) => {
@@ -276,7 +293,7 @@ function distributionChart(label, values, total, help) {
   const chart = node("section", "summary-row chart");
   const heading = helpHeading(label, help);
   chart.append(heading);
-  if (Number.isInteger(total) && total > 0) chart.append(node("small", "chart-basis", "Count out of " + total.toLocaleString() + " labeled exchanges"));
+  chart.append(node("small", "chart-basis", Number.isInteger(total) ? "Of " + total.toLocaleString() + " labeled exchanges" : "Sample size not recorded"));
   const entries = Object.entries(values || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   if (!entries.length) {
     chart.append(node("span", "", "no labels recorded"));
@@ -288,21 +305,38 @@ function distributionChart(label, values, total, help) {
   for (const [index, [name, count]] of entries.entries()) {
     const row = node("span", "bar");
     const caption = node("small", "", plainLabel(name));
-    caption.append(node("i", "", number(count).toLocaleString()));
+    const known = Number.isFinite(count) && count >= 0;
+    caption.append(node("i", "", known ? count.toLocaleString() : "not recorded"));
+    row.append(caption);
+    if (!known || !Number.isFinite(total) || total <= 0) {
+      (index < 5 ? chart : more).append(row);
+      continue;
+    }
     const meter = node("meter");
     meter.min = 0;
     meter.max = Math.max(1, number(total));
     meter.value = number(count);
     meter.textContent = number(count).toLocaleString() + " of " + number(total).toLocaleString();
     meter.setAttribute("aria-label", plainLabel(name) + ": " + meter.textContent);
-    row.append(caption, meter);
+    row.append(meter);
     (index < 5 ? chart : more).append(row);
   }
   if (entries.length > 5) chart.append(more);
   return chart;
 }
 
-let progressKey;
+let progressKey, selectedCheckpoint;
+function selectCheckpoint(uuid, open = true) {
+  const cards = Array.from(el("milestones").querySelectorAll(".checkpoint"));
+  const selected = cards.find(card => card.dataset.uuid === uuid) || cards[0];
+  if (!selected) return;
+  selectedCheckpoint = selected.dataset.uuid;
+  el("checkpoint-select").value = selectedCheckpoint;
+  cards.forEach(card => { card.hidden = card !== selected; });
+  if (open) selected.open = true;
+  const index = cards.indexOf(selected);
+  el("checkpoint-position").textContent = index === 0 ? "Latest saved summary" : "Earlier summary · totals above still show the latest";
+}
 function renderProgress(progress = {}) {
   const key = JSON.stringify(progress);
   if (key === progressKey) return;
@@ -319,14 +353,14 @@ function renderProgress(progress = {}) {
   el("summary-count").textContent = Number.isInteger(progress.processed_count) ? processed.toLocaleString() : "not counted";
   const classified = checkpoints[0]?.semantic?.classified;
   el("labeled-count").textContent = Number.isInteger(classified) ? classified.toLocaleString() : "not recorded";
-  el("pending-count").textContent = counted && Number.isInteger(progress.processed_count) ? processed.toLocaleString() + " of " + count.toLocaleString() + " summarized · " + Math.max(0, count - processed).toLocaleString() + " not yet summarized" : "Summary coverage not recorded.";
+  el("pending-count").textContent = counted && Number.isInteger(progress.processed_count) ? processed > count ? "The summary is newer than this traffic count. Refresh to recount saved exchanges." : processed.toLocaleString() + " of " + count.toLocaleString() + " saved exchanges summarized · " + (count - processed).toLocaleString() + " waiting for a summary" : "Summary coverage not recorded.";
   el("collection-meter").replaceChildren(countBar(progress.processed_count, progress.capture_count, "saved exchanges summarized"));
   el("volume").title = "Each saved request and response is one exchange. An agent trajectory can contain many exchanges; these are not independent training examples.";
-  el("target").textContent = !counted ? "count traffic to refresh" : progress.next_threshold
+  el("target").textContent = !points.length ? "none configured" : !counted ? "count traffic to refresh" : progress.next_threshold
     ? (count >= progress.next_threshold ? "next summary due" : (progress.next_threshold - count).toLocaleString() + " more to reach " + progress.next_threshold.toLocaleString())
     : "all configured milestones reached";
   el("count-checked").textContent = progress.counted_at
-    ? "Traffic counted " + new Date(progress.counted_at).toLocaleString() + ". Newer exchanges may not be included."
+    ? "Last counted " + new Date(progress.counted_at).toLocaleString()
     : counted ? "Saved count; select ‘refresh counts’ to count again." : "No traffic count available yet.";
   const fill = Math.max(0, Math.min(100, fillPercent(count, points)));
   el("meter").value = fill;
@@ -349,17 +383,16 @@ function renderProgress(progress = {}) {
     tick.addEventListener("click", () => {
       el("summaries").open = true;
       const card = Array.from(el("milestones").querySelectorAll(".checkpoint")).find(item => checkpoint && item.dataset.uuid === checkpoint.uuid);
-      if (card) { card.open = true; if (card.parentElement.tagName === "DETAILS") card.parentElement.open = true; }
+      if (card) selectCheckpoint(card.dataset.uuid);
       else el("copy-state").textContent = tick.title || tick.dataset.help;
       (card || el("summaries")).scrollIntoView({block: "center"});
     });
     ticks.append(tick);
   }
   el("milestones").replaceChildren();
-  const history = node("details", "summary-history");
-  history.dataset.detail = "history";
-  history.open = opened.has("history");
-  history.append(node("summary", "", "Earlier summaries · " + Math.max(0, checkpoints.length - 1)));
+  const picker = el("checkpoint-select");
+  picker.replaceChildren();
+  picker.disabled = !checkpoints.length;
   for (const [index, checkpoint] of checkpoints.entries()) {
     const point = number(checkpoint.capture_count);
     const card = node("details", "checkpoint reached");
@@ -368,7 +401,11 @@ function renderProgress(progress = {}) {
       card.open = opened.has(checkpoint.uuid) || (!displayed.has(checkpoint.uuid) && index === 0);
       const disclosure = node("summary", "checkpoint-head");
       disclosure.title = "Read the summary of these saved request and response pairs.";
-      disclosure.append(node("i", "pin"), document.createTextNode((index === 0 ? "Latest summary · " : "") + point.toLocaleString() + " exchanges"), node("small", "", checkpoint.created_at ? new Date(checkpoint.created_at).toLocaleString() : "date not recorded"));
+      const savedAt = checkpoint.created_at ? new Date(checkpoint.created_at).toLocaleString() : "date not recorded";
+      disclosure.append(document.createTextNode(point.toLocaleString() + " exchanges in this summary"), node("small", "", "Saved " + savedAt));
+      const option = node("option", "", (index === 0 ? "Latest · " : "") + point.toLocaleString() + " exchanges · " + savedAt);
+      option.value = checkpoint.uuid;
+      picker.append(option);
       const quality = checkpoint.quality || {};
       const counters = checkpoint.counters || {};
       const traffic = checkpoint.traffic || {};
@@ -376,8 +413,9 @@ function renderProgress(progress = {}) {
       const values = checkpoint.series || {};
       const body = node("div", "summary-body sample-charts");
       body.append(
-        distributionChart("What the requests were about", semantic.domain, semantic.classified, "Topic labels from the sampled exchanges, not all saved traffic."),
-        distributionChart("What the model was asked to do", semantic.operation, semantic.classified, "Task labels from the same sample.")
+        distributionChart("Topics", semantic.domain, semantic.classified, "What the sampled requests were about. These are model-assigned labels, not all saved traffic."),
+        distributionChart("Tasks", semantic.operation, semantic.classified, "What the model was asked to do in the same sample."),
+        distributionChart("Estimated outcomes", semantic.outcome, semantic.classified, "A model's estimate, not a check of task success. Unknown means the saved exchange did not show enough evidence.")
       );
       const section = (label, name, contents) => {
         const detail = node("details", "summary-delivery");
@@ -388,44 +426,51 @@ function renderProgress(progress = {}) {
       };
       const sample = node("div", "summary-body");
       sample.append(
-        distributionChart("Estimated task outcomes", semantic.outcome, semantic.classified, "A model's estimate, not a check of whether the task succeeded. Unknown means there was not enough evidence."),
         distributionChart("Skills needed", semantic.capability, semantic.classified, "One exchange can need several skills, so these counts can add up to more than the sample size."),
         summaryRow("Suggested answer checks", counts(semantic.oracle), "Suggested ways to grade these tasks, not checks that have already run."),
         summaryRow("Language and tone", counts(semantic.language) + " · " + counts(semantic.sentiment), "Languages and broad sentiment labels detected in the classified sample."),
-        summaryRow("Related requests", Number.isInteger(counters.source_groups) ? counters.source_groups.toLocaleString() + " groups" : "not recorded", "Requests from one tagged task stay together. Untagged requests are grouped by matching request content; these groups do not prove independent tasks."),
+        summaryRow("Related requests", [["source_groups", "source groups"], ["trajectory_groups", "tagged task"], ["untagged_request_groups", "untagged requests"]].map(([key, label]) => (Number.isInteger(counters[key]) ? counters[key].toLocaleString() : "unknown") + " " + label).join(" · "), "Exchanges from one tagged task stay together. Untagged requests are grouped by matching request content. Correlated exchanges and these groups are not proof of independent tasks."),
         summaryRow("Left unlabeled", Number.isInteger(semantic.abstained) ? semantic.abstained.toLocaleString() : "not recorded", "Sampled exchanges the model declined to classify. Exchanges outside the sample are not included in this count.")
       );
       const measurements = node("div", "summary-body");
       measurements.append(
-        summaryRow("Readable records", percent(quality.parse_bps), "Saved exchanges whose request and response could be parsed."),
-        summaryRow("Successful HTTP responses", percent(quality.success_bps), "A successful HTTP response does not prove the answer was correct."),
-        summaryRow("Repeated content", percent(quality.duplicate_bps), "Exchanges with duplicated request and response content."),
+        summaryRow("Readable records", qualityCount(counters.parsed, counters.captures, quality.parse_bps), "Saved exchanges whose request and response could be parsed."),
+        summaryRow("Successful HTTP responses", qualityCount(counters.successful, counters.captures, quality.success_bps), "A successful HTTP response does not prove the answer was correct. Model-estimated task outcomes are shown separately."),
+        summaryRow("Repeated content", qualityCount(counters.duplicates, counters.captures, quality.duplicate_bps), "Exchanges with duplicated request and response content."),
         summaryRow("Models requested", counts(traffic.model), "Model names requested by captured applications."),
         summaryRow("API used", counts(traffic.endpoint), "Responses and Chat Completions requests in this summary."),
         summaryRow("Route used", counts(traffic.route_target), "Requests served by the original model or an approved replacement."),
         summaryRow("Streaming", counts(traffic.streaming), "True means the response arrived in chunks; false means it arrived as one response."),
         summaryRow("Structured output", counts(traffic.structured_output), "Whether requests asked for a specific output format."),
-        summaryRow("Reasoning setting", counts(traffic.reasoning_effort), "The requested reasoning effort, where present.")
+        summaryRow("Reasoning setting", counts(traffic.reasoning_effort), "The requested reasoning effort, where present."),
+        summaryRow("Chat messages per exchange", counters.captures > 0 && traffic.endpoint?.responses === counters.captures ? "Not used by Responses" : seriesCount(values.message_count), "Counts the Chat Completions messages array only. Responses input items are counted separately. Zero here does not mean the exchange had no conversation history."),
+        summaryRow("Responses input items per exchange", seriesCount(values.input_item_count), "Items in a Responses request. This may include messages, tool calls and tool results. It is not a count of independent conversations."),
+        summaryRow("Tool definitions per exchange", seriesCount(values.tool_definitions), "Tools offered to the model, not tools it actually called."),
+        summaryRow("Tool calls per exchange", seriesCount(values.tool_calls), "Recorded tool-call count. A call does not prove the tool ran successfully or the task finished.")
       );
       const identity = node("div", "row");
       identity.append(helpHeading("Saved summary ID", "Copies the full ID used to find this summary in storage."), copyButton(short(checkpoint.uuid), checkpoint.uuid, "summary ID"));
       measurements.append(identity);
-      const lead = node("p", "sample-note", number(semantic.classified) ? "A model labeled " + number(semantic.classified).toLocaleString() + " of these " + point.toLocaleString() + " exchanges. The charts describe that sample, not all saved traffic." : "Traffic counts only. No topics or task labels have been saved yet.");
+      const sampleSize = semantic.classified;
+      const lead = node("p", "sample-note", Number.isInteger(sampleSize) ? sampleSize > 0 ? "Labels cover " + sampleSize.toLocaleString() + " of " + point.toLocaleString() + " exchanges. Counts and timings below cover the summary; these charts cover only the labeled sample." : "Traffic counts only. No topic or task labels were saved in this summary." : "The labeled sample size was not recorded. Do not treat these labels as a summary of all traffic.");
       card.append(disclosure, lead);
       if (Number.isInteger(semantic.classified)) card.append(countBar(semantic.classified, checkpoint.capture_count, "exchanges labeled in this summary"));
       if (number(semantic.classified)) card.append(body);
       const allStats = node("div", "row");
-      allStats.append(node("p", "", "Every saved field. Percentiles (p50, p95, p99) are histogram upper bounds, so they can exceed the observed maximum. Divide mean_milli by 1,000 for the average; tps_milli is tokens per second × 1,000."), recordFields(checkpoint));
-      card.append(section("Task outcomes and other labels", "sample", sample), section("Response times and tokens", "timing", responseStats(values)), section("Request and collection details", "delivery", measurements), section("All recorded statistics", "all", allStats));
-      (index === 0 ? el("milestones") : history).append(card);
+      allStats.append(node("p", "", "Available summary fields returned to this dashboard. Percentiles (p50, p95, p99) are histogram upper bounds and can exceed the observed maximum. Divide mean_milli by 1,000 for the average. tps_milli is the end-to-end output rate × 1,000, not decode speed."), recordFields(checkpoint));
+      card.append(section("More labels + related requests", "sample", sample), section("Response speed", "timing", responseStats(values, "timing")), section("Token usage", "tokens", responseStats(values, "tokens")), section("Requests + collection quality", "delivery", measurements), section("Available summary fields + references", "all", allStats));
+      el("milestones").append(card);
   }
-  if (checkpoints.length > 1) el("milestones").append(history);
   el("milestones").querySelectorAll("details[data-chart]").forEach(detail => { detail.open = opened.has(detailKey(detail)); });
-  if (!checkpoints.length) el("milestones").append(node("p", "empty", "No summary saved yet. The next milestone is shown above."));
+  if (!checkpoints.length) {
+    picker.append(node("option", "", "No summaries yet"));
+    el("checkpoint-position").textContent = "";
+    el("milestones").append(node("p", "empty", "No summary saved yet. The next milestone is shown above."));
+  } else selectCheckpoint(selectedCheckpoint, false);
   el("read-latest").disabled = !checkpoints.length;
   el("read-latest").onclick = () => {
     const card = el("milestones").querySelector(".checkpoint");
-    if (card) { el("summaries").open = true; card.open = true; card.scrollIntoView({block: "start", behavior: "instant"}); }
+    if (card) { el("summaries").open = true; selectCheckpoint(card.dataset.uuid); el("summaries").scrollIntoView({block: "start", behavior: "instant"}); }
   };
 }
 
@@ -658,20 +703,19 @@ function renderMan(man) {
     .filter(Boolean).join(" · ");
   const jobs = (man.local_jobs || []).reduce((total, job) => total + Number(job.count || 0), 0);
   const jobNames = (man.local_jobs || []).map(job => job.count + " " + job.name).join(" · ");
-  const jobStatus = jobs ? " · " + jobNames + (jobs === 1 ? " job active" : " jobs active") : "";
   const labels = {
-    working: man.connection === "discovered" ? "Milk Man online · working outside this page" : "Milk Man online · working" + jobStatus + (man.queued ? " · next instruction queued" : ""),
-    queued: "Milk Man online · instruction queued",
-    failed: "Milk Man online · last turn failed",
-    waiting: "Milk Man online · watching for progress",
-    paused: "Milk Man paused",
-    stopped: "Milk Man stopped",
-    idle: "Milk Man online · ready for a task" + jobStatus,
-    setup: "Milk Man online · session setup needed",
+    working: man.connection === "discovered" ? "working in another window" : "working" + (man.queued ? " · follow-up queued" : ""),
+    queued: "instruction queued",
+    failed: "last turn failed",
+    waiting: "waiting for a change",
+    paused: "paused",
+    stopped: "stopped",
+    idle: "ready for a task" + (jobs ? " · jobs active" : ""),
+    setup: "session setup needed",
   };
-  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", man.online ? labels[state] || labels.setup : man.trajectory_id ? "Milk Man offline · session saved" : "Start a session from Bash");
+  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", man.online ? labels[state] || labels.setup : man.trajectory_id ? "offline · session saved" : "no session yet");
   el("driver-detail").textContent = "Model: " + (driverStatus || "not configured") + ". Session: " + (man.trajectory_id || "not started") + ".";
-  el("active-model").textContent = "chat model: " + (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
+  el("active-model").textContent = (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
   const pulse = man.heartbeat || {};
   const heartbeatOnline = pulse.online === true;
   const heartbeatStarting = !heartbeatOnline && man.connection === "attached" && man.active;
@@ -679,6 +723,7 @@ function renderMan(man) {
   const heartbeatState = heartbeatOnline ? (pulse.state || "idle") : heartbeatStarting ? "starting" : heartbeatRetained ? "stopped" : "not started";
   light("heartbeat", heartbeatOnline ? (pulse.state === "failed" ? "degraded" : "up") : heartbeatStarting ? "ready" : "down", "heartbeat · " + heartbeatState);
   const workActive = heartbeatOnline && (pulse.state === "running" || man.active);
+  document.body.dataset.agentState = workActive ? "working" : heartbeatOnline ? heartbeatState : "disconnected";
   const task = (pulse.task || "No task saved yet.").replace(/^Continue the saved task:\s*/, "");
   el("task-label").textContent = workActive || (heartbeatOnline && pulse.state === "waiting") ? "current task" : "last saved instruction";
   el("current-work").textContent = task.split(/\n|(?<=[.!?])\s/)[0].slice(0, 220);
@@ -688,7 +733,7 @@ function renderMan(man) {
     : workActive ? (jobs ? "Running: " + jobNames + "." : "Working through the task. New replies appear below.")
     : pulse.state === "waiting" ? pulse.watch_state === "unknown"
       ? "The task is waiting, but its job status is unknown. This does not confirm a worker is running."
-      : "Watching " + (pulse.watch_label || "saved work") + (pulse.watch_pid ? " · process " + pulse.watch_pid : "") + (pulse.watch_state ? " · " + pulse.watch_state : "") + ". Unchanged checks use no model calls."
+      : "Watching " + (pulse.watch_label || "saved work") + (pulse.watch_state ? " · " + pulse.watch_state : "") + ". No model call while unchanged."
     : pulse.state === "failed" ? "The last turn failed. Open its result below before continuing."
     : pulse.state === "paused" ? "Paused. Send an instruction to continue."
     : "Ready for your next instruction. Idle checks use no model calls.";
@@ -697,7 +742,7 @@ function renderMan(man) {
   resourceRow.replaceChildren();
   resourceRow.hidden = !resource.provider_status;
   if (resource.provider_status) {
-    el("current-work-note").textContent = "Model server " + resource.provider_status.toLowerCase().replaceAll("_", " ")
+    el("current-work-note").textContent = "Last server report: " + resource.provider_status.toLowerCase().replaceAll("_", " ")
       + (Number.isInteger(resource.active_replicas) ? " · " + resource.active_replicas + " active replicas" : "") + ".";
     resourceRow.append(node("span", "", "Last reported by the watched job. Zero replicas during a build does not mean it has been stopped. "));
     for (const [key, label] of [["model_id", "model"], ["deployment_id", "deployment"]]) {
@@ -767,7 +812,7 @@ function renderMan(man) {
       continue;
     }
     const role = event.type === "prompt" ? "you" : "milk-man";
-    if ((role === "you" && event.content.length > 500) || (role === "milk-man" && event.type !== "final" && (event.content.length > 1200 || event.content.startsWith("```")))) {
+    if ((role === "you" && event.content.length > 500) || (role === "milk-man" && event.type !== "final" && (event.content.length > 1200 || event.content.includes("```")))) {
       const message = node("details", "message " + role + " folded");
       message.dataset.key = index + ":" + (event.ts || event.type);
       message.open = opened.has(message.dataset.key);
@@ -784,16 +829,21 @@ function renderMan(man) {
       continue;
     }
     const message = node("article", "message " + role);
-    message.append(node("b", "", role === "you" ? "instruction" : "milk man"), event.type === "final" ? replyBody(event.content) : node("pre", "", event.content));
-    const rest = message.querySelector(".reply-rest");
-    if (rest) {
-      rest.dataset.key = index + ":" + event.ts + ":reply";
-      rest.open = opened.has(rest.dataset.key);
-    }
-    if (event.ts) message.append(node("time", "", event.ts + " UTC"));
+    const heading = node("div", "message-heading");
+    heading.append(node("b", "", role === "you" ? "You" : event.type === "final" ? "Milk Man · result" : "Milk Man"));
+    if (event.ts) heading.append(node("time", "", event.ts + " UTC"));
+    message.append(heading, event.type === "final" ? replyBody(event.content) : node("pre", "", event.content));
+    message.querySelectorAll("details").forEach((detail, part) => {
+      detail.dataset.key = index + ":" + event.ts + ":reply:" + part;
+      detail.open = opened.has(detail.dataset.key);
+    });
     target.append(message);
     index++;
   }
+  const latest = Array.from(target.querySelectorAll("article.message.milk-man")).at(-1);
+  if (latest) latest.classList.add("latest-reply");
+  el("message-position").textContent = newFinal && !follow ? "New result below" : "Recent conversation · commands folded";
+  el("latest-message").classList.toggle("unread", newFinal && !follow);
   if (follow && (initial || newFinal)) latestReply();
   else if (follow) target.scrollTop = target.scrollHeight;
   else target.scrollTop = scroll;
@@ -817,7 +867,7 @@ async function startRun(event) {
     const response = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
     const result = await response.json();
     if (!response.ok) throw Error(result.error || "Unable to start Milk Man.");
-    el("prompt-text").value = "";
+    if (el("prompt-text").value.trim() === prompt) el("prompt-text").value = "";
     runState(result.state === "queued" ? "Instruction queued behind the current run." : "Milk Man is working. Output will appear above.");
     await refreshLocal();
   } catch (error) {
@@ -833,18 +883,18 @@ function renderCloud(data) {
   const milk = data.milk || {};
   const monitor = data.monitor || {};
   if (monitor.error) {
-    light("gateway", "degraded", "Milk Parlor status unknown");
-    light("store", "degraded", "object memory status unknown");
+    light("gateway", "degraded", "status unknown");
+    light("store", "degraded", "status unknown");
   } else {
-    light("gateway", gateway.state || "detached", gateway.state === "up" ? "Milk Parlor reachable · capture active" : gateway.state === "degraded" ? "Milk Parlor reachable · capture degraded" : gateway.state === "down" ? "Milk Parlor unavailable" : "Milk Parlor not configured");
-    light("store", milk.error ? "down" : milk.missing && milk.missing.length ? "detached" : "up", milk.error ? "object memory unavailable" : milk.missing && milk.missing.length ? "object memory not configured" : "object memory readable");
+    light("gateway", gateway.state || "detached", gateway.state === "up" ? "reachable · saving traffic" : gateway.state === "degraded" ? "reachable · capture impaired" : gateway.state === "down" ? "unavailable" : "not configured");
+    light("store", milk.error ? "down" : milk.missing && milk.missing.length ? "detached" : "up", milk.error ? "unavailable" : milk.missing && milk.missing.length ? "not configured" : "readable");
   }
   el("checked").textContent = (monitor.error ? "status watcher failed " : "status updated ") + new Date(data.now).toLocaleString();
   const jobs = data.contract?.jobs || [];
   const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
   const jobStatus = data.contract?.error ? "job configuration unavailable" : readyJobs + " / " + jobs.length + " have required settings here";
   el("job-count").textContent = jobStatus;
-  el("watch-state").textContent = "You can send a follow-up while Milk Man works.";
+  el("watch-state").textContent = "Replies here · commands folded · follow-ups welcome while it works";
   const status = milk.status || {};
   renderRun(status, milk.progress);
   renderProgress(milk.progress);
@@ -855,7 +905,7 @@ function renderCloud(data) {
     { title: "next data step", detail: nextCopy[status.next_action] || String(status.next_action || "waiting").replaceAll("-", " "), help: "The next action suggested by saved data, not proof that a job is scheduled or running." },
     { title: "data policy", detail: status.profile === "mechanics" ? "development settings" : status.profile || "unknown", help: "The selected rules for trying the workflow. This does not identify the origin of the traffic or establish model quality." },
     { title: "scope", detail: status.scope_id ? short(status.scope_id) : "unknown", help: status.scope_id || "No scope is configured." },
-    { title: "capture writer", detail: !["up", "degraded"].includes(gateway.state) ? "unavailable · last totals unknown" : number(gateway.observed) + " received · " + number(gateway.persisted) + " stored · " + number(gateway.dropped) + " dropped", help: "Milk Parlor totals since its current process started, across its configured scopes. Not this scope's stored traffic count." },
+    { title: "capture writer", detail: !["up", "degraded"].includes(gateway.state) ? "unavailable · last totals unknown" : [["observed", "received"], ["persisted", "stored"], ["dropped", "dropped"]].map(([key, label]) => (Number.isInteger(gateway[key]) ? gateway[key].toLocaleString() : "unknown") + " " + label).join(" · "), help: "Milk Parlor totals since its current process started, across its configured scopes. Not this scope's stored traffic count." },
   ], "waiting for status");
   el("foot").textContent = "Local dashboard · status checked " + new Date(data.now).toLocaleTimeString();
 }
@@ -906,12 +956,13 @@ function experimentCard(value, index, heading = true) {
   const card = node("article", "experiment");
   if (heading) card.append(node("h3", "", experimentLabel(value, index)));
   const change = experimentChange(value);
-  if (change) card.append(node("p", "comparison-change", change + " in this run. This measures speed, not overall answer quality."));
+  if (change) card.append(node("p", "comparison-change", change + " with the trial setting"));
+  else card.append(node("p", "experiment-status", value.state === "failed" ? "Failed attempt · see the saved result below" : "Saved result · open the details for its recorded outcome"));
   const workload = value.workload || {};
   const measured = workload.measured_requests_per_configuration;
   const warmup = workload.warmup_requests_per_configuration;
   if (Number.isInteger(measured) && measured > 0) {
-    card.append(node("p", "", measured + " timed replies per setting" + (Number.isInteger(warmup) && warmup >= 0 ? " · " + warmup + " warm-up replies per setting" : "")));
+    card.append(node("p", "experiment-sample", measured + " timed replies per setting" + (Number.isInteger(warmup) && warmup >= 0 ? " + " + warmup + " warm-up" : "") + ". This small run does not establish overall answer quality."));
   }
   if (heading && experimentDate(value)) card.append(node("small", "", "Recorded " + experimentDate(value)));
   const baseline = value.configurations?.baseline;
@@ -945,11 +996,11 @@ function experimentCard(value, index, heading = true) {
       body.append(row);
     }
     const header = node("thead"); header.append(head); table.append(header, body);
-    if (body.children.length) card.append(table);
+    if (body.children.length) { const scroll = node("div", "table-scroll"); scroll.append(table); card.append(scroll); }
   }
   const detail = node("details");
   detail.dataset.field = "experiment-" + index + "-notes";
-  detail.append(node("summary", "", "notes, measurements + saved files"), recordFields(value));
+  detail.append(node("summary", "", "What changed + full saved result"), recordFields(value));
   card.append(detail);
   return card;
 }
@@ -1048,7 +1099,8 @@ el("refresh").addEventListener("click", () => refreshCloud(true));
 el("job-search").addEventListener("input", filterJobs);
 window.addEventListener("hashchange", showView);
 showView();
-el("latest-message").addEventListener("click", latestReply);
+el("latest-message").addEventListener("click", () => { latestReply(); el("latest-message").classList.remove("unread"); el("message-position").textContent = "Latest reply"; });
+el("checkpoint-select").addEventListener("change", event => selectCheckpoint(event.target.value));
 el("stage-scrubber").addEventListener("input", event => selectStage(number(event.target.value) - 1, true));
 document.querySelectorAll("[data-copy]").forEach(button => button.addEventListener("click", () => copyValue(button.dataset.copy, button.dataset.copyLabel)));
 document.addEventListener("click", event => {

@@ -462,7 +462,11 @@ def _summary_view(value: dict) -> dict:
         },
         "series": {
             name: _series_view(series.get(name))
-            for name in ("total_ms", "ttft_ms", "tps_milli", "input_tokens", "output_tokens", "message_count", "tool_calls")
+            for name in (
+                "total_ms", "ttft_ms", "tps_milli", "input_tokens", "output_tokens",
+                "cached_tokens", "reasoning_tokens", "message_count",
+                "input_item_count", "tool_definitions", "tool_calls",
+            )
         },
     }
 
@@ -525,7 +529,7 @@ def _job_contract() -> dict:
 def _gateway_health() -> dict:
     raw = os.environ.get("MILK_PARLOR_BASE_URL", "")
     if not raw:
-        return {"state": "", "observed": 0, "persisted": 0, "dropped": 0}
+        return {"state": "", "observed": None, "persisted": None, "dropped": None}
     try:
         parsed = urlsplit(raw)
         local = parsed.hostname in {"localhost", "127.0.0.1", "::1"}
@@ -554,12 +558,12 @@ def _gateway_health() -> dict:
         state = "up" if value.get("status") == "ok" and capture.get("writer_alive") is True else "degraded"
         return {
             "state": state,
-            "observed": capture.get("observed", 0),
-            "persisted": capture.get("persisted", 0),
-            "dropped": capture.get("dropped", 0),
+            "observed": capture.get("observed"),
+            "persisted": capture.get("persisted"),
+            "dropped": capture.get("dropped"),
         }
     except Exception:
-        return {"state": "down", "observed": 0, "persisted": 0, "dropped": 0}
+        return {"state": "down", "observed": None, "persisted": None, "dropped": None}
 
 
 def _milk_status(exact_inventory: bool) -> dict:
@@ -652,7 +656,7 @@ def _refresh_monitor(exact_inventory: bool = False) -> dict:
             gateway = _gateway_health()
         except Exception:
             errors.append("gateway status")
-            gateway = {"state": "down", "observed": 0, "persisted": 0, "dropped": 0}
+            gateway = {"state": "down", "observed": None, "persisted": None, "dropped": None}
         try:
             contract = _job_contract()
         except Exception:

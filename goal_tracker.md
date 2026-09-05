@@ -890,6 +890,17 @@ Corrections made by this audit:
 
 ### P8 publish, operate, and qualify
 
+- [x] Redesigned the local dashboard with a dedicated chat/composer and compact
+  task/heartbeat panel, saved-summary selector, sample charts, inline help,
+  and separate saved/summarized/labeled counts. Chrome verified the current
+  and earlier summaries, help, navigation, and count refresh: 187 saved,
+  20 summarized, 8 labeled at 2026-09-04 20:35:16 PDT. The 100-exchange
+  threshold is reached but its summary is not saved. Timing now distinguishes
+  full-request output rate from decode speed; Responses input items are
+  separate from Chat messages. Missing counts and token measurements remain
+  unknown. Existing colors, monospace type, and embossed controls remain;
+  no dependencies or test files were added. Dashboard changes were activated
+  locally; the separate Milk Man heartbeat stayed idle. No jobs were started.
 - [x] Reorganized the local dashboard into chat, collected data, experiments,
   tools/settings, and SDK setup. Chrome inspection confirms the current
   43 saved / 20 summarized / 8 labeled counts, latest summary, older summaries,

@@ -17,7 +17,6 @@
       <a href="https://milkinfrastructure.com/docs/">how Milk works ↗</a>
     </header>
 
-    <p class="purpose">Run models, read your data, and compare results.</p>
     <section class="services" aria-label="Connected parts">
       <div><b class="field-heading">agent <button class="help" type="button" title="Milk Man is the local agent. Its heartbeat keeps the task alive after you close this page. Idle checks use no model calls." aria-label="About the agent">?</button></b><span><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span><small>takes instructions · runs jobs</small></div>
       <div><b class="field-heading">gateway <button class="help" type="button" title="Milk Parlor forwards your OpenAI SDK calls to the configured model. After each eligible exchange ends, it saves the request and response in the background. Reachable does not mean a GPU is running." aria-label="About the gateway">?</button></b><span><i class="signal" id="gateway-signal"></i><b id="gateway-state">gateway unchecked</b></span><small>routes model calls · captures traffic</small></div>
@@ -25,47 +24,54 @@
     </section>
     <nav class="toolbar view-nav" aria-label="Dashboard views">
       <a href="#talk" title="Give a task, read replies, and see whether Milk Man is working or waiting.">chat</a>
-      <a href="#traffic" title="Count saved exchanges and open the summaries made from them.">collected data</a>
+      <a href="#traffic" title="Count saved exchanges and open the summaries made from them.">data + summaries</a>
       <a href="#research-panel" title="Read experiment results and comparisons. Saved results are not live GPU status.">experiments</a>
       <a href="#jobs-panel" title="Find an available job and the environment settings it needs.">tools + settings</a>
       <a href="#connect" title="Connect an application using the official OpenAI SDK.">connect an app</a>
     </nav>
-    <small class="copy-state" id="copy-state" role="status" aria-live="polite">Hover or tap ? for help. Dotted values copy when clicked.</small>
-    <div class="view-heading"><h2 id="view-title">Your workspace</h2><p id="view-description">Describe an outcome. Milk Man chooses the commands and reports back here.</p></div>
+    <small class="copy-state" id="copy-state" role="status" aria-live="polite"></small>
+    <div class="view-heading"><h2 id="view-title">Chat</h2><p id="view-description">Give Milk Man a task. Read its replies and check its progress here.</p></div>
 
-    <section class="heartbeat" data-view="talk" aria-label="Milk Man heartbeat">
+    <div class="workdesk" data-view="talk">
+    <aside class="heartbeat" aria-label="Current task and heartbeat">
       <span title="One local process keeps this task available. Closing this page does not stop it."><i class="signal" id="heartbeat-signal"></i><b id="heartbeat-state">heartbeat · connecting</b></span>
-      <div class="current-work"><div class="task-heading"><b id="task-label">saved instruction</b><small id="active-model">model not configured</small></div><strong id="current-work">No task saved yet.</strong><span id="current-instruction" hidden></span><span id="current-work-note">Waiting for status.</span></div>
+      <div class="current-work"><div class="task-heading"><b id="task-label">saved instruction</b></div><strong id="current-work">No task saved yet.</strong><span id="current-instruction" hidden></span><span id="current-work-note">Waiting for status.</span></div>
+      <div class="heartbeat-timing"><span>last check <time id="heartbeat-last">not checked</time></span><span>next check <time id="heartbeat-next">not scheduled</time></span></div>
+      <div class="driver-strip"><b>Chat model</b><small id="active-model">not configured</small></div>
       <details class="heartbeat-task">
-        <summary title="Milk Man keeps running when you close this page. Idle checks do not call a model.">task details + connection checks</summary>
-        <div class="heartbeat-timing"><span>last check <time id="heartbeat-last">not checked</time></span><span>next check <time id="heartbeat-next">not scheduled</time></span><span><b id="heartbeat-count">0 work sessions · 0 idle checks</b> <button class="help" type="button" title="Work sessions can make several model calls. Idle checks use no model tokens. These counts are not a bill." aria-label="About heartbeat activity">?</button></span></div>
+        <summary title="Milk Man keeps running when you close this page. Idle checks do not call a model.">Full task + activity counts</summary>
+        <p><b id="heartbeat-count">0 work sessions · 0 idle checks</b> <button class="help" type="button" title="Work sessions can make several model calls. Idle checks use no model tokens. These counts are not a bill." aria-label="About heartbeat activity">?</button></p>
         <p id="driver-detail"></p>
         <p id="heartbeat-resource" hidden></p>
         <p id="heartbeat-task">No task saved yet.</p>
         <p id="heartbeat-brief" hidden></p>
       </details>
-    </section>
+      <details><summary>Files it can edit</summary><div class="rows" id="workspaces"></div></details>
+      <details><summary>Saved decisions</summary><div class="rows" id="memory"></div></details>
+      <small class="desk-note">Closing this page does not stop a task. An idle agent does not mean its GPUs are stopped. <button class="help" type="button" title="This rail reads the local heartbeat. Provider status appears only when the current task has saved a resource observation; it is not a live inventory of every GPU." aria-label="About task and GPU status">?</button></small>
+    </aside>
 
     <details class="chat" id="talk" data-view="talk" aria-label="Milk Man conversation" open>
-      <summary title="Recent instructions and replies stay visible while Milk Man continues. Older work remains in the saved session. Expand work details to inspect commands and their output.">conversation <small id="conversation-state">finding session</small></summary>
-      <p class="section-help" id="watch-state">Describe one outcome below. Milk Man chooses the steps. Replies stay in the conversation; commands and raw output stay folded under work details.</p>
+      <summary title="Recent instructions and replies stay visible while Milk Man continues. Older work remains in the saved session. Expand work details to inspect commands and their output.">Conversation <small id="conversation-state">finding session</small></summary>
+      <p class="section-help" id="watch-state">Milk Man’s replies appear here. Commands stay folded.</p>
       <div class="messages" id="activity" tabindex="0" aria-label="Milk Man transcript">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>
-      <div class="chat-tools"><small>Commands are folded. Long replies keep the result first.</small><button id="latest-message" type="button" title="Read the start of the latest reply. This does not send a message or start work.">latest reply ↓</button></div>
+      <div class="chat-tools"><small id="message-position">Saved conversation</small><button id="latest-message" type="button" title="Read the start of the latest reply. This does not send a message or start work.">latest reply ↓</button></div>
       <div class="composer" id="prompt">
         <div class="prompt-head">
-          <label class="prompt-label" for="prompt-text">tell Milk Man what to do</label>
-          <span class="prompt-state" id="prompt-state" role="status" aria-live="polite">Milk Man is ready.</span>
+          <label class="prompt-label" for="prompt-text">Your instruction</label>
+          <small>Enter ↵ new line</small>
         </div>
         <form id="run-form">
           <textarea id="prompt-text" name="prompt" rows="3" maxlength="16384" aria-describedby="prompt-help prompt-state" placeholder="Example: Inspect our saved summary and explain what we should try next." required></textarea>
-          <button id="run" type="submit" title="Send this instruction to Milk Man. It can run commands and paid jobs using the configured environment.">send to Milk Man</button>
+          <button id="run" type="submit" title="Send this instruction to Milk Man. It can run commands and paid jobs using the configured environment.">send ↗</button>
         </form>
-        <small class="prompt-help" id="prompt-help">Command / Control + Enter sends · Enter makes a new line</small>
-        <div class="drafts"><small>start with</small><button type="button" data-draft="Explain the current task, what has finished, and what you are waiting for. Do not start new work.">explain current work</button><button type="button" data-draft="Read the existing summary checkpoint and explain what it tells us. Do not generate more data or start compute.">read saved summary</button><small>fills the message · you send it</small></div>
+        <div class="prompt-footer"><span class="prompt-state" id="prompt-state" role="status" aria-live="polite">Milk Man is ready.</span><small class="prompt-help" id="prompt-help">⌘ / Ctrl + Enter sends</small></div>
+        <details class="prompt-starters"><summary>Suggested instructions <small>draft only</small></summary><div class="drafts"><button type="button" data-draft="Explain the current task, what has finished, and what you are waiting for. Do not start new work.">explain current work</button><button type="button" data-draft="Read the existing summary checkpoint and explain what it tells us. Do not generate more data or start compute.">read saved summary</button></div></details>
       </div>
     </details>
+    </div>
 
     <details id="connect" data-view="connect">
       <summary title="Install the official OpenAI client, point it at Milk Parlor, and keep the rest of your call.">connect an app <small>official SDK · two values change</small></summary>
@@ -96,14 +102,14 @@
 
     <section id="traffic" class="traffic-section" data-view="traffic" aria-label="Traffic and learning progress">
     <div class="data-totals" aria-label="Collected data totals">
-      <section><span>Saved exchanges <button class="help" type="button" title="One request and its response count as one exchange. A conversation can contain several exchanges." aria-label="About saved exchanges">?</button></span><strong id="volume">not counted</strong></section>
-      <section><span>In the latest summary <button class="help" type="button" title="Exchanges included in the latest saved summary. Topic labels may cover only a sample." aria-label="About summarized exchanges">?</button></span><strong id="summary-count">not counted</strong></section>
-      <section><span>Labeled by a model <button class="help" type="button" title="Exchanges given topic and task labels in the latest summary. These are a sample of the summarized exchanges, not extra data." aria-label="About labeled exchanges">?</button></span><strong id="labeled-count">not counted</strong></section>
+      <section><span><b>01 / Saved</b> <button class="help" type="button" title="One request and its response count as one exchange. A conversation can contain several exchanges. This is the last count from storage, not a live counter." aria-label="About saved exchanges">?</button></span><strong id="volume">not counted</strong><small>request + response pairs</small></section>
+      <section><span><b>02 / Summarized</b> <button class="help" type="button" title="Exchanges included in the latest saved summary. Topic labels may cover only a sample." aria-label="About summarized exchanges">?</button></span><strong id="summary-count">not counted</strong><small>included in the latest summary</small></section>
+      <section><span><b>03 / Labeled sample</b> <button class="help" type="button" title="Exchanges given topic and task labels in the latest summary. These are a sample of the summarized exchanges, not extra data." aria-label="About labeled exchanges">?</button></span><strong id="labeled-count">not counted</strong><small>used for topics, tasks and outcomes</small></section>
     </div>
     <div class="collection-coverage"><div id="collection-meter"></div><small id="pending-count">Waiting for counts.</small></div>
-    <div class="status-line data-actions"><button id="read-latest" type="button" disabled>read latest summary</button><button id="refresh" type="button" title="Count saved request/response pairs and refresh gateway and storage status. No model or training job runs.">refresh counts</button></div>
+    <div class="status-line data-actions"><button id="read-latest" type="button" disabled>read latest summary ↓</button><button id="refresh" type="button" title="Count saved request/response pairs and refresh gateway and storage status. No model or training job runs.">refresh counts</button><small id="count-checked">Not counted yet.</small></div>
     <div class="next-step"><span><b>Next data step</b><span id="run-now">reading saved status</span></span><button type="button" id="data-question" data-draft="Read the current traffic count and latest summary. Explain the next useful step and what is missing. Do not generate data or start compute." title="Fill in a chat message about this data. You choose whether to send it.">ask Milk Man</button></div>
-    <details class="summary-schedule"><summary title="The configured milestones for saving summaries. Reaching one does not mean a job is currently running.">When summaries run <small id="target"></small></summary>
+    <details class="summary-schedule" open><summary title="The configured milestones for saving summaries. Reaching one does not mean a job is currently running.">Summary milestones <small id="target"></small></summary>
     <progress class="meter has-help" id="meter" max="100" value="0" title="Progress is divided evenly across the configured summary thresholds.">0%</progress>
     <div class="ticks" id="ticks" aria-label="Configured summary thresholds"></div>
     <small class="meter-note">Each mark is a summary milestone. Select a saved one to read it.</small>
@@ -118,7 +124,8 @@
       <div class="job-list" id="jobs"></div>
     </details>
     <details id="summaries" data-view="traffic" open>
-      <summary title="Summaries describe a sample of saved requests and responses. Expand a section to see its counts and methods.">Saved summaries</summary>
+      <summary title="Counts cover the exchanges in the saved summary. Topic and task labels describe its model-labeled sample.">Read a summary</summary>
+      <div class="checkpoint-picker"><label for="checkpoint-select">Saved version</label><select id="checkpoint-select" disabled><option>No summaries yet</option></select><small id="checkpoint-position"></small></div>
       <div class="milestones" id="milestones"></div>
     </details>
     <details id="loop" data-view="traffic">
@@ -132,22 +139,14 @@
     </details>
     <details id="research-panel" data-view="research">
       <summary title="The research objective and saved results for this scope. A measured comparison is needed before calling a model better.">research results <small id="research-state">reading saved objective</small></summary>
-      <p class="section-help">Saved experiments. For running work, open chat.</p>
+      <p class="section-help">Measurements and notes saved for this collection. <a href="#talk">Running work is in chat.</a></p>
       <div class="rows" id="research"></div>
       <div class="drafts"><button type="button" data-draft="Read the saved research results. Explain the latest result, what is still unknown, and one useful next experiment. Do not launch an experiment or change resources.">ask about these results</button><small>Prepares a message for Milk Man.</small></div>
     </details>
     <details data-view="traffic">
       <summary title="The collection ID, storage policy, last count, and gateway totals.">Storage and collection details</summary>
-      <div class="collection-meta"><b id="run-profile">finding run</b><small id="run-scope">scope unknown</small><small id="count-checked">Traffic count has not been checked.</small><small class="checked" id="checked">never checked</small></div>
+      <div class="collection-meta"><b id="run-profile">finding run</b><small id="run-scope">scope unknown</small><small class="checked" id="checked">never checked</small></div>
       <div class="rows" id="object"></div>
-    </details>
-    <details data-view="talk">
-      <summary title="Exact local Git workspaces available to the current Milk Man task.">code Milk Man can edit</summary>
-      <div class="rows" id="workspaces"></div>
-    </details>
-    <details data-view="talk">
-      <summary title="Small durable notes carried into later turns for this exact workspace set.">saved decisions</summary>
-      <div class="rows" id="memory"></div>
     </details>
 
     <footer>
