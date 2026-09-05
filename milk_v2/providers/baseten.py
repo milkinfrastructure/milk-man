@@ -117,6 +117,14 @@ class Client:
             raise ProviderError("Baseten deployment identity differs")
         return value
 
+    def deployment_logs(self, model_id: str, deployment_id: str, start_ms: int, end_ms: int) -> list[dict]:
+        value = self._request("POST", f"/models/{model_id}/deployments/{deployment_id}/logs",
+                              {"start_epoch_millis": start_ms, "end_epoch_millis": end_ms})
+        logs = value.get("logs")
+        if not isinstance(logs, list) or any(not isinstance(item, dict) for item in logs):
+            raise ProviderError("Baseten deployment logs response is invalid")
+        return logs
+
     def set_active(self, model_id: str, deployment_id: str, active: bool) -> dict:
         action = "activate" if active else "deactivate"
         value = self._request("POST", f"/models/{model_id}/deployments/{deployment_id}/{action}")

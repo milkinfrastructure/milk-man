@@ -347,8 +347,13 @@ do not restart parked large generation runs.
   result. Replaying unchanged made zero inference/provider calls. Loss on
   one held-out example fell from 1.1153 to 1.0929; this does not prove better
   task completion. One Codex correction separated HTTP timeout from the job
-  deadline. Keep the original failure intact. Native-model serving, held-out
-  task comparison and Chrome-prompted reuse remain unproven.
+  deadline. Keep the original failure intact. Chrome-prompted Milk Man then
+  served that checkpoint on one L4, generated one held-out Bash action, and
+  stopped it automatically. The action was valid but only read the tracker;
+  no command was executed and task improvement remains unproven. The unchanged
+  base returned another valid but unexecuted action. Both deployments are now
+  verified inactive with zero active replicas. Final agent closeout is pending;
+  the tracker retains both exact results without claiming a quality winner.
 - [~] Summary execution/resume and zero-call replay are proven. The heartbeat
   now checks summary milestones independently of a task's resource wait.
   The resumed live owner counted below threshold with no model turn or job

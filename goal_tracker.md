@@ -18,19 +18,42 @@ Status notation:
 - [~] Submitted the held-out trained/base comparison through the local
   dashboard in Chrome; `/api/run` returned 202 and the existing owner resumed
   at turn 101. Milk Man created Baseten model `wl51vn73`, deployment `q9254m6`
-  once, then resumed automatically and registered its startup watch. The
-  last independent provider read found `DEPLOYING`, zero ready replicas.
-  This is an active experiment, not successful inference or cleanup proof.
+  once, resumed on readiness, made one held-out request and stopped the trained
+  deployment without another instruction. An independent provider read after
+  its 05:42:52 UTC stop confirmed `INACTIVE`, zero active replicas. Base model
+  `qe2l6z2q`, deployment `31rd954`, was submitted once at 05:44:34 UTC, made one
+  request and stopped at 05:54:10 UTC. Independent reads then confirmed both
+  deployments `INACTIVE` with zero active replicas. Final agent closeout is
+  still pending; no follow-up instruction was sent during this task.
   Its private state is `native-serving-proof/` under the existing native SFT
-  experiment. The deadline is 2026-09-05 06:00:31 UTC; do not launch a duplicate.
-- [~] `serve-baseten` now accepts an exact saved model manifest through
+  experiment. Its deadline was 2026-09-05 06:00:31 UTC. Do not repeat these calls.
+- [x] `serve-baseten` accepts an exact saved model manifest through
   `MILK_BASETEN_SERVE_CHECKPOINT_KEY/SHA256`. Its plan loads the completed
   Baseten job's `rank-0/merged/` checkpoint, retaining the tokenizer and base
   identity. Real R2 metadata and pinned Truss parsing passed with zero
   inference/provider calls; the existing Hugging Face profile is unchanged.
   The native checkpoint needs vLLM's released text-only Qwen support; this
   trial selects 0.28.0 CUDA 12.9 by image digest, not the older 0.18.1 image.
-  Serving and generated held-out action comparison are still unproven.
+  The trained checkpoint served successfully on one L4. The single request
+  returned valid Bash in 15.814 seconds (2,252 input and 52 output tokens), but
+  only asked to read the full tracker despite an instruction to select relevant
+  sections. No command was executed and task success remains unknown.
+  Result SHA-256:
+  `5ed89cbc08c6d3192fd55ba017739afa79826dc6d5d4f99a4c326bd7a09e1e2d`.
+- [~] Base and trained requests used byte-identical context/tools and the same
+  held-out source group. Base returned valid Bash in 5.260 seconds (2,252 input,
+  64 output tokens), searching the tracker rather than verifying the actual
+  checkpoint. Neither action was executed. There is no measured task-quality
+  winner, and one request per model is not a performance benchmark.
+  Base result SHA-256:
+  `2b3cb2b627b50fe93695fabd0fa76f3afcc4fb966739ea4fe9476e090da7be6f`.
+- [x] Milk Man repaired an unbound variable in its own status-watch command,
+  retained the error and sourced its saved environment explicitly. It did not
+  repeat deployment or inference to recover. No Codex correction was required.
+- [x] Added opt-in `MILK_BASETEN_SERVE_LOG_SECONDS` to Baseten status: recent
+  private diagnostics, redacted and limited to 20 entries. Live execution on
+  the stopped base made two read-only provider calls, zero inference calls and
+  no resource change. The ordinary heartbeat status path still fetches no logs.
 - [x] Exported the one held-out DEV example unchanged from the retained
   dataset: SHA-256 `7b1a75e0c5aecb60e357c13860d6128db607a7e96ad06ea4ff6471bc9fbc2ae7`.
   The existing `native-trial check` withheld the target and preserved its

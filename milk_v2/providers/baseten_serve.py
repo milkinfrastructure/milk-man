@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import shlex
 import sys
+import time
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -19,6 +20,7 @@ from milk_v2.providers import baseten
 from milk_v2.providers.modal_controller import atomic_json, digest, now, read_json, state_root
 from milk_v2.providers.modal_serve import locked
 from milk_v2.store import open_store, settings_from_environment
+from milk_v2.state import redact
 
 
 IDENTIFIER = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
@@ -242,6 +244,18 @@ def execute(action: str, path: Path, client: baseten.Client) -> dict:
             record["observation"] = observed
             save(path, record, "stop")
     result = output(value, record, observed, client.calls)
+    if action == "status" and (seconds := number("LOG_SECONDS", 0, 0)):
+        if seconds > 3600:
+            raise ValueError("LOG_SECONDS must be at most 3600")
+        if observed.get("id"):
+            end = int(time.time() * 1000)
+            logs = client.deployment_logs(observed["model_id"], observed["id"], end - seconds * 1000, end)
+            result["details"]["logs"] = [
+                {"timestamp": row.get("timestamp"), "message": redact(str(row.get("message", "")))[:384]}
+                for row in sorted(logs, key=lambda row: str(row.get("timestamp", "")))[-20:]
+            ]
+            result["details"]["logs_truncated"] = len(logs) > 20 or any(len(str(row.get("message", ""))) > 384 for row in logs)
+            result["provider_calls"] = client.calls
     if action == "stop":
         stopped = observed["status"] == "INACTIVE" and observed.get("active_replica_count") == 0
         absent = observed["status"] == "absent" and not record.get("submitted")

@@ -235,6 +235,12 @@ checkpoint, including its tokenizer, directly into the server; no local weight
 download or new image is needed. Omit both checkpoint settings to serve the
 original base model. Status and stop reuse the saved deployment settings.
 
+For startup diagnostics, run
+`MILK_BASETEN_SERVE_LOG_SECONDS=300 bin/milk run serve-baseten status`.
+It reads the existing deployment's latest 20 log entries, removes known secrets,
+and limits long lines. Treat the output as private. Ordinary status checks do
+not fetch logs; this command never starts or restarts compute.
+
 To compare an agent on a real task, set `MILK_TRIAL_TASK_FILE` and
 `MILK_TRIAL_WORKSPACE`, configure the usual `LLM_*` values, and run
 `bin/milk run agent-trial`. It records the task, code, timing, tool use and
@@ -289,7 +295,10 @@ The native worker also measures how closely the model predicts held-aside
 answers before and after training. A lower loss means a closer match to those
 answers, not proof that the agent completes tasks better.
 In this small run, loss on one held-aside example (184 answer tokens) fell
-from 1.1153 to 1.0929. Serving this model and comparing completed tasks is next.
+from 1.1153 to 1.0929. Milk Man then served the trained and original models on
+one L4 each, requested the same next action, and stopped both. Both returned
+valid read-only commands, but neither command was executed. This does not yet
+show that training improved task completion.
 
 To watch or stop a submitted training run, set `MILK_TRAIN_PROVIDER_JOB_ID`
 to the returned Baseten job ID and use `bin/milk run training-baseten status`
