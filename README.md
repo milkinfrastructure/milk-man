@@ -185,6 +185,10 @@ The `serve-modal` executable job has deployed Qwen, served three correct
 responses, and stopped its GPU. See [`goal_tracker.md`](goal_tracker.md).
 An executable job receives `run`, `status`, or `stop`, inherits the current
 environment plus `MILK_JOB_*` metadata, and returns one JSON result on stdout.
+For a long job, use `bin/background /private/new-run -- bin/milk run NAME`,
+then watch `bin/background /private/new-run status` with the heartbeat. The
+command keeps running if Milk Man restarts. Reusing that directory never starts
+another command; logs and the exit receipt stay private in that directory.
 When `serve-modal` completes, `details.driver` gives the API URL, model, mode,
 and credential environment name for a child agent. Use that serving key, not
 the parent's Milk gateway key. `bin/man develop --check` shows the effective

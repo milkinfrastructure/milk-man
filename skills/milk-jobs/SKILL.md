@@ -10,6 +10,13 @@ environment names. Use `milk jobs` for initial discovery. Read existing progress
 with `milk status`. Run a job with
 `milk run <name>`; executable jobs may also expose `status` and `stop` actions.
 
+For long commands, use `background /absolute/private/run-dir -- bin/milk run NAME`,
+then `man heartbeat wait -- background /absolute/private/run-dir status` and yield.
+The detached command survives a heartbeat restart. Reusing the directory only
+reads its saved run; it never launches again. Status returns PID and private log
+paths, not their contents. Inspect the exit receipt and job result before retrying
+with an intentionally new directory. Keep credentials in environment variables.
+
 - Treat stdout as the single `milk.job-result.v2` JSON result and stderr as
   diagnostics.
 - Reuse job scripts. Add or adapt a repository executable and its catalog entry

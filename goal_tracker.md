@@ -15,6 +15,33 @@ Status notation:
 
 ## Executive state
 
+- [x] Chrome-prompted Milk Man completed the owned checkpoint task without a
+  follow-up instruction: launched/reused cached `openai/gpt-oss-120b` on one
+  H200, resumed automatically after startup, ran the frozen child, and stopped
+  the service. Child trial
+  `54608c2ba68840f2bb783fce1382e1f77e0c377c369876712e8e2097e4ff41cc`
+  completed in 17.343 seconds with three model replies: one Bash call and two
+  finish calls. It corrected its first malformed finish arguments itself.
+  The final counts were 20 exchanges, five source groups, eight classified,
+  20 tool-bearing, zero text-eval eligible, and unknown task success.
+  The suggested next action was generic; this is an operations check, not
+  proof of better research decisions. Both runtime and workspace remained
+  clean at `25031f4bf`. Result SHA-256:
+  `cb6115789092dc738b67e7395561ebe2009af9453cfc60aaa1cce61f710691fe`.
+  Independent Modal status confirmed app `ap-zM2gDYyZlY2ue5AtzLGshF` stopped,
+  zero containers; the weight cache remains. The parent stayed on Astra/Parlor.
+- [!] During startup, the agent's `nohup` wrapper inherited heartbeat owner
+  PID 68699's process group and lock descriptor. Restarting the owner then
+  would have killed the wrapper or prevented ownership recovery. No restart
+  was attempted while it was active; startup and cleanup finished normally.
+- [x] Added `bin/background` and entrypoint/skill guidance for long commands.
+  Its worker uses a new process group, closes inherited descriptors, records
+  its own PID before starting the command, and retains private logs and an
+  exit receipt. A live local command ran without inherited owner FD 233; the
+  original lock was reacquired while that command was still active. Exit 0
+  was retained and replaying its run directory launched nothing. Proof:
+  `milk-background-proof.uzz_k5ow` in private local state. This proves process
+  isolation, not yet restart during an actual provider startup.
 - [x] Added `native-capture`, reusing the existing capture integrity checks.
   A repeated exact-key R2 read produced the same private artifact:
   `a1227941b1b58a403b3e124d999486e1e539b23f9c9ba43b4aceafc1f791ecf9`.

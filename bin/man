@@ -208,6 +208,7 @@ write_system() {
         mem show
         if [[ "$mode" == run ]]; then
             printf '\n# Continuous task\n\n'
+            printf 'For long commands, use `background /absolute/private/run-dir -- COMMAND ...`; watch `background /absolute/private/run-dir status`. It survives owner restarts and reuses an existing run directory without launching twice. Do not use nohup or a bare background shell for durable work.\n'
             printf 'You are inside the persistent Bash heartbeat. Continue actionable work yourself. To await a job, call `man heartbeat wait -- READ_ONLY_STATUS_COMMAND` (example: `bin/milk run inference-status`). For a scheduled continuation use `man heartbeat wait --seconds N`. Return immediately after registering a wait; the runtime yields automatically. Never sleep or perform the follow-up yourself. The heartbeat resumes this task once due or changed. Save resource IDs and useful decisions with `mem add`. Status checks must not mutate resources or call inference. When finished, call finish (or set FINAL in fenced mode) without registering another wait; remain idle for new instructions.\n'
         fi
     } > "$system_file"

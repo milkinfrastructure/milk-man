@@ -229,6 +229,10 @@ without a separate scheduler service.
 - [~] The selected 120B endpoint powered a fresh native Milk Man child through
   a real research-status task. Switching the parent's active trajectory to
   that endpoint and capturing its traffic through Parlor remains unproved.
+- [x] A later Chrome checkpoint task completed without command-by-command
+  correction: owned 120B startup, heartbeat resume, one native child task,
+  automatic stop, and an independent zero-container observation. The child
+  repaired one malformed finish call. This is task execution, not a quality win.
 
 Acceptance: a prompt can make Milk Man operate a real model lifecycle without
 hardcoding that model or provider into the harness.
@@ -260,6 +264,10 @@ leaves one requested winner or zero resources according to the prompt.
 - [~] Restart during an active research task and resume its trajectory,
   resources, measurements, and next experiment without duplication. Restart
   against the same ready 120B server is proven; mid-start recovery remains open.
+- [x] Replace ad-hoc background shells with a reusable detached-command
+  helper. Local execution proved that it does not inherit the heartbeat's
+  process group or owner lock and that replay does not launch again. Apply it
+  to the next asynchronous provider task before proving owner restart.
 - [x] Give Milk Man a different model or compute objective. It may reuse,
   adapt, or create scripts, but must not require an edit to the harness engine.
 - [x] Verify the second workload completes, leaves reusable code and retained

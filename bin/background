@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""Run one detached command; retain its private logs and exit receipt."""
+
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from milk_v2.state import atomic_json, now, read_json
+
+USAGE = "background RUN_DIR -- COMMAND [ARG...] | background RUN_DIR status"
+
+
+def alive(pid):
+    if not isinstance(pid, int) or pid <= 1:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def status(run):
+    worker = read_json(run / "worker.json") if (run / "worker.json").exists() else {}
+    child = read_json(run / "child.json") if (run / "child.json").exists() else {}
+    result = read_json(run / "exit.json") if (run / "exit.json").exists() else {}
+    if result:
+        state = "complete" if result["exit_code"] == 0 else "failed"
+    elif alive(worker.get("worker_pid")):
+        state = "active"
+    elif alive(child.get("child_pid")):
+        state = "orphaned"
+    else:
+        state = "failed" if worker else "unknown" if run.exists() else "absent"
+    return {"state": state, "run_dir": str(run), **worker, **child, **result,
+            "stdout_file": str(run / "stdout"), "stderr_file": str(run / "stderr")}
+
+
+def work(run, command):
+    atomic_json(run / "worker.json", {"worker_pid": os.getpid()})
+    result = {"worker_pid": os.getpid(), "child_pid": None, "exit_code": 125}
+    try:
+        with (run / "stdout").open("wb") as output, (run / "stderr").open("wb") as errors:
+            child = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=output,
+                                     stderr=errors, close_fds=True)
+            result["child_pid"] = child.pid
+            atomic_json(run / "child.json", {"child_pid": child.pid})
+            result["exit_code"] = child.wait()
+    except (OSError, ValueError) as error:
+        result["error"] = type(error).__name__
+    atomic_json(run / "exit.json", {**result, "finished_at": now()})
+
+
+def main():
+    args = sys.argv[1:]
+    if args == ["--help"]:
+        print(USAGE)
+        return
+    worker = args[:1] == ["_work"]
+    if worker:
+        args = args[1:]
+    if len(args) < 2 or not (args[1:] == ["status"] or args[1] == "--" and len(args) > 2):
+        raise ValueError(USAGE)
+    run = Path(args[0]).expanduser().resolve()
+    if run == Path("/") or run == Path.home() or run == ROOT or ROOT in run.parents:
+        raise ValueError("run directory must be dedicated and outside the repository")
+    if worker:
+        work(run, args[2:])
+        return
+    if args[1] == "--":
+        run.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        try:
+            run.mkdir(mode=0o700)
+        except FileExistsError:
+            pass
+        else:
+            try:
+                with (run / "worker.stderr").open("wb") as errors:
+                    process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()),
+                                                "_work", str(run), "--", *args[2:]],
+                                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                               stderr=errors, start_new_session=True, close_fds=True)
+                atomic_json(run / "worker.json", {"worker_pid": process.pid})
+            except (OSError, ValueError) as error:
+                atomic_json(run / "exit.json", {"exit_code": 125, "error": type(error).__name__, "finished_at": now()})
+    print(json.dumps(status(run), separators=(",", ":")))
+
+
+if __name__ == "__main__":
+    os.umask(0o077)
+    try:
+        main()
+    except (OSError, ValueError) as error:
+        print(json.dumps({"state": "failed", "error": type(error).__name__}, separators=(",", ":")))
+        raise SystemExit(64)
