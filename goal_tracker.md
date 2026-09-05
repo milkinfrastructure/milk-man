@@ -15,6 +15,14 @@ Status notation:
 
 ## Executive state
 
+- [~] Submitted the held-out trained/base comparison through the local
+  dashboard in Chrome; `/api/run` returned 202 and the existing owner resumed
+  at turn 101. Milk Man created Baseten model `wl51vn73`, deployment `q9254m6`
+  once, then resumed automatically and registered its startup watch. The
+  last independent provider read found `DEPLOYING`, zero ready replicas.
+  This is an active experiment, not successful inference or cleanup proof.
+  Its private state is `native-serving-proof/` under the existing native SFT
+  experiment. The deadline is 2026-09-05 06:00:31 UTC; do not launch a duplicate.
 - [~] `serve-baseten` now accepts an exact saved model manifest through
   `MILK_BASETEN_SERVE_CHECKPOINT_KEY/SHA256`. Its plan loads the completed
   Baseten job's `rank-0/merged/` checkpoint, retaining the tokenizer and base
