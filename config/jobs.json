@@ -44,6 +44,17 @@
   },
   "operate_order": ["summary", "eval", "dataset", "train", "evaluate"],
   "jobs": {
+    "training-baseten": {
+      "description": "Read or stop an existing Baseten training job selected by MILK_TRAIN_PROVIDER_JOB_ID and BASETEN_TRAINING_PROJECT_ID. Run/status only reads; stop skips terminal jobs and checks provider state after requesting a stop. Never creates a job. A terminal provider status is not proof that model results have been collected; run the original train job to collect them.",
+      "executable": "milk_v2/providers/baseten_training.py",
+      "environment": {
+        "required": ["BASETEN_API_KEY", "BASETEN_TRAINING_PROJECT_ID", "MILK_TRAIN_PROVIDER_JOB_ID"],
+        "optional": ["MILK_TRAIN_TIMEOUT_SECONDS"]
+      },
+      "status": true,
+      "stop": true,
+      "timeout_env": "MILK_TRAIN_TIMEOUT_SECONDS"
+    },
     "native-dataset": {
       "description": "Build native assistant/tool data from a pinned summary. Set MILK_CHECKPOINT_KEY/SHA256; MILK_NATIVE_DATASET_PER_GROUP defaults to one earliest supported exchange per trajectory. Keeps tools, history, targets and existing splits. Writes immutable split files and a manifest; no current pointers change. Replay reads no capture bodies. Zero inference/provider calls. Saved data does not prove task success or model improvement.",
       "executable": "milk_v2/native_dataset.py",

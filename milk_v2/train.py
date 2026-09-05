@@ -20,8 +20,8 @@ TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-ma
 TRAIN_SOURCE_SHA256 = "238e1d710529e209e700995839ee6fcc5c587f0d89ea6095befee248af54ac68"
 REINFORCE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/89875d6b7f8610703a4dfe383c62f84be35a9d2a/images/train/train.py"
 REINFORCE_SOURCE_SHA256 = "a123dea785ad619f76de5a23944004af33fbf1b50657c549ee851860d8afac42"
-NATIVE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/3ed0bd39051eac6c1bda1ee72031b6b3605feae4/images/train/train.py"
-NATIVE_SOURCE_SHA256 = "bee459b153e1bb7a72473ee81565aa9faeea00be62b3d75d44d998a9e18b1edf"
+NATIVE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/e3255a13906e7d159ce0d5278b5367f727e2e06f/images/train/train.py"
+NATIVE_SOURCE_SHA256 = "f79b3842395b869596f9934b3e70237a7a40b5b104fcc52cd8b316adbc662793"
 
 
 class TrainError(ValueError):
@@ -388,8 +388,10 @@ def _completed(store, settings, runtime, client, config: dict, manifest: dict, j
     next_action = None if native else "evaluate"
     result_key = prefix + "result.json"
     result = {"schema_version": "milk.train-job-result.v2", "job_id": job_id, "state": "progressed", "next": next_action, "model": reference, "provider_job_id": provider_job["id"], "artifact_keys": [model_key, *status_keys, result_key]}
+    if native:
+        result["heldout"] = output.get("heldout")
     store.create_same(result_key, summary.canonical(result))
-    return {"state": "progressed", "identity": job_id, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": client.calls, "next": next_action, "details": {"model_uuid": model_uuid, "provider_job_id": provider_job["id"], "status": provider_job["current_status"], "recipe": recipe}}
+    return {"state": "progressed", "identity": job_id, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": client.calls, "next": next_action, "details": {"model_uuid": model_uuid, "provider_job_id": provider_job["id"], "status": provider_job["current_status"], "recipe": recipe, **({"heldout": result["heldout"]} if native else {})}}
 
 
 def reconcile(store, settings, runtime) -> dict:
@@ -436,7 +438,7 @@ def reconcile(store, settings, runtime) -> dict:
         if not isinstance(model, dict):
             raise TrainError("stored training result has no model")
         status_keys = [] if native else [_advance_status(store, settings, model)]
-        return {"state": "idle", "identity": job_id, "artifacts": _artifacts(store, [*prior["artifact_keys"], *status_keys]), "provider_calls": 0, "next": prior["next"], "details": {"model_uuid": model["uuid"], "provider_job_id": prior["provider_job_id"], "status": "TRAINING_JOB_COMPLETED"}}
+        return {"state": "idle", "identity": job_id, "artifacts": _artifacts(store, [*prior["artifact_keys"], *status_keys]), "provider_calls": 0, "next": prior["next"], "details": {"model_uuid": model["uuid"], "provider_job_id": prior["provider_job_id"], "status": "TRAINING_JOB_COMPLETED", **({"heldout": prior.get("heldout")} if native else {})}}
     except FileNotFoundError:
         pass
 

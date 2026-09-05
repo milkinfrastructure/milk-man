@@ -83,6 +83,13 @@ class Client:
             raise ProviderError("Baseten job response is invalid")
         return job
 
+    def stop_training(self, project_id: str, job_id: str) -> dict:
+        value = self._request("POST", f"/training_projects/{project_id}/jobs/{job_id}/stop", {})
+        job = value.get("training_job")
+        if not isinstance(job, dict) or job.get("id") != job_id:
+            raise ProviderError("Baseten stop response is invalid", ambiguous=True)
+        return job
+
     def checkpoint_files(self, project_id: str, job_id: str) -> list[dict]:
         value = self._request("GET", f"/training_projects/{project_id}/jobs/{job_id}/checkpoint_files")
         files = value.get("presigned_urls")
