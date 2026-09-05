@@ -59,9 +59,11 @@ def get(client, key: str, expected: str) -> bytes:
     return body
 
 
-def dataset() -> tuple[dict, list[dict]]:
+def dataset(split: str = "train") -> tuple[dict, list[dict]]:
     import zstandard
 
+    if split not in {"train", "dev"}:
+        raise ValueError("training reads only train or dev splits")
     client = s3()
     manifest = json.loads(
         get(client, required("MILK_DATASET_MANIFEST_KEY"), required("MILK_DATASET_MANIFEST_SHA256"))
@@ -75,6 +77,8 @@ def dataset() -> tuple[dict, list[dict]]:
     ):
         raise ValueError("dataset manifest identity differs")
     native = manifest["schema_version"] == "milk.native-dataset.v1"
+    if split != "train" and not native:
+        raise ValueError("held-out loading is only supported for native datasets")
     if native:
         identity = manifest.get("identity")
         job_id = manifest.get("job_id")
@@ -92,31 +96,31 @@ def dataset() -> tuple[dict, list[dict]]:
         prefix = f"milk/v2/scopes/{manifest['scope_id']}/d/{manifest['dataset_uuid']}/"
         if required("MILK_DATASET_MANIFEST_KEY") != prefix + "manifest.json":
             raise ValueError("native dataset manifest key differs")
-    train = manifest.get("objects", {}).get("train")
-    if not isinstance(train, dict) or set(train) != {"key", "sha256", "content_sha256", "count"}:
-        raise ValueError("dataset train object is invalid")
+    part = manifest.get("objects", {}).get(split)
+    if not isinstance(part, dict) or set(part) != {"key", "sha256", "content_sha256", "count"}:
+        raise ValueError(f"dataset {split} object is invalid")
     if native and (
-        type(train["count"]) is not int or train["count"] < 1
-        or manifest.get("counts", {}).get("train") != train["count"]
-        or train["key"] != prefix + "train.jsonl.zst"
+        type(part["count"]) is not int or part["count"] < (1 if split == "train" else 0)
+        or manifest.get("counts", {}).get(split) != part["count"]
+        or part["key"] != prefix + f"{split}.jsonl.zst"
     ):
-        raise ValueError("native dataset train reference differs")
-    compressed = get(client, train["key"], train["sha256"])
+        raise ValueError(f"native dataset {split} reference differs")
+    compressed = get(client, part["key"], part["sha256"])
     plain = zstandard.ZstdDecompressor().decompress(compressed, max_output_size=64 * 1024 * 1024)
-    if sha256(plain) != train["content_sha256"]:
-        raise ValueError("dataset train content digest differs")
+    if sha256(plain) != part["content_sha256"]:
+        raise ValueError(f"dataset {split} content digest differs")
     rows = [json.loads(line) for line in plain.splitlines() if line]
-    if len(rows) != train["count"] or not rows:
-        raise ValueError("dataset train count differs")
+    if len(rows) != part["count"] or (split == "train" and not rows):
+        raise ValueError(f"dataset {split} count differs")
     for row in rows:
         if native:
             source = row.get("source", {}) if isinstance(row, dict) else {}
             if (
                 not isinstance(row, dict)
                 or row.get("schema_version") != "milk.native-assistant-example.v1"
-                or row.get("split", "train") != "train"
+                or row.get("split", split) != split
                 or not isinstance(source, dict)
-                or source.get("split") != "train"
+                or source.get("split") != split
                 or source.get("scope_id") != manifest["scope_id"]
                 or source.get("profile") != manifest["profile"]
                 or row.get("decoder_sha256") != manifest["decoder_sha256"]
@@ -199,6 +203,28 @@ def tokens(tokenizer, row: dict, maximum: int):
 
     encoded, labels = token_ids(tokenizer, row, maximum)
     return torch.tensor([encoded], dtype=torch.long), torch.tensor([labels], dtype=torch.long)
+
+
+def heldout_loss(model, batches) -> dict:
+    """Token-weighted teacher-forced loss on fixed DEV targets; no generated actions."""
+    import torch
+
+    model.eval()
+    weighted_loss, target_tokens = 0.0, 0
+    with torch.no_grad():
+        for cpu_ids, cpu_labels in batches:
+            count = int((cpu_labels[:, 1:] != -100).sum())
+            if not count:
+                raise ValueError("held-out example has no target tokens")
+            input_ids, labels = cpu_ids.cuda(), cpu_labels.cuda()
+            loss = model(input_ids=input_ids, labels=labels).loss
+            if not torch.isfinite(loss):
+                raise RuntimeError("held-out target loss is not finite")
+            weighted_loss += float(loss.detach().cpu()) * count
+            target_tokens += count
+            del input_ids, labels, loss
+    return {"examples": len(batches), "target_tokens": target_tokens,
+            "mean_target_nll": weighted_loss / target_tokens if target_tokens else None}
 
 
 def normalized(value: str) -> list[str]:
@@ -344,12 +370,26 @@ def main() -> None:
         raise ValueError("native tool targets require SFT; text-similarity reinforce is unsupported")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ROOT, local_files_only=True)
     batches = [tokens(tokenizer, row, maximum) for row in rows[:min(steps, len(rows))]] if recipe == "sft" else []
+    heldout = None
+    if manifest["schema_version"] == "milk.native-dataset.v1":
+        unused_manifest, dev_rows = dataset("dev")
+        train_groups = {row["source"]["source_group_sha256"] for row in rows}
+        if any(row["source"]["source_group_sha256"] in train_groups for row in dev_rows):
+            raise ValueError("native train and dev source groups overlap")
+        dev_batches = [tokens(tokenizer, row, maximum) for row in dev_rows]
+        heldout = {"metric": "teacher_forced_target_nll", "split": "dev",
+                   "dataset_manifest_key": required("MILK_DATASET_MANIFEST_KEY"),
+                   "dataset_manifest_sha256": required("MILK_DATASET_MANIFEST_SHA256"),
+                   "object": manifest["objects"]["dev"],
+                   "note": "Loss on saved assistant targets, not generated task success or a model-quality win. No DEV examples means loss is unmeasured."}
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ROOT,
         local_files_only=True,
         torch_dtype=torch.bfloat16,
     ).cuda()
     model.config.use_cache = False
+    if heldout is not None:
+        heldout["before"] = heldout_loss(model, dev_batches)
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     losses = []
@@ -367,6 +407,10 @@ def main() -> None:
             loss.backward()
             optimizer.step()
             losses.append(float(loss.detach().cpu()))
+
+    if heldout is not None:
+        optimizer.zero_grad(set_to_none=True)
+        heldout["after"] = heldout_loss(model, dev_batches)
 
     output = Path(os.environ.get("BT_CHECKPOINT_DIR", "/mnt/ckpts")) / "merged"
     output.mkdir(parents=True, exist_ok=True)
@@ -390,10 +434,14 @@ def main() -> None:
     }
     if reinforce is not None:
         result["reinforce"] = reinforce
+    if heldout is not None:
+        result["heldout"] = heldout
     (output / "milk-result.json").write_text(json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n")
     visible = {key: result[key] for key in ("schema_version", "job_id", "dataset_uuid", "recipe", "steps", "examples", "examples_used", "loss_first", "loss_last")}
     if reinforce is not None:
         visible["reinforce"] = {key: reinforce[key] for key in ("rollout_count", "rollouts_sha256", "reward_mean_bps", "reward_std_bps", "policy_loss")}
+    if heldout is not None:
+        visible["heldout"] = heldout
     print(json.dumps(visible, sort_keys=True, separators=(",", ":")))
 
 
