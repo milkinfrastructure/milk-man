@@ -15,6 +15,20 @@ Status notation:
 
 ## Executive state
 
+- [x] Research revision
+  `d06e5a68fac31fc74783dc82632d889b57fd7714399bfcb41f61911b59ff2f43`
+  adds checked `object_refs` to the existing failed Qwen comparison: baseline
+  config/result, candidate config/result, and the retained comparison. All
+  thirteen experiments remain, with no duplicate experiment or changed result.
+  The new save checked five exact R2 objects; readback matched and replay
+  checked zero. Baseline, evaluation and best remain null. No model/GPU calls,
+  training, route changes or resource launches occurred.
+  Private proof: `research-bindings.FaOUkx/proof.json`.
+  Local execution rejected wrong hashes/scopes/current pointers before writing.
+  Review caught that a current pointer could invalidate itself during save;
+  these references now require the underlying versioned object instead.
+  The initial preflight caught the runtime env file's older demo scope and
+  wrote nothing; this run explicitly selected `milk-man-autoresearch`.
 - [x] Added optional recent logs to `serve-modal status` through
   `MILK_MODAL_SERVE_LOG_LINES` (default 0, maximum 100). Existing redaction and
   CLI execution are reused; no follow loop, restart, or dependency was added.

@@ -144,7 +144,7 @@
       "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
     },
     "research": {
-      "description": "Status reads saved research, stage pointers and the next capture threshold without inference. Save via MILK_RESEARCH_FILE: JSON fields parent_revision (status details.revision or null), objective (text), targets (object), baseline/evaluation/best (object or null), experiments (array), next_action (text), wake (object or null). Copy current record fields to update and set parent_revision to its revision. Retain compact references, not raw traffic. Saved claims are not verified wins.",
+      "description": "Read status or save MILK_RESEARCH_FILE with fields parent_revision, objective, targets, baseline, evaluation, best, experiments, next_action, wake. Copy current fields; parent_revision is status details.revision or null initially. Baseline/evaluation/best and experiments may include object_refs: name -> {key,sha256}. Save checks each referenced object in this scope before publishing; unchanged replay/status does not reread them. Bind task result AND config. Notes and matching hashes do not prove wins.",
       "executable": "milk_v2/research.py",
       "environment": {
         "required": ["MILK_SCOPE_ID", "MILK_STORE_KIND", "MILK_RESEARCH_FILE"],

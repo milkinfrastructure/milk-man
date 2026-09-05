@@ -188,6 +188,14 @@ the first parent and unknown baseline, evaluation, best, or wake. Updates use
 the current revision as their parent. Repeating the same write is a no-op.
 Keep references and compact results here, not raw traffic or credentials.
 
+To attach saved evidence, add `object_refs` inside a baseline, evaluation, best,
+or experiment object. Each name maps to `{"key":"<immutable scoped object key>",
+"sha256":"<digest>"}`. A new save reads those objects and checks their hashes
+before publishing. Replay and status leave them alone. For agent comparisons,
+attach both the result and its run configuration, plus the evaluation data.
+Hashes tie notes to exact files; they do not prove task success, untouched data,
+or a better model. Keep unknown results `null`.
+
 Status reads the record and current stage pointers, then checks whether this
 scope has enough captures for its next `MILK_SUMMARY_THRESHOLDS` checkpoint.
 It lists only that scope's capture keys, stopping at the threshold; it does not

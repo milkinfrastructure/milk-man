@@ -180,6 +180,28 @@ def _observed(store, settings) -> dict:
     return observed
 
 
+def _verify_objects(store, settings, value: dict) -> int:
+    references = set()
+    entries = [value[name] for name in ("baseline", "evaluation", "best") if value[name] is not None]
+    for entry in entries + value["experiments"]:
+        objects = entry.get("object_refs", {})
+        if not isinstance(objects, dict):
+            raise ResearchError("object_refs must map names to scoped key/sha256 pairs")
+        for reference in objects.values():
+            if (
+                not isinstance(reference, dict) or set(reference) != {"key", "sha256"}
+                or not isinstance(reference["key"], str) or not reference["key"].startswith(settings.scope_prefix)
+                or reference["key"].endswith("/current.json")
+                or not isinstance(reference["sha256"], str) or DIGEST.fullmatch(reference["sha256"]) is None
+            ):
+                raise ResearchError("research object reference needs an immutable scoped key and SHA-256, not a current pointer")
+            references.add((reference["key"], reference["sha256"]))
+    for key, expected in sorted(references):
+        if summary.digest(store.get(key).body) != expected:
+            raise ResearchError("research object digest differs; record was not published")
+    return len(references)
+
+
 def view(store, settings) -> dict:
     pointer, unused_pointer_object, record, unused_record_object = _current(store, settings)
     return {
@@ -209,13 +231,14 @@ def run(store, settings) -> dict:
     record, record_body, revision, record_key = _record(settings, value)
     pointer, pointer_object, unused_current_record, unused_record_object = _current(store, settings)
     if pointer and pointer["sha256"] == revision:
-        details = {"record": record, "revision": revision, "observed": _observed(store, settings)}
+        details = {"record": record, "revision": revision, "observed": _observed(store, settings), "objects_checked": 0}
         return _result("idle", revision, details, artifacts=({"key": record_key, "sha256": revision},))
     parent = value["parent_revision"]
     current_revision = pointer.get("sha256") if pointer else None
     if parent != current_revision:
         raise BusyError("parent_revision differs from the current research revision")
 
+    objects_checked = _verify_objects(store, settings, value)
     store.create_same(record_key, record_body)
     pointer_value = {
         "schema_version": "milk.pointer.v2",
@@ -237,7 +260,7 @@ def run(store, settings) -> dict:
         published = store.replace_if_match(pointer_key, pointer_object.etag, pointer_body)
         if published is None:
             raise BusyError("research pointer changed before publication")
-    details = {"record": record, "revision": revision, "observed": _observed(store, settings)}
+    details = {"record": record, "revision": revision, "observed": _observed(store, settings), "objects_checked": objects_checked}
     artifacts = ({"key": record_key, "sha256": revision}, {"key": pointer_key, "sha256": summary.digest(pointer_body)})
     return _result("progressed" if published.created or pointer_object is not None else "idle", revision, details, artifacts=artifacts)
 

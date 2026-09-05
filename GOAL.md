@@ -23,6 +23,11 @@ Current frontier:
   Retained-app CLI read returned 20 lines without compute. That older app no
   longer appears in status; verify automatic attachment on the next useful run,
   not by buying a logging-only deployment.
+- [x] Research saves can bind exact scoped objects. The retained Qwen
+  comparison now includes both run configurations and results plus its saved
+  comparison, checked on R2 before publication. All thirteen experiments
+  remain; unchanged replay rereads none of these objects. This does not supply
+  an untouched evaluation or a winner; those requirements below remain open.
 - [ ] Continue unproven P4–P8 model operations, useful inference tuning and the
   scope-specific learning application. Reuse completed work, add only a missing
   executable capability, then prove that capability through Milk Man. No new
@@ -610,6 +615,12 @@ do not restart parked large generation runs.
   Chrome-prompted Milk Man saved its own scope's record, replayed the same
   write unchanged, and registered a read-only heartbeat watch. The dashboard
   reads the same record; no new orchestrator was added.
+- [x] Optional `object_refs` bind research entries to exact scoped objects
+  before publication. The saved failed comparison now includes both run
+  configurations and results, not just notes. Five R2 objects matched;
+  unchanged replay checked zero. Wrong scopes, hashes and current pointers
+  were rejected without publishing. This checks file identity, not task
+  correctness or evaluation independence; baseline/evaluation/best stay null.
 - [ ] Bind the record to measured baseline and candidate results on untouched
   evaluation data. Its baseline, evaluation, and best fields are currently
   unknown; saved notes alone do not qualify a winner.
