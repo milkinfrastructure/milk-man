@@ -361,7 +361,7 @@ function selectCheckpoint(uuid, open = true) {
   el("labeled-count").textContent = Number.isInteger(classified) ? classified.toLocaleString() : "not recorded";
   el("summary-basis").textContent = index === 0 ? "latest saved summary" : "earlier saved summary";
   el("sample-basis").textContent = Number.isInteger(total) ? "out of " + total.toLocaleString() + " summarized exchanges" : "sample size not recorded";
-  el("checkpoint-position").textContent = index === 0 ? "Latest summary selected. Counts and charts match this version." : "Earlier summary selected. Saved traffic and the next milestone remain current.";
+  el("checkpoint-position").textContent = index === 0 ? "Latest summary selected. New summaries appear here automatically." : "Earlier summary selected. Saved traffic and the next milestone remain current.";
   document.querySelectorAll(".tick").forEach(tick => tick.classList.toggle("selected", tick.dataset.checkpoint === selectedCheckpoint));
 }
 function renderProgress(progress = {}) {
@@ -373,6 +373,7 @@ function renderProgress(progress = {}) {
   const processed = number(progress.processed_count);
   const points = progress.thresholds || [];
   const checkpoints = [...new Map((progress.checkpoints || []).map(item => [item.uuid, item])).values()].sort((a, b) => number(b.capture_count) - number(a.capture_count));
+  const followLatest = !selectedCheckpoint || selectedCheckpoint === savedProgress.checkpoints?.[0]?.uuid;
   savedProgress = { ...progress, checkpoints };
   const displayed = new Set(Array.from(el("milestones").querySelectorAll(".checkpoint"), value => value.dataset.uuid));
   const detailKey = value => value.dataset.detail || (value.dataset.chart ? value.closest(".checkpoint").dataset.uuid + ":" + value.dataset.chart : value.dataset.uuid);
@@ -503,7 +504,7 @@ function renderProgress(progress = {}) {
     picker.append(node("option", "", "No summaries yet"));
     el("checkpoint-position").textContent = "";
     el("milestones").append(node("p", "empty", "No summary saved yet. The next milestone is shown above."));
-  } else selectCheckpoint(selectedCheckpoint, false);
+  } else selectCheckpoint(followLatest ? checkpoints[0].uuid : selectedCheckpoint, false);
   el("read-selected").disabled = !checkpoints.length;
   el("read-selected").onclick = () => {
     const card = Array.from(el("milestones").querySelectorAll(".checkpoint")).find(value => value.dataset.uuid === selectedCheckpoint);

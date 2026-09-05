@@ -1,6 +1,6 @@
 # Milk evidence and execution tracker
 
-Updated: 2026-09-04
+Updated: 2026-09-05
 
 This is the concise state ledger. The stable contract is [PRD.md](PRD.md); the
 ordered work is [GOAL.md](GOAL.md). The former 1,874-line tracker remains in Git
@@ -15,6 +15,27 @@ Status notation:
 
 ## Executive state
 
+- [x] Automatic summary execution is now live-proven on retained traffic.
+  An isolated idle heartbeat detected the temporary 200 threshold, ran one
+  summary job and advanced 100 to 200 out of 302 saved exchanges. It made two
+  summary inference calls, zero driver calls and no GPU operations. Eight
+  examples were labeled; eight source groups remain, and readiness stays false.
+  Summary UUID `8d0a38b9-a959-5f50-989d-199651c7cb63`, SHA-256
+  `54ca153ba2d81857c43cd1233b38078742f806999f242e6c76715159fa0e8bc1`.
+  The checkpoint job independently verified its bytes, ancestry and readiness.
+  Seven heartbeat polls launched only one job, then waited for 1,000.
+  Evidence: private `auto-summary-200-20260905/proof.json`. The checker was
+  stopped; the normal environment thresholds were not changed. No new traffic
+  was generated to force this already-reached milestone.
+- [x] `bin/man run --workspace NAME=/path` now starts idle without a prompt.
+  A fresh direct run completed four checks against R2 with zero driver replies
+  and zero summary launches, then was stopped. Explicit resume behavior stays
+  unchanged. Evidence: private `auto-summary-idle-20260905/proof.json`.
+- [x] Fixed a live dashboard selection error: a user viewing Latest was left
+  on 100 when 200 arrived. Latest now follows new saved results; deliberately
+  selected older summaries remain selected. Direct selection checks passed,
+  and Chrome displays 302 saved, 200 summarized, eight labeled. No CSS,
+  dependencies or dashboard service changes were needed.
 - [!] One bounded 120B child trial failed after six replies in 14.363 seconds:
   it browsed source files, never ran the checkpoint job, and saved no report.
   The exact job command was already in its system instructions; transport and
@@ -171,8 +192,8 @@ Status notation:
   The local dashboard serves the updated UI and reads the real checker state.
   Chrome extension attachment still fails. A separate headless Chrome verified
   the current dashboard without interrupting Milk Man or the user's tabs.
-- [ ] Observe one real automatic threshold crossing and the finished summary
-  appearing in the dashboard. Do not generate extra traffic solely to force it.
+- [x] The automatic 200-threshold execution and dashboard result are recorded
+  above. It used existing data; a new-arrival wake was not part of this proof.
 - [x] Each saved checkpoint now updates dashboard status before the next
   crossed milestone starts. The UI distinguishes a running summary from a
   saved one and clears that status on disconnect. No new inference was needed

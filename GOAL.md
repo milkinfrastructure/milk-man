@@ -200,6 +200,9 @@ not another bespoke orchestration branch.
 
 ## P3 — add the durable lightweight heartbeat
 
+- [x] Start idle directly with `bin/man run --workspace NAME=/path`, without
+  a prompt or setup turn. Four live checks read the saved 200-exchange summary,
+  waited below 1,000 and made zero driver calls or summary launches.
 - [x] Run the heartbeat independently of the browser. Closing or refreshing
   the dashboard must not stop the active task.
 - [x] Configure initial interval, maximum interval, and idle backoff with
@@ -367,17 +370,22 @@ do not restart parked large generation runs.
   after confused hash comparisons and repeated metadata reads. The tracker
   retains both exact results without claiming a quality winner or wholly
   unassisted completion.
-- [~] Summary execution/resume and zero-call replay are proven. The heartbeat
-  now checks summary milestones independently of a task's resource wait.
-  The resumed live owner counted below threshold with no model turn or job
-  launch. An automatic crossed-threshold run remains to be observed.
-- [~] With `MILK_AUTO_SUMMARY=1`, count saved objects in the existing heartbeat
+- [x] Summary execution/resume and zero-call replay are proven. The heartbeat
+  checks summary milestones independently of a task's resource wait. An isolated
+  idle owner detected an already-reached 200 threshold in retained traffic,
+  automatically ran one summary job and saved the 200-exchange checkpoint.
+  Two summary inference calls labeled eight examples; no driver call was made.
+  Subsequent checks waited below 1,000 without relaunching the job. This proves
+  detection of an already-reached milestone, not a newly arriving traffic event.
+- [x] With `MILK_AUTO_SUMMARY=1`, count saved objects in the existing heartbeat
   and directly run the summary job when `MILK_SUMMARY_THRESHOLDS` is crossed.
   No driver reasoning is required for counting or dispatch. Keep other job waits
   intact, handle an already-reached milestone, and skip saved milestones.
   Reuse the existing background runner; do not add another service.
   Show waiting, due and saved separately in the dashboard; claim running only
-  from an actual job observation. Prove one crossing and one idle replay.
+  from an actual job observation. The live job and idle checks were observed;
+  Chrome displayed the saved 200-exchange summary. Its Latest selection now
+  follows new checkpoints, while explicitly selected earlier summaries stay put.
 - [ ] Add or reuse scripts for eval generation, synthetic rollouts, scoring or
   rewards, filtering/deduplication, source-group splitting, dataset building,
   training, merging, quantization, evaluation, serving, and cleanup.

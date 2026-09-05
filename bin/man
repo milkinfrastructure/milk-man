@@ -10,7 +10,7 @@ usage() {
     cat <<'EOF'
 Usage:
   bin/man dashboard
-  bin/man run --workspace NAME=/absolute/path [--resume] -- TASK
+  bin/man run --workspace NAME=/absolute/path [--resume] [-- TASK]
   bin/man heartbeat status|pause|resume|stop
   bin/man heartbeat wait [--seconds N] [-- READ_ONLY_COMMAND ...]
   bin/man develop --workspace NAME=/absolute/path [--workspace ...] -- TASK
@@ -34,6 +34,8 @@ Driver settings:
   MILK_MAN_MAX_ITERATIONS=20 bounds one reasoning turn; develop then exits.
   MILK_MAN_STATE_DIR=/absolute/private/path isolates task history and memory.
 
+Run without a task starts idle. With MILK_AUTO_SUMMARY=1, the heartbeat counts
+saved exchanges and runs summaries at MILK_SUMMARY_THRESHOLDS without a driver call.
 Develop uses the provider order above. Bootstrap deterministically runs the
 fixed controller jobs before its first model call. Controller creation is a
 dry run unless MILK_MODAL_CONTROLLER_APPLY=1.
@@ -91,7 +93,7 @@ done
 (( ${#workspaces[@]} )) || die "at least one --workspace is required"
 (( ! resume || ${#trajectory} == 0 )) || die "--resume and --traj are mutually exclusive"
 if (( ! check && ${#task_parts[@]} == 0 )); then
-    [[ "$mode" == run && "$resume" == 1 ]] || die "a task is required after --"
+    [[ "$mode" == run ]] || die "a task is required after --"
 fi
 if [[ "$mode" == bootstrap ]] && (( ${#trajectory} || check )); then
     die "bootstrap accepts a new or resumed trajectory; --traj and --check are invalid"

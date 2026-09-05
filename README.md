@@ -111,7 +111,13 @@ To generate summaries as traffic arrives, start the heartbeat with:
 ```bash
 export MILK_AUTO_SUMMARY=1
 export MILK_SUMMARY_THRESHOLDS=100,1000,10000,100000
+bin/man run --workspace milk-man="$PWD"
 ```
+
+No prompt is needed to start idle. Use `--resume` to return to an existing task
+instead. Counting uses no driver-model calls; the summary job uses its configured
+model only when a milestone is reached. Storage and summary settings must already
+be present in the environment.
 
 It counts saved request/response objects without calling a model. At a milestone,
 it runs the existing summary job with your storage and inference settings.
