@@ -97,10 +97,10 @@ function copyButton(display, value, label) {
 }
 
 const views = {
-  talk: ["Your workspace", "Describe an outcome. Milk Man chooses the commands and reports back here."],
-  traffic: ["What has been collected?", "Requests and answers become saved summaries. Open a checkpoint to read what was learned."],
-  research: ["What did the experiments show?", "Compare results before choosing what to try next. Losing experiments stay in the record too."],
-  jobs: ["What can Milk Man do?", "Find a tool, check its settings, then ask Milk Man to use it. Opening a tool runs nothing."],
+  talk: ["Chat", "Give Milk Man a task. Follow its work here."],
+  traffic: ["Collected data", "Requests and answers saved by Milk Parlor. Summaries describe what is in them."],
+  research: ["Experiment results", "See what changed, how it performed, and what remains untested."],
+  jobs: ["Tools and settings", "Find an action and the settings it needs. Opening one runs nothing."],
   connect: ["Keep your OpenAI calls", "Point the official SDK at Milk Parlor. Your application still calls the same API."],
 };
 function showView() {
@@ -143,11 +143,16 @@ function light(id, state, label) {
   el(id + "-state").textContent = label;
 }
 
+function plainLabel(value) {
+  return ({plan_or_tool_use: "Planning and tool use", instruction_following: "Following instructions", tool_use: "Using tools", structured_output: "Formatted output", math_science: "Math and science", unknown: "Unknown", partial: "Partly completed", executable: "Run the task and check", pairwise_judge: "Compare two answers", en: "English", true: "Yes", false: "No", baseline: "Original model"})[value] || value.replaceAll("_", " ");
+}
+
 function counts(values) {
-  return Object.entries(values || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(value => value[0].replaceAll("_", " ") + " " + value[1].toLocaleString()).join(" · ") || "none";
+  return Object.entries(values || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(value => plainLabel(value[0]) + " " + value[1].toLocaleString()).join(" · ") || "not recorded";
 }
 
 function percent(basisPoints) {
+  if (!Number.isFinite(basisPoints)) return "not recorded";
   return (number(basisPoints) / 100).toFixed(number(basisPoints) % 100 ? 2 : 0) + "%";
 }
 
@@ -166,10 +171,48 @@ function duration(value) {
   return amount >= 1000 ? (amount / 1000).toFixed(amount % 1000 ? 1 : 0) + "s" : amount.toLocaleString(undefined, {maximumFractionDigits: 1}) + "ms";
 }
 
-function series(value, format = item => number(item).toLocaleString(), showTail = false) {
-  if (!value || !number(value.count)) return "no data";
-  const result = "average " + format(number(value.mean_milli) / 1000) + " · observed " + format(value.min) + "–" + format(value.max);
-  return (showTail ? result + " · about 95% ≤" + format(value.p95) : result) + " · " + number(value.count).toLocaleString() + " samples";
+function countBar(value, total, label) {
+  const bar = node("div", "count-bar");
+  const known = Number.isFinite(value) && Number.isFinite(total) && total >= 0;
+  bar.setAttribute("role", "img");
+  bar.setAttribute("aria-label", known ? value.toLocaleString() + " of " + total.toLocaleString() + " " + label : "Count not recorded");
+  const fill = known && total > 0 ? Math.max(0, Math.min(1, value / total)) * 20 : 0;
+  for (let index = 0; index < 20; index++) {
+    const segment = node("i"), ink = node("b");
+    ink.style.width = Math.max(0, Math.min(1, fill - index)) * 100 + "%";
+    segment.append(ink); bar.append(segment);
+  }
+  return bar;
+}
+
+function responseStats(values) {
+  const wrapper = node("div", "table-scroll");
+  const table = node("table", "experiment-comparison");
+  table.append(node("caption", "", "Measured across the exchanges in this summary. Times include the model provider."));
+  const head = node("tr");
+  for (const title of ["Measurement", "Average", "Observed range", "Approx. 95% below", "Samples"]) {
+    const cell = node("th"); cell.scope = "col";
+    cell.append(helpHeading(title, title === "Approx. 95% below" ? "An upper-bound estimate from grouped measurements. At least about 95% fall below it. It can exceed the observed maximum; it is not an exact percentile." : null));
+    head.append(cell);
+  }
+  const header = node("thead"); header.append(head); table.append(header);
+  const body = node("tbody");
+  for (const [key, label, format, help] of [
+    ["total_ms", "Full response", duration, "Request start to complete response."],
+    ["ttft_ms", "First response byte", duration, "For a non-streaming request, this can be the full wait. It is not always the first generated token."],
+    ["tps_milli", "Output tokens / second", value => (value / 1000).toFixed(1), "Recorded generation rate where token counts were available."],
+    ["input_tokens", "Input tokens", value => value.toLocaleString(undefined, {maximumFractionDigits: 1}), "Input tokens reported by the provider."],
+    ["output_tokens", "Output tokens", value => value.toLocaleString(undefined, {maximumFractionDigits: 1}), "Output tokens reported by the provider."],
+  ]) {
+    const stat = values[key] || {};
+    const measured = Number.isFinite(stat.count) && stat.count > 0;
+    const row = node("tr"), heading = node("th"); heading.scope = "row";
+    heading.append(helpHeading(label, help)); row.append(heading);
+    row.append(node("td", "", measured && Number.isFinite(stat.mean_milli) ? format(stat.mean_milli / 1000) : "not recorded"), node("td", "", measured && Number.isFinite(stat.min) && Number.isFinite(stat.max) ? format(stat.min) + "–" + format(stat.max) : "not recorded"), node("td", "", measured && Number.isFinite(stat.p95) ? format(stat.p95) : "not recorded"), node("td", "", Number.isFinite(stat.count) ? stat.count.toLocaleString() : "not recorded"));
+    body.append(row);
+  }
+  table.append(body); wrapper.append(table);
+  return wrapper;
 }
 
 function helpHeading(label, help) {
@@ -233,24 +276,29 @@ function distributionChart(label, values, total, help) {
   const chart = node("section", "summary-row chart");
   const heading = helpHeading(label, help);
   chart.append(heading);
+  if (Number.isInteger(total) && total > 0) chart.append(node("small", "chart-basis", "Count out of " + total.toLocaleString() + " labeled exchanges"));
   const entries = Object.entries(values || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   if (!entries.length) {
-    chart.append(node("span", "", "none"));
+    chart.append(node("span", "", "no labels recorded"));
     return chart;
   }
-  for (const [name, count] of entries) {
+  const more = node("details", "chart-more");
+  more.dataset.chart = label;
+  more.append(node("summary", "", "Show " + Math.max(0, entries.length - 5) + " more"));
+  for (const [index, [name, count]] of entries.entries()) {
     const row = node("span", "bar");
-    const caption = node("small", "", name.replaceAll("_", " "));
+    const caption = node("small", "", plainLabel(name));
     caption.append(node("i", "", number(count).toLocaleString()));
     const meter = node("meter");
     meter.min = 0;
     meter.max = Math.max(1, number(total));
     meter.value = number(count);
     meter.textContent = number(count).toLocaleString() + " of " + number(total).toLocaleString();
-    meter.setAttribute("aria-label", name.replaceAll("_", " ") + ": " + meter.textContent);
+    meter.setAttribute("aria-label", plainLabel(name) + ": " + meter.textContent);
     row.append(caption, meter);
-    chart.append(row);
+    (index < 5 ? chart : more).append(row);
   }
+  if (entries.length > 5) chart.append(more);
   return chart;
 }
 
@@ -263,24 +311,30 @@ function renderProgress(progress = {}) {
   const count = number(progress.capture_count);
   const processed = number(progress.processed_count);
   const points = progress.thresholds || [];
-  const checkpoints = progress.checkpoints || [];
-  const opened = new Set(Array.from(el("milestones").querySelectorAll("details[open]"), value => value.dataset.uuid));
-  const deliveryOpened = new Set(Array.from(el("milestones").querySelectorAll(".summary-delivery[open]"), value => value.parentElement.dataset.uuid));
-  el("volume").textContent = counted ? count.toLocaleString() + " exchanges captured" : "capture count not checked";
+  const checkpoints = [...new Map((progress.checkpoints || []).map(item => [item.uuid, item])).values()].sort((a, b) => number(b.capture_count) - number(a.capture_count));
+  const displayed = new Set(Array.from(el("milestones").querySelectorAll(".checkpoint"), value => value.dataset.uuid));
+  const detailKey = value => value.dataset.detail || (value.dataset.chart ? value.closest(".checkpoint").dataset.uuid + ":" + value.dataset.chart : value.dataset.uuid);
+  const opened = new Set(Array.from(el("milestones").querySelectorAll("details[open]"), detailKey));
+  el("volume").textContent = counted ? count.toLocaleString() : "not counted";
+  el("summary-count").textContent = Number.isInteger(progress.processed_count) ? processed.toLocaleString() : "not counted";
+  const classified = checkpoints[0]?.semantic?.classified;
+  el("labeled-count").textContent = Number.isInteger(classified) ? classified.toLocaleString() : "not recorded";
+  el("pending-count").textContent = counted && Number.isInteger(progress.processed_count) ? processed.toLocaleString() + " of " + count.toLocaleString() + " summarized · " + Math.max(0, count - processed).toLocaleString() + " not yet summarized" : "Summary coverage not recorded.";
+  el("collection-meter").replaceChildren(countBar(progress.processed_count, progress.capture_count, "saved exchanges summarized"));
   el("volume").title = "Each saved request and response is one exchange. An agent trajectory can contain many exchanges; these are not independent training examples.";
   el("target").textContent = !counted ? "count traffic to refresh" : progress.next_threshold
-    ? processed.toLocaleString() + " summarized · " + (count >= progress.next_threshold ? "next summary not saved" : (progress.next_threshold - count).toLocaleString() + " to " + progress.next_threshold.toLocaleString())
-    : processed.toLocaleString() + " summarized · checkpoints complete";
+    ? (count >= progress.next_threshold ? "next summary due" : (progress.next_threshold - count).toLocaleString() + " more to reach " + progress.next_threshold.toLocaleString())
+    : "all configured milestones reached";
   el("count-checked").textContent = progress.counted_at
     ? "Traffic counted " + new Date(progress.counted_at).toLocaleString() + ". Newer exchanges may not be included."
-    : counted ? "Count from saved status; use ‘count saved traffic’ for a fresh total." : "No traffic count available yet.";
+    : counted ? "Saved count; select ‘refresh counts’ to count again." : "No traffic count available yet.";
   const fill = Math.max(0, Math.min(100, fillPercent(count, points)));
   el("meter").value = fill;
   el("meter").textContent = Math.round(fill) + "%";
   const ticks = el("ticks");
   ticks.replaceChildren();
   for (const point of points) {
-    const checkpoint = checkpoints.find(value => number(value.capture_count) >= point);
+    const checkpoint = checkpoints.findLast(value => number(value.capture_count) >= point);
     const active = !checkpoint && (count >= point || number(progress.next_threshold) === point);
     const tick = node("button", "tick" + (checkpoint ? " done" : active ? " active" : ""), point.toLocaleString());
     tick.type = "button";
@@ -294,73 +348,85 @@ function renderProgress(progress = {}) {
     tick.setAttribute("aria-label", tick.title);
     tick.addEventListener("click", () => {
       el("summaries").open = true;
-      const card = Array.from(el("milestones").children).find(item => Number(item.dataset.threshold) === point);
-      if (card?.tagName === "DETAILS") card.open = true;
+      const card = Array.from(el("milestones").querySelectorAll(".checkpoint")).find(item => checkpoint && item.dataset.uuid === checkpoint.uuid);
+      if (card) { card.open = true; if (card.parentElement.tagName === "DETAILS") card.parentElement.open = true; }
+      else el("copy-state").textContent = tick.title || tick.dataset.help;
       (card || el("summaries")).scrollIntoView({block: "center"});
     });
     ticks.append(tick);
   }
   el("milestones").replaceChildren();
-  const savedPoints = [...new Set([...points, ...checkpoints.map(value => number(value.capture_count))])].sort((a, b) => a - b);
-  for (const point of savedPoints) {
-    const checkpoint = checkpoints.find(value => number(value.capture_count) >= point);
-    const card = node(checkpoint ? "details" : "div", "checkpoint" + (checkpoint ? " reached" : count >= point ? " crossed" : ""));
+  const history = node("details", "summary-history");
+  history.dataset.detail = "history";
+  history.open = opened.has("history");
+  history.append(node("summary", "", "Earlier summaries · " + Math.max(0, checkpoints.length - 1)));
+  for (const [index, checkpoint] of checkpoints.entries()) {
+    const point = number(checkpoint.capture_count);
+    const card = node("details", "checkpoint reached");
     card.dataset.threshold = point;
-    if (checkpoint) {
       card.dataset.uuid = checkpoint.uuid;
-      card.open = opened.has(checkpoint.uuid);
+      card.open = opened.has(checkpoint.uuid) || (!displayed.has(checkpoint.uuid) && index === 0);
       const disclosure = node("summary", "checkpoint-head");
-      disclosure.title = "Open the structured summary for this checkpoint.";
-      const identity = node("small", "", "saved · ");
-      identity.append(copyButton(short(checkpoint.uuid), checkpoint.uuid, "summary ID"));
-      disclosure.append(node("i", "pin"), document.createTextNode(point.toLocaleString() + (number(checkpoint.capture_count) === point ? " exchanges" : " threshold · " + number(checkpoint.capture_count).toLocaleString() + " exchanges included")), identity);
+      disclosure.title = "Read the summary of these saved request and response pairs.";
+      disclosure.append(node("i", "pin"), document.createTextNode((index === 0 ? "Latest summary · " : "") + point.toLocaleString() + " exchanges"), node("small", "", checkpoint.created_at ? new Date(checkpoint.created_at).toLocaleString() : "date not recorded"));
       const quality = checkpoint.quality || {};
       const counters = checkpoint.counters || {};
       const traffic = checkpoint.traffic || {};
       const semantic = checkpoint.semantic || {};
       const values = checkpoint.series || {};
-      const body = node("div", "summary-body");
+      const body = node("div", "summary-body sample-charts");
       body.append(
-        summaryRow("exchanges included", number(checkpoint.capture_count).toLocaleString() + " captured · " + number(counters.unique_contents).toLocaleString() + " unique", "One exchange is one request and its response, not necessarily a complete conversation or successful task."),
-        summaryRow("source groups", counters.source_groups ? number(counters.source_groups) + " groups · " + number(counters.trajectory_groups) + " tagged tasks · " + number(counters.untagged_request_groups) + " untagged requests" : "not recorded", "Exchanges within a tagged task stay together. Untagged requests are grouped by request content; group counts do not prove independent tasks."),
-        summaryRow("sample reviewed", number(semantic.classified).toLocaleString() + " of " + number(checkpoint.capture_count).toLocaleString() + " exchanges · " + number(semantic.abstained) + " left unlabeled by the model", "Topic and task labels come from the reviewed sample, not all saved traffic. The model may decline to label a reviewed exchange. Labels are estimates, not verified task outcomes."),
-        distributionChart("topics", semantic.domain, semantic.classified, "What the sampled exchanges are about. Counts refer only to the classified sample."),
-        distributionChart("tasks", semantic.operation, semantic.classified, "What users asked the model to do."),
-        distributionChart("reported outcomes", semantic.outcome, semantic.classified, "The classifier's estimate, not a correctness test. Unknown means no outcome was established."),
-        distributionChart("capabilities", semantic.capability, semantic.classified, "Skills the sampled tasks require. One exchange can receive multiple labels, so these counts may overlap."),
-        summaryRow("how to check answers", counts(semantic.oracle), "Suggested ways to grade these tasks, not checks that have already run."),
-        summaryRow("language + tone", counts(semantic.language) + " · " + counts(semantic.sentiment), "Languages and broad sentiment labels detected in the classified sample.")
+        distributionChart("What the requests were about", semantic.domain, semantic.classified, "Topic labels from the sampled exchanges, not all saved traffic."),
+        distributionChart("What the model was asked to do", semantic.operation, semantic.classified, "Task labels from the same sample.")
       );
-      const delivery = node("details", "summary-delivery");
-      delivery.open = deliveryOpened.has(checkpoint.uuid);
+      const section = (label, name, contents) => {
+        const detail = node("details", "summary-delivery");
+        detail.dataset.detail = checkpoint.uuid + ":" + name;
+        detail.open = opened.has(detail.dataset.detail);
+        detail.append(node("summary", "", label), contents);
+        return detail;
+      };
+      const sample = node("div", "summary-body");
+      sample.append(
+        distributionChart("Estimated task outcomes", semantic.outcome, semantic.classified, "A model's estimate, not a check of whether the task succeeded. Unknown means there was not enough evidence."),
+        distributionChart("Skills needed", semantic.capability, semantic.classified, "One exchange can need several skills, so these counts can add up to more than the sample size."),
+        summaryRow("Suggested answer checks", counts(semantic.oracle), "Suggested ways to grade these tasks, not checks that have already run."),
+        summaryRow("Language and tone", counts(semantic.language) + " · " + counts(semantic.sentiment), "Languages and broad sentiment labels detected in the classified sample."),
+        summaryRow("Related requests", Number.isInteger(counters.source_groups) ? counters.source_groups.toLocaleString() + " groups" : "not recorded", "Requests from one tagged task stay together. Untagged requests are grouped by matching request content; these groups do not prove independent tasks."),
+        summaryRow("Left unlabeled", Number.isInteger(semantic.abstained) ? semantic.abstained.toLocaleString() : "not recorded", "Sampled exchanges the model declined to classify. Exchanges outside the sample are not included in this count.")
+      );
       const measurements = node("div", "summary-body");
       measurements.append(
-        summaryRow("traffic through", checkpoint.created_at ? new Date(checkpoint.created_at).toLocaleString() : "timestamp unavailable", "Completion time of the latest exchange added to this checkpoint."),
-        summaryRow("request integrity", percent(quality.parse_bps) + " parsed · " + percent(quality.success_bps) + " HTTP success · " + percent(quality.duplicate_bps) + " duplicate", "HTTP success means a 2xx response. It does not prove a correct answer, completed task, or uninterrupted capture."),
-        summaryRow("capture observations", (quality.capture_gap ? "gap recorded" : "no gap recorded") + " · peak " + number(counters.max_concurrency) + " concurrent", "These are recorded observations, not a guarantee that every request was captured."),
-        summaryRow("models", counts(traffic.model), "Model names requested by captured applications."),
-        summaryRow("endpoints", counts(traffic.endpoint), "Responses and Chat Completions requests in this checkpoint."),
-        summaryRow("routes", counts(traffic.route_target), "Requests served by the baseline or an approved candidate."),
-        summaryRow("response", counts(traffic.status_class) + " · streaming " + counts(traffic.streaming) + " · structured " + counts(traffic.structured_output), "HTTP results plus streaming and structured-output use."),
-        summaryRow("traffic", counts(traffic.modalities) + " · outcome " + counts(traffic.outcome) + " · fallback " + counts(traffic.fallback_reason), "Input modes, request outcomes, and any candidate fallback reasons."),
-        summaryRow("reasoning", counts(traffic.reasoning_effort), "Reasoning-effort values requested by applications when present."),
-        summaryRow("total time", series(values.total_ms, duration, true), "Time from request start to the complete response."),
-        summaryRow("first response byte", series(values.ttft_ms, duration, true), "Time to the first response byte. With a non-streaming response this can be the full wait, not time to the first generated token."),
-        summaryRow("generation", series(values.tps_milli, item => (number(item) / 1000).toFixed(1) + " tok/s"), "Observed output-token generation rate when token counts are available."),
-        summaryRow("input tokens", series(values.input_tokens), "Input tokens reported by the model provider."),
-        summaryRow("output tokens", series(values.output_tokens), "Output tokens reported by the model provider.")
+        summaryRow("Readable records", percent(quality.parse_bps), "Saved exchanges whose request and response could be parsed."),
+        summaryRow("Successful HTTP responses", percent(quality.success_bps), "A successful HTTP response does not prove the answer was correct."),
+        summaryRow("Repeated content", percent(quality.duplicate_bps), "Exchanges with duplicated request and response content."),
+        summaryRow("Models requested", counts(traffic.model), "Model names requested by captured applications."),
+        summaryRow("API used", counts(traffic.endpoint), "Responses and Chat Completions requests in this summary."),
+        summaryRow("Route used", counts(traffic.route_target), "Requests served by the original model or an approved replacement."),
+        summaryRow("Streaming", counts(traffic.streaming), "True means the response arrived in chunks; false means it arrived as one response."),
+        summaryRow("Structured output", counts(traffic.structured_output), "Whether requests asked for a specific output format."),
+        summaryRow("Reasoning setting", counts(traffic.reasoning_effort), "The requested reasoning effort, where present.")
       );
-      delivery.append(node("summary", "", "delivery, model settings + timing"), measurements);
-      card.append(disclosure, body, delivery);
-    } else {
-      const title = node("h3");
-      title.append(node("i", "pin"), document.createTextNode(point.toLocaleString()));
-      card.append(title, node("small", "", !counted ? "capture count not checked" : count >= point ? "threshold reached · summary not saved" : (point - count).toLocaleString() + " exchanges to go"));
-      card.title = count >= point ? "This threshold has been reached. A summary has not been saved; no running job is implied." : "Traffic is still accumulating for this checkpoint.";
-    }
-    el("milestones").append(card);
+      const identity = node("div", "row");
+      identity.append(helpHeading("Saved summary ID", "Copies the full ID used to find this summary in storage."), copyButton(short(checkpoint.uuid), checkpoint.uuid, "summary ID"));
+      measurements.append(identity);
+      const lead = node("p", "sample-note", number(semantic.classified) ? "A model labeled " + number(semantic.classified).toLocaleString() + " of these " + point.toLocaleString() + " exchanges. The charts describe that sample, not all saved traffic." : "Traffic counts only. No topics or task labels have been saved yet.");
+      card.append(disclosure, lead);
+      if (Number.isInteger(semantic.classified)) card.append(countBar(semantic.classified, checkpoint.capture_count, "exchanges labeled in this summary"));
+      if (number(semantic.classified)) card.append(body);
+      const allStats = node("div", "row");
+      allStats.append(node("p", "", "Every saved field. Percentiles (p50, p95, p99) are histogram upper bounds, so they can exceed the observed maximum. Divide mean_milli by 1,000 for the average; tps_milli is tokens per second × 1,000."), recordFields(checkpoint));
+      card.append(section("Task outcomes and other labels", "sample", sample), section("Response times and tokens", "timing", responseStats(values)), section("Request and collection details", "delivery", measurements), section("All recorded statistics", "all", allStats));
+      (index === 0 ? el("milestones") : history).append(card);
   }
-  if (!savedPoints.length) el("milestones").append(node("p", "empty", "no thresholds configured"));
+  if (checkpoints.length > 1) el("milestones").append(history);
+  el("milestones").querySelectorAll("details[data-chart]").forEach(detail => { detail.open = opened.has(detailKey(detail)); });
+  if (!checkpoints.length) el("milestones").append(node("p", "empty", "No summary saved yet. The next milestone is shown above."));
+  el("read-latest").disabled = !checkpoints.length;
+  el("read-latest").onclick = () => {
+    const card = el("milestones").querySelector(".checkpoint");
+    if (card) { el("summaries").open = true; card.open = true; card.scrollIntoView({block: "start", behavior: "instant"}); }
+  };
 }
 
 let selectedStage = null;
@@ -778,7 +844,7 @@ function renderCloud(data) {
   const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
   const jobStatus = data.contract?.error ? "job configuration unavailable" : readyJobs + " / " + jobs.length + " have required settings here";
   el("job-count").textContent = jobStatus;
-  el("watch-state").textContent = "Replies appear here as Milk Man works. You can send a correction while it runs; it will pick it up at the next safe step.";
+  el("watch-state").textContent = "You can send a follow-up while Milk Man works.";
   const status = milk.status || {};
   renderRun(status, milk.progress);
   renderProgress(milk.progress);
@@ -814,12 +880,40 @@ function recordFields(value) {
   return list;
 }
 
-function experimentCard(value, index) {
+function experimentLabel(value, index) {
+  if (value.kind === "tiny_sequential_serving_setting_comparison") return "Compare model-server settings";
+  const names = {"native-assistant-example-extraction": "Extract one saved assistant exchange", "owned-120b-checkpoint-job": "Read a summary using the hosted 120B model"};
+  const name = value.name;
+  return typeof name === "string" && name.length <= 90 && !/[\n\\]|^(?:\/|file:)|[a-f\d]{32}/i.test(name)
+    ? names[name] || name.replaceAll("_", " ").replaceAll("-", " ") : "Experiment " + (index + 1);
+}
+
+function experimentChange(value) {
+  const baseline = value.configurations?.baseline?.mean_e2e_ms;
+  const candidate = value.configurations?.candidate?.mean_e2e_ms;
+  if (!Number.isFinite(baseline) || baseline <= 0 || !Number.isFinite(candidate) || candidate < 0) return "";
+  const change = 100 * (candidate / baseline - 1);
+  return change === 0 ? "Same average reply time" : Math.abs(change).toFixed(1) + "% " + (change > 0 ? "slower" : "faster") + " full reply";
+}
+
+function experimentDate(value) {
+  const stamp = value.finished_at || value.created_at;
+  const date = typeof stamp === "string" && /^\d{4}-\d{2}-\d{2}T/.test(stamp) ? new Date(stamp) : null;
+  return date && Number.isFinite(date.getTime()) ? date.toLocaleDateString() : "";
+}
+
+function experimentCard(value, index, heading = true) {
   const card = node("article", "experiment");
-  const label = String(value.name || (value.kind === "tiny_sequential_serving_setting_comparison" ? "Compare model-server settings" : value.kind) || "saved result").replaceAll(/[_-]/g, " ");
-  card.append(node("h3", "", (index + 1) + " · " + label));
-  const conclusion = value.conclusion || value.decision || value.comparison?.conclusion || value.limitations;
-  if (typeof conclusion === "string") card.append(node("p", "", conclusion));
+  if (heading) card.append(node("h3", "", experimentLabel(value, index)));
+  const change = experimentChange(value);
+  if (change) card.append(node("p", "comparison-change", change + " in this run. This measures speed, not overall answer quality."));
+  const workload = value.workload || {};
+  const measured = workload.measured_requests_per_configuration;
+  const warmup = workload.warmup_requests_per_configuration;
+  if (Number.isInteger(measured) && measured > 0) {
+    card.append(node("p", "", measured + " timed replies per setting" + (Number.isInteger(warmup) && warmup >= 0 ? " · " + warmup + " warm-up replies per setting" : "")));
+  }
+  if (heading && experimentDate(value)) card.append(node("small", "", "Recorded " + experimentDate(value)));
   const baseline = value.configurations?.baseline;
   const candidate = value.configurations?.candidate;
   if (baseline && candidate) {
@@ -844,16 +938,18 @@ function experimentCard(value, index) {
       }
       body.append(row);
     }
-    const header = node("thead"); header.append(head); table.append(header, body);
-    if (body.children.length) {
-      card.append(table);
-      const change = baseline.mean_e2e_ms > 0 && Number.isFinite(candidate.mean_e2e_ms) ? 100 * (candidate.mean_e2e_ms / baseline.mean_e2e_ms - 1) : null;
-      if (change !== null) card.append(node("p", "comparison-change", Math.abs(change).toFixed(1) + "% " + (change > 0 ? "slower" : change < 0 ? "faster" : "change") + " full reply with the trial setting. This measures speed, not overall answer quality."));
+    if (Number.isInteger(measured) && measured > 0 && [baseline, candidate].every(item => Number.isInteger(item.measured_correct) && item.measured_correct >= 0 && item.measured_correct <= measured)) {
+      const row = node("tr");
+      const label = node("th", "", "passed the answer check"); label.scope = "row";
+      row.append(label, node("td", "", baseline.measured_correct + " / " + measured), node("td", "", candidate.measured_correct + " / " + measured));
+      body.append(row);
     }
+    const header = node("thead"); header.append(head); table.append(header, body);
+    if (body.children.length) card.append(table);
   }
-  if (typeof value.scope === "string") card.append(node("p", "", value.scope));
   const detail = node("details");
-  detail.append(node("summary", "", "measurements + saved references"), recordFields(value));
+  detail.dataset.field = "experiment-" + index + "-notes";
+  detail.append(node("summary", "", "notes, measurements + saved files"), recordFields(value));
   card.append(detail);
   return card;
 }
@@ -868,38 +964,45 @@ function renderResearch(value) {
   el("research-state").textContent = value.error || (record ? (record.experiments || []).length + " saved results" : "no objective saved");
   if (!record) return rows(target, [], value.error || "Ask Milk Man to save a research objective for this scope using the research job.");
   const opened = new Set(Array.from(target.querySelectorAll("details[open]"), item => item.dataset.field));
-  rows(target, [
-    { title: "research goal", detail: record.objective },
-    { title: "saved next-step note", detail: record.next_action, help: "A note from the saved research record, not a live schedule. It can lag behind the latest chat result." },
-  ]);
-  const comparison = node("div", "comparison-status");
-  for (const [field, label, help] of [
-    ["baseline", "reference model", "The model and settings used for comparison. A serving-speed experiment alone does not establish a model-quality reference."],
-    ["evaluation", "evaluation tasks", "Tasks kept out of training, used to compare answers fairly."],
-    ["best", "best model", "A model selected from measured comparisons on this scope's tasks. Not the chat model or a currently running GPU."],
-  ]) comparison.append(summaryRow(label, record[field] ? "recorded · details below" : {baseline: "Not selected for task comparison", evaluation: "No comparison tasks saved", best: "No best model selected"}[field], help));
-  target.append(comparison);
-  if (record.experiments?.length) {
+  target.replaceChildren();
+  const experiments = record.experiments || [];
+  if (experiments.length) {
     const latest = node("div", "row latest-result");
-    latest.append(helpHeading("latest saved result", "The most recently appended research entry. It may describe an earlier run; opening it starts nothing."), experimentCard(record.experiments.at(-1), record.experiments.length - 1));
+    latest.append(helpHeading("Latest saved result", "The newest saved entry, not live provider status. Its measurements and notes are recorded results, not an independent verification."), experimentCard(experiments.at(-1), experiments.length - 1));
     target.append(latest);
-  }
-  const revision = node("div", "row");
-  revision.append(node("small", "", "saved version"), copyButton(short(value.revision), value.revision, "research revision"));
-  target.append(revision);
-  for (const [field, label, help] of [["targets", "what counts as better", "The quality, speed, and cost targets for this scope."], ["baseline", "reference model", "The existing model and settings each candidate is compared against."], ["evaluation", "tasks kept out of training", "The same untouched tasks must be used for a fair comparison."], ["best", "best measured result", "A saved candidate needs comparable measurements before it can be called better."], ["experiments", "past experiments", "Completed experiments, including failed attempts and losses. Saved notes are not independent verification."], ["wake", "when to check again", "A proposed wake condition. It runs only after the heartbeat registers a matching watch."]]) {
+  } else target.append(node("p", "empty", "No experiment results saved yet. The research setup is below."));
+  for (let index = experiments.length - 2; index >= 0; index--) {
+    const experiment = experiments[index];
     const detail = node("details");
-    detail.dataset.field = field;
-    detail.open = opened.has(field);
-    const heading = node("summary", "", label);
-    heading.title = help;
-    detail.append(heading);
+    detail.dataset.field = "experiment-" + index;
+    const state = experimentChange(experiment) || (experiment.state === "failed" ? "failure recorded" : "saved notes");
+    detail.append(node("summary", "", [experimentLabel(experiment, index), state, experimentDate(experiment)].filter(Boolean).join(" · ")));
     const body = node("div", "row");
-    if (field === "experiments" && record.experiments?.length) record.experiments.forEach((item, index) => body.append(experimentCard(item, index)));
-    else body.append(recordFields(record[field]));
+    body.append(experimentCard(experiment, index, false));
     detail.append(body);
     target.append(detail);
   }
+  const setup = node("details");
+  setup.dataset.field = "setup";
+  setup.append(node("summary", "", "research setup + saved plan"));
+  for (const [field, label, help] of [
+    ["objective", "Research goal"],
+    ["next_action", "Last saved plan", "This note can lag behind the chat. It is not a running task or a schedule."],
+    ["targets", "What counts as better", "Quality, speed, and cost targets for this collection."],
+    ["baseline", "Reference model", "The model and settings used for the comparison."],
+    ["evaluation", "Tasks kept out of training", "Use the same untouched tasks to compare answers fairly."],
+    ["best", "Selected model", "A saved selection, not the chat model or a currently running GPU."],
+    ["wake", "Proposed next check", "The heartbeat must register this watch before it can run."],
+  ]) {
+    const row = node("div", "row");
+    row.append(helpHeading(label, help), recordFields(record[field]));
+    setup.append(row);
+  }
+  const revision = node("div", "row");
+  revision.append(node("small", "", "saved version"), copyButton(short(value.revision), value.revision, "research revision"));
+  setup.append(revision);
+  target.append(setup);
+  target.querySelectorAll("details[data-field]").forEach(detail => { detail.open = opened.has(detail.dataset.field); });
 }
 
 let cloudLoading = false;
@@ -921,7 +1024,7 @@ async function refreshCloud(force = false) {
   } finally {
     cloudLoading = false;
     el("refresh").disabled = false;
-    el("refresh").textContent = "count saved traffic";
+    el("refresh").textContent = "refresh counts";
   }
 }
 

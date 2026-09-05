@@ -430,13 +430,13 @@ def _summary_view(value: dict) -> dict:
         "created_at": value.get("created_at") if isinstance(value.get("created_at"), str) else None,
         "capture_count": value.get("capture_count", 0),
         "quality": {
-            "parse_bps": quality.get("parse_basis_points", 0),
-            "success_bps": quality.get("success_basis_points", 0),
-            "duplicate_bps": quality.get("duplicate_basis_points", 0),
-            "capture_gap": quality.get("capture_gap") is True,
+            "parse_bps": quality.get("parse_basis_points"),
+            "success_bps": quality.get("success_basis_points"),
+            "duplicate_bps": quality.get("duplicate_basis_points"),
+            "capture_gap": quality.get("capture_gap") if type(quality.get("capture_gap")) is bool else None,
         },
         "counters": {
-            name: counters.get(name, 0)
+            name: counters.get(name)
             for name in (
                 "captures", "complete", "parsed", "successful", "refusals",
                 "unique_contents", "duplicates", "max_concurrency",
@@ -453,8 +453,8 @@ def _summary_view(value: dict) -> dict:
             )
         },
         "semantic": {
-            "classified": semantic.get("classified", 0),
-            "abstained": semantic.get("abstained", 0),
+            "classified": semantic.get("classified"),
+            "abstained": semantic.get("abstained"),
             **{
                 name: _counts(semantic.get(name))
                 for name in ("operation", "domain", "capability", "oracle", "sentiment", "outcome", "language")

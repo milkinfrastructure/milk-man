@@ -857,6 +857,14 @@ Corrections made by this audit:
 
 ### P8 publish, operate, and qualify
 
+- [x] Reorganized the local dashboard into chat, collected data, experiments,
+  tools/settings, and SDK setup. Chrome inspection confirms the current
+  43 saved / 20 summarized / 8 labeled counts, latest summary, older summaries,
+  sample-based charts, timing table, inline help, and complete saved fields.
+  New segmented bars and count panels retain Milk's original colors, type,
+  and embossed borders. Missing measurements stay unknown; approximate
+  percentiles are labeled as bounds. The dashboard restarted separately;
+  the existing heartbeat remained online and idle. No compute was launched.
 - [x] Pushed research implementation `8b9d37bcff1ad6315be90cccf108f0ea959649bf`
   and verified remote main. The diff contained no configured credential values.
   The updated dashboard is running locally; its restart did not stop the
