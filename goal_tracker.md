@@ -15,13 +15,26 @@ Status notation:
 
 ## Executive state
 
-- [~] Milk Man submitted corrected Baseten model `wl51k7e3`, deployment
-  `wxe4k60`, with `--reasoning-parser qwen3` on one L4. An independent read
-  confirmed BUILDING, minimum zero and maximum one replica. Profile:
+- [x] Chrome-prompted Milk Man completed corrected Baseten model `wl51k7e3`,
+  deployment `wxe4k60`, with `--reasoning-parser qwen3` on one L4. All three
+  requests returned exactly `MILK_OK`: 1,828.245, 417.368, and 367.745 ms.
+  Its heartbeat resumed on provider changes, ran the existing proof once,
+  and stopped the server. An independent provider read confirmed INACTIVE
+  with zero replicas, before the task cutoff. Profile:
   `75cb7eb42504899bb853b505c44e9966a76023fdf4d7d38898b449bea4e6410f`.
-  The same Chrome task watches readiness, then runs three requests once and
-  stops. Its cutoff is 2026-09-05 03:24:19 UTC; no inference has run yet.
   Private run: `baseten-owned-qwen3-06b-c1899de-v0181/reasoning-parser-qwen3`.
+  Benchmark SHA-256:
+  `1667e2561a6da09fed44c9bfc6b2f30b7bc32a0e46e0e19c7534cb10f88a0afa`;
+  stop receipt SHA-256:
+  `54dc881bde3ddca91001f1608fd8bb6cd6a63471e9eee92df544be94c1afc0cb`.
+  These are three tiny non-streaming checks, not a latency ranking or proof
+  of research quality. First-token and decode-only timing were not measured.
+- [!] After successful provider cleanup, the final chat-report turn failed
+  with a gateway HTTP 500 (container port connection closed). `/healthz`
+  subsequently returned ok. Codex sent one Chrome follow-up to read the
+  saved results and finish, explicitly prohibiting repeated paid work.
+  Turn 84 read those files, reported the results, and returned to online idle;
+  no deployment or benchmark was repeated.
 - [x] Fixed the observed `man heartbeat wait --help` failure: help now returns
   before accessing task state or attempting to execute `--help`. Both top-level
   and wait help exit successfully with a nonexistent state path. Codex supplied
@@ -35,14 +48,14 @@ Status notation:
   `28294edc00344f0235acc9675a51fdd2d8d0a016248009b49cd7fa92a265cd09`;
   cleanup verification SHA-256:
   `73fcd22fd9f0ae3f400cdb136597c78ca7c520b1aded3209bbbba599450261bd`.
-- [!] All three responses failed the exact-answer check. Offline SHA-256
+- [~] The earlier three responses failed the exact-answer check. Offline SHA-256
   comparison proved their content was `<think>\n\n</think>\n\nMILK_OK`.
   The server returned the answer with empty reasoning tags, not three unknown
-  or incorrect answers. Preserve the failed receipts. Next use the existing
+  or incorrect answers. The correction used the existing
   `MILK_BASETEN_SERVE_VLLM_ARGS_JSON='["--reasoning-parser","qwen3"]'`
   binding in a new serving profile; no benchmark normalization or harness
-  rewrite is needed. The corrected profile is now building as recorded above;
-  its answer check and shutdown are not yet complete.
+  rewrite was needed. The corrected profile above passed all three checks;
+  the original failed receipts remain unchanged.
 - [x] The dashboard now exposes the watched model server's saved status and
   replica count, with copyable IDs in inline details. Chrome verified the
   actual Baseten BUILDING observation; restarting only the dashboard left
@@ -370,7 +383,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | published `ad182a1d5`, plus heartbeat help and this checkpoint | `ad182a1d56763a3d059489aa7850fb286accaa04` | dashboard coverage, charts, measurements, and inline detail published; corrected Baseten profile building; measured task-quality improvement remains open |
+| `milk-man` | published `c420a02e3`, plus this serving closeout | `c420a02e3` | dashboard and heartbeat help published; corrected Baseten answers and zero-replica cleanup proven; measured task-quality improvement remains open |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
 | `milk-landing` | `74a87c0`, deployed | `74a87c0` | root and docs verified against production; generated local deployment cache is not published |
 
@@ -379,6 +392,9 @@ Published Milk Man audit baseline:
 
 - [x] Milk Man is no longer a GitHub fork. It retains a pinned, attributed
   minimal Headlong subset as implementation source.
+- [x] Corrected the stale Prime-derived GitHub About text in Chrome to
+  “A local-first Bash agent for running models, jobs, and research.” Saved and
+  verified after reload; website, topics, and other settings were unchanged.
 - [x] Milk Parlor has no tracked Actions, test fixtures, model weights, Python
   runtime, or orchestration code.
 - [x] Milk Man repository Actions are absent; jobs run from `bin/milk` and

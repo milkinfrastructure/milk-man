@@ -225,11 +225,13 @@ without a separate scheduler service.
   proved the model, revision, runtime, GPU, cache, and serving-argument subset.
 - [x] Keep Baseten managed inference, Baseten-owned resources, and Modal-owned
   resources available independently. Do not encode an automatic fallback.
-- [~] Set the existing Baseten vLLM arguments to separate Qwen reasoning
+- [x] Set the existing Baseten vLLM arguments to separate Qwen reasoning
   (`--reasoning-parser qwen3`) for the next selected serving run. Preserve the
   old failed receipt and use the resulting new profile identity. Do not change
   the exact-answer comparison or repeat completed calls to diagnose it.
-  Corrected deployment `wxe4k60` is building; answer checks and cleanup remain.
+  Corrected deployment `wxe4k60` returned three exact answers and was
+  independently observed INACTIVE with zero replicas. Final chat reporting
+  needed a follow-up after a gateway HTTP 500; retain that recovery gap.
 - [x] First prove the lifecycle on an inexpensive model: inspect existing
   state, create or reuse one deployment, call it, inspect failure if any, and
   stop or retain it according to the prompt.
