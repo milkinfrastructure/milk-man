@@ -32,7 +32,7 @@ MONITOR_LOCK = threading.Lock()
 MONITOR_REFRESH_LOCK = threading.Lock()
 MONITOR_STOP = threading.Event()
 MONITOR_STATE: dict | None = None
-LAST_EXACT_CAPTURE: tuple[str, int] | None = None
+LAST_EXACT_CAPTURE: tuple[str, int, str] | None = None
 
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
@@ -183,6 +183,9 @@ def _man_state(include_metadata: bool = True) -> dict:
     pulse = heartbeat.read(Path(str(trajectory) + ".heartbeat.json"))
     watched = ((pulse.get("watch") or {}).get("last") or {}).get("result") or {}
     watch_state = watched.get("state") if isinstance(watched, dict) else None
+    watch_command = (pulse.get("watch") or {}).get("command") or []
+    background_watch = bool(watch_command and Path(watch_command[0]).name == "background")
+    watch_pid = watched.get("child_pid") if background_watch and isinstance(watched, dict) else None
     pulse_alive = heartbeat.alive(pulse)
     if pulse_alive:
         queued = bool(pulse.get("pending"))
@@ -249,6 +252,8 @@ def _man_state(include_metadata: bool = True) -> dict:
         "heartbeat": {
             "online": pulse_alive,
             "watch_state": watch_state if watch_state in ("unknown", "running", "active", "waiting", "complete", "failed", "stopped") else None,
+            "watch_label": "local background job" if background_watch else "status check",
+            "watch_pid": watch_pid if type(watch_pid) is int and watch_pid > 1 else None,
             **{key: pulse.get(key) for key in ("state", "checked_at", "next_wake", "turns", "polls")},
             "task": _redact(pulse.get("task"))[:16384],
             "brief": _redact(pulse.get("brief"))[:16384],
@@ -625,13 +630,14 @@ def _refresh_monitor(exact_inventory: bool = False) -> dict:
             capture_count = progress.get("capture_count")
             if isinstance(scope_id, str):
                 if exact_inventory and type(capture_count) is int and capture_count >= 0:
-                    LAST_EXACT_CAPTURE = (scope_id, capture_count)
-                elif LAST_EXACT_CAPTURE and LAST_EXACT_CAPTURE[0] == scope_id and (capture_count is None or LAST_EXACT_CAPTURE[1] > capture_count):
+                    LAST_EXACT_CAPTURE = (scope_id, capture_count, checked_at)
+                    milk["progress"] = {**progress, "counted_at": checked_at}
+                elif LAST_EXACT_CAPTURE and LAST_EXACT_CAPTURE[0] == scope_id and (capture_count is None or LAST_EXACT_CAPTURE[1] >= capture_count):
                     capture_count = LAST_EXACT_CAPTURE[1]
                     milk = {
                         **milk,
                         "status": {**status, "capture_count": capture_count},
-                        "progress": {**progress, "capture_count": capture_count},
+                        "progress": {**progress, "capture_count": capture_count, "counted_at": LAST_EXACT_CAPTURE[2]},
                     }
         except Exception:
             errors.append("object-store status")

@@ -14,14 +14,15 @@
         <img class="carton" src="/milk-carton.png" width="44" height="44" alt="">
         <div><small>milkinfrastructure.com</small><h1>Milk Man</h1></div>
       </div>
-      <div class="lights" aria-label="Live status">
-        <span class="has-help" title="The local heartbeat owns the current task and can continue after this page closes. Idle checks use no model."><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span>
-        <span class="has-help" title="Whether Milk Parlor is reachable and its background capture writer is healthy."><i class="signal" id="gateway-signal"></i><b id="gateway-state">gateway unchecked</b></span>
-        <span class="has-help" title="Whether this Milk Man process can read the configured object store."><i class="signal" id="store-signal"></i><b id="store-state">object store unchecked</b></span>
-      </div>
+      <a href="https://milkinfrastructure.com/docs/">how Milk works ↗</a>
     </header>
 
-    <p class="purpose">Run model experiments. Learn from your app's traffic. <b>Give Milk Man a goal, then follow its work here.</b></p>
+    <p class="purpose">Give Milk Man a goal. It runs commands, uses cloud models, and saves what it learns.</p>
+    <section class="services" aria-label="Connected parts">
+      <div><b class="field-heading">agent <button class="help" type="button" title="Milk Man is the local agent. Its heartbeat keeps the task alive after you close this page. Idle checks use no model calls." aria-label="About the agent">?</button></b><span><i class="signal" id="man-signal"></i><b id="man-state">finding Milk Man</b></span><small>takes instructions · runs jobs</small></div>
+      <div><b class="field-heading">gateway <button class="help" type="button" title="Milk Parlor forwards your OpenAI SDK calls to the configured model. After each eligible exchange ends, it saves the request and response in the background. Reachable does not mean a GPU is running." aria-label="About the gateway">?</button></b><span><i class="signal" id="gateway-signal"></i><b id="gateway-state">gateway unchecked</b></span><small>routes model calls · captures traffic</small></div>
+      <div><b class="field-heading">saved data <button class="help" type="button" title="The configured object store holds traffic, summaries, and experiment results under your scope ID. Readable means this process can read it; it does not mean every job is complete." aria-label="About saved data">?</button></b><span><i class="signal" id="store-signal"></i><b id="store-state">object store unchecked</b></span><small>remembers traffic · keeps results</small></div>
+    </section>
     <nav class="toolbar" aria-label="Dashboard sections">
       <a href="#talk">conversation</a>
       <a href="#connect">connect an app</a>
@@ -36,8 +37,8 @@
       <span title="One local process keeps this task available. Closing this page does not stop it."><i class="signal" id="heartbeat-signal"></i><b id="heartbeat-state">heartbeat · connecting</b></span>
       <span>last check <time id="heartbeat-last">not checked</time></span>
       <span>next check <time id="heartbeat-next">not scheduled</time></span>
-      <span id="heartbeat-count" title="Task wakeups may involve several model calls. Unchanged idle checks use none.">0 wakeups · 0 idle checks</span>
-      <div class="current-work"><small>current goal</small><strong id="current-work">No task saved yet.</strong><span id="current-work-note">Waiting for status.</span></div>
+      <span><b id="heartbeat-count">0 work sessions · 0 idle checks</b><button class="help" type="button" title="A work session can make several model calls. Idle checks only inspect status and use no model tokens. These are activity counts, not a bill." aria-label="About heartbeat activity">?</button></span>
+      <div class="current-work"><div class="task-heading"><b>working toward</b><small id="active-model">model not configured</small></div><strong id="current-work">No task saved yet.</strong><span id="current-work-note">Waiting for status.</span></div>
       <details class="heartbeat-task">
         <summary title="The full instruction and model settings for this session. Closing the dashboard does not stop the heartbeat.">full instruction + model settings</summary>
         <p id="driver-detail"></p>
@@ -52,7 +53,7 @@
       <div class="messages" id="activity" tabindex="0" aria-label="Milk Man transcript">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>
-      <div class="chat-tools"><small>Commands are folded. Results stay visible.</small><button id="latest-message" type="button" title="Scroll to the most recent message without changing or sending anything.">latest message ↓</button></div>
+      <div class="chat-tools"><small>Replies stay visible. Open a command to inspect its work.</small><button id="latest-message" type="button" title="Scroll to the most recent message without changing or sending anything.">latest ↓</button></div>
       <div class="composer" id="prompt">
         <div class="prompt-head">
           <label class="prompt-label" for="prompt-text">tell Milk Man what to do</label>
@@ -63,6 +64,7 @@
           <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send</button>
         </form>
         <small class="prompt-help" id="prompt-help">Command / Control + Enter sends · Enter makes a new line</small>
+        <div class="drafts"><small>start with</small><button type="button" data-draft="Explain the current task, what has finished, and what you are waiting for. Do not start new work.">explain current work</button><button type="button" data-draft="Read the existing summary checkpoint and explain what it tells us. Do not generate more data or start compute.">read saved summary</button><small>fills the message · you send it</small></div>
       </div>
     </details>
 
@@ -102,8 +104,9 @@
     <div class="status-line">
       <b id="volume">waiting for object memory</b>
       <span id="target"></span>
-      <button id="refresh" type="button" title="Recount saved requests and responses and check the gateway and object store. This does not start inference or a training job.">refresh traffic</button>
+      <button id="refresh" type="button" title="Count the saved request/response objects now, then check gateway and storage status. No model call or training job is started.">count saved traffic</button>
     </div>
+    <small id="count-checked" class="count-checked">Traffic count has not been checked.</small>
     <progress class="meter has-help" id="meter" max="100" value="0" title="Progress is divided evenly across the configured summary thresholds.">0%</progress>
     <div class="ticks" id="ticks" aria-label="Configured summary thresholds"></div>
     <small class="checked" id="checked">never checked</small>
@@ -125,7 +128,7 @@
       <div class="job-list" id="jobs"></div>
     </details>
     <details id="summaries" open>
-      <summary title="What the captured conversations contain, summarized at the configured checkpoints. Model-assigned labels are estimates, not verified task outcomes.">saved summaries <small>topics, tasks, timing, and outcomes</small></summary>
+      <summary title="Open a checkpoint to read what was learned from its captured requests and responses. Earlier checkpoints stay available.">what the traffic tells us <small>open a saved summary below</small></summary>
       <div class="milestones" id="milestones"></div>
     </details>
     <details id="research-panel">
@@ -148,6 +151,7 @@
     </details>
 
     <footer>
+      <a href="https://milkinfrastructure.com/docs/">docs</a>
       <a href="https://github.com/milkinfrastructure/milk-man">milk-man</a>
       <a href="https://github.com/milkinfrastructure/milk-parlor">milk-parlor</a>
       <span id="foot">local only</span>
