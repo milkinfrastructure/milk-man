@@ -15,6 +15,48 @@ Status notation:
 
 ## Executive state
 
+- [x] The concurrent 120B experiment finished on September 5. Milk Man used
+  the retained baseline, justified the prepared candidate, launched it once,
+  registered a heartbeat wait, resumed, compared exact receipts, saved memory,
+  and finished at 09:50:17 UTC without another instruction. It recovered from
+  `mem` missing after a private env file replaced PATH; Codex removed that stale
+  PATH export after completion. Direct shell checks now resolve all three
+  `mem`, `man`, and `milk` commands. No harness wrapper was added.
+- [~] Same pinned 120B/image, one H200, 5,174-token input, request concurrency
+  two, warmup plus eight measurements per profile; only `--max-num-seqs` changed
+  from one to two. Both returned eight correct answers. Whole-run throughput
+  was 148.442 -> 218.215 tokens/s; p95 was 3777.080 -> 2423.513 ms. This is a
+  narrow measured batching improvement; eight repeated samples, differing
+  output totals (2112/2088), and p95 equal to the sample maximum limit the
+  conclusion. It is not N2 completion, held-out improvement or a global winner.
+  Private evidence: `batching-load-20260905.aAMvKG/comparison.json`, SHA-256
+  `d7c3e6aee7494fcbbbb69b6e3351709996afa836f116e5fa81be5c6f26f5ab37`.
+- [x] Independent cleanup at 09:57:05 UTC: baseline
+  `ap-QZsraKhmkyRMrEovmZQoJJ` and candidate `ap-5NMvFJmPoEO7JnKgP5iJWs`
+  stopped; all Modal `main` containers zero. Both known Baseten comparison
+  deployments were inactive with zero replicas at 09:56:18 UTC. No resource
+  was restarted. Milk Man remains task-free and idle on Astra through Parlor.
+- [x] Research revision
+  `2a24374f23b905f64bf1f2d84c27603c298200b9b679dfac5e71b0a69e4d74c2`,
+  UUID `8f96c886-337d-5fa1-9c97-1e9616dcef6b`, retains nine experiments and
+  preserves all eight prior entries. R2 readback matched; unchanged replay was
+  idle with zero inference/provider calls. Baseline/evaluation/best remain null.
+  Private save/readback/replay receipts are in `batching-load-20260905.aAMvKG/`.
+- [x] Added startup-phase timing to the existing `serve-modal` job at
+  `1bb1e2175`: deployment, weights, readiness, total time and deployment reuse.
+  Direct local execution with provider stand-ins covered new/reused profiles,
+  unchanged status, absent old timing and stop. Independent review found no
+  concrete regression. No dependency or test file. This is local mechanics;
+  no new live startup measurements were bought or backfilled into old receipts.
+- [x] Before the candidate, logged-in billing showed Modal $13.70 and Baseten
+  $34.25 for September. Adding the retained $274.94, $20 pending allowance and
+  the same $15 experiment reservation gave $357.89 conservatively reserved
+  against the cumulative $500 authorization. This includes possible overlap;
+  it is not exact billed spend. Refresh before any new paid compute.
+- [x] Landing's additional mobile wrapping fix is published/deployed at
+  `762d0c7`. Chrome verified 320/390/768/1280 CSS-pixel layouts, 44-pixel phone
+  controls, copying, inline disclosures and narrow docs without horizontal
+  overflow. No further landing design work is needed.
 - [x] Added `MILK_BENCHMARK_CONCURRENCY` to the existing benchmark job; default
   one preserves sequential configuration identities. The job now exposes
   whole-run tokens/second and completed requests/second without changing the
@@ -728,9 +770,9 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | published `c420a02e3`, plus this serving closeout | `c420a02e3` | dashboard and heartbeat help published; corrected Baseten answers and zero-replica cleanup proven; measured task-quality improvement remains open |
-| `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
-| `milk-landing` | `5b349ee`, deployed | `5b349ee` | phone/tablet layouts, correct screenshot assets and copy verified in Chrome; local deployment cache is not published |
+| `milk-man` | `1bb1e2175`, plus this evidence update | `1bb1e2175` | concurrent batching proof retained; startup timing locally checked; held-out task improvement remains open |
+| `milk-parlor` | `162b56e228b74d24606010d11c129a6d1d23e773` | same remote main | source unchanged this run; live driver traffic continues through Parlor; no new deployment claimed here |
+| `milk-landing` | `762d0c7`, deployed | `762d0c7` | mobile and docs verified in Chrome; local deployment cache is not published |
 
 Published Milk Man audit baseline:
 `38c1b9812e0182ec132d12a3da2460506fa9efd7`.
@@ -784,8 +826,10 @@ Published Milk Man audit baseline:
 ## Local Milk Man snapshot
 
 - [x] Dashboard returned HTTP 200 on `127.0.0.1:8766` on 2026-09-04.
-- [x] Current trajectory:
-  `df36b6bc-1651-4f74-aa40-43da7a8a216a`
+- [x] Current trajectory at 09:56 UTC September 5:
+  `706ed10d-73ee-455d-bab9-ae56efe5340d`, owner PID 62714, idle after the
+  completed concurrent batching task. Older proofs below refer to saved
+  trajectory `df36b6bc-1651-4f74-aa40-43da7a8a216a` unless otherwise named.
 - [x] Selected driver: Milk Parlor, `gpt-6-astra`, Responses, maximum reasoning.
   Heartbeat owner restart preserved the same trajectory and 34 completed
   wakeups without a new model call. Chrome's next task completed at wakeup 35.
@@ -905,18 +949,18 @@ Production-profile scope `b6df8f84-bcc8-45a8-a89a-14350fdc1f23`:
 | Repository-script jobs | `[x]` Milk Man authored and reused `bin/progress`; `serve-modal` executed through the generic executable catalog | reuse the same dispatch for the next model |
 | Lightweight heartbeat | `[x]` zero-model idle backoff, timer continuation, dashboard restart, and restart during the same pending H200 startup worked | preserve these properties through the next autonomous experiment |
 | Managed GLM Milk Man driver | `[x]` Baseten GLM status turn proven | autonomous multi-step task through the driver |
-| General model lifecycle | `[~]` Modal Qwen/L4 and 120B/H200 completed three correct calls and verified zero; Baseten Qwen/L4 completed three requests and verified zero, with empty reasoning tags in answer text | configure Baseten reasoning separation; retain independent providers and prove unassisted recovery |
-| Inference autotuning | `[~]` a same-workload 120B A/B comparison selected CUDA graphs; its endpoint later ran a native Milk Man task and stopped; corrections were required | prove independent adaptive trials on representative work |
+| General model lifecycle | `[~]` Modal Qwen/L4 and 120B/H200 plus Baseten Qwen/L4 ran and stopped; Baseten reasoning separation was corrected and exact answers verified | retain independent providers and observe new startup measurements during useful work |
+| Inference autotuning | `[~]` two-request 120B batching improved measured throughput 47%; Milk Man completed the prepared candidate without another instruction and stopped it | representative adaptive trials and held-out task quality remain open |
 | Different compute workload | `[x]` Qwen/L4 and 120B/H200 completed without editing the engine | retain generality while adding another provider |
 | Official SDK -> Parlor | `[x]` live for Responses and Chat Completions, including streaming | retain as Milk application input |
 | Key -> scope UUID | `[x]` source and historical live proof | reuse when the application needs a new scope |
 | Async two-sided capture | `[x]` live counters and exact historical object proof | preserve during application work |
-| Summary/classification | `[x]` dedicated driver scope: 20 exchanges, eight classified; earlier 106-source checkpoint retained separately | heartbeat-driven threshold and idle replay |
+| Summary/classification | `[x]` driver scope has a 200-exchange checkpoint with eight labeled examples; automatic threshold dispatch and zero-call idle proved | next configured threshold 1000; do not generate traffic just to reach it |
 | Deterministic readiness | `[x]` driver scope remains not ready; historical application mechanics separately proved | retain as application logic |
 | Useful eval generation | `[~]` 98/100 materially correct in best pilot; later pilot 60/64 clean | inspect a small application sample before expansion |
 | 10,000-case experiment | `[ ]` not generated as one accepted current contract | optional configured expansion after small output is useful |
 | Source-separated dataset | `[~]` small mechanics proven | next training workload with no split leakage |
-| Qwen3.5-0.8B SFT | `[~]` one-step Baseten H100 mechanics proven | run only as a selected application workload |
+| Qwen3.5-0.8B SFT | `[~]` native three-step Baseten H100 run completed; base and trained model returned unexecuted actions | compare actual completion of the retained held-out task; do not retrain |
 | Explicit RL experiment | `[ ]` existing SFT is not RL | rollout, reward/judge, recipe, baseline, and evaluation when requested |
 | BF16/dynamic FP8 comparison | `[~]` tiny mechanics proven | same ordered evaluation set when selected |
 | Static FP8 | `[~]` mechanics only | never select until independently qualified |

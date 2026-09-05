@@ -345,6 +345,11 @@ a winning service alive or release all compute when finished. Model weights are
 hydrated from a pinned source or provider cache/volume and do not enter Git or
 lightweight OCI images.
 
+Serving receipts distinguish deployment, weight-loading and endpoint-readiness
+durations from request latency. Client-observed phases include provider checks
+and may use warm caches; they are not GPU-only cold start or billed duration.
+Status retains the saved startup measurement. Missing old timings stay unknown.
+
 ## Milk traffic and summary application
 
 The remaining sections define the whiteboard application's existing contracts.

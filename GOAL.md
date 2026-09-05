@@ -166,6 +166,31 @@ its full acceptance criteria are actually satisfied.
   concrete failure. A plan, model claim, valid JSON or successful process exit
   does not by itself prove task success, better quality or production routing.
 
+## Current continuation — September 5, 10:00 UTC
+
+The concurrent 120B comparison is complete. Milk Man inspected the retained
+baseline, justified the prepared one-setting candidate, launched it once,
+waited through its heartbeat, compared receipts and finished without another
+instruction. Eight answers per profile were correct. Whole-run throughput
+rose from 148.442 to 218.215 tokens/second; p95 fell from 3777.080 to
+2423.513 ms. Both trial apps and the known Baseten comparison deployments were
+independently checked at zero capacity.
+This small batching result does not repair N2 or prove better agent behavior.
+Do not repeat either completed profile.
+
+The existing Modal serving job now retains startup-phase durations. Local
+checks cover new/reused deployments and unchanged status reads; actual phase
+timings remain unmeasured until the next useful serving run. Do not buy a
+timing-only GPU run. The local environment no longer replaces the harness PATH.
+R2 research revision `2a24374f23b905f64bf1f2d84c27603c298200b9b679dfac5e71b0a69e4d74c2`
+retains all nine experiments; baseline/evaluation/best remain unknown.
+
+Next: inspect the saved native DEV task and existing `agent-trial` checker.
+Implement only what is missing for an executed-task comparison of the original
+Qwen3.5-0.8B and the already-trained checkpoint. Preserve its source-group split
+and exact task. Do not retrain, generate more data, or count another unexecuted
+Bash response as a completed task. Refresh billing before starting compute.
+
 ## Outcome
 
 Make Milk Man an autonomous, prompt-driven Bash agent that can deploy,
@@ -445,9 +470,14 @@ hardcoding that model or provider into the harness.
   task. Retain it; next validate the useful Bash workflow before agent execution.
 - [x] Accept a measurable objective such as minimum throughput subject to a
   latency, correctness, GPU, or cost constraint.
-- [ ] Have Milk Man propose the next configuration from prior measurements,
+- [~] Have Milk Man propose the next configuration from prior measurements,
   execute it, and capture cold start, time to first token, output tokens per
   second, p50/p95 latency, errors/OOM, output correctness, and compute cost.
+  The concurrent two-sequence candidate completed without follow-up steering;
+  Codex supplied its prepared script and single setting. Saved measurements
+  establish that narrow improvement, not independent configuration search.
+  Startup instrumentation is locally checked; live phase timing and complete
+  experiment billing remain unknown.
 - [x] Compare like-for-like requests and concurrency. Persist exact model,
   revision, runtime, resource, serving arguments, endpoint identity, metrics,
   and conclusion for every trial.
