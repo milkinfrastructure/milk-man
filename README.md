@@ -196,6 +196,8 @@ The file contains `parent_revision`, `objective`, `targets`, `baseline`,
 the first parent and unknown baseline, evaluation, best, or wake. Updates use
 the current revision as their parent. Repeating the same write is a no-op.
 Keep references and compact results here, not raw traffic or credentials.
+Successful saves report `progressed`; unchanged saves and status report `idle`.
+Each experiment entry must fit 8 KiB. Store larger files separately and link them.
 
 To attach saved evidence, add `object_refs` inside a baseline, evaluation, best,
 or experiment object. Each name maps to `{"key":"<immutable scoped object key>",

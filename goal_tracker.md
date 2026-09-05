@@ -15,14 +15,40 @@ Status notation:
 
 ## Executive state
 
-- [!] P5 selection stalled after 20 successful read-only commands and exited
+- [x] P5's repaired continuation independently chose and ran a 4096-token
+  batch budget against the saved 1024-token reference. One H200, one warmup,
+  eight measured SSE requests at concurrency two; eight correct, zero errors.
+  Throughput: 218.215 -> 131.636 output tokens/second (-39.676%). p95 latency:
+  2,423.513 -> 9,498.858 ms. No promotion; keep the prior setting. Startup
+  took 426.194 seconds. Worker `92947` / child `92951` exited zero at
+  22:17:58 UTC; app `ap-thhJmUd1dtZfqsDwFHMGbv` stopped with zero containers.
+  Independent provider reads also found zero Modal containers and all three
+  known Baseten comparison deployments inactive/zero replicas.
+- [x] Milk Man saved fifteen evidence objects and research revision
+  `e5a8bd46aa98aaea9babe198181f36bfce865305e05637e44c0b48e6461b0332`.
+  Readback at 22:27:26 UTC retained the new experiment once and preserved all
+  seventeen prior entries. It repaired two retention-only errors: an entry
+  over 8 KiB and expecting `complete` instead of the job's `progressed` result.
+  Recovery made no new inference/provider calls. The catalog now states those
+  two existing contract details. Exact receipts: `autotune-choice.GDaYfX/`.
+  Chrome shows the same Astra parent returned idle with its final report at
+  22:27:52 UTC. No further prompt was needed after the context repair.
+- [x] Copied the exact Smart ERP Berkeley Mono font, SHA-256
+  `99b0707283f3e083fcc64573e6f5e9bf73b21bb02ef224ba8a61b66e34056afd`,
+  into landing/docs and dashboard. User confirmed paid authorization.
+  Landing `dc90ac9` is published to the existing Cloudflare Pages project;
+  production bytes match. Dashboard `f24149bbc` is live locally. Chrome
+  verified both and a narrow landing viewport without horizontal overflow.
+  These assets retain separate font licensing, not Apache-2.0 or MIT grants.
+- [!] The initial P5 selection stalled after 20 successful read-only commands and exited
   76. No decision or GPU launch occurred. Codex stopped the automatic
   continuation, repaired lost command-result context, and resumed the same
   task through Chrome at 22:07:24 UTC. Private state:
   `autotune-choice.GDaYfX/`. Native results retain head/tail and exit status;
   the actual trajectory renders to 24,978 bytes with two intact tool pairs
   and the previously missing reference plan. No context-limit increase,
-  packing change or new test files. Live recovery is not yet proven.
+  packing change or new test files. The repaired continuation completed the
+  experiment above; the original failed turn remains retained.
 - [~] Current conservative cumulative allocation is $430.83 of $500:
   previous $419.03, $1.80 uncertainty, and one new $10 candidate reservation.
   Modal's unwrapped CLI CSV reports $16.65172497 for September 1–5;
@@ -54,9 +80,9 @@ Status notation:
   conservative cumulative allocation to $419.03 of $500, with prior pending
   allocations retained. Displayed billing remains $14.86 Modal, $34.98 Baseten
   ($35.10 on its budget panel); actual total billing is not established.
-- [ ] Next: P5 independent selection of one useful serving change from saved
-  measurements, preserving the baseline and exact workload. Do not repeat the
-  completed report, training, failed driver trials or unchanged configurations.
+- [ ] Next: P7 scope-specific research using existing captures and held-out
+  tasks, the signed-route application, then P8 publication. Preserve the completed report,
+  benchmarks and failed training/driver results; no unchanged paid repeats.
 - [x] Completed the shared Bash-text response check: actual `bin/man develop`
   accepts completed Chat/Responses text, rejects truncated text without
   executing it, and retains native tool execution. `LLM_TOOL_CHOICE=auto`

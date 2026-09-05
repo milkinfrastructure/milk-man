@@ -16,11 +16,12 @@ Execution order, refreshed September 5 after the happy-path correction:
    swap, parser experiment, race-condition audit or log check the next task.
 2. The useful start/use/save/stop workflow is complete: Milk Man ran the
    prepared script, waited through its heartbeat, reviewed the model's report,
-   and finished without follow-up steering. Reuse that path. Next, continue P5
-   by having Milk Man select one serving change from retained measurements,
-   reuse the saved baseline and workload, and run only a justified candidate.
+   and finished without follow-up steering. After the context repair, Milk Man
+   selected and measured one P5 candidate, reused the saved baseline, rejected
+   the slower setting and retained its results. Next, continue P7 with one
+   scope-specific research iteration using existing captures and held-out tasks.
    Keep provider/model selection in environment settings. No new runner,
-   bulk generation, training repeat or format-only benchmark.
+   bulk generation, unchanged training repeat or format-only benchmark.
 3. Implement the first missing or broken step directly with minimal code,
    then demonstrate the working path through Milk Man. The shared completion
    check and native tool-choice configuration are locally verified. Do not
@@ -115,8 +116,8 @@ Current frontier:
   Codex supplied the script and saved the report/receipts to R2; this does not
   prove independent script design, a new summary checkpoint or a quality win.
   The same Astra parent is idle. Research now retains seventeen experiments.
-- [ ] Continue P5's independently selected useful serving change, then P7/P8's
-  scope-specific learning and signed-route application. Preserve completed
+- [ ] Continue P7/P8's scope-specific learning and signed-route application.
+  Preserve completed
   baselines and every failed trial. A self-hosted driver remains additional
   functionality, not a prerequisite for operating models.
 - [!] The first P5 selection attempt repeated reads and exhausted 20 replies
@@ -125,7 +126,21 @@ Current frontier:
   their beginning and end, with exit status always visible and no duplicate
   command. The actual saved session retains the reference measurements within
   the unchanged context limit. Packing and execution machinery are unchanged.
-  The same task resumed through Chrome; live progress remains to be verified.
+  The same task resumed through Chrome and selected a candidate without
+  further steering. The original stalled attempt remains a failed attempt.
+- [x] Milk Man chose `--max-num-batched-tokens=4096` against the retained 1024
+  reference, implemented the candidate script, ran one warmup plus eight
+  matched requests, and stopped the H200. All answers were correct, but
+  throughput fell from 218.215 to 131.636 output tokens/second and p95 latency
+  rose from 2.424 to 9.499 seconds. It rejected promotion, retained fifteen
+  evidence objects and preserved all seventeen prior research entries.
+  It repaired its oversized research entry and wrong success-state assumption
+  without more inference or compute. This is one small historical-reference
+  comparison, not a general performance or model-quality claim. The same
+  Astra parent returned idle at 22:27:52 UTC; Chrome shows its final report.
+- [x] Applied the user-authorized Smart ERP Berkeley Mono font to the live
+  landing/docs and local dashboard. Chrome confirms the typeface and narrow
+  layout. Font licensing is separate from the repositories' code licenses.
 
 ## Overnight execution — September 5, 2026
 
@@ -658,7 +673,7 @@ hardcoding that model or provider into the harness.
   task. Retain it; next validate the useful Bash workflow before agent execution.
 - [x] Accept a measurable objective such as minimum throughput subject to a
   latency, correctness, GPU, or cost constraint.
-- [~] Have Milk Man propose the next configuration from prior measurements,
+- [x] Have Milk Man propose the next configuration from prior measurements,
   execute it, and capture cold start, time to first token, output tokens per
   second, p50/p95 latency, errors/OOM, output correctness, and compute cost.
   The concurrent two-sequence candidate completed without follow-up steering;
@@ -668,6 +683,12 @@ hardcoding that model or provider into the harness.
   311.306 seconds total; the warm-session run measured 258.288 seconds. These
   are separate observations, not a controlled startup comparison or billed
   GPU duration. Complete experiment billing remains unknown.
+  After the context repair, Milk Man independently selected a 4096-token
+  batch budget, ran the sole candidate against the retained 1024 reference,
+  rejected its slower result, saved eighteen total research entries, and
+  stopped compute. The experiment used nine model calls including warmup;
+  startup took 426.194 seconds. Independent provider reads found zero Modal
+  containers and all three known Baseten deployments inactive/zero replicas.
 - [x] Compare like-for-like requests and concurrency. Persist exact model,
   revision, runtime, resource, serving arguments, endpoint identity, metrics,
   and conclusion for every trial.
