@@ -21,6 +21,7 @@ from .store import StoreError, open_store, settings_from_environment
 
 
 RESULT_SCHEMA = "milk.job-result.v2"
+USAGE = "usage: milk jobs [name] | milk status | milk operate --once | milk run <job> [status|stop]"
 EXIT_USAGE = 64
 EXIT_CONFIG = 65
 EXIT_PROVIDER = 69
@@ -93,7 +94,7 @@ def _parse(argv: list[str]) -> tuple[str, str | None, str | None]:
         return "run", argv[1], "run"
     if len(argv) == 3 and argv[0] == "run" and argv[2] in {"status", "stop"}:
         return "run", argv[1], argv[2]
-    raise UsageError("usage: milk jobs [name] | milk status | milk operate --once | milk run <job> [status|stop]")
+    raise UsageError(USAGE)
 
 
 def _catalog(runtime, name: str | None = None) -> dict:
@@ -543,6 +544,9 @@ def _run_job(name, store, settings, runtime):
 
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv in (["--help"], ["-h"], ["help"]):
+        print(USAGE)
+        return
     command = "invalid"
     job_name = None
     action = None

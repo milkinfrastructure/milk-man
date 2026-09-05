@@ -15,6 +15,33 @@ Status notation:
 
 ## Executive state
 
+- [x] One Chrome objective advanced the driver scope from 20 to 100 summarized
+  exchanges using two inference calls and no GPU lifecycle calls. Independent
+  R2 digest/ancestry reads verified summary `3e0b2724-f6e5-5327-9c99-0cf471abd0a9`,
+  SHA-256 `72ffd18d7bfd8b4d98e6585d8ae3ba81cbd7b01c74431425dfd970e6e5cb94ba`:
+  100 tool-bearing exchanges, eight classified, eight source groups, not ready.
+  Milk Man resumed after its detached job and repeated the summary: idle,
+  same checkpoint, zero inference/provider calls. Private receipts:
+  `summary-loop-1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a/checkpoint-100{,-repeat}/`.
+- [~] Summary execution and replay completed without another instruction, but
+  closeout repeated metadata reads. One Chrome correction told Milk Man to
+  finish and register the existing read-only status watch. It consumed that
+  correction at the safe model-response boundary and returned to waiting at
+  turn 88. This is not wholly unassisted closeout. The next configured summary
+  threshold is 1,000; crossing it has not yet been observed.
+- [x] Milk Man recovered without a follow-up prompt when `milk --help` returned
+  usage error 64. After its successful replay, Codex added normal help aliases
+  that exit zero before reading configuration; direct no-scope help checks pass.
+- [x] Extended the existing `checkpoint` tool with safe topic/task/outcome and
+  related label counts so summary reading does not require one-off object
+  readers. The real pinned 100-exchange checkpoint returned those fields with
+  zero inference/provider calls. Chrome also verified the corrected date label:
+  summary `created_at` is the latest included exchange, not when it was saved.
+- [~] The 100-exchange checkpoint contains four trajectory groups (three train,
+  one DEV) and four request-based groups (three train, one sealed). No calibration
+  group exists, and completed tool exchanges do not establish task success.
+  The next integration is native dataset selection plus assistant-target-only
+  training, not admitting these records to the existing text-only eval path.
 - [x] Chrome-prompted Milk Man completed corrected Baseten model `wl51k7e3`,
   deployment `wxe4k60`, with `--reasoning-parser qwen3` on one L4. All three
   requests returned exactly `MILK_OK`: 1,828.245, 417.368, and 367.745 ms.
@@ -685,7 +712,9 @@ Corrections made by this audit:
   displayed the CLI task's actual command, JSON result, and final message.
 - [x] A complete Bash-started objective ran `bin/progress`, reported 106/106,
   saved memory, and finished at 2026-09-04 20:22:55 UTC (heartbeat turn 5).
-- [ ] Repeat it and prove retained state prevents duplicate external work.
+- [x] The later Chrome summary objective repeated its completed checkpoint:
+  100 summarized, eight classified, zero inference/provider calls. It retained
+  prior artifacts rather than repeating classification.
 
 ### P2 reusable script extensibility
 
@@ -868,7 +897,8 @@ Corrections made by this audit:
   research record and dashboard do not verify referenced measurements or
   qualify a production route by themselves.
 - [x] Reconcile retained traffic and summary objects before new generation:
-  the dedicated driver scope now has the inspected 20-exchange checkpoint.
+  the dedicated driver scope now has the independently verified 100-exchange
+  checkpoint. It extends, rather than replaces, the retained 20-exchange one.
 - [~] Summary jobs progressed and resumed through the heartbeat; the scoped
   threshold probe is installed and unchanged checks use no inference. A later
   automatic raw-traffic threshold crossing remains to be observed.

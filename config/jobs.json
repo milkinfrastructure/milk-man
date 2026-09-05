@@ -67,7 +67,7 @@
       "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
     },
     "checkpoint": {
-      "description": "Read one pinned summary and verified ancestry: exchange and source-group counts, classified count, tool-bearing exchanges, and text-eval eligibility. Set MILK_CHECKPOINT_KEY and MILK_CHECKPOINT_SHA256. Does not read capture bodies, write objects, call inference, or operate providers. HTTP completion is not task success; eligibility does not establish dataset admission or split availability.",
+      "description": "Read saved summary statistics and verified ancestry: topics, tasks, capabilities, languages, sentiment, estimated outcomes, classified sample size, exchange/source-group counts, and text-eval eligibility. Set MILK_CHECKPOINT_KEY and MILK_CHECKPOINT_SHA256. Does not read capture bodies, write objects, call inference, or operate providers. Model-estimated outcomes and HTTP completion are not measured task success; eligibility does not establish dataset admission or split availability.",
       "executable": "bin/checkpoint",
       "environment": {
         "required": ["MILK_CHECKPOINT_KEY", "MILK_CHECKPOINT_SHA256", "MILK_SCOPE_ID", "MILK_STORE_KIND"],

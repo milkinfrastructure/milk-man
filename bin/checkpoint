@@ -14,6 +14,21 @@ from milk_v2.state import redact
 from milk_v2.store import StoreError, open_store, settings_from_environment
 
 
+def counts(value, allowed, maximum):
+    if not isinstance(value, dict):
+        return None
+    result = {}
+    for label, count in value.items():
+        if type(count) is not int or not 0 <= count <= maximum:
+            raise ValueError("checkpoint label count is invalid")
+        if allowed is not None and label not in allowed:
+            raise ValueError("checkpoint label is outside the summary taxonomy")
+        if allowed is None and not re.fullmatch(r"[a-z]{2,3}(?:-[A-Za-z]{2,4})?|mixed|unknown", label):
+            label = "unknown"
+        result[label] = result.get(label, 0) + count
+    return result
+
+
 def main():
     if sys.argv[1:] not in ([], ["run"]):
         raise ValueError("usage: checkpoint [run]")
@@ -37,7 +52,8 @@ def main():
         raise ValueError("checkpoint identity differs")
     rows, unused_keys = summary._ancestry(store, settings, value)
     groups = {(row["source_group_kind"], row["source_group_sha256"]) for row in rows}
-    classified = value.get("semantic", {}).get("cumulative", {}).get("classified")
+    semantic = value.get("semantic", {}).get("cumulative", {})
+    classified = semantic.get("classified")
     if value.get("capture_count") != len(rows) or type(classified) is not int or not 0 <= classified <= len(rows):
         raise ValueError("checkpoint counts differ from its ancestry")
     facts = {
@@ -48,9 +64,20 @@ def main():
         "trajectory_groups": sum(kind == "trajectory" for kind, unused in groups),
         "request_groups": sum(kind == "request" for kind, unused in groups),
         "classified": classified,
+        "summary_statistics": {
+            name: counts(semantic.get(field), allowed, classified)
+            for name, field, allowed in (
+                ("topics", "domain", summary.DOMAINS),
+                ("tasks", "operation", summary.OPERATIONS),
+                ("capabilities", "capability", summary.CAPABILITIES),
+                ("languages", "language", None),
+                ("sentiment", "sentiment", summary.SENTIMENTS),
+                ("estimated_outcomes", "outcome", summary.OUTCOMES),
+            )
+        },
         "tool_bearing_exchanges": sum(row.get("tool_definitions", 0) > 0 or row.get("tool_calls", 0) > 0 for row in rows),
         "text_eval_eligible_exchanges": sum(eval_plan._eligible(row) for row in rows),
-        "note": "HTTP completion does not establish task success. Text eligibility excludes split and held-out selection.",
+        "note": "Summary statistics describe the classified sample, not every exchange; capabilities may overlap. Outcomes are model estimates, not measured task success. Missing statistics are null; non-code language labels are grouped as unknown. HTTP completion does not establish task success. Text eligibility excludes split and held-out selection.",
     }
     print(json.dumps({"state": "complete", "identity": expected, "inference_calls": 0, "provider_calls": 0, "details": facts}, separators=(",", ":")))
 

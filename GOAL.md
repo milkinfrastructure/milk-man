@@ -160,8 +160,9 @@ not a sequence of human-issued commands, drives Milk Man.
   handles its result, saves useful state, and reports completion without
   manual command-by-command steering.
 - [x] Run the same objective from Bash without the dashboard.
-- [ ] On a repeated run, recognize the retained result instead of repeating
-  the external work.
+- [x] On a repeated run, recognize the retained result instead of repeating
+  the external work. The 100-exchange summary replay retained its checkpoint,
+  returned idle, and made zero inference/provider calls.
 
 Acceptance: one prompt becomes one completed multi-step task through both user
 interfaces, with one retained trajectory and no duplicate operation.
@@ -319,15 +320,23 @@ do not restart parked large generation runs.
 - [~] Summary, readiness, eval, dataset, Qwen3.5-0.8B training, model
   comparison, proposal, routing, fallback, rollback, and teardown have each
   run in historical mechanics lineages.
-- [x] Reconcile retained traffic before new generation: Milk Man saved a
-  20-exchange checkpoint with eight inspected native-tool classifications.
-  Readiness remains false; this is not a trained or improved model.
+- [x] Reconcile retained traffic before new generation: Chrome-prompted Milk Man
+  advanced the 20-exchange checkpoint to 100 using two summary inference calls.
+  Eight examples were classified; all 100 exchanges carry tools. Independent
+  digest and ancestry reads agree. Readiness remains false; this is not a
+  trained or improved model.
 - [~] Preserve native assistant examples without flattening tool history.
   `native-capture` extracted one pinned Responses exchange into 28 context
   messages, two tools, and one next assistant tool-call target. Prior tool
   results remain paired; hidden reasoning is explicitly omitted. Native
   dataset selection, assistant-only training, and held-out agent-task
   evaluation remain unfinished. Extraction does not establish task success.
+- [ ] Connect native extraction to a separate reusable dataset job and the
+  existing trainer. Preserve messages, tools, targets and source-group splits;
+  apply loss only to the new assistant target. Select the resulting manifest
+  explicitly instead of fabricating a legacy text-eval pointer. Deploy the
+  updated exact training-source digest: editing the local worker alone does
+  not change the script downloaded by Baseten. Keep the legacy text path.
 - [~] Summary execution/resume and zero-call replay are proven. The heartbeat
   now watches raw capture thresholds without inference; a later automatic
   threshold crossing remains to be observed.
