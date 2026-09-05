@@ -582,6 +582,9 @@ The evidence record is maintained in
 
 ## Reference
 
+The dashboard's Berkeley Mono font is separately licensed; Apache-2.0 does
+not apply to the font file.
+
 - [Job and environment contract](config/jobs.json)
 - [Evaluation policy](config/evaluation.json)
 - [Pinned student model](config/student.json)

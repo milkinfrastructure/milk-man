@@ -48,6 +48,7 @@ ASSETS = {
     "/milk.css": ("text/css; charset=utf-8", WEB_ROOT / "milk.css"),
     "/dashboard.js": ("text/javascript; charset=utf-8", WEB_ROOT / "dashboard.js"),
     "/milk-carton.png": ("image/png", WEB_ROOT / "milk-carton.png"),
+    "/BerkeleyMonoTrial-Regular.otf": ("font/otf", WEB_ROOT / "BerkeleyMonoTrial-Regular.otf"),
 }
 
 
