@@ -214,12 +214,10 @@ def _man_state(include_metadata: bool = True) -> dict:
             if value.get("type") == "memory"
         ]
     events = _tail(trajectory, 200) if trajectory else []
-    latest_prompt = next(
-        (index for index in range(len(events) - 1, -1, -1) if events[index].get("type") == "prompt"),
-        0,
-    )
+    prompts = [index for index, event in enumerate(events) if event.get("type") == "prompt"]
+    recent_start = prompts[-3] if len(prompts) >= 3 else 0
     activity = []
-    for value in events[latest_prompt:]:
+    for value in events[recent_start:]:
         kind = str(value.get("type", "event"))[:32]
         if kind == "trajectory":
             continue

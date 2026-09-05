@@ -34,6 +34,17 @@ const jobCopy = {
   "inference-status": "Read the controller state without changing it.",
   "inference-stop": "Stop the tracked controller and verify it reached zero compute.",
 };
+const jobLabels = {
+  summary: "summarize traffic", eval: "create example tasks", dataset: "prepare training data",
+  train: "train the student", evaluate: "compare model versions",
+  "serve-modal": "serve a model on Modal", "serve-baseten": "serve a model on Baseten",
+  benchmark: "measure model speed + answers", "agent-trial": "give a model one agent task",
+  "native-trial": "try one next action", "native-capture": "read a saved tool exchange",
+  checkpoint: "read a saved summary", progress: "count traffic + progress", research: "save research results",
+  "inference-ensure": "start the inference controller", "inference-status": "check the inference controller",
+  "inference-stop": "stop the inference controller", "gpu-reconcile-modal": "check a Modal operation",
+  "route-propose-baseten": "prepare a Baseten route", "route-propose-modal": "prepare a Modal route",
+};
 const triggerCopy = {
   manual: "when Milk Man selects it or you run its command",
   crossed_capture_threshold: "a configured conversation checkpoint is crossed",
@@ -122,7 +133,7 @@ function fillPercent(count, points) {
 
 function duration(value) {
   const amount = number(value);
-  return amount >= 1000 ? (amount / 1000).toFixed(amount % 1000 ? 1 : 0) + "s" : amount + "ms";
+  return amount >= 1000 ? (amount / 1000).toFixed(amount % 1000 ? 1 : 0) + "s" : amount.toLocaleString(undefined, {maximumFractionDigits: 1}) + "ms";
 }
 
 function series(value, format = item => number(item).toLocaleString(), showTail = false) {
@@ -410,6 +421,12 @@ function environmentList(label, values, optional = false) {
 }
 
 let contractKey;
+function filterJobs() {
+  const query = el("job-search").value.trim().toLowerCase();
+  const cards = Array.from(el("jobs").querySelectorAll("details.job"));
+  for (const card of cards) card.hidden = !card.textContent.toLowerCase().includes(query);
+  el("job-matches").textContent = query ? cards.filter(card => !card.hidden).length + " matching actions" : "";
+}
 function renderContract(contract = {}) {
   const key = JSON.stringify(contract);
   if (key === contractKey) return;
@@ -420,6 +437,7 @@ function renderContract(contract = {}) {
   target.replaceChildren();
   if (contract.error) {
     target.append(node("p", "empty", contract.error));
+    el("job-matches").textContent = "";
     return;
   }
   for (const job of contract.jobs || []) {
@@ -431,14 +449,14 @@ function renderContract(contract = {}) {
     heading.title = jobCopy[job.name] || job.description || "A repository job.";
     heading.append(
       node("i", "pin"),
-      node("b", "", job.name),
+      node("b", "", jobLabels[job.name] || job.name),
       node("small", "", missing.length ? missing.length + " setting" + (missing.length === 1 ? "" : "s") + " needed" : "settings present")
     );
     const body = node("div", "job-body");
     body.append(node("p", "", jobCopy[job.name] || job.description || "A repository job."));
     const facts = node("div", "facts");
     facts.append(
-      summaryRow("starts when", triggerCopy[job.trigger] || String(job.trigger || "manual").replaceAll("_", " ")),
+      summaryRow("needed before running", triggerCopy[job.trigger] || String(job.trigger || "manual").replaceAll("_", " "), "A prerequisite, not proof that this action is running or scheduled."),
       summaryRow("run", job.command, "Run this exact reviewed job explicitly.", job.command),
       summaryRow("scheduling", job.automatic ? "included in the traffic workflow" : "runs when explicitly selected"),
       summaryRow("reads", (job.inputs || []).map(value => prefixCopy[value] || value).join(" · ") || "not listed by this script"),
@@ -450,11 +468,12 @@ function renderContract(contract = {}) {
     const optional = node("details", "controls");
     optional.dataset.job = job.name;
     optional.open = controls.has(job.name);
-    optional.append(node("summary", "", "optional controls + defaults"), environmentList("optional environment", job.optional || [], true));
+    optional.append(node("summary", "", "optional settings"), environmentList("optional environment", job.optional || [], true));
     body.append(optional);
     card.append(heading, body);
     target.append(card);
   }
+  filterJobs();
 }
 
 let activityKey = "";
@@ -478,7 +497,7 @@ function renderMan(man) {
   };
   light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", labels[state] || labels.setup);
   el("driver-detail").textContent = "Model: " + (driverStatus || "not configured") + ". Session: " + (man.trajectory_id || "not started") + ".";
-  el("active-model").textContent = "driver: " + (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
+  el("active-model").textContent = "chat model: " + (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
   const pulse = man.heartbeat || {};
   const heartbeatOnline = pulse.online === true;
   const heartbeatStarting = !heartbeatOnline && man.connection === "attached" && man.active;
@@ -488,6 +507,8 @@ function renderMan(man) {
   const workActive = heartbeatOnline && (pulse.state === "running" || man.active);
   const task = (pulse.task || "No task saved yet.").replace(/^Continue the saved task:\s*/, "");
   el("current-work").textContent = task.split(/\n|(?<=[.!?])\s/)[0].slice(0, 220);
+  el("current-instruction").hidden = !pulse.brief || pulse.brief === pulse.task;
+  el("current-instruction").textContent = pulse.brief ? "Latest instruction: " + pulse.brief.split(/\n|(?<=[.!?])\s/)[0].slice(0, 220) : "";
   el("current-work-note").textContent = !heartbeatOnline ? "The task is saved, but no heartbeat owner is connected."
     : workActive ? (jobs ? "Running: " + jobNames + "." : "Working through the task. New replies appear below.")
     : pulse.state === "waiting" ? pulse.watch_state === "unknown"
@@ -622,7 +643,7 @@ function renderCloud(data) {
   el("checked").textContent = (monitor.error ? "status watcher failed " : "status updated ") + new Date(data.now).toLocaleString();
   const jobs = data.contract?.jobs || [];
   const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
-  const jobStatus = data.contract?.error ? "job configuration unavailable" : readyJobs + " / " + jobs.length + " jobs configured";
+  const jobStatus = data.contract?.error ? "job configuration unavailable" : readyJobs + " / " + jobs.length + " have required settings here";
   el("job-count").textContent = jobStatus;
   el("watch-state").textContent = "Replies appear here as Milk Man works. You can send a correction while it runs; it will pick it up at the next safe step.";
   const status = milk.status || {};
@@ -664,8 +685,29 @@ function experimentCard(value, index) {
   const card = node("article", "experiment");
   const label = String(value.name || value.kind || "experiment").replaceAll(/[_-]/g, " ");
   card.append(node("h3", "", (index + 1) + " · " + label));
-  const conclusion = value.conclusion || value.comparison?.conclusion || value.limitations;
+  const conclusion = value.conclusion || value.decision || value.comparison?.conclusion || value.limitations;
   if (typeof conclusion === "string") card.append(node("p", "", conclusion));
+  const baseline = value.configurations?.baseline;
+  const candidate = value.configurations?.candidate;
+  if (baseline && candidate) {
+    const table = node("table", "experiment-comparison");
+    table.append(node("caption", "", "Recorded comparison · lower time is better"));
+    const head = node("tr");
+    for (const label of ["measurement", "previous setting", "trial setting"]) {
+      const cell = node("th", "", label); cell.scope = "col"; head.append(cell);
+    }
+    const body = node("tbody");
+    for (const [key, label] of [["mean_e2e_ms", "average full reply"], ["mean_ttft_ms", "average first text"]]) {
+      if (!Number.isFinite(baseline[key]) || !Number.isFinite(candidate[key])) continue;
+      const row = node("tr");
+      const heading = node("th", "", label); heading.scope = "row";
+      row.append(heading, node("td", "", duration(baseline[key])), node("td", "", duration(candidate[key])));
+      body.append(row);
+    }
+    const header = node("thead"); header.append(head); table.append(header, body);
+    if (body.children.length) card.append(table);
+  }
+  if (typeof value.scope === "string") card.append(node("p", "", value.scope));
   const detail = node("details");
   detail.append(node("summary", "", "measurements + saved references"), recordFields(value));
   card.append(detail);
@@ -679,15 +721,27 @@ function renderResearch(value) {
   researchKey = key;
   const record = value.record;
   const target = el("research");
-  el("research-state").textContent = value.error || (record ? (record.experiments || []).length + " saved experiments · " + (record.best ? "best result recorded" : "no measured winner yet") : "no objective saved");
+  el("research-state").textContent = value.error || (record ? (record.experiments || []).length + " saved experiments" : "no objective saved");
   if (!record) return rows(target, [], value.error || "Ask Milk Man to save a research objective for this scope using the research job.");
   const opened = new Set(Array.from(target.querySelectorAll("details[open]"), item => item.dataset.field));
   rows(target, [
-    { title: "objective", detail: record.objective },
-    { title: "next action", detail: record.next_action },
+    { title: "research goal", detail: record.objective },
+    { title: "planned research step", detail: record.next_action, help: "Saved by the agent. This plan is separate from the instruction currently running in chat." },
   ]);
+  const comparison = node("div", "comparison-status");
+  for (const [field, label, help] of [
+    ["baseline", "reference model", "The model and settings used for comparison. A serving-speed experiment alone does not establish a model-quality reference."],
+    ["evaluation", "evaluation tasks", "Tasks kept out of training, used to compare answers fairly."],
+    ["best", "best model", "A model selected from measured comparisons on this scope's tasks. Not the chat model or a currently running GPU."],
+  ]) comparison.append(summaryRow(label, record[field] ? "recorded · details below" : "not recorded", help));
+  target.append(comparison);
+  if (record.experiments?.length) {
+    const latest = node("div", "row latest-result");
+    latest.append(helpHeading("last saved experiment", "The most recently appended research entry. It may describe an earlier run; opening it starts nothing."), experimentCard(record.experiments.at(-1), record.experiments.length - 1));
+    target.append(latest);
+  }
   const revision = node("div", "row");
-  revision.append(copyButton(short(value.revision), value.revision, "research revision"));
+  revision.append(node("small", "", "saved version"), copyButton(short(value.revision), value.revision, "research revision"));
   target.append(revision);
   for (const [field, label, help] of [["targets", "what counts as better", "The quality, speed, and cost targets for this scope."], ["baseline", "reference model", "The existing model and settings each candidate is compared against."], ["evaluation", "tasks kept out of training", "The same untouched tasks must be used for a fair comparison."], ["best", "best measured result", "A saved candidate needs comparable measurements before it can be called better."], ["experiments", "past experiments", "Completed experiments, including failed attempts and losses. Saved notes are not independent verification."], ["wake", "when to check again", "A proposed wake condition. It runs only after the heartbeat registers a matching watch."]]) {
     const detail = node("details");
@@ -742,6 +796,7 @@ async function refreshLocal() {
 }
 
 el("refresh").addEventListener("click", () => refreshCloud(true));
+el("job-search").addEventListener("input", filterJobs);
 document.querySelectorAll(".toolbar a").forEach(link => link.addEventListener("click", () => {
   const section = el(link.hash.slice(1));
   if (section?.tagName === "DETAILS") section.open = true;
@@ -800,6 +855,9 @@ document.addEventListener("pointerover", event => { if (helpTip.contains(event.t
 document.addEventListener("pointerout", () => { helpTimer = setTimeout(hideHelp, 150); });
 document.addEventListener("focusin", event => showHelp(event.target));
 document.addEventListener("focusout", hideHelp);
-document.addEventListener("click", event => { if (event.target.closest?.(".help")) showHelp(event.target); });
+document.addEventListener("click", event => {
+  if (event.target.closest?.(".help")) showHelp(event.target);
+  else if (!helpTip.contains(event.target)) hideHelp();
+});
 document.addEventListener("keydown", event => { if (event.key === "Escape") hideHelp(); });
 document.addEventListener("scroll", hideHelp, true);

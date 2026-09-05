@@ -31,14 +31,14 @@
       <a href="#summaries">saved summaries</a>
       <a href="#research-panel">research</a>
     </nav>
-    <small class="copy-state" id="copy-state" role="status" aria-live="polite">Underlined values copy on click. Open a row for details; hover or focus a ? for help.</small>
+    <small class="copy-state" id="copy-state" role="status" aria-live="polite">Dotted underlines copy values. Open a row for details. Hover, focus, or tap ? for help.</small>
 
     <section class="heartbeat" aria-label="Milk Man heartbeat">
       <span title="One local process keeps this task available. Closing this page does not stop it."><i class="signal" id="heartbeat-signal"></i><b id="heartbeat-state">heartbeat · connecting</b></span>
       <span>last check <time id="heartbeat-last">not checked</time></span>
       <span>next check <time id="heartbeat-next">not scheduled</time></span>
       <span><b id="heartbeat-count">0 work sessions · 0 idle checks</b><button class="help" type="button" title="A work session can make several model calls. Idle checks only inspect status and use no model tokens. These are activity counts, not a bill." aria-label="About heartbeat activity">?</button></span>
-      <div class="current-work"><div class="task-heading"><b>working toward</b><small id="active-model">model not configured</small></div><strong id="current-work">No task saved yet.</strong><span id="current-work-note">Waiting for status.</span></div>
+      <div class="current-work"><div class="task-heading"><b>current goal</b><small id="active-model">model not configured</small></div><strong id="current-work">No task saved yet.</strong><span id="current-instruction" hidden></span><span id="current-work-note">Waiting for status.</span></div>
       <details class="heartbeat-task">
         <summary title="The full instruction and model settings for this session. Closing the dashboard does not stop the heartbeat.">full instruction + model settings</summary>
         <p id="driver-detail"></p>
@@ -48,7 +48,7 @@
     </section>
 
     <details class="chat" id="talk" aria-label="Milk Man conversation" open>
-      <summary title="Your messages and Milk Man's replies. Expand work details to inspect commands and their output.">conversation <small id="conversation-state">finding session</small></summary>
+      <summary title="Recent instructions and replies stay visible while Milk Man continues. Older work remains in the saved session. Expand work details to inspect commands and their output.">conversation <small id="conversation-state">finding session</small></summary>
       <p class="section-help" id="watch-state">Describe one outcome below. Milk Man chooses the steps. Replies stay in the conversation; commands and raw output stay folded under work details.</p>
       <div class="messages" id="activity" tabindex="0" aria-label="Milk Man transcript">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
@@ -124,7 +124,8 @@
     </details>
     <details class="jobs" id="jobs-panel">
       <summary title="See every registered job and whether this dashboard process inherited its required environment names.">jobs + environment <small id="job-count">checking configuration</small></summary>
-      <p class="section-help">Jobs are the actions Milk Man can run. Open one to see what it does and which settings it needs. Settings present does not mean the provider is connected. Secret values stay hidden.</p>
+      <p class="section-help">Actions Milk Man can run from chat or Bash. Open one for its command and settings. Provider access is checked when it runs; a light here only means its required settings are present.</p>
+      <div class="job-search"><label for="job-search">find an action</label><input id="job-search" type="search" placeholder="model, summary, Modal…" aria-controls="jobs"><small id="job-matches" role="status"></small></div>
       <div class="job-list" id="jobs"></div>
     </details>
     <details id="summaries" open>
@@ -132,8 +133,8 @@
       <div class="milestones" id="milestones"></div>
     </details>
     <details id="research-panel">
-      <summary title="The research objective and saved experiment history for this scope. A measured comparison is needed before calling a model better.">research notebook <small id="research-state">reading saved objective</small></summary>
-      <p class="section-help">The aim: a better open-source model for this scope's tasks. Compare against the same reference on tasks excluded from training. Keep wins and losses; choose what to try next.</p>
+      <summary title="The research objective and saved experiment history for this scope. A measured comparison is needed before calling a model better.">research results <small id="research-state">reading saved objective</small></summary>
+      <p class="section-help">What was tried, what happened, and what to try next. These are saved results, not a live list of running GPUs. Speed and answer quality are separate comparisons.</p>
       <div class="rows" id="research"></div>
     </details>
     <details>
