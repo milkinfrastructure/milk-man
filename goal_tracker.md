@@ -15,6 +15,28 @@ Status notation:
 
 ## Executive state
 
+- [!] The first native SFT run reached Baseten on one H100 and failed during
+  the first training loss calculation: `qjkgdj3`, project `3ydmen3`, source
+  `e3255a13906e7d159ce0d5278b5367f727e2e06f`. Full-sequence logits requested
+  another 11.98 GiB with 11.76 GiB available. No model artifact or before/after
+  result was recovered. The original run and failure receipts remain private
+  in `native-sft-a050d44f-77124568c753-steps3/`; no retry was launched.
+- [x] At 2026-09-05 04:44:39 UTC, an independent Baseten read confirmed that
+  job failed and its training project had zero active jobs among 30 returned.
+  The collection command exited 69 with the existing provider failure; its
+  detached local processes exited. This is not an account-wide GPU inventory.
+- [~] Correction `4541d980c5e0672f09ac9ce5c68c2b2f0f65e704` preserves the full
+  input but projects only assistant-target positions for native loss. Source
+  compatibility, token alignment and syntax were checked; GPU proof remains.
+  The same commit makes an explicitly terminal job observation wake the
+  heartbeat even when it was terminal when first registered. The existing
+  owner resumed the failed task without another prompt. The trainer still
+  selects the old source until one deliberate corrected retry is prepared.
+- [!] Summary milestones use `MILK_SUMMARY_THRESHOLDS`, but the current single
+  heartbeat watch is consumed on wake and can be replaced by a compute wait.
+  Detection and zero-call summary replay work; persistent automatic summary
+  dispatch is not yet complete. Preserve a summary watch alongside job waits,
+  handle an already-reached milestone, and re-arm after saving its summary.
 - [x] Built native dataset `a050d44f-256e-568e-80c9-5c60c3c30328` from the
   saved 100-exchange summary. Manifest SHA-256:
   `77124568c753f9a4fdd55bf82425ba1800c6ef5bb60f75c9eb7b6644c36826fa`.
@@ -27,13 +49,11 @@ Status notation:
   12,954/1,920/2,804 tokens, with 51/72/486 target tokens; DEV: 2,436 with 184
   target tokens. No weights or GPU were loaded. This proves formatting and
   masking, not answer quality or successful training.
-- [~] Added explicit native manifest selection to the existing SFT job and
-  prepared its provider request locally with a 16,384-token context. Native
-  results do not alter the legacy text-eval status. Worker source is pinned at
-  `3ed0bd39051eac6c1bda1ee72031b6b3605feae4`, SHA-256
-  `bee459b153e1bb7a72473ee81565aa9faeea00be62b3d75d44d998a9e18b1edf`.
-  No training request was submitted. Native GPU execution and a meaningful
-  before/after comparison remain next; saved tool actions are not success labels.
+- [~] Explicit native manifest selection reached a real SFT job with a
+  16,384-token context, three steps and learning rate `2e-6`. Native results
+  remain separate from legacy text-eval status. That attempt failed as
+  recorded above; successful training and a meaningful before/after comparison
+  remain unproven. Saved tool actions are not success labels.
 - [!] Chrome's existing dashboard tabs returned `Debugger unattached` during
   this step. The new job was executed from Bash, not dashboard chat. Milk Man's
   existing heartbeat remained online and waiting; no owner restart occurred.

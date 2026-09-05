@@ -249,8 +249,19 @@ it trains only on the new assistant answer. It never silently shortens native
 examples. This uses the configured Baseten training account and starts paid
 work. Its saved model does not advance the text-eval workflow or activate a
 route. Leaving both manifest variables unset keeps the existing training path.
-The native data and token preparation have been checked locally; a native
-training run and before/after task comparison remain to be done.
+Native data and token preparation have been checked. The first three-step
+training attempt ran out of GPU memory while calculating loss. A smaller
+target-only calculation is committed but has not yet been tried on the GPU.
+Successful native training and a before/after task comparison remain open.
+
+The native worker also measures how closely the model predicts held-aside
+answers before and after training. A lower loss means a closer match to those
+answers, not proof that the agent completes tasks better.
+
+To watch or stop a submitted training run, set `MILK_TRAIN_PROVIDER_JOB_ID`
+to the returned Baseten job ID and use `bin/milk run training-baseten status`
+or `bin/milk run training-baseten stop`. Both use the configured training
+project. Status cannot start a job; stopping a finished job makes no change.
 
 To compare a model's next action on that saved context, set
 `MILK_NATIVE_TRIAL_FILE` and `MILK_NATIVE_TRIAL_SHA256`, configure `LLM_*`,
