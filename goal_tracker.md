@@ -15,6 +15,30 @@ Status notation:
 
 ## Executive state
 
+- [x] Added reusable `agent-trial` and independent `serve-baseten` scripts in
+  `57b7584ff`. Trials retain exact task, code-content identity, driver settings,
+  elapsed time, tool counts, and private results. Baseten-owned deployment is
+  implemented but has not yet been exercised live; managed inference remains
+  independent.
+- [!] The first frozen checkpoint-decision trial reached the correct stored
+  counts but used all six replies before reporting a decision: exit 76,
+  140.086 seconds, six Bash calls, no final answer. Trial
+  `dca569cf30d8c40f4dc20f2aa4e734a742f6133684ba6c2f760eb2a7b4ab153d`
+  is retained. Chrome-prompted Milk Man replayed its failed receipt with zero
+  inference and stopped before launching the planned 120B comparison.
+- [x] `407db7393` adds `milk jobs NAME`: this trial's catalog lookup falls
+  from 12,863 to 1,018 bytes without changing the complete catalog. `b11dd40c6`
+  makes job discovery conditional and tells the driver its reply allowance.
+  The explicit second attempt also exhausted six replies: 171.796 seconds,
+  exit 76, no final answer. Trial
+  `2c5b019dd069e94292df91197099a9f01916c846c63cf331d5f0c572baa435e7`
+  remains retained. These prompt changes did not establish autonomous success.
+- [x] Added a 63-line read-only `checkpoint` job so agents can use verified
+  summary facts without reconstructing storage internals. A real R2 read of
+  checkpoint `e6393c53` returned 20 exchanges, five source groups, eight
+  classified, 20 tool-bearing, and zero eligible for the text-eval path in
+  1.29 seconds. No inference, provider action, object write, or capture-body
+  read occurred. This does not assert dataset admission or task success.
 - [x] `36433b983` isolates nested Milk Man heartbeat context and makes
   subcommand `--help` work. A child no longer inherits the parent's wait file.
 - [x] Read-only Modal serving status now works while startup holds its mutation

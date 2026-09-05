@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Read compact facts from one immutable summary and its verified ancestry."""
+
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import uuid
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from milk_v2 import eval_plan, summary
+from milk_v2.state import redact
+from milk_v2.store import StoreError, open_store, settings_from_environment
+
+
+def main():
+    if sys.argv[1:] not in ([], ["run"]):
+        raise ValueError("usage: checkpoint [run]")
+    settings = settings_from_environment()
+    key, expected = os.environ["MILK_CHECKPOINT_KEY"], os.environ["MILK_CHECKPOINT_SHA256"]
+    prefix = settings.scope_prefix + "s/"
+    if not key.startswith(prefix) or not key.endswith("/summary.json"):
+        raise ValueError("checkpoint key must identify a summary in the configured scope")
+    identity = key[len(prefix):-len("/summary.json")]
+    if str(uuid.UUID(identity)) != identity or not re.fullmatch(r"[0-9a-f]{64}", expected):
+        raise ValueError("checkpoint UUID or SHA-256 is invalid")
+    store = open_store(settings)
+    body = store.get(key).body
+    if summary.digest(body) != expected:
+        raise ValueError("checkpoint digest differs")
+    value = summary._json(body, "checkpoint")
+    if not isinstance(value, dict) or any(value.get(name) != wanted for name, wanted in {
+        "schema_version": "milk.summary.v2", "summary_uuid": identity,
+        "scope_id": settings.scope_id, "profile": settings.profile,
+    }.items()):
+        raise ValueError("checkpoint identity differs")
+    rows, unused_keys = summary._ancestry(store, settings, value)
+    groups = {(row["source_group_kind"], row["source_group_sha256"]) for row in rows}
+    classified = value.get("semantic", {}).get("cumulative", {}).get("classified")
+    if value.get("capture_count") != len(rows) or type(classified) is not int or not 0 <= classified <= len(rows):
+        raise ValueError("checkpoint counts differ from its ancestry")
+    facts = {
+        "checkpoint_key": key, "checkpoint_sha256": expected, "summary_uuid": identity,
+        "scope_id": settings.scope_id, "profile": settings.profile,
+        "checkpoint_digest_verified": True, "exchanges": len(rows),
+        "source_groups": len(groups),
+        "trajectory_groups": sum(kind == "trajectory" for kind, unused in groups),
+        "request_groups": sum(kind == "request" for kind, unused in groups),
+        "classified": classified,
+        "tool_bearing_exchanges": sum(row.get("tool_definitions", 0) > 0 or row.get("tool_calls", 0) > 0 for row in rows),
+        "text_eval_eligible_exchanges": sum(eval_plan._eligible(row) for row in rows),
+        "note": "HTTP completion does not establish task success. Text eligibility excludes split and held-out selection.",
+    }
+    print(json.dumps({"state": "complete", "identity": expected, "inference_calls": 0, "provider_calls": 0, "details": facts}, separators=(",", ":")))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (KeyError, ValueError, OSError, StoreError) as error:
+        print(json.dumps({"state": "failed", "identity": "checkpoint", "inference_calls": 0, "provider_calls": 0, "error": redact(str(error))}, separators=(",", ":")))
+        raise SystemExit(1)

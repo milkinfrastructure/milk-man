@@ -170,10 +170,10 @@ reconstruction and training on native tool trajectories remain unfinished.
 ## Run jobs
 
 Every `bin/milk` invocation emits one `milk.job-result.v2` JSON object to stdout.
-Diagnostics go to stderr. Inspect the live catalog before choosing a job:
+Diagnostics go to stderr. Read one job's settings, or omit its name to list all jobs:
 
 ```bash
-bin/milk jobs
+bin/milk jobs serve-modal
 ```
 
 `bin/milk jobs` returns every registered job, its supported actions, and the
@@ -202,6 +202,11 @@ answer in private state. Repeating the same trial returns its saved receipt
 without another model call. `MILK_TRIAL_ID` retrieves an exact earlier trial;
 use a new `MILK_TRIAL_ATTEMPT` only to deliberately run again. Judge the answer
 against the task: an agent finishing does not mean it answered correctly.
+
+To inspect a saved summary, set `MILK_CHECKPOINT_KEY` and
+`MILK_CHECKPOINT_SHA256`, then run `bin/milk run checkpoint`. It verifies the
+summary and its source history and returns counts, not conversation bodies.
+It does not generate data, train, or decide whether an agent succeeded.
 
 `bin/milk run benchmark` (or `bin/benchmark` directly) measures a configured chat endpoint. Set
 `MILK_BENCHMARK_BASE_URL`, `MILK_BENCHMARK_MODEL`, and

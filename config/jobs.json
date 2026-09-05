@@ -44,6 +44,17 @@
   },
   "operate_order": ["summary", "eval", "dataset", "train", "evaluate"],
   "jobs": {
+    "checkpoint": {
+      "description": "Read one pinned summary and verified ancestry: exchange and source-group counts, classified count, tool-bearing exchanges, and text-eval eligibility. Set MILK_CHECKPOINT_KEY and MILK_CHECKPOINT_SHA256. Does not read capture bodies, write objects, call inference, or operate providers. HTTP completion is not task success; eligibility does not establish dataset admission or split availability.",
+      "executable": "bin/checkpoint",
+      "environment": {
+        "required": ["MILK_CHECKPOINT_KEY", "MILK_CHECKPOINT_SHA256", "MILK_SCOPE_ID", "MILK_STORE_KIND"],
+        "optional": ["MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS"]
+      },
+      "status": false,
+      "stop": false,
+      "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
+    },
     "agent-trial": {
       "description": "Run one Milk Man child on a task file and workspace using LLM_* settings. Returns a compact receipt with elapsed time, tool counts, final report and private evidence references; consume this receipt instead of dumping trajectories. Process completion is not a task-quality verdict. The same trial replays its saved result without model calls; use a new MILK_TRIAL_ATTEMPT only for an intentional new attempt. Status or replay by MILK_TRIAL_ID reads that exact saved trial.",
       "executable": "bin/agent-trial",
