@@ -197,7 +197,8 @@ write_system() {
         cat "$1"
         printf '\n# Runtime context\n\n'
         printf 'The human task is authoritative. The tracker is `%s/goal_tracker.md`; use `rg` to read only a named relevant section when needed.\n' "$ROOT"
-        printf 'Use `bin/milk jobs` to discover jobs and environment names. Start a job with `bin/milk run NAME`; append `status` or `stop` only when advertised. Credentials are already inherited; read source only after a command fails. Host: %s; Bash %s.\n' "$(uname -s)" "$BASH_VERSION"
+        printf 'When a task needs a registered job, use `bin/milk jobs NAME` for its definition; use `bin/milk jobs` only when the name is unknown. Run it with `bin/milk run NAME`; append `status` or `stop` only when advertised. Direct Bash work needs no catalog read. Credentials are already inherited. Host: %s; Bash %s.\n' "$(uname -s)" "$BASH_VERSION"
+        printf 'This turn allows at most %s model replies, including finish. Keep inspection focused and tool output compact; reserve a reply to report the result.\n' "${MILK_MAN_MAX_ITERATIONS:-20}"
         printf 'Driver settings are LLM_MODEL, LLM_API_URL, LLM_API_MODE, and LLM_REASONING_EFFORT. The object-store scope is MILK_SCOPE_ID. Read these exact environment names; never print credentials.\n'
         printf '\nBound workspaces and initial Git state:\n\n```json\n'
         python3 -m json.tool "$MILK_MAN_WORKSPACE_RECORD"
