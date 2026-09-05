@@ -305,6 +305,17 @@ that count. Tools and past results stay intact, and tasks keep their original
 data splits. Repeating it reuses the same files without reading conversations
 or calling a model. The result reports the manifest key, hash and split counts.
 
+For saved calls outside a summary, unset those checkpoint variables and set
+`MILK_NATIVE_CAPTURES_KEY` and `MILK_NATIVE_CAPTURES_SHA256` instead. The pinned
+object lists exact captures in the same scope; it cannot assign data splits:
+
+```json
+{"schema_version":"milk.native-capture-list.v1","scope_id":"<scope UUID>","profile":"mechanics","captures":[{"key":"<capture object key>","sha256":"<capture SHA-256>"}]}
+```
+
+This reads the listed calls without generating a summary or advancing a pointer.
+Related calls remain one task, even when several steps are selected.
+
 To select successful training tasks, also set
 `MILK_NATIVE_TASK_OUTCOMES_KEY` and `MILK_NATIVE_TASK_OUTCOMES_SHA256` to a saved
 outcome index in the same scope:
@@ -313,12 +324,22 @@ outcome index in the same scope:
 {"schema_version":"milk.task-outcomes.v1","scope_id":"<scope UUID>","outcomes":[{"trajectory_id":"<executed trajectory UUID>","result":{"key":"<saved trial result key>","sha256":"<result SHA-256>"}}]}
 ```
 
-Each result is an existing `agent-trial` receipt. Its scored verdict must match
+Each result is the saved `result.json` from `agent-trial` or `agent-score`, not
+the printed job wrapper. Its scored verdict must match
 its completed checker; an unscored receipt stays unknown. Only successful TRAIN
 tasks are selected. Held-out tasks keep their original membership and content.
 The index and result hashes are pinned; outcomes never enter model inputs.
 Without these variables, extraction stays unchanged. A successful replay of a
 task does not label a different trajectory that originally supplied that task.
+
+To score a completed trial without calling the model again, set
+`MILK_TRIAL_RESULT_FILE`, `MILK_TRIAL_RESULT_SHA256`, `MILK_TRIAL_WORKSPACE`, and
+`MILK_TRIAL_CHECK_SCRIPT`, then run `bin/milk run agent-score`. The executable
+checker lives inside this repository, receives the original result as JSON on
+stdin, and checks the actual saved output against pinned task expectations.
+It returns a JSON object with boolean `task_correct`, optionally with `metrics`
+and `reason`. The job saves a separate scored result and leaves the original alone.
+The same inputs replay the score without running the checker again.
 
 The existing `train` job accepts that manifest through
 `MILK_DATASET_MANIFEST_KEY` and `MILK_DATASET_MANIFEST_SHA256`. Use

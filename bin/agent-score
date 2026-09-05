@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Score a pinned saved trial with its task checker; never rerun the agent."""
+
+import fcntl
+import json
+import os
+from pathlib import Path
+import runpy
+import signal
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from milk_v2 import summary
+from milk_v2.state import atomic_json, read_json, redact
+
+
+def main():
+    if sys.argv[1:] not in ([], ["run"]):
+        raise ValueError("usage: agent-score [run]")
+    trial = runpy.run_path(str(ROOT / "bin/agent-trial"))
+    body = Path(os.environ["MILK_TRIAL_RESULT_FILE"]).expanduser().read_bytes()
+    expected = os.environ["MILK_TRIAL_RESULT_SHA256"]
+    result = json.loads(body)
+    if (summary.digest(body) != expected or not isinstance(result, dict)
+        or result.get("schema_version") != "milk.agent-trial-result.v1" or not result.get("trajectory_id")):
+        raise ValueError("saved trial identity or digest differs")
+    relative = Path(os.environ["MILK_TRIAL_CHECK_SCRIPT"])
+    checker = (ROOT / relative).resolve()
+    timeout = int(os.environ.get("MILK_TRIAL_CHECK_TIMEOUT_SECONDS", "10"))
+    if relative.is_absolute() or ROOT not in checker.parents or not checker.is_file() or not os.access(checker, os.X_OK):
+        raise ValueError("checker must be an executable inside the repository")
+    if not 1 <= timeout <= 60:
+        raise ValueError("checker timeout must be 1..60 seconds")
+    config = {"workspace": str(Path(os.environ["MILK_TRIAL_WORKSPACE"]).expanduser().resolve()),
+              "checker": {"script": checker.relative_to(ROOT).as_posix(), "sha256": summary.digest(checker.read_bytes()), "timeout_seconds": timeout}}
+    identity = summary.digest({"source_result_sha256": expected, **config,
+                               "executor_sha256": summary.digest(Path(__file__).read_bytes()),
+                               "trial_executor_sha256": summary.digest((ROOT / "bin/agent-trial").read_bytes())})
+    base = Path(os.environ.get("MILK_MAN_STATE_DIR", str(Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "milk-man")))
+    directory = base.expanduser().resolve() / "agent-scores" / identity
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with (directory / "run.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        replay = (directory / "result.json").exists()
+        if replay:
+            scored = read_json(directory / "result.json")
+        else:
+            check = trial["check_result"](config, result, directory)
+            verdict = check["verdict"]
+            scored = {**result, "source_result_sha256": expected, "checker": check,
+                      "task_correct": verdict["task_correct"] if verdict is not None else None}
+            atomic_json(directory / "result.json", scored)
+    output = trial["receipt"](identity, directory, scored, replay=True)
+    output["state"] = "failed" if scored["checker"]["error"] else "complete"
+    output["details"].update(replay=replay, source_result_sha256=expected, checker_error=scored["checker"]["error"])
+    print(json.dumps(output, separators=(",", ":")))
+    return int(output["state"] == "failed")
+
+
+if __name__ == "__main__":
+    os.umask(0o077)
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+    try:
+        raise SystemExit(main())
+    except (KeyError, ValueError, OSError) as error:
+        print(json.dumps({"state": "failed", "identity": "agent-score", "inference_calls": 0, "provider_calls": 0, "error": redact(str(error))}))
+        raise SystemExit(1)

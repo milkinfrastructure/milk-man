@@ -390,7 +390,8 @@ mechanics traffic cannot qualify a production candidate.
 ### Evaluation and model loop
 
 Native assistant/tool data is a separate input to this loop. The
-`native-dataset` job reads a pinned summary and selects complete supported
+`native-dataset` job reads a pinned summary or an explicit pinned capture list
+(`MILK_NATIVE_CAPTURES_KEY/SHA256`, mutually exclusive with the summary) and selects complete supported
 exchanges within each existing trajectory split. It keeps messages, tool
 definitions, prior tool results and new assistant targets in immutable split
 files under `d/<uuid>/`. It does not fabricate text evals or change current
@@ -406,11 +407,19 @@ Optional `MILK_NATIVE_TASK_OUTCOMES_KEY/SHA256` pins an outcome index and exact
 trial receipts in the same scope. A scored verdict must match the completed
 trial checker and the actual executed trajectory. With this input, only
 recorded-successful TRAIN trajectories are selected; failed or unknown TRAIN
-outcomes are excluded before capture reads. Held-out membership and content
+outcomes are excluded before capture reads for summary input. Explicit lists
+must first read each named capture to derive its identity and group; selected
+captures are then decoded. Both reads are counted. Held-out membership and content
 stay unchanged. Outcome evidence is never model context or a training target.
 Without the input, raw extraction remains available and makes no task-success
 claim. This selects demonstrations; it does not add a runtime approval step or
 another evaluator, and success on a replay never labels its source trajectory.
+
+`agent-score` applies the existing task checker to a pinned saved trial result
+without rerunning the model. It writes a separate score bound to the original
+result and checker hashes. The checker must verify actual saved artifacts and
+pin its expected inputs. Original results and task splits remain unchanged;
+a completed process or a model's completion claim is not a success verdict.
 
 Evaluation generation uses the strongest configured teacher and structured
 JSON output. Captured conversations provide provenance, task distribution, and

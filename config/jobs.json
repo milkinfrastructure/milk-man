@@ -56,11 +56,11 @@
       "timeout_env": "MILK_TRAIN_TIMEOUT_SECONDS"
     },
     "native-dataset": {
-      "description": "Build native assistant/tool data from a pinned summary. MILK_NATIVE_DATASET_PER_GROUP defaults to one earliest supported exchange per trajectory. Optional MILK_NATIVE_TASK_OUTCOMES_KEY/SHA256 selects only recorded-successful TRAIN trajectories; held-out splits stay unchanged. Outcomes reference exact execution receipts, not model claims or HTTP success. Writes immutable splits/manifest, never current pointers. Replay reads no captures. Zero inference/provider calls; extraction alone proves no improvement.",
+      "description": "Build native tool data from MILK_CHECKPOINT_KEY/SHA256 or MILK_NATIVE_CAPTURES_KEY/SHA256, never both. MILK_NATIVE_DATASET_PER_GROUP defaults to one earliest exchange per trajectory. Optional MILK_NATIVE_TASK_OUTCOMES_KEY/SHA256 selects successful TRAIN tasks; held-out splits stay unchanged. Saves immutable splits and a manifest, not current pointers. Replay reads no captures. No inference/provider calls. Extraction alone proves no improvement.",
       "executable": "milk_v2/native_dataset.py",
       "environment": {
-        "required": ["MILK_CHECKPOINT_KEY", "MILK_CHECKPOINT_SHA256", "MILK_SCOPE_ID", "MILK_STORE_KIND"],
-        "optional": ["MILK_NATIVE_DATASET_PER_GROUP", "MILK_NATIVE_TASK_OUTCOMES_KEY", "MILK_NATIVE_TASK_OUTCOMES_SHA256", "MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS"]
+        "required": ["MILK_SCOPE_ID", "MILK_STORE_KIND"],
+        "optional": ["MILK_CHECKPOINT_KEY", "MILK_CHECKPOINT_SHA256", "MILK_NATIVE_CAPTURES_KEY", "MILK_NATIVE_CAPTURES_SHA256", "MILK_NATIVE_DATASET_PER_GROUP", "MILK_NATIVE_TASK_OUTCOMES_KEY", "MILK_NATIVE_TASK_OUTCOMES_SHA256", "MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS"]
       },
       "status": false,
       "stop": false,
@@ -98,6 +98,17 @@
       "status": false,
       "stop": false,
       "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
+    },
+    "agent-score": {
+      "description": "Score one saved trial using its repository-owned task checker, without rerunning the model. Pin MILK_TRIAL_RESULT_FILE/SHA256. Keeps the original receipt unchanged and saves a separate scored result with source and checker digests. Repeating the same inputs replays without executing the checker. Checkers must verify actual task artifacts and pin their expected inputs; process exit and a model's report alone do not prove task success.",
+      "executable": "bin/agent-score",
+      "environment": {
+        "required": ["MILK_TRIAL_RESULT_FILE", "MILK_TRIAL_RESULT_SHA256", "MILK_TRIAL_CHECK_SCRIPT", "MILK_TRIAL_WORKSPACE"],
+        "optional": ["MILK_MAN_STATE_DIR", "MILK_TRIAL_CHECK_TIMEOUT_SECONDS"]
+      },
+      "status": false,
+      "stop": false,
+      "timeout_env": "MILK_TRIAL_JOB_TIMEOUT_SECONDS"
     },
     "agent-trial": {
       "description": "Run one Milk Man child on a task file and workspace using LLM_* settings. Returns a compact receipt with elapsed time, tool counts, final report and private evidence references; consume this receipt instead of dumping trajectories. Process completion is not a task-quality verdict. The same trial replays its saved result without model calls; use a new MILK_TRIAL_ATTEMPT only for an intentional new attempt. Status or replay by MILK_TRIAL_ID reads that exact saved trial.",

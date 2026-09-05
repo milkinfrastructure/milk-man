@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a small native assistant dataset from a pinned summary; no inference."""
+"""Build native assistant data from a pinned summary or capture list; no inference."""
 
 from collections import Counter
 import json
@@ -22,20 +22,30 @@ SPLIT_POLICY = {"version": eval_plan.SPLIT_VERSION, "basis": "scope_trajectory",
 
 
 def configuration(settings):
-    key, expected = os.environ["MILK_CHECKPOINT_KEY"], os.environ["MILK_CHECKPOINT_SHA256"]
-    prefix = settings.scope_prefix + "s/"
-    if not key.startswith(prefix) or not key.endswith("/summary.json"):
-        raise ValueError("checkpoint key must identify a summary in the configured scope")
-    checkpoint_uuid = key[len(prefix):-len("/summary.json")]
-    if str(uuid.UUID(checkpoint_uuid)) != checkpoint_uuid or not re.fullmatch(r"[0-9a-f]{64}", expected):
-        raise ValueError("checkpoint UUID or SHA-256 is invalid")
+    key, expected = os.environ.get("MILK_CHECKPOINT_KEY", ""), os.environ.get("MILK_CHECKPOINT_SHA256", "")
+    captures_key, captures_sha = os.environ.get("MILK_NATIVE_CAPTURES_KEY", ""), os.environ.get("MILK_NATIVE_CAPTURES_SHA256", "")
+    checkpoint_uuid = None
+    if captures_key or captures_sha:
+        if key or expected:
+            raise ValueError("select a summary or an explicit capture list, not both")
+        if not captures_key.startswith(settings.scope_prefix) or not re.fullmatch(r"[0-9a-f]{64}", captures_sha):
+            raise ValueError("capture list requires a scoped object key and SHA-256")
+        parent = {"capture_manifest": {"key": captures_key, "sha256": captures_sha}}
+    else:
+        prefix = settings.scope_prefix + "s/"
+        if not key.startswith(prefix) or not key.endswith("/summary.json"):
+            raise ValueError("checkpoint key must identify a summary in the configured scope")
+        checkpoint_uuid = key[len(prefix):-len("/summary.json")]
+        if str(uuid.UUID(checkpoint_uuid)) != checkpoint_uuid or not re.fullmatch(r"[0-9a-f]{64}", expected):
+            raise ValueError("checkpoint UUID or SHA-256 is invalid")
+        parent = {"parent_summary": {"key": key, "sha256": expected}}
     per_group = int(os.environ.get("MILK_NATIVE_DATASET_PER_GROUP", "1"))
     if per_group < 1:
         raise ValueError("MILK_NATIVE_DATASET_PER_GROUP must be positive")
     student = config.load().student_base
     identity = {
         "schema_version": "milk.native-dataset-identity.v1", "scope_id": settings.scope_id,
-        "profile": settings.profile, "parent_summary": {"key": key, "sha256": expected},
+        "profile": settings.profile, **parent,
         "student_base": {"model_repo": student.model_repo, "model_revision": student.model_revision, "digest": student.digest},
         "policy": {"per_group": per_group, "selection": "earliest_supported_per_trajectory", "split_version": eval_plan.SPLIT_VERSION},
         "executor_sha256": summary.digest(Path(__file__).read_bytes()),
@@ -92,12 +102,29 @@ def task_outcomes(store, settings, reference):
     return outcomes
 
 
-def prepare(store, settings, identity, checkpoint_uuid):
-    parent = identity["parent_summary"]
+def source_rows(store, settings, identity, checkpoint_uuid):
+    parent = identity.get("parent_summary") or identity["capture_manifest"]
     body = store.get(parent["key"]).body
     if summary.digest(body) != parent["sha256"]:
-        raise ValueError("checkpoint digest differs")
+        raise ValueError("dataset source digest differs")
     checkpoint = summary._json(body, "checkpoint")
+    if "capture_manifest" in identity:
+        if (not isinstance(checkpoint, dict) or checkpoint.get("schema_version") != "milk.native-capture-list.v1"
+            or checkpoint.get("scope_id") != settings.scope_id or checkpoint.get("profile") != settings.profile
+            or not isinstance(checkpoint.get("captures"), list) or not checkpoint["captures"]):
+            raise ValueError("capture list identity differs")
+        sources, seen = [], set()
+        for ref in checkpoint["captures"]:
+            if (not isinstance(ref, dict) or not isinstance(ref.get("key"), str)
+                or not ref["key"].startswith(settings.scope_prefix + "c/") or ref["key"] in seen
+                or not isinstance(ref.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", ref["sha256"])):
+                raise ValueError("capture list requires unique scoped keys and SHA-256 values")
+            seen.add(ref["key"])
+            entry = summary.parse_capture(store, settings, ref["key"])
+            if entry["object_sha256"] != ref["sha256"]:
+                raise ValueError("capture list object digest differs")
+            sources.append(entry)
+        return sources, len(sources)
     if not isinstance(checkpoint, dict) or any(checkpoint.get(key) != value for key, value in {
         "schema_version": "milk.summary.v2", "summary_uuid": checkpoint_uuid,
         "scope_id": settings.scope_id, "profile": settings.profile,
@@ -106,10 +133,14 @@ def prepare(store, settings, identity, checkpoint_uuid):
     sources, unused_keys = summary._ancestry(store, settings, checkpoint)
     if checkpoint.get("capture_count") != len(sources):
         raise ValueError("checkpoint count differs from its ancestry")
+    return sources, 0
+
+
+def prepare(store, settings, identity, checkpoint_uuid):
+    sources, capture_reads = source_rows(store, settings, identity, checkpoint_uuid)
     rows = {split: [] for split in SPLITS}
     selected, unsupported, skipped = Counter(), Counter(), Counter()
     outcomes = task_outcomes(store, settings, identity["task_outcomes"]) if "task_outcomes" in identity else None
-    capture_reads = 0
     for entry in sorted(sources, key=lambda row: (summary._utc(row.get("completed_at"), "completed_at"), row["key"])):
         if not entry["key"].startswith(settings.scope_prefix + "c/"):
             raise ValueError("capture key is outside the configured scope")
@@ -143,7 +174,7 @@ def prepare(store, settings, identity, checkpoint_uuid):
         if any(source[name] != entry.get(name) for name in (
             "object_sha256", "request_sha256", "response_sha256", "content_sha256", "trajectory_id", "endpoint",
         )) or envelope.get("completed_at") != entry.get("completed_at"):
-            raise ValueError("selected capture differs from summary ancestry")
+            raise ValueError("selected capture differs from its source record")
         try:
             native_capture.require(200 <= envelope["response"].get("status", 0) < 300, "upstream_failure")
             native = native_capture.decode(envelope, summary._json(request_body, "request"), summary._json(response_body, "response"))
@@ -186,7 +217,7 @@ def main():
         if not isinstance(manifest, dict) or any(manifest.get(name) != value for name, value in {
             "schema_version": VERSION, "identity": identity, "job_id": job_id, "dataset_uuid": dataset_uuid,
             "scope_id": settings.scope_id, "profile": settings.profile, "student_base": identity["student_base"],
-            "parent_summary": identity["parent_summary"], "split_policy": SPLIT_POLICY,
+            "parent_summary": identity.get("parent_summary"), "capture_manifest": identity.get("capture_manifest"), "split_policy": SPLIT_POLICY,
             "executor_sha256": identity["executor_sha256"], "decoder_sha256": identity["decoder_sha256"],
         }.items()):
             raise ValueError("stored native dataset identity differs")
@@ -213,7 +244,7 @@ def main():
                           "content_sha256": summary.digest(plain), "count": len(rows[split])}
     manifest = {"schema_version": VERSION, "identity": identity, "job_id": job_id, "dataset_uuid": dataset_uuid,
                 "scope_id": settings.scope_id, "profile": settings.profile,
-                **{name: identity[name] for name in ("parent_summary", "student_base", "executor_sha256", "decoder_sha256")},
+                **{name: identity[name] for name in ("parent_summary", "capture_manifest", "student_base", "executor_sha256", "decoder_sha256") if name in identity},
                 "split_policy": SPLIT_POLICY, "objects": objects, "counts": {split: len(rows[split]) for split in SPLITS},
                 "task_success": None, "training_ready": False, **facts}
     for split in SPLITS:

@@ -166,7 +166,7 @@ its full acceptance criteria are actually satisfied.
   concrete failure. A plan, model claim, valid JSON or successful process exit
   does not by itself prove task success, better quality or production routing.
 
-## Current continuation — September 5, 17:50 UTC
+## Current continuation — September 5, 18:20 UTC
 
 The concurrent 120B comparison is complete. Milk Man inspected the retained
 baseline, justified the prepared one-setting candidate, launched it once,
@@ -200,16 +200,29 @@ Retained-data execution produced zero qualifying TRAIN rows and the same DEV
 bytes; replay made zero capture/model/provider calls. This does not manufacture
 successful demonstrations from unscored data. No more inference was used.
 
-Next: use retained completed task evidence to establish one genuinely successful
-source trajectory for native learning. Reuse the existing task checker and
-saved outputs; do not rerun a model merely to add a verdict. Keep any derived
-score separate from its immutable original receipt and bind the actual executed
-trajectory, not the trajectory that inspired its task. Confirm its original
-split before selecting it; never move DEV into TRAIN or label a multi-task
-trajectory successful because one turn worked. Prove the successful selection
-before considering another training run. Continue the full P4–P8 work below;
-this failed comparison is not product completion. Refresh billing before any
-new paid compute.
+Retained N0 now has a separate successful task score. The existing checker
+verified the actual saved report against pinned summary/readiness facts and
+the exact completed trajectory. Its original receipt remains unchanged.
+The four captures are one original TRAIN task and occur after the saved
+200-exchange summary. Native dataset input now optionally accepts an explicit
+pinned capture list instead of forcing another summary. Dataset
+`d71f66b4-f9c5-530d-803b-b24f18ee8f61` selects those four steps and preserves the
+old DEV example byte-for-byte. R2 readback verified the Bash/result history,
+final answer, positive outcome selection and existing training-job acceptance.
+Score and dataset replay made zero model/provider calls. One successful report
+does not make every sentence in its memory perfect or prove model improvement.
+
+Next: prepare one controlled positive-demonstration SFT iteration from this
+retained dataset. Check full context and assistant-target masking with the
+existing Qwen tokenizer/training path before starting compute. Keep the pinned
+Qwen3.5-0.8B base, serving/task settings and held-out task unchanged; the useful
+change is replacing unscored demonstrations with the scored task, not increasing
+volume or reply limits. Reuse the prior executed base failure, and compare the
+new checkpoint on that same held-out task using actual Bash execution and a
+saved-output check. Retain a losing result; do not loop on unchanged failures
+or call one task a general quality win. Refresh cumulative billing and pending
+usage before any paid compute. Continue full P4–P8; neither these data artifacts
+nor the failed earlier comparison complete the product.
 
 ## Outcome
 
@@ -599,8 +612,10 @@ do not restart parked large generation runs.
   unassisted completion. The subsequent actual Bash comparison also failed:
   neither base nor trained Qwen completed the same held-out task within six
   replies. Both executions and cleanup are retained; task improvement remains
-  unproven. Optional outcome-linked TRAIN selection is now implemented, but a
-  genuinely successful selected training trajectory remains to be demonstrated.
+  unproven. Outcome-linked TRAIN selection now retains all four steps of the
+  independently checked N0 task, with its original TRAIN group and the old
+  DEV example unchanged. This fixes demonstration selection; no new training
+  or held-out task improvement has yet been measured.
 - [x] Summary execution/resume and zero-call replay are proven. The heartbeat
   checks summary milestones independently of a task's resource wait. An isolated
   idle owner detected an already-reached 200 threshold in retained traffic,

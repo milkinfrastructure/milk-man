@@ -15,6 +15,37 @@ Status notation:
 
 ## Executive state
 
+- [x] Added `agent-score`: the existing task checker scores a pinned saved
+  result without rerunning the model. N0's actual report and completed
+  trajectory matched independently inspected metadata. Original receipt
+  `024880e453017a35fc73352098d2625906d626366cd7055fec763a247a586738`
+  is unchanged; separate scored result
+  `72197267a7007c5c3185cc94db7cd5f446305282b57dcead4c0d65c7fbc6d112`
+  records task correctness. Its checker also pins report/task/trajectory hashes.
+  Replay made zero model/provider calls and did not rerun the checker.
+- [x] Positive native selection is now proven in R2 dataset
+  `d71f66b4-f9c5-530d-803b-b24f18ee8f61`, manifest SHA-256
+  `ee3c21c901a8b17d2c2b4956447eb5ecd53c69ed9c4cbc19fa83adcb04b2c48c`:
+  four TRAIN steps from one original task, one byte-identical DEV example,
+  zero calibration/sealed. Native history retains three Bash calls, their
+  results, and finish. The existing training job accepts the manifest. Its
+  explicit capture-list input avoids forcing another summary: N0 occurred
+  after the saved 200-exchange checkpoint. First execution read ten capture
+  objects (five identity reads, five selected decodes); replay read zero.
+  R2 proof SHA-256:
+  `4686ce5f535ce09510a8acdbac630ab6039e72fdfb4a476428cc861867dc9eeb`.
+  Private evidence: `native-success-20260905.rlmSlv/`. The catalog rejected an
+  overlong description before execution; it was shortened and the error kept.
+- [~] This establishes a correct reporting demonstration, not model quality
+  or four independent tasks. One memory sentence called groups independent
+  without evidence; the score covers the requested report, not that adjective.
+  Research revision
+  `5906f3321413bb5262b27f1ccead90fce6c803f2aa9fd2b0b0d313ec6414735f`
+  retains all eleven experiments; replay is idle with zero calls. Next is
+  full-context preparation and one controlled positive-demonstration training
+  comparison after refreshed billing. Default local Python and offline uv lack
+  the tokenizer dependencies; preparation and new training have not run. No
+  package install, inference, GPU launch or route change occurred in this step.
 - [!] The native DEV task was executed once by each model on the same runtime
   `c3d756649`: base 17.927s / six Bash replies; trained 16.433s / six replies.
   Neither read the checkpoint or returned a final answer. Raw unscored verdicts
@@ -40,8 +71,9 @@ Status notation:
   `8318dde487c364c70e4f65dfc6e9a0f62752903e73d82267efa1c362797d3a1f`.
   All held-out bytes match the old dataset, and raw extraction matches all four
   original split content hashes. Replay reads no captures and makes zero model
-  or provider calls. Successful selection on a scored real source trajectory
-  remains unproven; these replay results cannot label their original source.
+  or provider calls. That earlier dataset had no scored successful source;
+  the separate N0 dataset above now proves positive selection. The two failed
+  replay results still cannot label the different trajectory that inspired them.
 - [x] Corrected the private runtime profile from a malformed combined value to
   `mechanics`. Store configuration now parses; no key or default scope changed.
 - [x] The concurrent 120B experiment finished on September 5. Milk Man used
@@ -795,13 +827,13 @@ Status notation:
 
 ## Repository snapshot
 
-Source snapshot before this outcome-selection change:
+Source snapshot before this scored-demonstration continuation:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | `c3d756649`, plus this outcome-selection change | `c3d756649` | failed executed native comparison retained; successful training-data selection and task improvement remain open |
+| `milk-man` | `6a908f1a0`, plus this scored-demonstration change | `6a908f1a0` | failed native comparison retained; positive TRAIN selection proven; task improvement remains open |
 | `milk-parlor` | `162b56e228b74d24606010d11c129a6d1d23e773` | same remote main | source unchanged this run; live driver traffic continues through Parlor; no new deployment claimed here |
-| `milk-landing` | `762d0c7`, deployed | `762d0c7` | mobile and docs verified in Chrome; local deployment cache is not published |
+| `milk-landing` | `3d22a3d`, deployed | `3d22a3d` | phone and tablet layouts verified in Chrome; wider touchscreens retain 44px controls; local deployment cache is not published |
 
 Published Milk Man audit baseline:
 `38c1b9812e0182ec132d12a3da2460506fa9efd7`.
