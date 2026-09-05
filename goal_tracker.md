@@ -15,6 +15,28 @@ Status notation:
 
 ## Executive state
 
+- [x] Built native dataset `a050d44f-256e-568e-80c9-5c60c3c30328` from the
+  saved 100-exchange summary. Manifest SHA-256:
+  `77124568c753f9a4fdd55bf82425ba1800c6ef5bb60f75c9eb7b6644c36826fa`.
+  Four tagged tasks supplied three train examples and one DEV example; four
+  untagged exchanges were skipped. Calibration/sealed remain empty. All split
+  hashes were read back from R2; replay read zero captures and made zero
+  inference/provider calls. No current pointers changed.
+- [x] The real pinned Qwen3.5-0.8B tokenizer prepared these four examples with
+  history/tools intact and only assistant targets unmasked. Train sequences:
+  12,954/1,920/2,804 tokens, with 51/72/486 target tokens; DEV: 2,436 with 184
+  target tokens. No weights or GPU were loaded. This proves formatting and
+  masking, not answer quality or successful training.
+- [~] Added explicit native manifest selection to the existing SFT job and
+  prepared its provider request locally with a 16,384-token context. Native
+  results do not alter the legacy text-eval status. Worker source is pinned at
+  `3ed0bd39051eac6c1bda1ee72031b6b3605feae4`, SHA-256
+  `bee459b153e1bb7a72473ee81565aa9faeea00be62b3d75d44d998a9e18b1edf`.
+  No training request was submitted. Native GPU execution and a meaningful
+  before/after comparison remain next; saved tool actions are not success labels.
+- [!] Chrome's existing dashboard tabs returned `Debugger unattached` during
+  this step. The new job was executed from Bash, not dashboard chat. Milk Man's
+  existing heartbeat remained online and waiting; no owner restart occurred.
 - [x] One Chrome objective advanced the driver scope from 20 to 100 summarized
   exchanges using two inference calls and no GPU lifecycle calls. Independent
   R2 digest/ancestry reads verified summary `3e0b2724-f6e5-5327-9c99-0cf471abd0a9`,

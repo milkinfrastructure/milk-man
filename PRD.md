@@ -378,6 +378,19 @@ mechanics traffic cannot qualify a production candidate.
 
 ### Evaluation and model loop
 
+Native assistant/tool data is a separate input to this loop. The
+`native-dataset` job reads a pinned summary and selects complete supported
+exchanges within each existing trajectory split. It keeps messages, tool
+definitions, prior tool results and new assistant targets in immutable split
+files under `d/<uuid>/`. It does not fabricate text evals or change current
+pointers. The training job can select this manifest explicitly through
+`MILK_DATASET_MANIFEST_KEY/SHA256`; SFT masks the context and learns only the
+new assistant target using the student's actual chat template. Context that
+does not fit is reported, never silently truncated. Native training results
+remain separate from the text-eval route workflow. Completed tool calls alone
+are not successful tasks, and the text-similarity RL reward is not used for
+tool actions. Improvement requires a baseline and comparison on held-out tasks.
+
 Evaluation generation uses the strongest configured teacher and structured
 JSON output. Captured conversations provide provenance, task distribution, and
 inspiration; generated cases must be new, self-contained, answerable, and have

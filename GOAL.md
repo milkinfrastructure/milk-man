@@ -331,12 +331,17 @@ do not restart parked large generation runs.
   results remain paired; hidden reasoning is explicitly omitted. Native
   dataset selection, assistant-only training, and held-out agent-task
   evaluation remain unfinished. Extraction does not establish task success.
-- [ ] Connect native extraction to a separate reusable dataset job and the
-  existing trainer. Preserve messages, tools, targets and source-group splits;
-  apply loss only to the new assistant target. Select the resulting manifest
-  explicitly instead of fabricating a legacy text-eval pointer. Deploy the
-  updated exact training-source digest: editing the local worker alone does
-  not change the script downloaded by Baseten. Keep the legacy text path.
+- [~] `native-dataset` now derives four examples from the saved 100-exchange
+  summary: three train, one DEV, zero calibration/sealed. R2 hashes and whole
+  task separation were verified; replay makes zero capture reads or model and
+  provider calls. The actual Qwen tokenizer preserves tool history and masks
+  context, leaving only new assistant targets for SFT. One history needs
+  12,954 tokens; explicit native training supports a larger context without
+  truncation. The existing trainer accepts the exact native manifest through
+  environment variables and retains its results separately from text evals.
+  Its worker is pinned to an exact source commit; the provider request was
+  prepared locally, not submitted. A real native training run, held-out task
+  comparison and Chrome-prompted reuse of the new job remain unproven.
 - [~] Summary execution/resume and zero-call replay are proven. The heartbeat
   now watches raw capture thresholds without inference; a later automatic
   threshold crossing remains to be observed.

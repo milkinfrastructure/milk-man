@@ -128,8 +128,9 @@ export LLM_MILK_TRAJECTORY_HEADER=1
 
 The gateway must have that key and upstream provider configured. The scope UUID
 identifies stored conversations; it does not authenticate requests. Agent
-exchanges use the same object store. Tool calls and results are retained, but
-training on complete tool trajectories is not implemented yet.
+exchanges use the same object store. Tool calls and results are retained.
+Saved non-streaming exchanges can become training examples without losing
+their tool history; training an improved agent on them is not yet proven.
 The opt-in header groups calls by the task UUID supplied by `bin/man`; Parlor
 stores it and removes it before forwarding. Leave it off for direct providers.
 
@@ -168,7 +169,7 @@ heartbeat registers the actual watch.
 
 Summaries can classify non-streaming Responses and Chat Completions tool calls
 and results. A tool call alone is not a successful task. Streamed tool-event
-reconstruction and training on native tool trajectories remain unfinished.
+reconstruction and a measured improvement from this training remain unfinished.
 
 ## Run jobs
 
@@ -233,6 +234,23 @@ and references. Hidden reasoning is explicitly omitted. Non-streaming text
 and function calls are supported; unsupported content is reported rather than
 flattened. This preserves an example, not proof that the task succeeded or
 that the example should be used for training.
+
+To build a small dataset from a saved summary, keep `MILK_CHECKPOINT_KEY` and
+`MILK_CHECKPOINT_SHA256` set and run `bin/milk run native-dataset`. It saves one
+supported exchange per task by default; `MILK_NATIVE_DATASET_PER_GROUP` changes
+that count. Tools and past results stay intact, and tasks keep their original
+data splits. Repeating it reuses the same files without reading conversations
+or calling a model. The result reports the manifest key, hash and split counts.
+
+The existing `train` job accepts that manifest through
+`MILK_DATASET_MANIFEST_KEY` and `MILK_DATASET_MANIFEST_SHA256`. Use
+`MILK_TRAIN_RECIPE=sft` and set `MILK_TRAIN_MAX_TOKENS` to fit the full history;
+it trains only on the new assistant answer. It never silently shortens native
+examples. This uses the configured Baseten training account and starts paid
+work. Its saved model does not advance the text-eval workflow or activate a
+route. Leaving both manifest variables unset keeps the existing training path.
+The native data and token preparation have been checked locally; a native
+training run and before/after task comparison remain to be done.
 
 To compare a model's next action on that saved context, set
 `MILK_NATIVE_TRIAL_FILE` and `MILK_NATIVE_TRIAL_SHA256`, configure `LLM_*`,

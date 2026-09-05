@@ -27,7 +27,7 @@
     },
     "baseten": {
       "required": ["BASETEN_API_KEY", "BASETEN_TRAINING_PROJECT_ID", "MILK_TRAIN_IMAGE"],
-      "optional": ["BASETEN_TEAM_NAME", "BASETEN_TRAINING_ACCELERATOR", "MILK_BASETEN_RUNTIME_SECRET_MAP_JSON", "MILK_TRAIN_STEPS", "MILK_TRAIN_MAX_TOKENS", "MILK_TRAIN_LEARNING_RATE", "MILK_TRAIN_RECIPE", "MILK_TRAIN_ROLLOUTS", "MILK_TRAIN_ROLLOUT_MAX_NEW_TOKENS", "MILK_EVAL_IMAGE", "MILK_EVALUATE_MAX_NEW_TOKENS"]
+      "optional": ["BASETEN_TEAM_NAME", "BASETEN_TRAINING_ACCELERATOR", "MILK_BASETEN_RUNTIME_SECRET_MAP_JSON", "MILK_DATASET_MANIFEST_KEY", "MILK_DATASET_MANIFEST_SHA256", "MILK_TRAIN_STEPS", "MILK_TRAIN_MAX_TOKENS", "MILK_TRAIN_LEARNING_RATE", "MILK_TRAIN_RECIPE", "MILK_TRAIN_ROLLOUTS", "MILK_TRAIN_ROLLOUT_MAX_NEW_TOKENS", "MILK_EVAL_IMAGE", "MILK_EVALUATE_MAX_NEW_TOKENS"]
     },
     "candidate-baseten": {
       "required": ["BASETEN_API_KEY", "MILK_SERVE_IMAGE", "MILK_CANDIDATE_API_KEY"],
@@ -44,6 +44,17 @@
   },
   "operate_order": ["summary", "eval", "dataset", "train", "evaluate"],
   "jobs": {
+    "native-dataset": {
+      "description": "Build native assistant/tool data from a pinned summary. Set MILK_CHECKPOINT_KEY/SHA256; MILK_NATIVE_DATASET_PER_GROUP defaults to one earliest supported exchange per trajectory. Keeps tools, history, targets and existing splits. Writes immutable split files and a manifest; no current pointers change. Replay reads no capture bodies. Zero inference/provider calls. Saved data does not prove task success or model improvement.",
+      "executable": "milk_v2/native_dataset.py",
+      "environment": {
+        "required": ["MILK_CHECKPOINT_KEY", "MILK_CHECKPOINT_SHA256", "MILK_SCOPE_ID", "MILK_STORE_KIND"],
+        "optional": ["MILK_NATIVE_DATASET_PER_GROUP", "MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS"]
+      },
+      "status": false,
+      "stop": false,
+      "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
+    },
     "native-trial": {
       "description": "Request one next action from a pinned captured context and tools, withholding its saved answer. Never executes commands. Retains the source group/split and private input/result receipts; completed replay makes no model call. A formatted answer is not proof of task success.",
       "executable": "bin/native-trial",

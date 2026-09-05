@@ -20,6 +20,8 @@ TRAIN_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-ma
 TRAIN_SOURCE_SHA256 = "238e1d710529e209e700995839ee6fcc5c587f0d89ea6095befee248af54ac68"
 REINFORCE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/89875d6b7f8610703a4dfe383c62f84be35a9d2a/images/train/train.py"
 REINFORCE_SOURCE_SHA256 = "a123dea785ad619f76de5a23944004af33fbf1b50657c549ee851860d8afac42"
+NATIVE_SOURCE_URL = "https://raw.githubusercontent.com/milkinfrastructure/milk-man/3ed0bd39051eac6c1bda1ee72031b6b3605feae4/images/train/train.py"
+NATIVE_SOURCE_SHA256 = "bee459b153e1bb7a72473ee81565aa9faeea00be62b3d75d44d998a9e18b1edf"
 
 
 class TrainError(ValueError):
@@ -59,6 +61,36 @@ def _object(store, key: str) -> tuple[dict, bytes]:
     if not isinstance(value, dict):
         raise TrainError(f"{key} must contain an object")
     return value, body
+
+
+def _dataset_reference(store, settings, runtime):
+    key = os.environ.get("MILK_DATASET_MANIFEST_KEY", "")
+    expected = os.environ.get("MILK_DATASET_MANIFEST_SHA256", "")
+    if not key and not expected:
+        return dataset.current(store, settings, runtime)
+    if not key.startswith(settings.scope_prefix + "d/") or re.fullmatch(r"[0-9a-f]{64}", expected) is None:
+        raise TrainError("explicit native dataset requires its scoped manifest key and SHA-256")
+    manifest, body = _object(store, key)
+    if (
+        summary.digest(body) != expected
+        or manifest.get("schema_version") != "milk.native-dataset.v1"
+        or manifest.get("scope_id") != settings.scope_id
+        or manifest.get("profile") != settings.profile
+        or manifest.get("student_base") != {
+            "model_repo": runtime.student_base.model_repo,
+            "model_revision": runtime.student_base.model_revision,
+            "digest": runtime.student_base.digest,
+        }
+        or key != settings.scope_prefix + f"d/{manifest.get('dataset_uuid')}/manifest.json"
+        or summary.digest(manifest.get("identity")) != manifest.get("job_id")
+        or manifest.get("dataset_uuid") != str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:native-dataset:" + str(manifest.get("job_id"))))
+    ):
+        raise TrainError("explicit native dataset identity differs")
+    counts = dataset.split_counts(manifest)
+    if manifest.get("counts") != counts:
+        raise TrainError("native dataset split counts differ")
+    return {"schema_version": "milk.native-dataset.v1", "uuid": manifest["dataset_uuid"],
+            "key": key, "sha256": expected, "counts": counts}
 
 
 def current(store, settings, runtime) -> dict | None:
@@ -127,6 +159,9 @@ def _settings(settings, reference: dict) -> dict:
     recipe = os.environ.get("MILK_TRAIN_RECIPE", "sft")
     if recipe not in {"sft", "reinforce"}:
         raise TrainError("MILK_TRAIN_RECIPE must be sft or reinforce")
+    native = reference.get("schema_version") == "milk.native-dataset.v1"
+    if native and recipe != "sft":
+        raise TrainError("native tool data requires SFT; the text-similarity RL reward is not applicable")
     steps = _integer("MILK_TRAIN_STEPS", 1 if settings.profile == "mechanics" else 64, 1, 1024)
     if recipe == "reinforce" and steps != 1:
         raise TrainError("MILK_TRAIN_STEPS must be 1 for reinforce")
@@ -141,10 +176,13 @@ def _settings(settings, reference: dict) -> dict:
         "availability_model": "dedicated",
         "runtime_secret_map": secret_map,
         "steps": steps,
-        "max_tokens": _integer("MILK_TRAIN_MAX_TOKENS", 2048, 128, 8192),
+        "max_tokens": _integer("MILK_TRAIN_MAX_TOKENS", 2048, 128, 65536 if native else 8192),
         "learning_rate": learning_rate,
         "dataset": {key: reference[key] for key in ("uuid", "key", "sha256", "counts")},
     }
+    if native:
+        config["dataset"]["schema_version"] = "milk.native-dataset.v1"
+        config.update(train_source_url=NATIVE_SOURCE_URL, train_source_sha256=NATIVE_SOURCE_SHA256)
     if recipe == "reinforce":
         config.update({
             "recipe": recipe,
@@ -169,6 +207,8 @@ def _job_body(settings, runtime, manifest: dict, config: dict, job_id: str) -> d
         "MILK_TRAIN_MAX_TOKENS": str(config["max_tokens"]),
         "MILK_TRAIN_LEARNING_RATE": str(config["learning_rate"]),
     }
+    if manifest.get("schema_version") == "milk.native-dataset.v1":
+        environment["MILK_SCOPE_PROFILE"] = settings.profile
     if config.get("recipe") == "reinforce":
         environment.update({
             "MILK_TRAIN_RECIPE": "reinforce",
@@ -343,22 +383,27 @@ def _completed(store, settings, runtime, client, config: dict, manifest: dict, j
     model_body = summary.canonical(model)
     store.create_same(model_key, model_body)
     reference = {"schema_version": "milk.model-reference.v2", "scope_id": settings.scope_id, "uuid": model_uuid, "key": model_key, "sha256": summary.digest(model_body), "training_job_id": job_id}
-    status_key = _advance_status(store, settings, reference)
+    native = manifest.get("schema_version") == "milk.native-dataset.v1"
+    status_keys = [] if native else [_advance_status(store, settings, reference)]
+    next_action = None if native else "evaluate"
     result_key = prefix + "result.json"
-    result = {"schema_version": "milk.train-job-result.v2", "job_id": job_id, "state": "progressed", "next": "evaluate", "model": reference, "provider_job_id": provider_job["id"], "artifact_keys": [model_key, status_key, result_key]}
+    result = {"schema_version": "milk.train-job-result.v2", "job_id": job_id, "state": "progressed", "next": next_action, "model": reference, "provider_job_id": provider_job["id"], "artifact_keys": [model_key, *status_keys, result_key]}
     store.create_same(result_key, summary.canonical(result))
-    return {"state": "progressed", "identity": job_id, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": client.calls, "next": "evaluate", "details": {"model_uuid": model_uuid, "provider_job_id": provider_job["id"], "status": provider_job["current_status"], "recipe": recipe}}
+    return {"state": "progressed", "identity": job_id, "artifacts": _artifacts(store, result["artifact_keys"]), "provider_calls": client.calls, "next": next_action, "details": {"model_uuid": model_uuid, "provider_job_id": provider_job["id"], "status": provider_job["current_status"], "recipe": recipe}}
 
 
 def reconcile(store, settings, runtime) -> dict:
-    reference = dataset.current(store, settings, runtime)
+    reference = _dataset_reference(store, settings, runtime)
     if reference is None:
         return {"state": "idle", "identity": summary.digest({"scope_id": settings.scope_id, "reason": "dataset_missing"}), "artifacts": [], "provider_calls": 0, "next": "dataset", "details": {"reason": "dataset_missing"}}
     manifest, manifest_body = _object(store, reference["key"])
     counts = dataset.split_counts(manifest)
     if summary.digest(manifest_body) != reference["sha256"] or reference.get("counts") != counts:
         raise TrainError("dataset manifest digest differs")
-    if not dataset.training_ready(counts):
+    native = manifest.get("schema_version") == "milk.native-dataset.v1"
+    if native and counts["train"] == 0:
+        return {"state": "idle", "identity": reference["sha256"], "artifacts": _artifacts(store, [reference["key"]]), "provider_calls": 0, "next": None, "details": {"reason": "native_train_split_empty", "counts": counts}}
+    if not native and not dataset.training_ready(counts):
         status_key = _advance_status(store, settings, {}, "summary")
         missing = [split for split in dataset.SPLITS if counts[split] == 0]
         identity = summary.digest({"schema_version": "milk.train-wait.v2", "dataset": reference, "missing_splits": missing})
@@ -390,8 +435,8 @@ def reconcile(store, settings, runtime) -> dict:
         model = prior.get("model")
         if not isinstance(model, dict):
             raise TrainError("stored training result has no model")
-        status_key = _advance_status(store, settings, model)
-        return {"state": "idle", "identity": job_id, "artifacts": _artifacts(store, [*prior["artifact_keys"], status_key]), "provider_calls": 0, "next": "evaluate", "details": {"model_uuid": model["uuid"], "provider_job_id": prior["provider_job_id"], "status": "TRAINING_JOB_COMPLETED"}}
+        status_keys = [] if native else [_advance_status(store, settings, model)]
+        return {"state": "idle", "identity": job_id, "artifacts": _artifacts(store, [*prior["artifact_keys"], *status_keys]), "provider_calls": 0, "next": prior["next"], "details": {"model_uuid": model["uuid"], "provider_job_id": prior["provider_job_id"], "status": "TRAINING_JOB_COMPLETED"}}
     except FileNotFoundError:
         pass
 
