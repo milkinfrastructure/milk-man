@@ -30,9 +30,9 @@ const jobCopy = {
   "route-propose-baseten": "Prepare the chosen model on Baseten and write an unsigned route proposal.",
   "route-propose-modal": "Prepare the chosen model on Modal and write an unsigned route proposal.",
   "gpu-reconcile-modal": "Check or finish an existing Modal provider operation without choosing another provider.",
-  "inference-ensure": "Create or reuse Milk Man's reviewed Modal inference controller.",
-  "inference-status": "Read the controller state without changing it.",
-  "inference-stop": "Stop the tracked controller and verify it reached zero compute.",
+  "inference-ensure": "Start or reuse the preset Modal model service. Use 'serve a model on Modal' to configure a different model server.",
+  "inference-status": "Check the preset Modal model service without changing it.",
+  "inference-stop": "Stop the preset Modal model service and check that it has no active containers.",
 };
 const jobLabels = {
   summary: "summarize traffic", eval: "create example tasks", dataset: "prepare training data",
@@ -41,8 +41,8 @@ const jobLabels = {
   benchmark: "measure model speed + answers", "agent-trial": "give a model one agent task",
   "native-trial": "try one next action", "native-capture": "read a saved tool exchange",
   checkpoint: "read a saved summary", progress: "count traffic + progress", research: "save research results",
-  "inference-ensure": "start the inference controller", "inference-status": "check the inference controller",
-  "inference-stop": "stop the inference controller", "gpu-reconcile-modal": "check a Modal operation",
+  "inference-ensure": "start the preset Modal service", "inference-status": "check the preset Modal service",
+  "inference-stop": "stop the preset Modal service", "gpu-reconcile-modal": "check a Modal operation",
   "route-propose-baseten": "prepare a Baseten route", "route-propose-modal": "prepare a Modal route",
 };
 const triggerCopy = {
@@ -154,6 +154,42 @@ function helpHeading(label, help) {
   return heading;
 }
 
+// Render only text and simple tables. Model output never becomes executable HTML.
+function replyBody(text) {
+  const body = node("div", "reply-body");
+  const blocks = text.split(/\n\s*\n/);
+  const long = text.length > 1500 && blocks.length > 3;
+  const rest = node("details", "reply-rest");
+  rest.append(node("summary", "", "rest of reply + saved references"));
+  blocks.forEach((block, index) => {
+    const lines = block.trim().split("\n");
+    let part;
+    if (lines.length > 2 && /^\|?\s*:?-{3,}/.test(lines[1]) && lines[0].includes("|")) {
+      part = node("div", "table-scroll");
+      const table = node("table", "experiment-comparison");
+      lines.filter((_, i) => i !== 1).forEach((line, rowIndex) => {
+        const row = node("tr");
+        line.replace(/^\||\|$/g, "").split("|").forEach(cell => {
+          const item = node(rowIndex ? "td" : "th", "", cell.trim());
+          if (!rowIndex) item.scope = "col";
+          row.append(item);
+        });
+        table.append(row);
+      });
+      part.append(table);
+    } else part = node("p", "", block);
+    (long && index >= 3 ? rest : body).append(part);
+  });
+  if (long) body.append(rest);
+  return body;
+}
+
+function latestReply() {
+  const target = el("activity");
+  const latest = Array.from(target.querySelectorAll("article.message.milk-man")).at(-1) || target.lastElementChild;
+  if (latest) target.scrollTop += latest.getBoundingClientRect().top - target.getBoundingClientRect().top - 16;
+}
+
 function summaryRow(label, value, help, copiedValue) {
   const row = node("div", "summary-row");
   const heading = helpHeading(label, help);
@@ -203,7 +239,7 @@ function renderProgress(progress = {}) {
   el("volume").textContent = counted ? count.toLocaleString() + " exchanges captured" : "capture count not checked";
   el("volume").title = "Each saved request and response is one exchange. An agent trajectory can contain many exchanges; these are not independent training examples.";
   el("target").textContent = !counted ? "count traffic to refresh" : progress.next_threshold
-    ? processed.toLocaleString() + " summarized · " + (count >= progress.next_threshold ? progress.next_threshold.toLocaleString() + " checkpoint due" : (progress.next_threshold - count).toLocaleString() + " to " + progress.next_threshold.toLocaleString())
+    ? processed.toLocaleString() + " summarized · " + (count >= progress.next_threshold ? "next summary not saved" : (progress.next_threshold - count).toLocaleString() + " to " + progress.next_threshold.toLocaleString())
     : processed.toLocaleString() + " summarized · checkpoints complete";
   el("count-checked").textContent = progress.counted_at
     ? "Traffic counted " + new Date(progress.counted_at).toLocaleString() + ". Newer exchanges may not be included."
@@ -223,7 +259,7 @@ function renderProgress(progress = {}) {
       ? "Summary checkpoint complete at " + point.toLocaleString() + " exchanges."
       : !counted ? "Count traffic to check this threshold."
       : count >= point
-        ? "Threshold reached; its summary has not committed yet."
+        ? "Threshold reached; its summary has not been saved. This does not mean a job is running."
         : remaining.toLocaleString() + " exchanges until this summary threshold.";
     tick.setAttribute("aria-label", tick.title);
     tick.addEventListener("click", () => {
@@ -289,8 +325,8 @@ function renderProgress(progress = {}) {
     } else {
       const title = node("h3");
       title.append(node("i", "pin"), document.createTextNode(point.toLocaleString()));
-      card.append(title, node("small", "", !counted ? "capture count not checked" : count >= point ? "data crossed; summary waiting" : (point - count).toLocaleString() + " exchanges to go"));
-      card.title = count >= point ? "Milk Man has enough data and is waiting to write this summary." : "Traffic is still accumulating for this checkpoint.";
+      card.append(title, node("small", "", !counted ? "capture count not checked" : count >= point ? "threshold reached · summary not saved" : (point - count).toLocaleString() + " exchanges to go"));
+      card.title = count >= point ? "This threshold has been reached. A summary has not been saved; no running job is implied." : "Traffic is still accumulating for this checkpoint.";
     }
     el("milestones").append(card);
   }
@@ -383,16 +419,16 @@ function renderLoop(status) {
 function renderRun(status = {}, progress = {}) {
   const profile = status.profile || "unknown";
   const badge = el("run-profile");
-  badge.textContent = profile === "mechanics" ? "DEVELOPMENT DATA" : profile.toUpperCase() + " DATA";
+  badge.textContent = profile === "mechanics" ? "DEVELOPMENT SETTINGS" : profile.toUpperCase() + " SETTINGS";
   badge.title = profile === "mechanics"
-    ? "A mechanics run proves the parts connect. It does not prove model quality or production readiness."
+    ? "This scope uses the mechanics policy to try the workflow. This is not a label for where the data came from or which training split it belongs to."
     : profile === "production"
       ? "A production run uses the production traffic and readiness policy for this scope."
       : "The current scope profile is not known.";
   el("run-now").textContent = nextCopy[status.next_action] || String(status.next_action || "waiting for object memory").replaceAll("-", " ");
   if (status.next_action === "summary" && progress.next_threshold && Number.isInteger(progress.capture_count)) {
     el("run-now").textContent = progress.capture_count >= progress.next_threshold
-      ? progress.next_threshold.toLocaleString() + "-exchange summary is due"
+      ? progress.next_threshold.toLocaleString() + "-exchange threshold reached · summary not saved"
       : (progress.next_threshold - progress.capture_count).toLocaleString() + " more exchanges before the next summary";
   }
   const scope = status.scope_id || "";
@@ -400,6 +436,41 @@ function renderRun(status = {}, progress = {}) {
   scopeNode.replaceChildren(scope ? document.createTextNode("scope ") : document.createTextNode("scope unknown"));
   if (scope) scopeNode.append(copyButton(short(scope), scope, "scope ID"));
   scopeNode.title = scope || "No scope is configured.";
+}
+
+function environmentHelp(name) {
+  const specific = {
+    MILK_SCOPE_ID: "The UUID that keeps this run's traffic and results together in storage.",
+    MILK_STORE_KIND: "Select local files or an S3-compatible object store, such as Cloudflare R2.",
+    MILK_SUMMARY_THRESHOLDS: "Saved-exchange counts at which to make summaries. These are the ticks on the traffic bar.",
+    MILK_CASES_PER_CONVERSATION: "How many new example cases to generate for each selected conversation.",
+    MILK_EVAL_SOURCE_CONVERSATIONS: "How many source conversations to select for example generation.",
+    MILK_SUMMARY_REPRESENTATIVE_SAMPLE: "How many exchanges to sample for a broad picture of the traffic.",
+    MILK_SUMMARY_TAIL_SAMPLE: "How many unusual or less common exchanges to sample as well.",
+    MILK_MAN_MAX_ITERATIONS: "Maximum model replies in one agent turn, not the lifetime of the heartbeat.",
+  };
+  if (specific[name]) return specific[name];
+  const rules = [
+    [/SECRET_NAME$/, "Name of a secret already saved with the provider; not the secret value itself."],
+    [/SECRET_MAP_JSON$/, "JSON mapping of job environment names to secrets saved with the provider."],
+    [/SECRET|TOKEN_SECRET|API_KEY$|ACCESS_KEY|SESSION_TOKEN|HF_TOKEN/, "Credential used by this job. The dashboard shows only whether it is set, never the value."],
+    [/BASE_URL$|API_URL$|ENDPOINT$/, "The address this job connects to. Different jobs can use different providers."],
+    [/REASONING_EFFORT$/, "Reasoning level requested from the selected model."],
+    [/API_MODE$/, "Choose the Responses or Chat Completions request format supported by the endpoint."],
+    [/REVISION$/, "Pinned model-weight version, so repeated runs use the same files."],
+    [/MODEL$/, "Model this job requests or serves. It can differ from the model driving chat."],
+    [/IMAGE$/, "Container image for the remote runtime. Model weights are loaded separately."],
+    [/GPU_COUNT$/, "Number of GPUs for the model server."],
+    [/GPU$|ACCELERATOR$/, "GPU type requested from the selected provider."],
+    [/VLLM_ARGS_JSON$/, "Extra vLLM serving arguments as a JSON array; used to tune the model server."],
+    [/SCALEDOWN_SECONDS$/, "Idle time before the provider scales down this server."],
+    [/CONCURRENCY$/, "Number of concurrent requests the serving job is configured to handle."],
+    [/TIMEOUT/, "Time limit for this job or operation, in seconds."],
+    [/MAX.*TOKENS$/, "Maximum token allowance for this operation; reasoning can consume part of it."],
+    [/SHA256$/, "Expected file or object digest. The job checks it before using that input."],
+    [/FILE$/, "Path to this job's input or saved configuration file."],
+  ];
+  return rules.find(([pattern]) => pattern.test(name))?.[1] || "Setting read by this job's script. Its meaning and default are defined in the repository; click the name to copy it.";
 }
 
 function environmentList(label, values, optional = false) {
@@ -412,8 +483,10 @@ function environmentList(label, values, optional = false) {
   const list = node("div", "env-list");
   for (const value of values) {
     const item = node("span", "env " + (value.set ? "set" : "missing"));
-    item.title = (value.set ? "Set" : "Not set") + " in this dashboard process. The value is never shown.";
+    const help = environmentHelp(value.name) + " " + (value.set ? "Present" : "Not set") + " in the dashboard environment; this does not verify provider access.";
     item.append(node("i", "pin"), copyButton(value.name, value.name, "environment name"), node("small", "", value.set ? "set" : optional ? "unset" : "missing"));
+    const button = helpHeading(value.name, help).querySelector("button");
+    item.append(button);
     list.append(item);
   }
   section.append(list);
@@ -476,7 +549,7 @@ function renderContract(contract = {}) {
   filterJobs();
 }
 
-let activityKey = "";
+let activityKey = "", finalKey = "";
 function renderMan(man) {
   const state = man.state || (man.active ? "working" : man.trajectory_id ? "idle" : "setup");
   const driver = man.driver || {};
@@ -492,7 +565,7 @@ function renderMan(man) {
     waiting: "Milk Man online · watching for progress",
     paused: "Milk Man paused",
     stopped: "Milk Man stopped",
-    idle: "Milk Man online · chat waiting" + jobStatus,
+    idle: "Milk Man online · ready for a task" + jobStatus,
     setup: "Milk Man online · session setup needed",
   };
   light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", labels[state] || labels.setup);
@@ -506,6 +579,7 @@ function renderMan(man) {
   light("heartbeat", heartbeatOnline ? (pulse.state === "failed" ? "degraded" : "up") : heartbeatStarting ? "ready" : "down", "heartbeat · " + heartbeatState);
   const workActive = heartbeatOnline && (pulse.state === "running" || man.active);
   const task = (pulse.task || "No task saved yet.").replace(/^Continue the saved task:\s*/, "");
+  el("task-label").textContent = workActive || (heartbeatOnline && pulse.state === "waiting") ? "current task" : "last saved instruction";
   el("current-work").textContent = task.split(/\n|(?<=[.!?])\s/)[0].slice(0, 220);
   el("current-instruction").hidden = !pulse.brief || pulse.brief === pulse.task;
   el("current-instruction").textContent = pulse.brief ? "Latest instruction: " + pulse.brief.split(/\n|(?<=[.!?])\s/)[0].slice(0, 220) : "";
@@ -549,10 +623,14 @@ function renderMan(man) {
   target.setAttribute("aria-busy", man.active ? "true" : "false");
   const nextActivityKey = String(man.active) + JSON.stringify(man.activity);
   if (nextActivityKey === activityKey) return;
+  const initial = !activityKey;
+  const nextFinalKey = JSON.stringify(man.activity.findLast(event => event.type === "final"));
+  const newFinal = nextFinalKey !== finalKey;
+  finalKey = nextFinalKey;
+  const follow = initial || target.scrollHeight - target.scrollTop - target.clientHeight < 64;
   activityKey = nextActivityKey;
-  const follow = target.scrollHeight - target.scrollTop - target.clientHeight < 64;
   const scroll = target.scrollTop;
-  const opened = new Set(Array.from(target.querySelectorAll("details.message[open]"), value => value.dataset.key));
+  const opened = new Set(Array.from(target.querySelectorAll("details[open]"), value => value.dataset.key));
   target.replaceChildren();
   if (!man.activity.length) target.append(node("article", "message milk-man", "No conversation yet."));
   for (let index = 0; index < man.activity.length;) {
@@ -585,19 +663,26 @@ function renderMan(man) {
         reply.append(node("b", "", "milk man"), node("p", "", intro.slice(0, 1200)));
         target.append(reply);
       }
-      const label = role === "you" ? "you · " + event.content.split(/\n|(?<=[.!?])\s/)[0].slice(0, 100) : "command + full reply";
+      const label = role === "you" ? "instruction · " + event.content.split(/\n|(?<=[.!?])\s/)[0].slice(0, 100) : "command + full reply";
       message.append(node("summary", "", label + (event.ts ? " · " + event.ts + " UTC" : "")), node("pre", "", event.content));
       target.append(message);
       index++;
       continue;
     }
     const message = node("article", "message " + role);
-    message.append(node("b", "", role.replace("-", " ")), node("pre", "", event.content));
+    message.append(node("b", "", role === "you" ? "instruction" : "milk man"), event.type === "final" ? replyBody(event.content) : node("pre", "", event.content));
+    const rest = message.querySelector(".reply-rest");
+    if (rest) {
+      rest.dataset.key = index + ":" + event.ts + ":reply";
+      rest.open = opened.has(rest.dataset.key);
+    }
     if (event.ts) message.append(node("time", "", event.ts + " UTC"));
     target.append(message);
     index++;
   }
-  target.scrollTop = follow ? target.scrollHeight : scroll;
+  if (follow && (initial || newFinal)) latestReply();
+  else if (follow) target.scrollTop = target.scrollHeight;
+  else target.scrollTop = scroll;
 }
 
 let runLoading = false;
@@ -658,7 +743,7 @@ function renderCloud(data) {
     { title: "scope", detail: status.scope_id ? short(status.scope_id) : "unknown", help: status.scope_id || "No scope is configured." },
     { title: "capture writer", detail: !["up", "degraded"].includes(gateway.state) ? "unavailable · last totals unknown" : number(gateway.observed) + " received · " + number(gateway.persisted) + " stored · " + number(gateway.dropped) + " dropped", help: "Milk Parlor totals since its current process started, across its configured scopes. Not this scope's stored traffic count." },
   ], "waiting for status");
-  el("foot").textContent = "local only · remote status updated " + data.now;
+  el("foot").textContent = "Local dashboard · status checked " + new Date(data.now).toLocaleTimeString();
 }
 
 function recordFields(value) {
@@ -683,7 +768,7 @@ function recordFields(value) {
 
 function experimentCard(value, index) {
   const card = node("article", "experiment");
-  const label = String(value.name || value.kind || "experiment").replaceAll(/[_-]/g, " ");
+  const label = String(value.name || (value.kind === "tiny_sequential_serving_setting_comparison" ? "Compare model-server settings" : value.kind) || "saved result").replaceAll(/[_-]/g, " ");
   card.append(node("h3", "", (index + 1) + " · " + label));
   const conclusion = value.conclusion || value.decision || value.comparison?.conclusion || value.limitations;
   if (typeof conclusion === "string") card.append(node("p", "", conclusion));
@@ -701,11 +786,22 @@ function experimentCard(value, index) {
       if (!Number.isFinite(baseline[key]) || !Number.isFinite(candidate[key])) continue;
       const row = node("tr");
       const heading = node("th", "", label); heading.scope = "row";
-      row.append(heading, node("td", "", duration(baseline[key])), node("td", "", duration(candidate[key])));
+      row.append(heading);
+      for (const amount of [baseline[key], candidate[key]]) {
+        const cell = node("td", "", duration(amount));
+        const bar = node("meter", "comparison-bar");
+        bar.min = 0; bar.max = Math.max(baseline[key], candidate[key], 1); bar.value = amount;
+        bar.setAttribute("aria-label", label + ": " + duration(amount));
+        cell.append(bar); row.append(cell);
+      }
       body.append(row);
     }
     const header = node("thead"); header.append(head); table.append(header, body);
-    if (body.children.length) card.append(table);
+    if (body.children.length) {
+      card.append(table);
+      const change = baseline.mean_e2e_ms > 0 && Number.isFinite(candidate.mean_e2e_ms) ? 100 * (candidate.mean_e2e_ms / baseline.mean_e2e_ms - 1) : null;
+      if (change !== null) card.append(node("p", "comparison-change", Math.abs(change).toFixed(1) + "% " + (change > 0 ? "slower" : change < 0 ? "faster" : "change") + " full reply with the trial setting. This measures speed, not overall answer quality."));
+    }
   }
   if (typeof value.scope === "string") card.append(node("p", "", value.scope));
   const detail = node("details");
@@ -721,23 +817,23 @@ function renderResearch(value) {
   researchKey = key;
   const record = value.record;
   const target = el("research");
-  el("research-state").textContent = value.error || (record ? (record.experiments || []).length + " saved experiments" : "no objective saved");
+  el("research-state").textContent = value.error || (record ? (record.experiments || []).length + " saved results" : "no objective saved");
   if (!record) return rows(target, [], value.error || "Ask Milk Man to save a research objective for this scope using the research job.");
   const opened = new Set(Array.from(target.querySelectorAll("details[open]"), item => item.dataset.field));
   rows(target, [
     { title: "research goal", detail: record.objective },
-    { title: "planned research step", detail: record.next_action, help: "Saved by the agent. This plan is separate from the instruction currently running in chat." },
+    { title: "saved next-step note", detail: record.next_action, help: "A note from the saved research record, not a live schedule. It can lag behind the latest chat result." },
   ]);
   const comparison = node("div", "comparison-status");
   for (const [field, label, help] of [
     ["baseline", "reference model", "The model and settings used for comparison. A serving-speed experiment alone does not establish a model-quality reference."],
     ["evaluation", "evaluation tasks", "Tasks kept out of training, used to compare answers fairly."],
     ["best", "best model", "A model selected from measured comparisons on this scope's tasks. Not the chat model or a currently running GPU."],
-  ]) comparison.append(summaryRow(label, record[field] ? "recorded · details below" : "not recorded", help));
+  ]) comparison.append(summaryRow(label, record[field] ? "recorded · details below" : {baseline: "Not selected for task comparison", evaluation: "No comparison tasks saved", best: "No best model selected"}[field], help));
   target.append(comparison);
   if (record.experiments?.length) {
     const latest = node("div", "row latest-result");
-    latest.append(helpHeading("last saved experiment", "The most recently appended research entry. It may describe an earlier run; opening it starts nothing."), experimentCard(record.experiments.at(-1), record.experiments.length - 1));
+    latest.append(helpHeading("latest saved result", "The most recently appended research entry. It may describe an earlier run; opening it starts nothing."), experimentCard(record.experiments.at(-1), record.experiments.length - 1));
     target.append(latest);
   }
   const revision = node("div", "row");
@@ -801,7 +897,7 @@ document.querySelectorAll(".toolbar a").forEach(link => link.addEventListener("c
   const section = el(link.hash.slice(1));
   if (section?.tagName === "DETAILS") section.open = true;
 }));
-el("latest-message").addEventListener("click", () => { el("activity").scrollTop = el("activity").scrollHeight; });
+el("latest-message").addEventListener("click", latestReply);
 el("stage-scrubber").addEventListener("input", event => selectStage(number(event.target.value) - 1, true));
 document.querySelectorAll("[data-copy]").forEach(button => button.addEventListener("click", () => copyValue(button.dataset.copy, button.dataset.copyLabel)));
 document.querySelectorAll("[data-draft]").forEach(button => button.addEventListener("click", () => {

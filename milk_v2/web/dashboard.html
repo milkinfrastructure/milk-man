@@ -38,7 +38,7 @@
       <span>last check <time id="heartbeat-last">not checked</time></span>
       <span>next check <time id="heartbeat-next">not scheduled</time></span>
       <span><b id="heartbeat-count">0 work sessions · 0 idle checks</b><button class="help" type="button" title="A work session can make several model calls. Idle checks only inspect status and use no model tokens. These are activity counts, not a bill." aria-label="About heartbeat activity">?</button></span>
-      <div class="current-work"><div class="task-heading"><b>current goal</b><small id="active-model">model not configured</small></div><strong id="current-work">No task saved yet.</strong><span id="current-instruction" hidden></span><span id="current-work-note">Waiting for status.</span></div>
+      <div class="current-work"><div class="task-heading"><b id="task-label">saved instruction</b><small id="active-model">model not configured</small></div><strong id="current-work">No task saved yet.</strong><span id="current-instruction" hidden></span><span id="current-work-note">Waiting for status.</span></div>
       <details class="heartbeat-task">
         <summary title="The full instruction and model settings for this session. Closing the dashboard does not stop the heartbeat.">full instruction + model settings</summary>
         <p id="driver-detail"></p>
@@ -53,7 +53,7 @@
       <div class="messages" id="activity" tabindex="0" aria-label="Milk Man transcript">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>
-      <div class="chat-tools"><small>Replies stay visible. Open a command to inspect its work.</small><button id="latest-message" type="button" title="Scroll to the most recent message without changing or sending anything.">latest ↓</button></div>
+      <div class="chat-tools"><small>Commands are folded. Long replies keep the result first.</small><button id="latest-message" type="button" title="Read the start of the latest reply. This does not send a message or start work.">latest reply ↓</button></div>
       <div class="composer" id="prompt">
         <div class="prompt-head">
           <label class="prompt-label" for="prompt-text">tell Milk Man what to do</label>
@@ -95,10 +95,10 @@
     </details>
 
     <section id="traffic" class="traffic-section" aria-label="Traffic and learning progress">
-    <h2 class="section-title">Traffic → summaries → better models <button class="help" type="button" title="Milk Parlor saves sampled requests and responses under one scope ID. Milk Man summarizes that data, then uses separate jobs for evaluation, training, and serving. These saved stages are separate from the task currently running in chat." aria-label="About traffic and learning progress">?</button></h2>
+    <h2 class="section-title">Saved traffic → model research <button class="help" type="button" title="One exchange is a request and its response. Milk Man groups related exchanges, summarizes them, and can use separate jobs to train and compare models. These saved records are separate from the chat task; more traffic alone does not prove a better model." aria-label="About traffic and learning progress">?</button></h2>
     <div class="run-strip" aria-label="Saved traffic workflow">
       <b id="run-profile">finding run</b>
-      <span><small>next data step · not the chat task</small><strong id="run-now">reading object memory</strong></span>
+      <span><small>data status · not a running job</small><strong id="run-now">reading object memory</strong></span>
       <small id="run-scope">scope unknown</small>
     </div>
     <div class="status-line">
@@ -124,7 +124,8 @@
     </details>
     <details class="jobs" id="jobs-panel">
       <summary title="See every registered job and whether this dashboard process inherited its required environment names.">jobs + environment <small id="job-count">checking configuration</small></summary>
-      <p class="section-help">Actions Milk Man can run from chat or Bash. Open one for its command and settings. Provider access is checked when it runs; a light here only means its required settings are present.</p>
+      <p class="section-help">Each action is a script Milk Man can run. Settings choose its model, storage, or GPU provider. Open an action, then use ? to understand a setting or click its name to copy it. Values stay private.</p>
+      <p class="section-help"><span class="pin" aria-hidden="true"></span> Settings present does not mean running. Provider access is checked when the job runs. Restart the process after changing its environment.</p>
       <div class="job-search"><label for="job-search">find an action</label><input id="job-search" type="search" placeholder="model, summary, Modal…" aria-controls="jobs"><small id="job-matches" role="status"></small></div>
       <div class="job-list" id="jobs"></div>
     </details>
@@ -133,7 +134,7 @@
       <div class="milestones" id="milestones"></div>
     </details>
     <details id="research-panel">
-      <summary title="The research objective and saved experiment history for this scope. A measured comparison is needed before calling a model better.">research results <small id="research-state">reading saved objective</small></summary>
+      <summary title="The research objective and saved results for this scope. A measured comparison is needed before calling a model better.">research results <small id="research-state">reading saved objective</small></summary>
       <p class="section-help">What was tried, what happened, and what to try next. These are saved results, not a live list of running GPUs. Speed and answer quality are separate comparisons.</p>
       <div class="rows" id="research"></div>
     </details>

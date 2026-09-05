@@ -156,6 +156,19 @@ header > a { color: var(--white); font-size: 14px; text-underline-offset: .25rem
 .messages details.message > summary { padding: .2rem 0; border: 0; font-size: 14px; }
 .messages details.message[open] > summary { margin-bottom: .6rem; padding-bottom: .6rem; border-bottom: 1px solid var(--white); }
 .messages details.message > pre { max-height: 15rem; overflow-y: auto; }
+.reply-body > p + p { margin-top: .75rem; }
+.reply-rest { margin-top: .75rem; }
+.reply-rest > p { padding: .65rem; border-top: 1px solid var(--white); }
+.reply-rest > summary { font-size: 14px; }
+.table-scroll { max-width: 100%; overflow-x: auto; }
+.table-scroll .experiment-comparison { min-width: 26rem; }
+.message:has(.table-scroll) { width: 100%; }
+.comparison-bar { display: block; width: 100%; height: .65rem; margin-top: .35rem; appearance: none; }
+.comparison-bar::-webkit-meter-bar { background: var(--black); border: 1px solid var(--white); border-radius: 0; }
+.comparison-bar::-webkit-meter-optimum-value { background: var(--teal); border-radius: 0; }
+.comparison-bar::-moz-meter-bar { background: var(--teal); }
+.comparison-change { border-left: 2px solid var(--pink); padding-left: .65rem; }
+.env .help { flex-shrink: 0; }
 
 .composer { border-top: 2px solid var(--white); }
 .prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .4rem .75rem; border-bottom: 1px solid var(--white); }
