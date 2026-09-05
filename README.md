@@ -161,6 +161,7 @@ key so agent work stays apart from application traffic:
 export LLM_API_URL=https://parlor.milkinfrastructure.com/v1/responses
 export LLM_API_MODE=responses
 export LLM_MODEL=gpt-6-astra
+export LLM_REASONING_EFFORT=medium
 export LLM_API_KEY='operator-issued Milk key'
 export LLM_MILK_TRAJECTORY_HEADER=1
 ```

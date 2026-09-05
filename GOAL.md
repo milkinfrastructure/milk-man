@@ -14,14 +14,24 @@ Execution order, refreshed September 5 after the happy-path correction:
    model does not have to replace the driver or execute Bash before Milk Man
    can use it. Preserve the failed driver trials; do not make another driver
    swap, parser experiment, race-condition audit or log check the next task.
+   The operator-selected Astra effort is now `medium`, not `max`. Run new
+   product work from the current checkout. Keep old measurements as historical
+   references; do not pin the working harness to old code just to reuse them.
+   When a controlled comparison is actually needed, run both sides on the
+   current runtime rather than present mixed-runtime results as comparable.
 2. The useful start/use/save/stop workflow is complete: Milk Man ran the
    prepared script, waited through its heartbeat, reviewed the model's report,
    and finished without follow-up steering. After the context repair, Milk Man
    selected and measured one P5 candidate, reused the saved baseline, rejected
-   the slower setting and retained its results. Next, continue P7 with one
-   scope-specific research iteration using existing captures and held-out tasks.
+   the slower setting and retained its results. Next, continue the P7
+   application using current code and retained evaluation/model artifacts.
+   The scope-specific learning requirement remains open; it does not justify
+   another outdated-runtime trial as the next product step.
    Keep provider/model selection in environment settings. No new runner,
    bulk generation, unchanged training repeat or format-only benchmark.
+   The old-runtime captured-demonstration trial was cancelled during startup
+   on user direction, before child inference. Preserve its preparation and
+   cleanup; do not restart it. Proceed with current-runtime application work.
 3. Implement the first missing or broken step directly with minimal code,
    then demonstrate the working path through Milk Man. The shared completion
    check and native tool-choice configuration are locally verified. Do not

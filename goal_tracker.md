@@ -15,6 +15,30 @@ Status notation:
 
 ## Executive state
 
+- [x] User-directed correction: keep new work on the current Milk Man runtime;
+  old measurements are historical references, not a reason to run old code.
+  The `capture-learning.o1Ofod` trial was stopped during Baseten startup before
+  any Qwen inference. Worker `2414` / child `2419` exited after cancellation;
+  no candidate result exists. Independent reads found zero Modal containers
+  and all three known Baseten deployments inactive with zero replicas.
+  R2 cancellation SHA:
+  `13705d2b54f67bd62ae1e597ad8d88f69699bd11b21ed5a6d1bdfffbb2f3115d`.
+  Preparation and the prior baseline remain intact. This did not complete P7.
+  Research revision
+  `4184f48d8803b5d8d994fa2e445a1fe865b8b075c3d91c0a0cdc338272173711`
+  records the cancellation and preserves all eighteen earlier experiments.
+- [~] Cumulative conservative allocation is $437.83 of $500, including the
+  cancelled attempt's $7 reservation; do not erase possible startup/driver
+  costs. Modal's latest September 1–5 CSV totals $17.29609114, 33 rows.
+  Baseten shows $34.98 ($35.10 budget panel). Aggregate billing is unknown.
+- [x] Changed the private Astra driver binding to
+  `LLM_REASONING_EFFORT=medium`; GLM/teacher settings are unchanged.
+  The public Parlor driver example now sets this explicitly.
+  The same trajectory restarted from the current checkout as owner `4017`.
+  A Chrome-submitted task saved `working-runtime.json` and finished at
+  22:54:21 UTC. Chrome and the live heartbeat both show Astra/Responses through
+  Parlor with medium reasoning; the owner is idle. This was a configuration
+  check, not another model-quality experiment.
 - [x] P5's repaired continuation independently chose and ran a 4096-token
   batch budget against the saved 1024-token reference. One H200, one warmup,
   eight measured SSE requests at concurrency two; eight correct, zero errors.
@@ -49,7 +73,7 @@ Status notation:
   and the previously missing reference plan. No context-limit increase,
   packing change or new test files. The repaired continuation completed the
   experiment above; the original failed turn remains retained.
-- [~] Current conservative cumulative allocation is $430.83 of $500:
+- [~] The earlier P5 conservative cumulative allocation was $430.83 of $500:
   previous $419.03, $1.80 uncertainty, and one new $10 candidate reservation.
   Modal's unwrapped CLI CSV reports $16.65172497 for September 1–5;
   Baseten displays $34.98 ($35.10 on its budget panel). Actual aggregate
@@ -80,8 +104,8 @@ Status notation:
   conservative cumulative allocation to $419.03 of $500, with prior pending
   allocations retained. Displayed billing remains $14.86 Modal, $34.98 Baseten
   ($35.10 on its budget panel); actual total billing is not established.
-- [ ] Next: P7 scope-specific research using existing captures and held-out
-  tasks, the signed-route application, then P8 publication. Preserve the completed report,
+- [ ] Remaining: P7 scope-specific learning and the signed-route application,
+  then P8 publication. Use current code. Preserve the completed report,
   benchmarks and failed training/driver results; no unchanged paid repeats.
 - [x] Completed the shared Bash-text response check: actual `bin/man develop`
   accepts completed Chat/Responses text, rejects truncated text without
