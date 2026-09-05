@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -125,6 +126,68 @@ def terminal(observation) -> bool:
     return result.get("terminal") is True or (isinstance(details, dict) and details.get("terminal") is True)
 
 
+def summary_tick(path: Path, previous: dict, stamp: float) -> dict:
+    """Count without reasoning; run the existing summary job at a crossed milestone."""
+    enabled = os.environ.get("MILK_AUTO_SUMMARY", "0") == "1"
+    state = {"enabled": enabled, "state": "disabled", "checked_at": stamp}
+    prior = previous.get("summary") or {}
+    if not enabled:
+        state.update({key: prior[key] for key in ("run_dir", "threshold") if key in prior})
+        return state
+    try:
+        from .store import settings_from_environment
+
+        if not os.environ.get("MILK_SUMMARY_THRESHOLDS"):
+            raise ValueError("summary_thresholds_required")
+        settings = settings_from_environment()
+        observation = observe([sys.executable, "-m", "milk_v2.heartbeat", "_summary-probe"])
+        if observation.get("exit") != 0 or not isinstance(observation.get("result"), dict):
+            raise ValueError("summary_probe_failed")
+        probe = observation["result"]
+        state.update(state="waiting" if probe["next_threshold"] else "complete",
+                     threshold=probe["next_threshold"], processed_count=probe["processed_count"])
+        root = Path(__file__).resolve().parents[1]
+        if prior.get("run_dir"):
+            observed = observe([str(root / "bin/background"), prior["run_dir"], "status"])
+            result = observed.get("result", {})
+            if observed.get("exit") != 0 or not isinstance(result, dict):
+                raise ValueError("summary_status_failed")
+            if result.get("state") in {"active", "orphaned"}:
+                state.update(state="running", threshold=prior["threshold"], run_dir=prior["run_dir"])
+                return state
+            if result.get("state") != "absent" and probe["processed_count"] < prior["threshold"]:
+                state.update(state="failed", threshold=prior["threshold"], run_dir=prior["run_dir"],
+                             error="summary_exit_" + str(result.get("exit_code", "unknown")) if result.get("state") != "complete" else "summary_pointer_not_advanced")
+                return state
+        if not probe["crossed"]:
+            return state
+        binding = [settings.kind, settings.root, settings.endpoint, settings.region,
+                   settings.bucket, settings.scope_id, settings.profile]
+        identity = hashlib.sha256(json.dumps(binding, separators=(",", ":")).encode()).hexdigest()
+        run = path.parent / "summary-jobs" / identity / str(probe["next_threshold"])
+        state.update(state="running", run_dir=str(run))
+        with edit(path) as value:
+            if value.get("state") in {"paused", "stopped"}:
+                state.update(state="waiting")
+                state.pop("run_dir", None)
+                return state
+            value["summary"] = state
+        observed = observe([str(root / "bin/background"), str(run), "--", str(root / "bin/milk"), "run", "summary"])
+        result = observed.get("result", {})
+        if observed.get("exit") != 0 or not isinstance(result, dict):
+            raise ValueError("summary_launch_failed")
+        # A completed process is not a saved checkpoint; the next probe verifies it.
+        if result.get("state") in {"active", "orphaned", "complete"}:
+            state["state"] = "running"
+        else:
+            state.update(state="failed", error="summary_exit_" + str(result.get("exit_code", "unknown")))
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        if "run_dir" not in state and prior.get("run_dir"):
+            state.update(run_dir=prior["run_dir"], threshold=prior["threshold"])
+        state.update(state="failed", error=str(error) if isinstance(error, ValueError) and str(error).startswith("summary_") else type(error).__name__)
+    return state
+
+
 def main() -> None:
     arguments = sys.argv[1:]
     if not arguments or arguments[0] in {"-h", "--help", "help"} or (
@@ -135,6 +198,13 @@ def main() -> None:
               "Wait for a changed status, a deadline, or both. Register the wait and return; idle checks use no model calls.")
         return
     action, *args = arguments
+    if action == "_summary-probe":
+        from .store import open_store, settings_from_environment
+        from .summary import threshold_probe
+
+        settings = settings_from_environment()
+        print(json.dumps(threshold_probe(open_store(settings), settings), separators=(",", ":")))
+        return
     path = state_path()
     if action == "own":
         lock = os.open(str(path) + ".owner.lock", os.O_CREAT | os.O_RDWR, 0o600)
@@ -214,12 +284,17 @@ def main() -> None:
         return
     if action == "tick":
         previous = read(path)
+        automatic_summary = None
+        if previous.get("state") not in {"paused", "stopped", "running"} and stamp >= (previous.get("next_wake") or 0):
+            automatic_summary = summary_tick(path, previous, stamp)
         observed_watch = previous.get("watch") or {}
         observation = None
         if previous.get("state") == "waiting" and observed_watch.get("command") and stamp >= previous.get("next_wake", 0):
             observation = observe(observed_watch["command"])
         with edit(path) as value:
             value["checked_at"] = stamp
+            if automatic_summary is not None:
+                value["summary"] = automatic_summary
             if value.get("state") == "stopped":
                 print("stop")
                 return

@@ -15,6 +15,21 @@ Status notation:
 
 ## Executive state
 
+- [~] Implemented the direct summary loop: heartbeat counts scoped capture
+  objects, then calls the existing summary job at `MILK_SUMMARY_THRESHOLDS`.
+  `MILK_AUTO_SUMMARY=1` enables it without a driver reasoning turn. The existing
+  background receipt prevents duplicate launches and survives owner restart;
+  failed runs stay failed, and success requires the saved pointer to advance.
+  Task/resource watches remain separate. Direct checks covered dispatch,
+  replay, failure, timeout and pause; no test files were added.
+- [x] Resumed the same local trajectory with automatic summaries enabled.
+  At 2026-09-05 04:51:48 UTC, owner 92718 was online/idle at turn 93,
+  with 100 exchanges summarized and threshold 1,000 not crossed. Two resumed
+  checks added no model turn and launched no summary job.
+  The local dashboard serves the updated UI and reads the real checker state.
+  Chrome attachment still fails, so this pass has no new browser visual proof.
+- [ ] Observe one real automatic threshold crossing and the finished summary
+  appearing in the dashboard. Do not generate extra traffic solely to force it.
 - [!] The first native SFT run reached Baseten on one H100 and failed during
   the first training loss calculation: `qjkgdj3`, project `3ydmen3`, source
   `e3255a13906e7d159ce0d5278b5367f727e2e06f`. Full-sequence logits requested
@@ -32,11 +47,9 @@ Status notation:
   heartbeat even when it was terminal when first registered. The existing
   owner resumed the failed task without another prompt. The trainer still
   selects the old source until one deliberate corrected retry is prepared.
-- [!] Summary milestones use `MILK_SUMMARY_THRESHOLDS`, but the current single
-  heartbeat watch is consumed on wake and can be replaced by a compute wait.
-  Detection and zero-call summary replay work; persistent automatic summary
-  dispatch is not yet complete. Preserve a summary watch alongside job waits,
-  handle an already-reached milestone, and re-arm after saving its summary.
+- [x] Removed the summary trigger's dependence on the single-use task watch.
+  A reached milestone now directly launches its job on an enabled idle/waiting
+  heartbeat check. The model is only called by the summary job itself.
 - [x] Built native dataset `a050d44f-256e-568e-80c9-5c60c3c30328` from the
   saved 100-exchange summary. Manifest SHA-256:
   `77124568c753f9a4fdd55bf82425ba1800c6ef5bb60f75c9eb7b6644c36826fa`.

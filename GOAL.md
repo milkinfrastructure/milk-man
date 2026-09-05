@@ -345,12 +345,14 @@ do not restart parked large generation runs.
   Successful native training, held-out task comparison and Chrome-prompted
   reuse of the new job remain unproven. Keep the failed run intact.
 - [~] Summary execution/resume and zero-call replay are proven. The heartbeat
-  can watch raw capture thresholds without inference, but its single-use watch
-  can be replaced by a compute wait. Continuous milestone dispatch is unfinished.
-- [ ] Generate a summary when saved exchanges cross a value in
-  `MILK_SUMMARY_THRESHOLDS`. Keep this watch through other job waits, process an
-  already-reached milestone, and re-arm after saving. Already-covered milestones
-  must not repeat inference. Use the existing heartbeat, not another service.
+  now checks summary milestones independently of a task's resource wait.
+  The resumed live owner counted below threshold with no model turn or job
+  launch. An automatic crossed-threshold run remains to be observed.
+- [~] With `MILK_AUTO_SUMMARY=1`, count saved objects in the existing heartbeat
+  and directly run the summary job when `MILK_SUMMARY_THRESHOLDS` is crossed.
+  No driver reasoning is required for counting or dispatch. Keep other job waits
+  intact, handle an already-reached milestone, and skip saved milestones.
+  Reuse the existing background runner; do not add another service.
   Show waiting, due and saved separately in the dashboard; claim running only
   from an actual job observation. Prove one crossing and one idle replay.
 - [ ] Add or reuse scripts for eval generation, synthetic rollouts, scoring or

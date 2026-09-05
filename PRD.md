@@ -45,9 +45,15 @@ generate examples, tune inference, train an open-source base, run a genuine RL
 experiment, evaluate, or wait. Model/provider choices and operating targets
 come from the scope's configuration and environment bindings.
 
-The heartbeat watches `research status`: current records plus a bounded,
-scope-only check of the next capture threshold. More traffic below that
-threshold does not wake the model. Thresholds count stored exchanges; readiness
+With `MILK_AUTO_SUMMARY=1`, the heartbeat counts capture objects within the
+configured scope, stopping at the next `MILK_SUMMARY_THRESHOLDS` value. Crossing
+it starts the existing summary job directly. Counting needs no model call and
+does not replace another job's wait. One private background receipt prevents
+duplicate launches; failed jobs remain visible rather than retrying blindly.
+The dashboard reads the finished summary file through the existing pointer;
+partial generation never appears as a completed summary. Tasks may separately
+watch research results when those results matter to their objective.
+Thresholds count stored exchanges; readiness
 must separately account for independent source groups, including whole agent
 trajectories. A summary alone does not prove enough independent training data
 or a better model.
@@ -350,7 +356,7 @@ agent, job extensibility, heartbeat, or model lifecycle.
 Thresholds are environment-selected; the production progression is:
 
 ```text
-100, 1,000, 10,000, 100,000 completed conversations
+100, 1,000, 10,000, 100,000 saved request/response exchanges
 ```
 
 At a crossed threshold Milk Man:

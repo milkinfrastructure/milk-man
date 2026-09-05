@@ -365,13 +365,13 @@ function renderProgress(progress = {}) {
   ticks.replaceChildren();
   for (const point of points) {
     const checkpoint = checkpoints.findLast(value => number(value.capture_count) >= point);
-    const active = !checkpoint && (count >= point || number(progress.next_threshold) === point);
-    const tick = node("button", "tick" + (checkpoint ? " done" : active ? " active" : ""));
+    const due = !checkpoint && counted && count >= point;
+    const tick = node("button", "tick" + (checkpoint ? " done" : due ? " due" : ""));
     tick.type = "button";
     if (checkpoint) tick.dataset.checkpoint = checkpoint.uuid;
     const remaining = Math.max(0, point - count);
     tick.title = checkpoint
-      ? "Summary checkpoint complete at " + point.toLocaleString() + " exchanges."
+      ? "A saved summary covers this milestone and includes " + checkpoint.capture_count.toLocaleString() + " exchanges."
       : !counted ? "Count traffic to check this threshold."
       : count >= point
         ? "Threshold reached; its summary has not been saved. This does not mean a job is running."
@@ -380,7 +380,7 @@ function renderProgress(progress = {}) {
     const meter = node("span", "milestone-meter"), fill = node("i");
     fill.style.width = counted ? Math.max(0, Math.min(100, count / point * 100)) + "%" : "0%";
     meter.append(fill);
-    tick.append(node("b", "", point.toLocaleString()), meter, node("small", "", checkpoint ? "summary saved ↗" : !counted ? "not counted" : count >= point ? "summary due" : remaining.toLocaleString() + " more exchanges"));
+    tick.append(node("b", "", point.toLocaleString()), meter, node("small", "", checkpoint ? "summary saved ↗" : !counted ? "not counted" : due ? "reached · summary due" : remaining.toLocaleString() + " until summary"));
     tick.addEventListener("click", () => {
       el("summaries").open = true;
       const card = Array.from(el("milestones").querySelectorAll(".checkpoint")).find(item => checkpoint && item.dataset.uuid === checkpoint.uuid);
@@ -473,9 +473,9 @@ function renderProgress(progress = {}) {
     el("checkpoint-position").textContent = "";
     el("milestones").append(node("p", "empty", "No summary saved yet. The next milestone is shown above."));
   } else selectCheckpoint(selectedCheckpoint, false);
-  el("read-latest").disabled = !checkpoints.length;
-  el("read-latest").onclick = () => {
-    const card = el("milestones").querySelector(".checkpoint");
+  el("read-selected").disabled = !checkpoints.length;
+  el("read-selected").onclick = () => {
+    const card = Array.from(el("milestones").querySelectorAll(".checkpoint")).find(value => value.dataset.uuid === selectedCheckpoint);
     if (card) { el("summaries").open = true; selectCheckpoint(card.dataset.uuid); el("summaries").scrollIntoView({block: "start", behavior: "instant"}); }
   };
 }
@@ -729,10 +729,24 @@ function renderMan(man) {
   const heartbeatState = heartbeatOnline ? (pulse.state || "idle") : heartbeatStarting ? "starting" : heartbeatRetained ? "stopped" : "not started";
   light("heartbeat", heartbeatOnline ? (pulse.state === "failed" ? "degraded" : "up") : heartbeatStarting ? "ready" : "down", "heartbeat · " + heartbeatState);
   const workActive = heartbeatOnline && (pulse.state === "running" || man.active);
+  const summaryJob = pulse.summary || {};
+  const summaryState = summaryJob.state;
+  const summaryThreshold = Number.isInteger(summaryJob.threshold) ? summaryJob.threshold.toLocaleString() : "the next milestone";
+  const summaryLabel = !heartbeatOnline ? "Summary checker disconnected"
+    : summaryJob.enabled !== true ? "Automatic summaries off · set MILK_AUTO_SUMMARY=1"
+    : summaryState === "running" ? "Generating summary · " + summaryThreshold
+    : summaryState === "failed" ? "Summary failed · previous saved version kept"
+    : summaryState === "complete" ? "Summary saved · checking for the next milestone"
+    : pulse.state === "paused" ? "Summary checks paused"
+    : "Counting saved objects · next summary at " + summaryThreshold;
+  light("summary-job", !heartbeatOnline ? "down" : summaryJob.enabled !== true ? "ready" : summaryState === "failed" ? "degraded" : "up", summaryLabel);
+  el("summary-job-checked").textContent = summaryJob.checked_at
+    ? "Last check " + new Date(summaryJob.checked_at * 1000).toLocaleTimeString() + (summaryJob.error ? " · " + summaryJob.error : "") : "";
   document.body.dataset.agentState = workActive ? "working" : heartbeatOnline ? heartbeatState : "disconnected";
   const task = (pulse.task || "No task saved yet.").replace(/^Continue the saved task:\s*/, "");
   el("task-label").textContent = workActive || (heartbeatOnline && pulse.state === "waiting") ? "current task" : "last saved instruction";
-  el("current-work").textContent = task.split(/\n|(?<=[.!?])\s/)[0].slice(0, 220);
+  const taskPreview = task.split(/\n|(?<=[.!?])\s/)[0];
+  el("current-work").textContent = taskPreview.length > 160 ? taskPreview.slice(0, 160) + "…" : taskPreview;
   el("current-instruction").hidden = !pulse.brief || pulse.brief === pulse.task;
   el("current-instruction").textContent = pulse.brief ? "Latest instruction: " + pulse.brief.split(/\n|(?<=[.!?])\s/)[0].slice(0, 220) : "";
   el("current-work-note").textContent = !heartbeatOnline ? "The task is saved, but no heartbeat owner is connected."

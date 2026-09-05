@@ -98,6 +98,19 @@ wake or a read-only status command; changed status resumes the saved task.
 Unchanged status watches back off too. Set a shorter maximum when waiting on
 billable resources that should be stopped promptly.
 
+To generate summaries as traffic arrives, start the heartbeat with:
+
+```bash
+export MILK_AUTO_SUMMARY=1
+export MILK_SUMMARY_THRESHOLDS=100,1000,10000,100000
+```
+
+It counts saved request/response objects without calling a model. At a milestone,
+it runs the existing summary job with your storage and inference settings.
+The dashboard shows the summary after its file is saved. Checking does not
+interrupt another job's wait, and a saved milestone is not generated again.
+Failed jobs keep their error instead of starting repeated paid attempts.
+
 For one direct turn without the persistent heartbeat:
 
 ```bash
@@ -162,8 +175,10 @@ Status reads the record and current stage pointers, then checks whether this
 scope has enough captures for its next `MILK_SUMMARY_THRESHOLDS` checkpoint.
 It lists only that scope's capture keys, stopping at the threshold; it does not
 read conversation bodies or call a model. Below the threshold its output stays
-unchanged. Milk Man can watch it with `bin/man heartbeat wait -- bin/milk run
-research status` and run the summary job when the threshold is crossed.
+unchanged. `MILK_AUTO_SUMMARY=1` runs the summary job directly at a crossed
+threshold; no agent reasoning is needed to decide whether to start it. A task
+can separately watch research results with `bin/man heartbeat wait -- bin/milk
+run research status`.
 The record does not start jobs by itself. `wake` describes the plan; the
 heartbeat registers the actual watch.
 

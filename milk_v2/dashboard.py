@@ -260,6 +260,10 @@ def _man_state(include_metadata: bool = True) -> dict:
             "watch_label": "local background job" if background_watch else "status check",
             "watch_pid": watch_pid if type(watch_pid) is int and watch_pid > 1 else None,
             "watch_resource": watch_resource,
+            "summary": {
+                key: (pulse.get("summary") or {}).get(key)
+                for key in ("enabled", "state", "threshold", "processed_count", "checked_at", "error")
+            },
             **{key: pulse.get(key) for key in ("state", "checked_at", "next_wake", "turns", "polls")},
             "task": _redact(pulse.get("task"))[:16384],
             "brief": _redact(pulse.get("brief"))[:16384],
