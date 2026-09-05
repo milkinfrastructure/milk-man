@@ -181,6 +181,8 @@ def _man_state(include_metadata: bool = True) -> dict:
         queued = PENDING_PROMPT is not None
         last_exit_code = LAST_EXIT_CODE
     pulse = heartbeat.read(Path(str(trajectory) + ".heartbeat.json"))
+    watched = ((pulse.get("watch") or {}).get("last") or {}).get("result") or {}
+    watch_state = watched.get("state") if isinstance(watched, dict) else None
     pulse_alive = heartbeat.alive(pulse)
     if pulse_alive:
         queued = bool(pulse.get("pending"))
@@ -246,6 +248,7 @@ def _man_state(include_metadata: bool = True) -> dict:
         "connection": "heartbeat" if pulse_alive else "attached" if attached else "discovered" if discovered else "idle",
         "heartbeat": {
             "online": pulse_alive,
+            "watch_state": watch_state if watch_state in ("unknown", "running", "active", "waiting", "complete", "failed", "stopped") else None,
             **{key: pulse.get(key) for key in ("state", "checked_at", "next_wake", "turns", "polls")},
             "task": _redact(pulse.get("task"))[:16384],
             "brief": _redact(pulse.get("brief"))[:16384],

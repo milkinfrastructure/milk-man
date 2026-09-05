@@ -15,6 +15,33 @@ Status notation:
 
 ## Executive state
 
+- [x] Local dashboard separates the active chat goal from saved traffic stages.
+  Commands stay folded; summaries have keyboard/tap help and clickable
+  thresholds; research shows conclusions before measurements and references.
+  Chrome verified the live page, help controls, real summary, and research
+  navigation. Original palette and embossed controls remain; no dependencies
+  or unit-test suite added. Unknown watched-job status is displayed explicitly.
+- [x] Added `native-trial`: one pinned visible context, one model request,
+  no saved answer sent and no returned command executed. Real Astra trial
+  `7ec4d4a1063baaa759182e142ef37448a82d5022c9b15c8aba82b8204842a163`
+  returned a valid action in 13.382 seconds (11,655 total tokens). Its exact-ID
+  replay made zero inference calls. Result SHA-256:
+  `7b1bac6692436b974421686e4151fbfddb8f157d0d8ae6d4c150497f5aff6b21`.
+  This source belongs to the training split; it is not a held-out quality win.
+- [~] Milk Man chose prefix caching as its next serving experiment, but needed
+  a follow-up to stop repeated contract reads. Its precreated empty working
+  directory then prevented launch. `bin/background` now claims an empty
+  private directory once; local completion and no-duplicate replay passed.
+  Codex resumed the same saved worker, not a new experiment. The sequential
+  baseline/candidate comparison has eight requests total and cleanup between
+  profiles; measurements and final zero-compute observation remain pending.
+- [x] Restarted owner 99949 during that real provider startup. Owner 9907
+  resumed the same trajectory, task, and watch; workers 8869/8870 survived in
+  a separate process group. One startup intent remained. The restored watch
+  detected the active worker and resumed turn 61 without another prompt.
+  Private proof: `tune-next.OFAuGb/owner-99949-restart-after.json`, SHA-256
+  `fead9e33f8a959df7998614f6e5643a3983e73f5608236aaedd5cdf3d7307bfa`.
+  This proves startup restart, not unassisted experiment completion.
 - [x] Restarted the idle local owner after publishing `38f07a9b5`; the same
   trajectory resumed with 57 turns and no new model call. Owner 99949 loaded
   the detached-command guidance and remained connected in Chrome. This was

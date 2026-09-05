@@ -21,47 +21,45 @@
       </div>
     </header>
 
-    <p class="purpose"><b>Milk Man turns an objective into Bash work.</b> It resumes saved state, chooses registered jobs or repository scripts, observes their results, and waits cheaply when work is still running. Milk Parlor's traffic-to-model loop is its first application.</p>
-    <div class="run-strip" aria-label="Current Milk run">
-      <b id="run-profile">finding run</b>
-      <span><small>next</small><strong id="run-now">reading object memory</strong></span>
-      <small id="run-scope">scope unknown</small>
-    </div>
+    <p class="purpose">Run model experiments. Learn from your app's traffic. <b>Give Milk Man a goal, then follow its work here.</b></p>
     <nav class="toolbar" aria-label="Dashboard sections">
-      <a href="#prompt">talk to Milk Man</a>
+      <a href="#talk">conversation</a>
       <a href="#connect">connect an app</a>
-      <a href="#loop">watch the loop</a>
+      <a href="#traffic">traffic + progress</a>
       <a href="#jobs-panel">jobs + environment</a>
       <a href="#summaries">saved summaries</a>
       <a href="#research-panel">research</a>
     </nav>
-    <small class="copy-state" id="copy-state" role="status" aria-live="polite">click an ID, command, environment name, or code block to copy it</small>
+    <small class="copy-state" id="copy-state" role="status" aria-live="polite">Underlined values copy on click. Open a row for details; hover or focus a ? for help.</small>
 
     <section class="heartbeat" aria-label="Milk Man heartbeat">
       <span title="One local process keeps this task available. Closing this page does not stop it."><i class="signal" id="heartbeat-signal"></i><b id="heartbeat-state">heartbeat · connecting</b></span>
       <span>last check <time id="heartbeat-last">not checked</time></span>
       <span>next check <time id="heartbeat-next">not scheduled</time></span>
       <span id="heartbeat-count" title="Task wakeups may involve several model calls. Unchanged idle checks use none.">0 wakeups · 0 idle checks</span>
+      <div class="current-work"><small>current goal</small><strong id="current-work">No task saved yet.</strong><span id="current-work-note">Waiting for status.</span></div>
       <details class="heartbeat-task">
-        <summary title="The saved objective Milk Man resumes after a wait or restart.">saved task</summary>
+        <summary title="The full instruction and model settings for this session. Closing the dashboard does not stop the heartbeat.">full instruction + model settings</summary>
+        <p id="driver-detail"></p>
         <p id="heartbeat-task">No task saved yet.</p>
         <p id="heartbeat-brief" hidden></p>
       </details>
     </section>
 
     <details class="chat" id="talk" aria-label="Milk Man conversation" open>
-      <summary title="Describe the outcome. Milk Man resumes its saved task, selects available jobs or scripts, and continues from observed results.">talk to Milk Man <small id="conversation-state">finding session</small></summary>
+      <summary title="Your messages and Milk Man's replies. Expand work details to inspect commands and their output.">conversation <small id="conversation-state">finding session</small></summary>
       <p class="section-help" id="watch-state">Describe one outcome below. Milk Man chooses the steps. Replies stay in the conversation; commands and raw output stay folded under work details.</p>
       <div class="messages" id="activity" tabindex="0" aria-label="Milk Man transcript">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
       </div>
+      <div class="chat-tools"><small>Commands are folded. Results stay visible.</small><button id="latest-message" type="button" title="Scroll to the most recent message without changing or sending anything.">latest message ↓</button></div>
       <div class="composer" id="prompt">
         <div class="prompt-head">
-          <label class="prompt-label" for="prompt-text">next instruction</label>
+          <label class="prompt-label" for="prompt-text">tell Milk Man what to do</label>
           <span class="prompt-state" id="prompt-state" role="status" aria-live="polite">Milk Man is ready.</span>
         </div>
         <form id="run-form">
-          <textarea id="prompt-text" name="prompt" rows="3" maxlength="16384" aria-describedby="prompt-help prompt-state" placeholder="Describe the result you want." required></textarea>
+          <textarea id="prompt-text" name="prompt" rows="3" maxlength="16384" aria-describedby="prompt-help prompt-state" placeholder="Example: Inspect our saved summary and explain what we should try next." required></textarea>
           <button id="run" type="submit" title="Resume Milk Man with this instruction. Command or Control plus Enter also sends it.">send</button>
         </form>
         <small class="prompt-help" id="prompt-help">Command / Control + Enter sends · Enter makes a new line</small>
@@ -94,17 +92,26 @@
       <p class="section-help">Milk currently tunnels <code>POST /v1/responses</code> and <code>POST /v1/chat/completions</code> unchanged. Other OpenAI API endpoints are not claimed.</p>
     </details>
 
+    <section id="traffic" class="traffic-section" aria-label="Traffic and learning progress">
+    <h2 class="section-title">Traffic → summaries → better models <button class="help" type="button" title="Milk Parlor saves sampled requests and responses under one scope ID. Milk Man summarizes that data, then uses separate jobs for evaluation, training, and serving. These saved stages are separate from the task currently running in chat." aria-label="About traffic and learning progress">?</button></h2>
+    <div class="run-strip" aria-label="Saved traffic workflow">
+      <b id="run-profile">finding run</b>
+      <span><small>next data step · not the chat task</small><strong id="run-now">reading object memory</strong></span>
+      <small id="run-scope">scope unknown</small>
+    </div>
     <div class="status-line">
       <b id="volume">waiting for object memory</b>
       <span id="target"></span>
-      <button id="refresh" type="button" title="Check Milk Parlor, read the saved run status, and count every captured request/response exchange now.">count traffic + refresh status</button>
+      <button id="refresh" type="button" title="Recount saved requests and responses and check the gateway and object store. This does not start inference or a training job.">refresh traffic</button>
     </div>
     <progress class="meter has-help" id="meter" max="100" value="0" title="Progress is divided evenly across the configured summary thresholds.">0%</progress>
     <div class="ticks" id="ticks" aria-label="Configured summary thresholds"></div>
     <small class="checked" id="checked">never checked</small>
+    <small class="meter-note">Each tick is a configured summary checkpoint. Click one to inspect it. Equal spacing shows milestones, not a linear count.</small>
+    </section>
 
     <details id="loop">
-      <summary title="Follow one captured conversation through every stored step.">from traffic to a better model</summary>
+      <summary title="Each stage reads the previous stage's saved result. A completed stage does not mean the full loop or a better model is proven.">all nine data steps <small>what each step does and when it runs</small></summary>
       <div class="route-control">
         <label for="stage-scrubber"><b>milk line</b><output id="stage-output" for="stage-scrubber">finding the live stage</output></label>
         <input id="stage-scrubber" type="range" min="1" max="9" step="1" value="1" aria-label="Inspect a Milk stage">
@@ -114,16 +121,16 @@
     </details>
     <details class="jobs" id="jobs-panel">
       <summary title="See every registered job and whether this dashboard process inherited its required environment names.">jobs + environment <small id="job-count">checking configuration</small></summary>
-      <p class="section-help">The catalog contains built-in jobs and repository-owned scripts. Environment names select object storage, inference, models, and compute. <code>set</code> means this process inherited a name; it does not prove provider access or start a job. Milk Man selects jobs while pursuing a task, or you can run one with <code>bin/milk</code>. Values stay hidden, and environment changes require a restart.</p>
+      <p class="section-help">Jobs are the actions Milk Man can run. Open one to see what it does and which settings it needs. Settings present does not mean the provider is connected. Secret values stay hidden.</p>
       <div class="job-list" id="jobs"></div>
     </details>
     <details id="summaries" open>
-      <summary title="Open a saved checkpoint to see aggregate traffic statistics and classifications.">what Milk learned</summary>
+      <summary title="What the captured conversations contain, summarized at the configured checkpoints. Model-assigned labels are estimates, not verified task outcomes.">saved summaries <small>topics, tasks, timing, and outcomes</small></summary>
       <div class="milestones" id="milestones"></div>
     </details>
     <details id="research-panel">
-      <summary title="This scope's saved objective, comparisons, and next experiment. Saved notes are not proof of an improvement.">research <small id="research-state">reading saved objective</small></summary>
-      <p class="section-help">Use this scope's traffic to improve an open-source model. Compare it with a named baseline on the same held-out tasks; keep each result, including losses. These are saved notes; this job does not verify their measurements or run the next experiment.</p>
+      <summary title="The research objective and saved experiment history for this scope. A measured comparison is needed before calling a model better.">research notebook <small id="research-state">reading saved objective</small></summary>
+      <p class="section-help">The aim: a better open-source model for this scope's tasks. Compare against the same reference on tasks excluded from training. Keep wins and losses; choose what to try next.</p>
       <div class="rows" id="research"></div>
     </details>
     <details>
@@ -146,5 +153,6 @@
       <span id="foot">local only</span>
     </footer>
   </main>
+  <div id="help-tip" role="tooltip" hidden></div>
 </body>
 </html>

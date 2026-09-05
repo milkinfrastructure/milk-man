@@ -3,9 +3,9 @@ const short = value => typeof value === "string" ? value.slice(0, 8) : "waiting"
 const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const stages = [
   ["traffic", "collect", "Milk Parlor stores eligible request and returned-response bodies after each exchange ends.", "Milk Parlor", "each eligible gateway exchange"],
-  ["summary", "understand", "Milk Man measures every new capture and classifies a bounded sample.", "summary", "a configured conversation threshold is crossed"],
-  ["readiness", "decide", "Fixed checks decide whether enough independent, usable data exists.", "summary", "each summary checkpoint completes"],
-  ["eval", "make evals", "The teacher creates the configured number of new cases from admitted source conversations.", "eval", "the readiness record says ready"],
+  ["summary", "summarize", "Count saved exchanges and describe their topics, tasks, timing, and outcomes.", "summary", "a configured conversation threshold is crossed"],
+  ["readiness", "check data", "Check whether there are enough distinct, usable source tasks to create evaluation examples.", "summary", "each summary checkpoint completes"],
+  ["eval", "create examples", "A teacher model creates new example tasks from the captured conversations.", "eval", "the readiness record says ready"],
   ["dataset", "separate data", "Cases are separated into training, development, calibration, and sealed sets.", "dataset", "the evaluation revision is complete"],
   ["training", "train student", "A temporary GPU trains the pinned Qwen3.5-0.8B student.", "train", "the dataset has enough training examples"],
   ["evaluation", "compare versions", "The same development data scores comparable model versions before one sealed check.", "evaluate", "the training record is complete"],
@@ -26,7 +26,7 @@ const jobCopy = {
   "inference-stop": "Stop the tracked controller and verify it reached zero compute.",
 };
 const triggerCopy = {
-  manual: "only when explicitly requested",
+  manual: "when Milk Man selects it or you run its command",
   crossed_capture_threshold: "a configured conversation checkpoint is crossed",
   readiness: "the latest readiness record says evaluation generation may begin",
   eval_ready: "the evaluation revision is complete",
@@ -82,7 +82,7 @@ function rows(target, values, empty) {
   for (const value of values) {
     const row = node("div", "row");
     if (value.help) row.title = value.help;
-    row.append(node("b", "", value.title));
+    row.append(helpHeading(value.title, value.help));
     if (value.detail) row.append(node("small", value.class || "", value.detail));
     target.append(row);
   }
@@ -122,10 +122,21 @@ function series(value, format = item => number(item).toLocaleString(), showTail 
   return showTail ? result + " · about 95% ≤" + format(value.p95) : result;
 }
 
+function helpHeading(label, help) {
+  const heading = node("b", "field-heading", label);
+  if (help) {
+    const button = node("button", "help", "?");
+    button.type = "button";
+    button.title = help;
+    button.setAttribute("aria-label", "About " + label);
+    heading.append(button);
+  }
+  return heading;
+}
+
 function summaryRow(label, value, help, copiedValue) {
   const row = node("div", "summary-row");
-  const heading = node("b", help ? "has-help" : "", label);
-  if (help) heading.title = help;
+  const heading = helpHeading(label, help);
   const result = node("span");
   result.append(copiedValue ? copyButton(value, copiedValue, label) : document.createTextNode(value));
   row.append(heading, result);
@@ -134,8 +145,7 @@ function summaryRow(label, value, help, copiedValue) {
 
 function distributionChart(label, values, total, help) {
   const chart = node("section", "summary-row chart");
-  const heading = node("b", help ? "has-help" : "", label);
-  if (help) heading.title = help;
+  const heading = helpHeading(label, help);
   chart.append(heading);
   const entries = Object.entries(values || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   if (!entries.length) {
@@ -182,7 +192,8 @@ function renderProgress(progress = {}) {
   for (const point of points) {
     const checkpoint = checkpoints.find(value => number(value.capture_count) >= point);
     const active = !checkpoint && (count >= point || number(progress.next_threshold) === point);
-    const tick = node("span", "tick" + (checkpoint ? " done" : active ? " active" : ""), point.toLocaleString());
+    const tick = node("button", "tick" + (checkpoint ? " done" : active ? " active" : ""), point.toLocaleString());
+    tick.type = "button";
     const remaining = Math.max(0, point - count);
     tick.title = checkpoint
       ? "Summary checkpoint complete at " + point.toLocaleString() + " exchanges."
@@ -191,6 +202,12 @@ function renderProgress(progress = {}) {
         ? "Threshold reached; its summary has not committed yet."
         : remaining.toLocaleString() + " exchanges until this summary threshold.";
     tick.setAttribute("aria-label", tick.title);
+    tick.addEventListener("click", () => {
+      el("summaries").open = true;
+      const card = Array.from(el("milestones").children).find(item => Number(item.dataset.threshold) === point);
+      if (card?.tagName === "DETAILS") card.open = true;
+      (card || el("summaries")).scrollIntoView({block: "center"});
+    });
     ticks.append(tick);
   }
   el("milestones").replaceChildren();
@@ -198,6 +215,7 @@ function renderProgress(progress = {}) {
   for (const point of savedPoints) {
     const checkpoint = checkpoints.find(value => number(value.capture_count) >= point);
     const card = node(checkpoint ? "details" : "div", "checkpoint" + (checkpoint ? " reached" : count >= point ? " crossed" : ""));
+    card.dataset.threshold = point;
     if (checkpoint) {
       card.dataset.uuid = checkpoint.uuid;
       card.open = opened.has(checkpoint.uuid);
@@ -205,7 +223,7 @@ function renderProgress(progress = {}) {
       disclosure.title = "Open the structured summary for this checkpoint.";
       const identity = node("small", "", "complete · ");
       identity.append(copyButton(short(checkpoint.uuid), checkpoint.uuid, "summary ID"));
-      disclosure.append(node("i", "pin"), document.createTextNode(point.toLocaleString()), identity);
+      disclosure.append(node("i", "pin"), document.createTextNode(point.toLocaleString() + " exchanges"), identity);
       const quality = checkpoint.quality || {};
       const counters = checkpoint.counters || {};
       const traffic = checkpoint.traffic || {};
@@ -334,7 +352,7 @@ function renderLoop(status) {
 function renderRun(status = {}) {
   const profile = status.profile || "unknown";
   const badge = el("run-profile");
-  badge.textContent = profile.toUpperCase() + " RUN";
+  badge.textContent = profile === "mechanics" ? "DEVELOPMENT DATA" : profile.toUpperCase() + " DATA";
   badge.title = profile === "mechanics"
     ? "A mechanics run proves the parts connect. It does not prove model quality or production readiness."
     : profile === "production"
@@ -366,7 +384,11 @@ function environmentList(label, values, optional = false) {
   return section;
 }
 
+let contractKey;
 function renderContract(contract = {}) {
+  const key = JSON.stringify(contract);
+  if (key === contractKey) return;
+  contractKey = key;
   const target = el("jobs");
   const opened = new Set(Array.from(target.querySelectorAll("details.job[open]"), item => item.dataset.job));
   const controls = new Set(Array.from(target.querySelectorAll("details.controls[open]"), item => item.dataset.job));
@@ -385,7 +407,7 @@ function renderContract(contract = {}) {
     heading.append(
       node("i", "pin"),
       node("b", "", job.name),
-      node("small", "", missing.length ? "missing " + missing.length + " required name" + (missing.length === 1 ? "" : "s") : "required names set")
+      node("small", "", missing.length ? missing.length + " setting" + (missing.length === 1 ? "" : "s") + " needed" : "settings present")
     );
     const body = node("div", "job-body");
     body.append(node("p", "", jobCopy[job.name] || job.description || "A repository job."));
@@ -393,10 +415,10 @@ function renderContract(contract = {}) {
     facts.append(
       summaryRow("starts when", triggerCopy[job.trigger] || String(job.trigger || "manual").replaceAll("_", " ")),
       summaryRow("run", job.command, "Run this exact reviewed job explicitly.", job.command),
-      summaryRow("schedule", job.automatic ? "checked by bin/milk operate --once" : "run explicitly"),
-      summaryRow("reads", (job.inputs || []).map(value => prefixCopy[value] || value).join(" · ") || "no object inputs"),
-      summaryRow("writes", (job.outputs || []).map(value => prefixCopy[value] || value).join(" · ") || "no object outputs"),
-      summaryRow("prompt", job.prompt || "deterministic code only", job.prompt ? "The repository-owned system prompt used by this job." : "This job uses deterministic code and no model prompt.", job.prompt || undefined),
+      summaryRow("scheduling", job.automatic ? "included in the traffic workflow" : "runs when explicitly selected"),
+      summaryRow("reads", (job.inputs || []).map(value => prefixCopy[value] || value).join(" · ") || "not listed by this script"),
+      summaryRow("writes", (job.outputs || []).map(value => prefixCopy[value] || value).join(" · ") || "not listed by this script"),
+      summaryRow("instructions", job.prompt || "defined by the job script", "The script defines whether this job calls a model and what it asks.", job.prompt || undefined),
       summaryRow("time limit", job.timeout || "not configured", "Environment name controlling the job timeout.", job.timeout || undefined)
     );
     body.append(facts, environmentList("required environment", job.required || []));
@@ -429,7 +451,8 @@ function renderMan(man) {
     idle: "Milk Man online · chat waiting" + jobStatus,
     setup: "Milk Man online · session setup needed",
   };
-  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", (labels[state] || labels.setup) + (driverStatus ? " · " + driverStatus : "") + (man.trajectory_id ? " · " + short(man.trajectory_id) : ""));
+  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", labels[state] || labels.setup);
+  el("driver-detail").textContent = "Model: " + (driverStatus || "not configured") + ". Session: " + (man.trajectory_id || "not started") + ".";
   const pulse = man.heartbeat || {};
   const heartbeatOnline = pulse.online === true;
   const heartbeatStarting = !heartbeatOnline && man.connection === "attached" && man.active;
@@ -437,6 +460,16 @@ function renderMan(man) {
   const heartbeatState = heartbeatOnline ? (pulse.state || "idle") : heartbeatStarting ? "starting" : heartbeatRetained ? "stopped" : "not started";
   light("heartbeat", heartbeatOnline ? (pulse.state === "failed" ? "degraded" : "up") : heartbeatStarting ? "ready" : "down", "heartbeat · " + heartbeatState);
   const workActive = heartbeatOnline && (pulse.state === "running" || man.active);
+  const task = (pulse.task || "No task saved yet.").replace(/^Continue the saved task:\s*/, "");
+  el("current-work").textContent = task.split(/\n|(?<=[.!?])\s/)[0].slice(0, 220);
+  el("current-work-note").textContent = !heartbeatOnline ? "The task is saved, but no heartbeat owner is connected."
+    : workActive ? (jobs ? "Running: " + jobNames + "." : "Working through the task. New replies appear below.")
+    : pulse.state === "waiting" ? pulse.watch_state === "unknown"
+      ? "The task is waiting, but its job status is unknown. This does not confirm a worker is running."
+      : "Waiting for the watched work to change. No model calls during unchanged checks."
+    : pulse.state === "failed" ? "The last turn failed. Open its result below before continuing."
+    : pulse.state === "paused" ? "Paused. Send an instruction to continue."
+    : "Ready for your next instruction. Idle checks use no model calls.";
   for (const [id, stamp] of [["last", pulse.checked_at], ["next", heartbeatOnline && !workActive && pulse.state !== "paused" ? pulse.next_wake : null]]) {
     const target = el("heartbeat-" + id);
     target.textContent = stamp ? new Date(stamp * 1000).toLocaleTimeString() : id === "next" && workActive ? "after current work" : id === "next" && heartbeatStarting ? "after startup" : "not scheduled";
@@ -446,8 +479,7 @@ function renderMan(man) {
   el("heartbeat-task").textContent = pulse.task || "No task saved yet.";
   el("heartbeat-brief").hidden = !pulse.brief;
   el("heartbeat-brief").textContent = pulse.brief ? "Latest instruction: " + pulse.brief : "";
-  const nextWake = workActive ? " · next check after current work" : heartbeatOnline && pulse.next_wake ? " · next check " + new Date(pulse.next_wake * 1000).toLocaleTimeString() : "";
-  el("conversation-state").textContent = (man.online ? "online" : "stopped") + " · " + state + jobStatus + nextWake + (man.queued && state === "working" ? " · next queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
+  el("conversation-state").textContent = state + (man.queued ? " · next instruction queued" : "") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
   el("conversation-state").title = pulse.checked_at ? "Heartbeat last checked " + new Date(pulse.checked_at * 1000).toLocaleString() + ". Unchanged idle checks use no model tokens." : "Heartbeat starts with your next task. Closing this page does not stop it.";
   if (!runLoading) {
     runState(man.active ? "Milk Man is working. Output will appear above."
@@ -495,11 +527,11 @@ function renderMan(man) {
       continue;
     }
     const role = event.type === "prompt" ? "you" : "milk-man";
-    if (role === "milk-man" && (event.content.length > 1200 || event.content.startsWith("```"))) {
-      const message = node("details", "message milk-man folded");
+    if ((role === "you" && event.content.length > 500) || (role === "milk-man" && event.type !== "final" && (event.content.length > 1200 || event.content.startsWith("```")))) {
+      const message = node("details", "message " + role + " folded");
       message.dataset.key = index + ":" + (event.ts || event.type);
       message.open = opened.has(message.dataset.key);
-      const label = event.content.startsWith("```") ? "milk man · proposed command" : "milk man · long reply";
+      const label = role === "you" ? "you · " + event.content.split(/\n|(?<=[.!?])\s/)[0].slice(0, 100) : event.content.startsWith("```") ? "milk man · command" : "milk man · detailed reply";
       message.append(node("summary", "", label + (event.ts ? " · " + event.ts : "")), node("pre", "", event.content));
       target.append(message);
       index++;
@@ -559,7 +591,7 @@ function renderCloud(data) {
   const readyJobs = jobs.filter(job => !(job.required || []).some(value => !value.set)).length;
   const jobStatus = data.contract?.error ? "job configuration unavailable" : readyJobs + " / " + jobs.length + " jobs configured";
   el("job-count").textContent = jobStatus;
-  el("watch-state").textContent = "Describe one outcome. Milk Man chooses the steps. " + jobStatus + ". Unchanged idle checks use no model. Commands and raw output stay folded.";
+  el("watch-state").textContent = "Replies appear here as Milk Man works. You can send a correction while it runs; it will pick it up at the next safe step.";
   const status = milk.status || {};
   renderRun(status);
   renderProgress(milk.progress);
@@ -575,6 +607,38 @@ function renderCloud(data) {
   el("foot").textContent = "local only · remote status updated " + data.now;
 }
 
+function recordFields(value) {
+  if (value == null) return node("p", "", "Not measured or recorded yet.");
+  if (Array.isArray(value)) {
+    const list = node("div");
+    if (!value.length) list.append(node("p", "", "No results saved yet."));
+    value.forEach(item => { const row = node("div", "record-item"); row.append(recordFields(item)); list.append(row); });
+    return list;
+  }
+  if (typeof value !== "object") return node("span", "", String(value));
+  const list = node("dl", "record-fields");
+  Object.entries(value).forEach(([key, item]) => {
+    const label = key.replaceAll("_", " ");
+    const detail = node("dd");
+    if (typeof item === "string" && /(?:sha256|uuid|revision|_id|_key|_file)$/.test(key)) detail.append(copyButton(item.length > 64 ? item.slice(0, 60) + "…" : item, item, label));
+    else detail.append(recordFields(item));
+    list.append(node("dt", "", label), detail);
+  });
+  return list;
+}
+
+function experimentCard(value, index) {
+  const card = node("article", "experiment");
+  const label = String(value.name || value.kind || "experiment").replaceAll(/[_-]/g, " ");
+  card.append(node("h3", "", (index + 1) + " · " + label));
+  const conclusion = value.conclusion || value.comparison?.conclusion || value.limitations;
+  if (typeof conclusion === "string") card.append(node("p", "", conclusion));
+  const detail = node("details");
+  detail.append(node("summary", "", "measurements + saved references"), recordFields(value));
+  card.append(detail);
+  return card;
+}
+
 let researchKey;
 function renderResearch(value) {
   const key = JSON.stringify(value);
@@ -582,7 +646,7 @@ function renderResearch(value) {
   researchKey = key;
   const record = value.record;
   const target = el("research");
-  el("research-state").textContent = value.error || (record ? "saved · " + short(value.revision) : "no objective saved");
+  el("research-state").textContent = value.error || (record ? (record.experiments || []).length + " saved experiments · " + (record.best ? "best result recorded" : "no measured winner yet") : "no objective saved");
   if (!record) return rows(target, [], value.error || "Ask Milk Man to save a research objective for this scope using the research job.");
   const opened = new Set(Array.from(target.querySelectorAll("details[open]"), item => item.dataset.field));
   rows(target, [
@@ -592,13 +656,16 @@ function renderResearch(value) {
   const revision = node("div", "row");
   revision.append(copyButton(short(value.revision), value.revision, "research revision"));
   target.append(revision);
-  for (const [field, label] of [["targets", "what counts as better"], ["baseline", "recorded baseline"], ["evaluation", "held-out tasks"], ["best", "recorded best · verify measurements"], ["experiments", "experiment history"], ["wake", "planned wake · heartbeat registers it"]]) {
+  for (const [field, label, help] of [["targets", "what counts as better", "The quality, speed, and cost targets for this scope."], ["baseline", "reference model", "The existing model and settings each candidate is compared against."], ["evaluation", "tasks kept out of training", "The same untouched tasks must be used for a fair comparison."], ["best", "best measured result", "A saved candidate needs comparable measurements before it can be called better."], ["experiments", "past experiments", "Completed experiments, including failed attempts and losses. Saved notes are not independent verification."], ["wake", "when to check again", "A proposed wake condition. It runs only after the heartbeat registers a matching watch."]]) {
     const detail = node("details");
     detail.dataset.field = field;
     detail.open = opened.has(field);
-    detail.append(node("summary", "", label));
+    const heading = node("summary", "", label);
+    heading.title = help;
+    detail.append(heading);
     const body = node("div", "row");
-    body.append(node("small", "", record[field] == null ? "not recorded" : JSON.stringify(record[field], null, 2)));
+    if (field === "experiments" && record.experiments?.length) record.experiments.forEach((item, index) => body.append(experimentCard(item, index)));
+    else body.append(recordFields(record[field]));
     detail.append(body);
     target.append(detail);
   }
@@ -623,7 +690,7 @@ async function refreshCloud(force = false) {
   } finally {
     cloudLoading = false;
     el("refresh").disabled = false;
-    el("refresh").textContent = "count traffic + refresh status";
+    el("refresh").textContent = "refresh traffic";
   }
 }
 
@@ -641,6 +708,11 @@ async function refreshLocal() {
 }
 
 el("refresh").addEventListener("click", () => refreshCloud(true));
+document.querySelectorAll(".toolbar a").forEach(link => link.addEventListener("click", () => {
+  const section = el(link.hash.slice(1));
+  if (section?.tagName === "DETAILS") section.open = true;
+}));
+el("latest-message").addEventListener("click", () => { el("activity").scrollTop = el("activity").scrollHeight; });
 el("stage-scrubber").addEventListener("input", event => selectStage(number(event.target.value) - 1, true));
 document.querySelectorAll("[data-copy]").forEach(button => button.addEventListener("click", () => copyValue(button.dataset.copy, button.dataset.copyLabel)));
 el("run-form").addEventListener("submit", startRun);
@@ -654,3 +726,40 @@ refreshCloud();
 setInterval(refreshLocal, 1000);
 setInterval(refreshCloud, 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshCloud(); });
+
+// One tooltip for static and freshly rendered fields; touch can tap a help button.
+const helpTip = el("help-tip");
+let helpOwner, helpTimer;
+function hideHelp() {
+  helpTip.hidden = true;
+  if (helpOwner) {
+    const remaining = (helpOwner.getAttribute("aria-describedby") || "").split(" ").filter(id => id && id !== "help-tip").join(" ");
+    if (remaining) helpOwner.setAttribute("aria-describedby", remaining);
+    else helpOwner.removeAttribute("aria-describedby");
+    helpOwner = null;
+  }
+}
+function showHelp(target) {
+  const owner = target.closest?.("[title], [data-help]");
+  if (!owner) return;
+  clearTimeout(helpTimer);
+  hideHelp();
+  const text = owner.getAttribute("title") || owner.dataset.help;
+  if (!text) return;
+  owner.dataset.help = text;
+  owner.removeAttribute("title");
+  helpOwner = owner;
+  owner.setAttribute("aria-describedby", [owner.getAttribute("aria-describedby"), "help-tip"].filter(Boolean).join(" "));
+  helpTip.textContent = text;
+  helpTip.hidden = false;
+  const box = owner.getBoundingClientRect();
+  helpTip.style.left = Math.max(8, Math.min(box.left, innerWidth - helpTip.offsetWidth - 8)) + "px";
+  helpTip.style.top = Math.max(8, box.bottom + helpTip.offsetHeight + 8 < innerHeight ? box.bottom + 4 : box.top - helpTip.offsetHeight - 4) + "px";
+}
+document.addEventListener("pointerover", event => { if (helpTip.contains(event.target)) clearTimeout(helpTimer); else showHelp(event.target); });
+document.addEventListener("pointerout", () => { helpTimer = setTimeout(hideHelp, 150); });
+document.addEventListener("focusin", event => showHelp(event.target));
+document.addEventListener("focusout", hideHelp);
+document.addEventListener("click", event => { if (event.target.closest?.(".help")) showHelp(event.target); });
+document.addEventListener("keydown", event => { if (event.key === "Escape") hideHelp(); });
+document.addEventListener("scroll", hideHelp, true);

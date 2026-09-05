@@ -47,7 +47,10 @@ The dashboard reads the saved trajectory and heartbeat, sends instructions,
 and shows messages, workspace changes, configured environment names, gateway
 health, and object-store progress. It never displays environment values.
 The heartbeat strip shows the last check, next wake, and idle-check count.
-Open **saved task** to see the objective and latest correction it will resume.
+Open **full instruction + model settings** for the complete task and driver.
+The current chat task is separate from the saved traffic workflow below it.
+Click a checkpoint for its summary; focus or tap `?` to explain a field.
+Research shows each experiment's conclusion before its detailed measurements.
 Closing the page is not a stop command; current heartbeat proof status is in
 [`goal_tracker.md`](goal_tracker.md). On a fresh install, start the first task
 from Bash as shown above so the dashboard has a trajectory to resume.
@@ -221,6 +224,16 @@ and references. Hidden reasoning is explicitly omitted. Non-streaming text
 and function calls are supported; unsupported content is reported rather than
 flattened. This preserves an example, not proof that the task succeeded or
 that the example should be used for training.
+
+To compare a model's next action on that saved context, set
+`MILK_NATIVE_TRIAL_FILE` and `MILK_NATIVE_TRIAL_SHA256`, configure `LLM_*`,
+and run `bin/milk run native-trial`. It sends the context and tools without
+the saved answer and never executes the returned commands. Results stay
+private; repeating the same run returns its saved result. Set
+`MILK_NATIVE_TRIAL_ID` to read an exact saved trial after code changes, without
+making another request. `bin/native-trial check`
+checks the input without a model call. Keep whole source tasks in their original
+data split and review the answer before claiming an improvement.
 
 `bin/milk run benchmark` (or `bin/benchmark` directly) measures a configured chat endpoint. Set
 `MILK_BENCHMARK_BASE_URL`, `MILK_BENCHMARK_MODEL`, and

@@ -23,7 +23,7 @@ body {
   margin: 0;
   background: var(--black);
   color: var(--white);
-  font: 14px/1.5 ui-monospace, Menlo, Monaco, "Courier New", monospace;
+  font: 16px/1.5 ui-monospace, Menlo, Monaco, "Courier New", monospace;
 }
 
 main {
@@ -53,6 +53,32 @@ h1 { margin: .2rem 0 0; font-size: 22px; line-height: 1; }
 .heartbeat > span { display: inline-flex; align-items: center; gap: .4rem; }
 .heartbeat-task { width: 100%; }
 .heartbeat-task p { margin: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.current-work { flex-basis: 100%; display: grid; gap: .3rem; border-top: 1px solid var(--white); padding-top: .75rem; }
+.current-work small { color: var(--teal); }
+.current-work strong { font-weight: normal; overflow-wrap: anywhere; }
+.current-work > span, .heartbeat > span { font-size: 14px; }
+.heartbeat-task { margin-top: .2rem; }
+.heartbeat-task summary { padding: .45rem .6rem; font-size: 14px; }
+.chat-tools { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .4rem .75rem; border-top: 1px solid var(--white); font-size: 14px; }
+.chat-tools button { padding: .25rem .4rem; white-space: nowrap; }
+.traffic-section { margin-top: 2rem; scroll-margin-top: 1rem; }
+.section-title { display: flex; align-items: center; gap: .5rem; margin: 0 0 .75rem; }
+.help { width: 1.5rem; height: 1.5rem; padding: 0; font-size: 14px; cursor: help; }
+.meter-note { display: block; margin: -.75rem 0 1.25rem; font-size: 14px; }
+#help-tip { position: fixed; z-index: 10; width: min(23rem, calc(100vw - 2rem)); padding: .7rem .85rem; border: 2px outset var(--white); background: var(--black); color: var(--white); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.summary-row > .field-heading { display: flex; align-items: center; gap: .4rem; }
+.field-heading .help { flex-shrink: 0; }
+.record-fields { display: grid; grid-template-columns: minmax(8rem, 1fr) 3fr; gap: .4rem .75rem; margin: 0; }
+.record-fields dt, .record-fields dd { margin: 0; overflow-wrap: anywhere; }
+.record-fields dt { text-transform: lowercase; }
+.record-fields dd { white-space: pre-wrap; }
+.record-fields > dd > .record-fields { border-left: 1px solid var(--white); padding-left: .7rem; }
+.record-item { padding: .65rem; border-top: 1px solid var(--white); }
+.record-item:first-child { border-top: 0; }
+.experiment + .experiment { border-top: 1px solid var(--white); margin-top: 1rem; padding-top: 1rem; }
+.experiment h3 { margin: 0; }
+.experiment p { margin: .4rem 0; }
+.experiment > details > .record-fields { padding: .75rem; }
 .signal {
   --lamp: var(--white);
   --face: var(--black);
@@ -91,7 +117,7 @@ h1 { margin: .2rem 0 0; font-size: 22px; line-height: 1; }
 .signal.down { --lamp: var(--pink); }
 
 .chat { margin-top: 0; border: 1px solid var(--white); }
-.messages { min-height: 15rem; max-height: min(28rem, 55svh); overflow-y: auto; padding: 1rem; scrollbar-color: var(--teal) var(--black); }
+.messages { min-height: 10rem; max-height: min(24rem, 45svh); overflow-y: auto; padding: 1rem; scrollbar-color: var(--teal) var(--black); }
 .message { width: min(88%, 44rem); margin: 0 0 1rem; padding-left: .75rem; border-left: 2px solid var(--teal); }
 .message:last-child { margin-bottom: 0; }
 .message b { display: block; margin-bottom: .25rem; }
@@ -105,7 +131,7 @@ h1 { margin: .2rem 0 0; font-size: 22px; line-height: 1; }
 .message pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 .message time { display: block; margin-top: .25rem; }
 .messages details.message { margin: 0 0 1rem; border: 0; }
-.messages details.message > summary { padding: 0; border: 0; font-size: 12px; }
+.messages details.message > summary { padding: .2rem 0; border: 0; font-size: 14px; }
 .messages details.message[open] > summary { margin-bottom: .6rem; padding-bottom: .6rem; border-bottom: 1px solid var(--white); }
 .messages details.message > pre { max-height: 15rem; overflow-y: auto; }
 
@@ -193,7 +219,8 @@ kbd { padding: .1rem .3rem; border: 1px outset var(--white); background: var(--b
 .meter::-webkit-progress-value { background: var(--pink); }
 .meter::-moz-progress-bar { background: var(--pink); }
 .ticks { display: flex; }
-.tick { position: relative; flex: 1; padding: .35rem .1rem 0; text-align: right; font-size: 12px; }
+.tick { position: relative; flex: 1; padding: .35rem .1rem 0; text-align: right; font-size: 14px; border: 0; }
+.tick:hover, .tick:focus-visible { text-decoration: underline; }
 .tick::before { content: ""; position: absolute; top: -.5rem; right: 0; height: .5rem; border-right: 1px solid var(--white); }
 .tick.done::before { border-color: var(--teal); border-right-width: 2px; }
 .tick.active::before { border-color: var(--pink); border-right-width: 2px; }
@@ -280,7 +307,7 @@ details[open] > summary::before { content: "- "; }
 .job.configured > summary .pin,
 .env.set .pin { --lamp: var(--teal); --face: var(--teal); }
 .job.needs-config > summary .pin,
-.env.missing .pin { --lamp: var(--pink); }
+.env.missing .pin { --lamp: var(--white); }
 .environment { margin-top: .75rem; border: 1px solid var(--white); }
 .environment > b,
 .environment > small { display: block; padding: .45rem .55rem; }
@@ -336,6 +363,9 @@ footer span { margin-left: auto; }
 .row small,
 footer span { font-size: 12px; }
 @media (max-width: 42rem) {
+  .record-fields { grid-template-columns: 1fr; gap: .2rem; }
+  .record-fields dd { margin-bottom: .6rem; }
+  .chat-tools { align-items: flex-start; }
   header { align-items: flex-start; flex-direction: column; gap: 1rem; }
   .status-line { align-items: stretch; flex-direction: column; }
   .status-line button { border-left: 2px solid var(--white); }
