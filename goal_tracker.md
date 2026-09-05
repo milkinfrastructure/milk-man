@@ -15,6 +15,15 @@ Status notation:
 
 ## Executive state
 
+- [x] Mobile landing/docs repair is published at Milk Landing `5b349ee` and
+  deployed to `milkinfrastructure.com`. Chrome checked 320/390/768 CSS-pixel
+  layouts, no horizontal overflow, 44-pixel buttons, expandable content,
+  working copy, and uncropped screenshots with the correct 100/eight caption.
+  The documentation job link now targets `#run-jobs`. Versioned asset URLs
+  prevent old screenshots mixing with new captions. Original colors and
+  broadcast design are unchanged. Normal browser sizing was restored.
+  Harness usage retention below is published at `00cdf208c`; the Codex goal
+  is active and again points to this repository's existing GOAL/PRD/tracker.
 - [x] Driver usage retention is implemented in the existing `llm` -> `shellm`
   -> trajectory -> `agent-trial` path. Responses and Chat Completions each ran
   native and fenced Bash locally; missing/invalid fields stayed unknown.
@@ -709,7 +718,7 @@ Current source snapshot:
 | --- | --- | --- | --- |
 | `milk-man` | published `c420a02e3`, plus this serving closeout | `c420a02e3` | dashboard and heartbeat help published; corrected Baseten answers and zero-replica cleanup proven; measured task-quality improvement remains open |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
-| `milk-landing` | `74a87c0`, deployed | `74a87c0` | root and docs verified against production; generated local deployment cache is not published |
+| `milk-landing` | `5b349ee`, deployed | `5b349ee` | phone/tablet layouts, correct screenshot assets and copy verified in Chrome; local deployment cache is not published |
 
 Published Milk Man audit baseline:
 `38c1b9812e0182ec132d12a3da2460506fa9efd7`.
