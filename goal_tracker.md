@@ -15,6 +15,17 @@ Status notation:
 
 ## Executive state
 
+- [!] One bounded 120B child trial failed after six replies in 14.363 seconds:
+  it browsed source files, never ran the checkpoint job, and saved no report.
+  The exact job command was already in its system instructions; transport and
+  tool parsing were intact. Do not invent a transport fix, lengthen the prompt,
+  or repeat paid trials without a specific change. The repository was unchanged.
+  Retained result: `checkpoint-task-20260905/trials/agent-trials/4cb09b685c98fffc5dc57e4f3f3e0a83c6fe68d040cc8baeca217f24265fe600/result.json`.
+- [x] Stopped that trial's H200 app `ap-D61lntSBZJXPtUMbJLVQEN`.
+  An independent read at 06:52:41 UTC confirmed it stopped and zero active
+  containers in Modal `main`. The first local stop command used the wrong CLI
+  order and made zero provider calls; the corrected catalog command completed.
+  The main Milk Man owner remains stopped. No new training or data generation.
 - [x] The checkpoint job can include exact saved readiness through paired
   `MILK_READINESS_KEY/SHA256`. One direct R2 execution matched all previously
   inspected facts, verified both digests and their summary link, and made zero
@@ -61,12 +72,12 @@ Status notation:
   Both original result hashes and the matching prepared input are retained.
   Cleanup finished within the 30-minute allowance; report closeout finished
   later and required one Codex correction. Neither model is a quality winner.
-- [ ] Next: compare completed, useful tasks and inference settings through the
-  existing `agent-trial`, benchmark and serving jobs. Reuse the 120B lifecycle
-  and previous measurements; do not extend training or generation from this
-  two-request formatting check. The compact closeout prompt was activated on
-  owner `22651`, but the interrupted task did not prove better completion.
-  Execute and debug the scripts directly before the next agent-driven proof.
+- [ ] A useful task completed by the owned 120B driver remains unproven. The
+  direct checkpoint workflow works; neither the earlier formatting comparison
+  nor the bounded child above proves reliable tool use. Continue developing
+  jobs directly, reuse retained results, and defer further paid model tuning
+  until it addresses a specific observed failure. Do not restart owner `22651`
+  or expand training/generation on the strength of these results.
 - [~] Submitted the held-out trained/base comparison through the local
   dashboard in Chrome; `/api/run` returned 202 and the existing owner resumed
   at turn 101. Milk Man created Baseten model `wl51vn73`, deployment `q9254m6`
