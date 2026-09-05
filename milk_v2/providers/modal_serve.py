@@ -16,6 +16,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from milk_v2.providers import modal_controller as modal
+from milk_v2.state import redact
 
 
 APP_FILE = Path(__file__).resolve().parents[2] / "images/modal_serve/app.py"
@@ -317,6 +318,7 @@ def main() -> None:
     try:
         if action not in {"run", "status", "stop"}:
             raise ServeError("action must be run, status, or stop")
+        log_lines = integer("MILK_MODAL_SERVE_LOG_LINES", 0, 0, 100) if action == "status" else 0
         path = state_root()
         value = tracked(path) if action in {"status", "stop"} else None
         value = value or plan()
@@ -353,6 +355,22 @@ def main() -> None:
                     state = "idle"
                 error = record.get("error") if failed and isinstance(record.get("error"), str) else None
                 output = result(value, state, observed, observed["provider_calls"], error)
+                if log_lines and observed.get("app_id"):
+                    fetched = modal.execute(
+                        [modal.modal_binary(), "app", "logs", observed["app_id"], "--tail", str(log_lines),
+                         "--timestamps", "-e", value["environment"]],
+                        environment=value["environment"], timeout=30,
+                    )
+                    output["provider_calls"] += 1
+                    if fetched["state"] == "accepted":
+                        text = redact(fetched["stdout"].decode("utf-8", "replace"))
+                        lines = re.sub(r"https?://\S+", "[url]", text).splitlines()
+                        output["details"]["logs"] = [line[:384] for line in lines[-log_lines:]]
+                        output["details"]["logs_truncated"] = len(lines) > log_lines or any(len(line) > 384 for line in lines)
+                    else:
+                        output["details"]["logs_error"] = "Modal log fetch failed; resource status is unchanged"
+                elif log_lines:
+                    output["details"]["logs_error"] = "No matching Modal app; nothing was started"
             else:
                 observed, calls = stop(value, path)
                 output = result(value, "complete", observed, calls)

@@ -179,11 +179,11 @@
       "timeout_env": "MILK_BENCHMARK_JOB_TIMEOUT_SECONDS"
     },
     "serve-modal": {
-      "description": "Deploy, inspect, or stop one environment-selected OpenAI-compatible vLLM server on Modal. When complete, details.driver gives its full API URL, mode, model, and credential environment name for a Milk Man child; never forward the parent's gateway key. details.observation.startup records client-observed deploy, weight-loading and readiness times, not GPU-only or billed time; status retains the original measurement. Listed environment names are required for run.",
+      "description": "Deploy, inspect, or stop vLLM on Modal. When complete, details.driver gives the URL, mode, model and key environment name for a child; never forward the parent's gateway key. details.observation.startup retains client-observed deploy, weights and readiness times, not billed duration. Optional MILK_MODAL_SERVE_LOG_LINES=20 with status reads recent private logs without starting compute; defaults to zero, maximum 100. Listed environment names are required for run.",
       "executable": "milk_v2/providers/modal_serve.py",
       "environment": {
         "required": ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET", "MILK_MODAL_SERVE_MODEL", "MILK_MODAL_SERVE_REVISION", "MILK_MODAL_SERVE_IMAGE", "MILK_MODAL_SERVE_API_KEY"],
-        "optional": ["MODAL_ENVIRONMENT", "HF_TOKEN", "MILK_MAN_STATE_DIR", "MILK_MODAL_CLI", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_SERVE_APP_PREFIX", "MILK_MODAL_SERVE_VOLUME", "MILK_MODAL_SERVE_SERVED_MODEL", "MILK_MODAL_SERVE_GPU", "MILK_MODAL_SERVE_GPU_COUNT", "MILK_MODAL_SERVE_VLLM_ARGS_JSON", "MILK_MODAL_SERVE_SCALEDOWN_SECONDS", "MILK_MODAL_SERVE_TARGET_CONCURRENCY", "MILK_MODAL_SERVE_STARTUP_TIMEOUT", "MILK_MODAL_SERVE_STOP_TIMEOUT", "MILK_MODAL_SERVE_TIMEOUT_SECONDS"]
+        "optional": ["MODAL_ENVIRONMENT", "HF_TOKEN", "MILK_MAN_STATE_DIR", "MILK_MODAL_CLI", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_SERVE_APP_PREFIX", "MILK_MODAL_SERVE_VOLUME", "MILK_MODAL_SERVE_SERVED_MODEL", "MILK_MODAL_SERVE_GPU", "MILK_MODAL_SERVE_GPU_COUNT", "MILK_MODAL_SERVE_VLLM_ARGS_JSON", "MILK_MODAL_SERVE_SCALEDOWN_SECONDS", "MILK_MODAL_SERVE_TARGET_CONCURRENCY", "MILK_MODAL_SERVE_STARTUP_TIMEOUT", "MILK_MODAL_SERVE_STOP_TIMEOUT", "MILK_MODAL_SERVE_TIMEOUT_SECONDS", "MILK_MODAL_SERVE_LOG_LINES"]
       },
       "status": true,
       "stop": true,

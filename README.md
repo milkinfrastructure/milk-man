@@ -237,6 +237,14 @@ in `details.observation.startup`. Status keeps those original measurements.
 They include provider checks and may use warm caches; they are not GPU-only
 startup time or billed duration. Older runs without timings remain unknown.
 
+To read recent Modal startup logs without starting compute:
+`MILK_MODAL_SERVE_LOG_LINES=20 bin/milk run serve-modal status`.
+This reads the app found by status once, removes known secrets and URLs, and limits long
+lines. Logs stay off during ordinary status checks. Treat log output as private;
+a log-fetch error does not change the app's reported state or restart it.
+Older stopped apps may no longer appear in status; their retained app IDs can
+still be inspected with Modal's CLI.
+
 `serve-baseten` provides the same run/status/stop workflow for an owned Baseten
 server. Set its model, exact model revision, runtime image and GPU through the
 catalog's `MILK_BASETEN_SERVE_*` settings. Weights mount from Baseten's cache,

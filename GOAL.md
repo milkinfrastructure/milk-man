@@ -18,6 +18,11 @@ Current frontier:
   deployments are inactive with zero replicas; Modal reports zero containers.
 - [x] Fixed wrong-checkout imports in Bash jobs, dashboard, heartbeat and
   summary probes. Direct local checks pass; no paid task was repeated.
+- [x] Added optional recent Modal log reads to the existing status job.
+  Default status makes no log request; failed log reads cannot restart an app.
+  Retained-app CLI read returned 20 lines without compute. That older app no
+  longer appears in status; verify automatic attachment on the next useful run,
+  not by buying a logging-only deployment.
 - [ ] Continue unproven P4–P8 model operations, useful inference tuning and the
   scope-specific learning application. Reuse completed work, add only a missing
   executable capability, then prove that capability through Milk Man. No new
@@ -488,6 +493,11 @@ without a separate scheduler service.
 
 ## P4 — general model and compute lifecycle
 
+- [x] Expose recent Modal diagnostics with `MILK_MODAL_SERVE_LOG_LINES=20`
+  on `serve-modal status`, reusing the installed CLI and existing redaction.
+  Reads are bounded and optional; logs are private. Ordinary status and absent
+  app handling ran live, and the retained app ID returned 20 lines directly.
+  Active-job attachment remains to be observed during a useful serving run.
 - [~] Refactor the current fixed controller lifecycle into reusable,
   provider-native scripts for ensure/reuse, status/logs, inference smoke, and
   stop. Both paths ran live; Baseten-owned activation, three requests, and

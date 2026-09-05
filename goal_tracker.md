@@ -15,6 +15,18 @@ Status notation:
 
 ## Executive state
 
+- [x] Added optional recent logs to `serve-modal status` through
+  `MILK_MODAL_SERVE_LOG_LINES` (default 0, maximum 100). Existing redaction and
+  CLI execution are reused; no follow loop, restart, or dependency was added.
+  Live ordinary/optional status both found the old profile absent, zero
+  containers, one provider read and zero inference calls. The initial smoke
+  expectation that this older app remained listed was wrong; no run restarted.
+  Its retained ID `ap-QZsraKhmkyRMrEovmZQoJJ` returned 20 lines directly through
+  the same CLI helper. Receipt SHA-256:
+  `3e4850ff8e86f4fba889577918d77e1cb6b18f168d1416930e83d4844cdd6bbc`.
+  Invalid line count 101 failed before any provider call; independent source
+  review found no regression. Private evidence: `modal-log-check.yHlDsO/`.
+  Active-job attachment is not yet live-observed; no logging-only GPU run.
 - [x] Positive-demonstration preparation and training completed September 5.
   The pinned Qwen tokenizer retained full histories (3,140 / 5,592 / 7,871 /
   9,208 tokens) and only new assistant targets. Four steps covered the entire
