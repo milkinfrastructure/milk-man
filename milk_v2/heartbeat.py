@@ -115,6 +115,16 @@ def objective(value: dict) -> str:
     return task + ("\nLatest operator instruction: " + brief if brief else "")
 
 
+def terminal(observation) -> bool:
+    if not isinstance(observation, dict) or observation.get("exit") != 0:
+        return False
+    result = observation.get("result")
+    if not isinstance(result, dict):
+        return False
+    details = result.get("details")
+    return result.get("terminal") is True or (isinstance(details, dict) and details.get("terminal") is True)
+
+
 def main() -> None:
     arguments = sys.argv[1:]
     if not arguments or arguments[0] in {"-h", "--help", "help"} or (
@@ -178,7 +188,7 @@ def main() -> None:
             raise SystemExit(64)
         with edit(path) as value:
             value["watch"] = {"command": args, "last": observation,
-                              "due": time.time() + delay if delay else None}
+                              "due": time.time() if terminal(observation) else time.time() + delay if delay else None}
             if value.get("state") in ("idle", "failed"):
                 value.update(state="waiting", next_wake=time.time())
         wake(value)
@@ -214,7 +224,7 @@ def main() -> None:
                 print("stop")
                 return
             watch = value.get("watch") or {}
-            changed = watch == observed_watch and observation is not None and observation != watch.get("last")
+            changed = watch == observed_watch and observation is not None and (observation != watch.get("last") or terminal(observation))
             due = watch.get("due") is not None and stamp >= watch["due"]
             recovering = value.pop("recover", False)
             pending_value = None if recovering else value.pop("pending", None)

@@ -205,6 +205,19 @@ def tokens(tokenizer, row: dict, maximum: int):
     return torch.tensor([encoded], dtype=torch.long), torch.tensor([labels], dtype=torch.long)
 
 
+def native_loss(model, input_ids, labels):
+    """Keep full context, but project only positions predicting assistant targets."""
+    import torch
+
+    if input_ids.size(0) != 1:
+        raise ValueError("native loss processes one example at a time")
+    positions = (labels[0, 1:] != -100).nonzero(as_tuple=True)[0]
+    if not positions.numel():
+        raise ValueError("native example has no next-token targets")
+    logits = model(input_ids=input_ids, logits_to_keep=positions, use_cache=False).logits
+    return torch.nn.functional.cross_entropy(logits[0].float(), labels[0, positions + 1])
+
+
 def heldout_loss(model, batches) -> dict:
     """Token-weighted teacher-forced loss on fixed DEV targets; no generated actions."""
     import torch
@@ -217,7 +230,7 @@ def heldout_loss(model, batches) -> dict:
             if not count:
                 raise ValueError("held-out example has no target tokens")
             input_ids, labels = cpu_ids.cuda(), cpu_labels.cuda()
-            loss = model(input_ids=input_ids, labels=labels).loss
+            loss = native_loss(model, input_ids, labels)
             if not torch.isfinite(loss):
                 raise RuntimeError("held-out target loss is not finite")
             weighted_loss += float(loss.detach().cpu()) * count
@@ -390,6 +403,7 @@ def main() -> None:
     model.config.use_cache = False
     if heldout is not None:
         heldout["before"] = heldout_loss(model, dev_batches)
+        print(json.dumps({"stage": "native_dev_before", "metric": heldout["metric"], **heldout["before"]}), flush=True)
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     losses = []
@@ -401,16 +415,19 @@ def main() -> None:
         for step in range(steps):
             input_ids, labels = (value.cuda() for value in batches[step % len(batches)])
             optimizer.zero_grad(set_to_none=True)
-            loss = model(input_ids=input_ids, labels=labels).loss
+            loss = native_loss(model, input_ids, labels) if heldout is not None else model(input_ids=input_ids, labels=labels).loss
             if not torch.isfinite(loss):
                 raise RuntimeError("training loss is not finite")
             loss.backward()
             optimizer.step()
             losses.append(float(loss.detach().cpu()))
+            if heldout is not None:
+                print(json.dumps({"stage": "native_sft_step", "step": step + 1, "loss": losses[-1]}), flush=True)
 
     if heldout is not None:
         optimizer.zero_grad(set_to_none=True)
         heldout["after"] = heldout_loss(model, dev_batches)
+        print(json.dumps({"stage": "native_dev_after", "metric": heldout["metric"], **heldout["after"]}), flush=True)
 
     output = Path(os.environ.get("BT_CHECKPOINT_DIR", "/mnt/ckpts")) / "merged"
     output.mkdir(parents=True, exist_ok=True)
