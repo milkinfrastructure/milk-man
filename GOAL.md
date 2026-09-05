@@ -329,8 +329,9 @@ do not restart parked large generation runs.
   `native-capture` extracted one pinned Responses exchange into 28 context
   messages, two tools, and one next assistant tool-call target. Prior tool
   results remain paired; hidden reasoning is explicitly omitted. Native
-  dataset selection, assistant-only training, and held-out agent-task
-  evaluation remain unfinished. Extraction does not establish task success.
+  dataset selection and assistant-only training are now demonstrated below.
+  Held-out agent-task evaluation remains unfinished; extraction does not
+  establish task success.
 - [~] `native-dataset` now derives four examples from the saved 100-exchange
   summary: three train, one DEV, zero calibration/sealed. R2 hashes and whole
   task separation were verified; replay makes zero capture reads or model and
@@ -340,10 +341,14 @@ do not restart parked large generation runs.
   truncation. The existing trainer accepts the exact native manifest through
   environment variables and retains its results separately from text evals.
   The first submitted H100 job failed allocating full-sequence training
-  logits. A committed correction projects only assistant-target positions
-  without shortening context; it still needs one deliberate GPU retry.
-  Successful native training, held-out task comparison and Chrome-prompted
-  reuse of the new job remain unproven. Keep the failed run intact.
+  logits. The corrected run `wg8glgq` completed three steps on one H100,
+  projecting only assistant-target positions without shortening context.
+  Milk Man collected model `e7718471-f9fd-569f-b169-ec4a6cfdd2ae` and its
+  result. Replaying unchanged made zero inference/provider calls. Loss on
+  one held-out example fell from 1.1153 to 1.0929; this does not prove better
+  task completion. One Codex correction separated HTTP timeout from the job
+  deadline. Keep the original failure intact. Native-model serving, held-out
+  task comparison and Chrome-prompted reuse remain unproven.
 - [~] Summary execution/resume and zero-call replay are proven. The heartbeat
   now checks summary milestones independently of a task's resource wait.
   The resumed live owner counted below threshold with no model turn or job

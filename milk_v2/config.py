@@ -409,6 +409,7 @@ def load(path: Path | None = None) -> RuntimeConfig:
                 "timeout_env",
                 "teardown_handler",
             },
+            {"description"},
         )
         handler = _string(raw_job["handler"], f"jobs.{name}.handler", 64)
         if handler != name or handler not in BUILTIN_HANDLERS:
@@ -451,6 +452,7 @@ def load(path: Path | None = None) -> RuntimeConfig:
             prompt,
             timeout_env,
             teardown,
+            description=_string(raw_job["description"], f"jobs.{name}.description", 512) if "description" in raw_job else None,
         )
 
     order = _strings(value["operate_order"], "operate_order")

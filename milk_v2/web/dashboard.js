@@ -235,7 +235,16 @@ function helpHeading(label, help) {
   return heading;
 }
 
-// Render only text and simple tables. Model output never becomes executable HTML.
+function inlineReply(text) {
+  const fragment = document.createDocumentFragment();
+  for (const part of text.split(/(`[^`\n]+`|\*\*[^*\n]+\*\*)/)) {
+    fragment.append(part.startsWith("`") && part.endsWith("`") ? node("code", "", part.slice(1, -1))
+      : part.startsWith("**") && part.endsWith("**") ? node("strong", "", part.slice(2, -2)) : document.createTextNode(part));
+  }
+  return fragment;
+}
+
+// Text, emphasis and tables only. Model output never becomes executable HTML.
 function replyBody(text) {
   const body = node("div", "reply-body");
   const blocks = text.split(/(```[\s\S]*?(?:```|$))/).flatMap(block => block.startsWith("```") ? [block] : block.split(/\n\s*\n/)).filter(block => block.trim());
@@ -261,7 +270,10 @@ function replyBody(text) {
         table.append(row);
       });
       part.append(table);
-    } else part = node("p", "", block);
+    } else if (lines.every(line => /^\s*[-*] /.test(line))) {
+      part = node("ul");
+      lines.forEach(line => { const item = node("li"); item.append(inlineReply(line.replace(/^\s*[-*] /, ""))); part.append(item); });
+    } else { part = node("p"); part.append(inlineReply(block)); }
     (long && index >= 3 ? rest : body).append(part);
   });
   if (long) body.append(rest);
@@ -319,7 +331,21 @@ function distributionChart(label, values, total, help) {
   return chart;
 }
 
-let progressKey, selectedCheckpoint, savedProgress = {};
+let progressKey, selectedCheckpoint, savedProgress = {}, runningSummaryThreshold = null;
+function renderSummaryMilestone() {
+  let running = false;
+  for (const tick of el("ticks").children) {
+    const active = !tick.dataset.checkpoint && Number(tick.dataset.threshold) === runningSummaryThreshold;
+    running ||= active;
+    tick.querySelector("small").textContent = active ? "generating summary" : tick.dataset.caption;
+    const label = active ? "The summary job is running for this milestone. The displayed traffic count may be older." : tick.dataset.label;
+    tick.title = label;
+    tick.dataset.help = label;
+    tick.setAttribute("aria-label", label);
+  }
+  if (el("target").dataset.caption !== undefined) el("target").textContent = running
+    ? "generating summary at " + runningSummaryThreshold.toLocaleString() : el("target").dataset.caption;
+}
 function selectCheckpoint(uuid, open = true) {
   const cards = Array.from(el("milestones").querySelectorAll(".checkpoint"));
   const selected = cards.find(card => card.dataset.uuid === uuid) || cards[0];
@@ -358,6 +384,7 @@ function renderProgress(progress = {}) {
   el("target").textContent = !points.length ? "none configured" : !counted ? "count traffic to refresh" : progress.next_threshold
     ? (count >= progress.next_threshold ? "next summary due" : (progress.next_threshold - count).toLocaleString() + " more to reach " + progress.next_threshold.toLocaleString())
     : "all configured milestones reached";
+  el("target").dataset.caption = el("target").textContent;
   el("count-checked").textContent = progress.counted_at
     ? "Last counted " + new Date(progress.counted_at).toLocaleString()
     : counted ? "Saved count; select ‘refresh counts’ to count again." : "No traffic count available yet.";
@@ -368,6 +395,7 @@ function renderProgress(progress = {}) {
     const due = !checkpoint && counted && count >= point;
     const tick = node("button", "tick" + (checkpoint ? " done" : due ? " due" : ""));
     tick.type = "button";
+    tick.dataset.threshold = point;
     if (checkpoint) tick.dataset.checkpoint = checkpoint.uuid;
     const remaining = Math.max(0, point - count);
     tick.title = checkpoint
@@ -377,10 +405,12 @@ function renderProgress(progress = {}) {
         ? "Threshold reached; its summary has not been saved. This does not mean a job is running."
         : remaining.toLocaleString() + " exchanges until this summary threshold.";
     tick.setAttribute("aria-label", tick.title);
+    tick.dataset.label = tick.title;
     const meter = node("span", "milestone-meter"), fill = node("i");
     fill.style.width = counted ? Math.max(0, Math.min(100, count / point * 100)) + "%" : "0%";
     meter.append(fill);
     tick.append(node("b", "", point.toLocaleString()), meter, node("small", "", checkpoint ? "summary saved ↗" : !counted ? "not counted" : due ? "reached · summary due" : remaining.toLocaleString() + " until summary"));
+    tick.dataset.caption = tick.querySelector("small").textContent;
     tick.addEventListener("click", () => {
       el("summaries").open = true;
       const card = Array.from(el("milestones").querySelectorAll(".checkpoint")).find(item => checkpoint && item.dataset.uuid === checkpoint.uuid);
@@ -390,6 +420,7 @@ function renderProgress(progress = {}) {
     });
     ticks.append(tick);
   }
+  renderSummaryMilestone();
   el("milestones").replaceChildren();
   const picker = el("checkpoint-select");
   picker.replaceChildren();
@@ -731,6 +762,8 @@ function renderMan(man) {
   const workActive = heartbeatOnline && (pulse.state === "running" || man.active);
   const summaryJob = pulse.summary || {};
   const summaryState = summaryJob.state;
+  runningSummaryThreshold = heartbeatOnline && summaryJob.enabled === true && summaryState === "running" && Number.isInteger(summaryJob.threshold) ? summaryJob.threshold : null;
+  renderSummaryMilestone();
   const summaryThreshold = Number.isInteger(summaryJob.threshold) ? summaryJob.threshold.toLocaleString() : "the next milestone";
   const summaryLabel = !heartbeatOnline ? "Summary checker disconnected"
     : summaryJob.enabled !== true ? "Automatic summaries off · set MILK_AUTO_SUMMARY=1"
@@ -1125,6 +1158,10 @@ async function refreshLocal() {
   } catch {
     light("man", "detached", "dashboard disconnected from Milk Man");
     light("heartbeat", "down", "heartbeat · connection lost");
+    light("summary-job", "down", "Summary status unknown · connection lost");
+    el("summary-job-checked").textContent = "Reconnect to check whether the summary is still running.";
+    runningSummaryThreshold = null;
+    renderSummaryMilestone();
     el("heartbeat-next").textContent = "unknown while disconnected";
     el("current-work-note").textContent = "Dashboard connection lost. The task may still be running; reconnect before sending another instruction.";
     el("conversation-state").textContent = "connection lost";

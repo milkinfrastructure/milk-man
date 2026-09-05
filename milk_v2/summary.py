@@ -1374,6 +1374,13 @@ def reconcile(store, settings, runtime) -> dict:
         artifacts.extend(checkpoint_artifacts)
         calls += inference_calls
         job_ids.append(job_id)
+        _status(store, settings, {
+            "capture_count": len(all_keys), "processed_count": len(processed),
+            "next_threshold": next((value for value in thresholds(settings.profile) if value > len(processed)), None),
+            "summary_pointer": parent_pointer, "summary": parent_summary,
+            "readiness_pointer": readiness_pointer,
+            "next_action": "eval" if readiness_pointer and readiness_pointer.get("ready") else "summary",
+        })
     next_threshold = next((value for value in thresholds(settings.profile) if value > len(processed)), None)
     try:
         readiness_pointer = _json(store.get(settings.scope_prefix + "readiness/current.json").body, "readiness/current.json")

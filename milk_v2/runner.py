@@ -105,6 +105,8 @@ def _catalog(runtime, name: str | None = None) -> dict:
         for binding in job.bindings:
             required.extend(config.BINDING_ENVIRONMENTS[binding]["required"])
             optional.extend(config.BINDING_ENVIRONMENTS[binding]["optional"])
+        if job.timeout_env not in required:
+            optional.append(job.timeout_env)
         rows.append(
             {
                 "name": job.name,

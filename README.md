@@ -8,9 +8,9 @@ Milk has two programs:
   Rust gateway between an application and its model provider. It authenticates,
   routes, streams, and saves eligible request and returned-response bodies after
   each exchange ends.
-- Milk Man is a local Bash agent. Give it an objective and it can use its saved
-  trajectory, configured model, registered jobs, and repository scripts to do
-  the work. The Parlor traffic-to-model loop is its first application.
+- Milk Man is a local Bash agent. Give it a task. It runs scripts, operates
+  cloud models, measures results and saves its progress. It can use the
+  traffic collected by Parlor for summaries, model tests and training.
 
 Milk Man is local-first. It needs no Docker, local GPU, database, queue, or
 separate scheduler service. One lightweight local heartbeat owns an active
@@ -47,8 +47,8 @@ The dashboard reads the saved trajectory and heartbeat, sends instructions,
 and shows messages, workspace changes, configured environment names, gateway
 health, and object-store progress. It never displays environment values.
 The heartbeat strip shows the last check, next wake, and idle-check count.
-Open **full instruction + model settings** for the complete task and driver.
-The current chat task is separate from the saved traffic workflow below it.
+Open **Full task + activity counts** for the complete instruction. The model
+setting appears beside chat. The current task is separate from saved data.
 Click a checkpoint for its summary; focus or tap `?` to explain a field.
 Research shows each experiment's conclusion before its detailed measurements.
 Closing the page is not a stop command; current heartbeat proof status is in
@@ -57,22 +57,30 @@ from Bash as shown above so the dashboard has a trajectory to resume.
 
 ## Dashboard
 
-Connect an app and see whether Milk Man, Milk Parlor, and object memory are
-reachable.
-
-![Milk Man connection and status](docs/dashboard-overview.png)
-
-Give Milk Man one task and follow its response and work details.
+Chat shows the reply, expandable command output, and the heartbeat beside it.
+The input stays separate from the logs. These are real development screenshots
+from September 4, 2026, not live status.
 
 ![Milk Man conversation](docs/dashboard-conversation.png)
 
-See the current step from captured traffic to a candidate route.
-
-![Milk processing loop](docs/dashboard-loop.png)
-
-Open a checkpoint to see what the captured conversations contain.
+Choose **data + summaries** to see saved exchanges and open a summary. Counts
+cover the whole summary; topic and task charts describe only the labeled sample.
 
 ![Milk summary checkpoint](docs/dashboard-summary.png)
+
+<details>
+<summary>Traffic milestones and SDK setup</summary>
+
+The heartbeat counts stored exchanges. At an environment-defined milestone it
+starts the summary job; the dashboard reads the result after the file is saved.
+
+![Milk summary milestones](docs/dashboard-loop.png)
+
+Keep the official OpenAI SDK and change only its base URL and key.
+
+![Milk Man connection and status](docs/dashboard-overview.png)
+
+</details>
 
 ## Continue or control a task
 
@@ -264,19 +272,24 @@ it trains only on the new assistant answer. It never silently shortens native
 examples. This uses the configured Baseten training account and starts paid
 work. Its saved model does not advance the text-eval workflow or activate a
 route. Leaving both manifest variables unset keeps the existing training path.
-Native data and token preparation have been checked. The first three-step
-training attempt ran out of GPU memory while calculating loss. A smaller
-target-only calculation is committed but has not yet been tried on the GPU.
-Successful native training and a before/after task comparison remain open.
+The three-step native training run completed on one H100, keeping the full
+tool history. The first attempt ran out of memory; calculating loss only at
+the new assistant answer fixed it without shortening the input. Milk Man
+saved the model and result, and repeating the job made no provider calls.
 
 The native worker also measures how closely the model predicts held-aside
 answers before and after training. A lower loss means a closer match to those
 answers, not proof that the agent completes tasks better.
+In this small run, loss on one held-aside example (184 answer tokens) fell
+from 1.1153 to 1.0929. Serving this model and comparing completed tasks is next.
 
 To watch or stop a submitted training run, set `MILK_TRAIN_PROVIDER_JOB_ID`
 to the returned Baseten job ID and use `bin/milk run training-baseten status`
 or `bin/milk run training-baseten stop`. Both use the configured training
 project. Status cannot start a job; stopping a finished job makes no change.
+`MILK_TRAIN_TIMEOUT_SECONDS` is the HTTP timeout (default 30, range 1–120),
+not the training deadline. A heartbeat wait schedules a review; it does not
+automatically stop the GPU job.
 
 To compare a model's next action on that saved context, set
 `MILK_NATIVE_TRIAL_FILE` and `MILK_NATIVE_TRIAL_SHA256`, configure `LLM_*`,

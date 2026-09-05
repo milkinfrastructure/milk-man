@@ -13,7 +13,8 @@ button,
 input,
 textarea,
 select,
-summary { font: inherit; }
+summary,
+code { font: inherit; }
 
 b,
 h2,
@@ -188,6 +189,10 @@ body[data-agent-state="working"] #heartbeat-signal::before { animation: working-
 .resume-note time { margin-left: auto; }
 .resume-note > pre { max-height: 15rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 .reply-body > p + p { margin-top: .75rem; }
+.reply-body ul { margin: .8rem 0; padding-left: 1.3rem; }
+.reply-body li + li { margin-top: .5rem; }
+.reply-body code { font: inherit; overflow-wrap: anywhere; }
+.reply-body strong { font-weight: bold; }
 .reply-rest { margin-top: .75rem; }
 .reply-rest > p { padding: .65rem; border-top: 1px solid var(--white); }
 .reply-rest > summary { font-size: 14px; }

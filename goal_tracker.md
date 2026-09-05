@@ -15,6 +15,33 @@ Status notation:
 
 ## Executive state
 
+- [x] Corrected native SFT job `wg8glgq` completed on Baseten and Milk Man
+  collected its model and result. Baseten recorded completion at
+  2026-09-05 05:02:18 UTC; a later independent read agreed and found zero
+  active training jobs among 31 returned for project `3ydmen3`.
+  It retains the same native dataset, three steps, 16,384-token context,
+  learning rate `2e-6` and one H100. Controller `1935aff23` selects worker
+  `4541d980c`; job identity is
+  `fc58a033f16c3566c284d0fe61c95d4f192c45936322f87a088e90d741a78540`.
+  Model UUID: `e7718471-f9fd-569f-b169-ec4a6cfdd2ae`; manifest SHA-256:
+  `0452a87e0aa5ed1baef13bde40e1ba6091d384fcbc0062dbcedbb63c0b3768c7`.
+  Result SHA-256:
+  `b65d429f5db8172fce23f80cb4c2781bcdcdcb739386b65e7d47a545aeaf3de7`.
+  Exact replay returned idle with zero inference/provider calls. This proves
+  memory fit and saved training output, not a serving deployment.
+- [~] On the same held-out example (184 target tokens), mean target loss fell
+  from 1.1153241396 to 1.0928518772. This is not generated task success or a
+  production-quality claim. Native-model serving and task comparison are next.
+- [!] Milk Man first confused the 30-minute job deadline with the HTTP timeout.
+  That local submission exited 65 with zero provider/inference calls. Codex
+  clarified HTTP timeout 30 seconds and a separate heartbeat deadline; Milk
+  Man then submitted the one GPU attempt. This task required that correction.
+  The job help now includes the HTTP timeout and status/stop commands. Catalog
+  edits change job identity, so exact zero-call replay was verified first.
+- [x] Milk Man collected the result, saved its completion note and returned
+  idle at turn 100 without another closeout instruction. It has no active
+  task watch. The provider retains the 1,504,827,608-byte model checkpoint;
+  weights were not downloaded locally.
 - [~] Implemented the direct summary loop: heartbeat counts scoped capture
   objects, then calls the existing summary job at `MILK_SUMMARY_THRESHOLDS`.
   `MILK_AUTO_SUMMARY=1` enables it without a driver reasoning turn. The existing
@@ -27,26 +54,39 @@ Status notation:
   with 100 exchanges summarized and threshold 1,000 not crossed. Two resumed
   checks added no model turn and launched no summary job.
   The local dashboard serves the updated UI and reads the real checker state.
-  Chrome attachment still fails, so this pass has no new browser visual proof.
+  Chrome extension attachment still fails. A separate headless Chrome verified
+  the current dashboard without interrupting Milk Man or the user's tabs.
 - [ ] Observe one real automatic threshold crossing and the finished summary
   appearing in the dashboard. Do not generate extra traffic solely to force it.
+- [x] Each saved checkpoint now updates dashboard status before the next
+  crossed milestone starts. The UI distinguishes a running summary from a
+  saved one and clears that status on disconnect. No new inference was needed
+  for this change; the automatic live crossing remains unproven above.
+- [x] Refreshed the four README screenshots from the running dashboard:
+  chat, SDK setup, milestone counts and a saved summary. The browser recount
+  found 241 exchanges, 100 summarized and eight labeled; the next milestone
+  remains 1,000. Lists/emphasis in replies and setup code use the existing
+  visual style. Desktop/mobile checks found no script errors or horizontal
+  overflow. Screenshots contain no credential values or captured messages.
 - [!] The first native SFT run reached Baseten on one H100 and failed during
   the first training loss calculation: `qjkgdj3`, project `3ydmen3`, source
   `e3255a13906e7d159ce0d5278b5367f727e2e06f`. Full-sequence logits requested
   another 11.98 GiB with 11.76 GiB available. No model artifact or before/after
   result was recovered. The original run and failure receipts remain private
-  in `native-sft-a050d44f-77124568c753-steps3/`; no retry was launched.
+  in `native-sft-a050d44f-77124568c753-steps3/`. The one corrected retry is
+  recorded above; the failed attempt was not overwritten.
 - [x] At 2026-09-05 04:44:39 UTC, an independent Baseten read confirmed that
   job failed and its training project had zero active jobs among 30 returned.
   The collection command exited 69 with the existing provider failure; its
   detached local processes exited. This is not an account-wide GPU inventory.
-- [~] Correction `4541d980c5e0672f09ac9ce5c68c2b2f0f65e704` preserves the full
+- [x] Correction `4541d980c5e0672f09ac9ce5c68c2b2f0f65e704` preserves the full
   input but projects only assistant-target positions for native loss. Source
-  compatibility, token alignment and syntax were checked; GPU proof remains.
+  compatibility, token alignment and syntax were checked; the corrected GPU
+  run completed as recorded above.
   The same commit makes an explicitly terminal job observation wake the
   heartbeat even when it was terminal when first registered. The existing
-  owner resumed the failed task without another prompt. The trainer still
-  selects the old source until one deliberate corrected retry is prepared.
+  owner resumed the failed task without another prompt. The trainer now
+  selects that correction for the single retry recorded above.
 - [x] Removed the summary trigger's dependence on the single-use task watch.
   A reached milestone now directly launches its job on an enabled idle/waiting
   heartbeat check. The model is only called by the summary job itself.
@@ -62,11 +102,11 @@ Status notation:
   12,954/1,920/2,804 tokens, with 51/72/486 target tokens; DEV: 2,436 with 184
   target tokens. No weights or GPU were loaded. This proves formatting and
   masking, not answer quality or successful training.
-- [~] Explicit native manifest selection reached a real SFT job with a
+- [x] Explicit native manifest selection completed a real SFT job with a
   16,384-token context, three steps and learning rate `2e-6`. Native results
-  remain separate from legacy text-eval status. That attempt failed as
-  recorded above; successful training and a meaningful before/after comparison
-  remain unproven. Saved tool actions are not success labels.
+  remain separate from legacy text-eval status. Held-out target loss is saved;
+  a meaningful task-outcome comparison remains unproven. Saved tool actions
+  are not success labels.
 - [!] Chrome's existing dashboard tabs returned `Debugger unattached` during
   this step. The new job was executed from Bash, not dashboard chat. Milk Man's
   existing heartbeat remained online and waiting; no owner restart occurred.
@@ -95,8 +135,8 @@ Status notation:
 - [~] The 100-exchange checkpoint contains four trajectory groups (three train,
   one DEV) and four request-based groups (three train, one sealed). No calibration
   group exists, and completed tool exchanges do not establish task success.
-  The next integration is native dataset selection plus assistant-target-only
-  training, not admitting these records to the existing text-only eval path.
+  Native dataset selection and assistant-target-only training are now proven
+  above. Do not admit these records to the existing text-only eval path.
 - [x] Chrome-prompted Milk Man completed corrected Baseten model `wl51k7e3`,
   deployment `wxe4k60`, with `--reasoning-parser qwen3` on one L4. All three
   requests returned exactly `MILK_OK`: 1,828.245, 417.368, and 367.745 ms.
