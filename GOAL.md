@@ -8,6 +8,25 @@ Codex edits code directly, finishes one concrete item, verifies the actual
 result, marks its bracket, commits/pushes, and moves to the next unfinished item.
 Keep the complete outcome and P0–P8 acceptance criteria below intact.
 
+Execution order, refreshed September 5 at 21:15 UTC:
+
+1. Retain and publish the completed warm-session change and its failed model
+   tasks. Keep Astra through Parlor as the working idle owner. Do not reopen
+   completed landing, training, or benchmark work.
+2. Finish the shared text-response completion check: truncated model output
+   must not become executable Bash. Use retained responses and one direct
+   local check, with no new inference. Keep malformed native JSON rejected;
+   do not repair model arguments heuristically or silently change API modes.
+3. Continue the next unfinished P4–P8 capability using the existing Bash jobs,
+   environment settings, provider clients, heartbeat and object store. Fix
+   scripts directly, then demonstrate the working workflow through Milk Man.
+   An owned-model retry requires a concrete fix addressing its observed
+   failure; larger limits or another unchanged prompt are not that fix.
+4. Keep scope-specific research, untouched evaluation, the complete whiteboard
+   application, signed routing and public operation in the outcome. Mark each
+   actual result, retain failures, commit/push working changes, and move on.
+   The cumulative development authorization remains $500, not a new budget.
+
 Current frontier:
 
 - [x] Responsive landing and docs are published. Do not reopen their design.
@@ -55,11 +74,28 @@ Current frontier:
   scoped routing and its Cloudflare credential were removed. Independent
   provider reads at 20:39 UTC show zero Modal containers and all three known
   Baseten comparison deployments inactive with zero replicas.
-- [ ] Next close the owned-driver session gap using the existing
-  `MILK_MODAL_SERVE_SCALEDOWN_SECONDS` and readiness path: a bounded interactive
-  session must remain usable while its task is active, then stop. Local
-  finalization is already proven. No new controller, repeated
-  training/benchmark, or blind retry of the failed continuation.
+- [x] The existing Modal serving job now accepts
+  `MILK_MODAL_SERVE_MIN_CONTAINERS=1`, applied after weight hydration. Its
+  default remains zero; no dummy model calls keep it warm. One H200 retained
+  the same 120B container across a 120-second idle observation, then explicitly
+  stopped. Status reports idle when a previously ready app has zero containers.
+  This proves that bounded availability observation, not task completion.
+- [!] With warm capacity, the same parent's native turn returned malformed
+  tool-argument JSON three times; no Bash ran. An explicit Bash-text turn then
+  exhausted 4,096 output tokens with no assistant text; no report was written.
+  Both failures and four scoped exchanges are retained. Bash-text mode also
+  omits native mode's temperature setting; this is not a format-only comparison.
+- [x] The experiment stopped at 21:11 UTC. Independent reads found zero Modal
+  containers and all three known Baseten deployments inactive with zero
+  replicas. Astra is idle on the same trajectory through Parlor; Chrome shows
+  its actual model. Temporary forwarding and its Cloudflare secret are removed.
+  Research revision
+  `77b43af399b2180c4b5aad73d8d00831d34c4ef57cf6174b90e69afa6cee5444`
+  retains all sixteen experiments. No task-quality win or autonomous handoff.
+- [ ] Finish the response-completion check in the shared Bash-text path using
+  local/retained outputs only. Native finalization replay already passes;
+  live repaired owned-driver completion remains unproven. Do not restart the
+  experiment merely to fill this checkbox.
 - [ ] Continue unproven P4–P8 model operations, useful inference tuning and the
   scope-specific learning application. Reuse completed work, add only a missing
   executable capability, then prove that capability through Milk Man. No new
@@ -563,9 +599,11 @@ without a separate scheduler service.
   a real research-status task. The existing parent later resumed through its
   scoped Parlor key, kept its bounded tool history, wrote the correct report,
   and produced five complete captures. Its final reply exposed a parser bug;
-  the fix passes retained-response replay. Live repaired completion remains
-  unproved after the continuation hit an idle cold-start 503. Astra was restored
-  and compute stopped. This was a Codex-operated handoff, not autonomous setup.
+  the fix passes retained-response replay. A later warm session avoided idle
+  scale-down but native tool arguments failed JSON parsing, and explicit
+  Bash-text mode exhausted its output without a report. Live repaired parent
+  completion remains unproved. Astra was restored and compute stopped. These
+  were Codex-operated handoffs, not autonomous setup.
 - [x] A later Chrome checkpoint task completed without command-by-command
   correction: owned 120B startup, heartbeat resume, one native child task,
   automatic stop, and an independent zero-container observation. The child
@@ -600,8 +638,10 @@ hardcoding that model or provider into the harness.
   The concurrent two-sequence candidate completed without follow-up steering;
   Codex supplied its prepared script and single setting. Saved measurements
   establish that narrow improvement, not independent configuration search.
-  Startup instrumentation is locally checked; live phase timing and complete
-  experiment billing remain unknown.
+  Live startup phases are retained: the earlier owned-parent run measured
+  311.306 seconds total; the warm-session run measured 258.288 seconds. These
+  are separate observations, not a controlled startup comparison or billed
+  GPU duration. Complete experiment billing remains unknown.
 - [x] Compare like-for-like requests and concurrency. Persist exact model,
   revision, runtime, resource, serving arguments, endpoint identity, metrics,
   and conclusion for every trial.

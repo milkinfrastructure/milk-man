@@ -15,6 +15,45 @@ Status notation:
 
 ## Executive state
 
+- [x] Warm-session control uses the existing Modal serving job:
+  `MILK_MODAL_SERVE_MIN_CONTAINERS=1` starts a warm container only after weight
+  hydration; default zero still scales down. The same H200 container
+  `ta-01M1SNJAHXG18DHG2TKH5RMS6R` remained across 120.064 seconds with no
+  proof-issued model request during the gap. This is not a global request
+  audit or proof of successful agent execution. Startup: deploy 7.414 seconds,
+  cached weights 6.071, readiness 244.803, total 258.288; not billed duration.
+  The first launch failed catalog description validation before provider use;
+  its original receipts remain. After shortening the description, Milk Man
+  launched one worker and resumed its readiness watch. No duplicate app.
+- [!] Warm owned-parent execution still failed. Three native replies had
+  malformed tool-argument JSON; none executed. Explicit `MILK_MAN_TOOL_CALLS=0`
+  then returned `finish_reason=length`, 4,096 completion tokens, no assistant
+  text, no Bash and no requested report. Four complete scoped R2 captures
+  retain the same trajectory. Fenced mode also omits native mode's explicit
+  temperature zero, so this is not a format-only comparison. No JSON repair,
+  provider fallback, extra training or repeated benchmark was performed.
+- [x] Worker `72097` / child `72102` completed cleanup at 21:11:12 UTC.
+  App `ap-ygOSnPyXT11RjBGhytC1KV` is stopped. Independent 21:11:42 reads found
+  zero Modal containers and three inactive Baseten deployments, zero replicas.
+  The same trajectory is restored to Astra through Parlor, idle, and Chrome
+  displays the actual owner model. Temporary scoped forwarding is cleared;
+  `MILK_OWN_MODEL_API_KEY` was deleted from Cloudflare, not its private source.
+  Post-deletion Worker: `d9c394df-a621-4b07-bdb3-314323085d4f`.
+  Private receipts: `warm-parent-120b.P033jV/`.
+  R2 proof SHA-256:
+  `d0c0a25b0dcf0178aee723f0cc010e9e98278be56f31bf88b45f194b3361cc89`.
+  Research revision
+  `77b43af399b2180c4b5aad73d8d00831d34c4ef57cf6174b90e69afa6cee5444`
+  retains sixteen experiments; unchanged replay made zero inference/provider
+  calls. Baseline/evaluation/best are unchanged. Chrome billing showed Modal
+  $14.86 and Baseten $34.98, with the higher Baseten panel at $35.10. Carrying
+  prior reservations, $0.12 uncertainty and a new $10 reserve leaves $409.03
+  conservatively allocated against $500. This is not an actual bill.
+- [ ] Next: finish the shared Bash-text completion check directly from retained
+  or local responses, without new inference, then continue GOAL.md P4–P8.
+  Do not execute malformed/truncated output or repeat the paid trial unchanged.
+  The following entries retain earlier observations; their cleanup timestamps
+  are historical rather than a substitute for this experiment's closeout.
 - [x] The existing parent trajectory `706ed10d-73ee-455d-bab9-ae56efe5340d`
   ran owned `openai/gpt-oss-120b` on one Modal H200 through its own Parlor scope.
   Five complete R2 exchanges retain request, response and native tool history.

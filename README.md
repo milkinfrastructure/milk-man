@@ -248,9 +248,12 @@ The serving result also records deployment, weight-loading, and readiness times
 in `details.observation.startup`. Status keeps those original measurements.
 They include provider checks and may use warm caches; they are not GPU-only
 startup time or billed duration. Older runs without timings remain unknown.
-Modal can scale an idle model down while Milk Man is still online. Set
-`MILK_MODAL_SERVE_SCALEDOWN_SECONDS` for the intended work session before
-deployment, check readiness before using it, and explicitly stop it afterward.
+Modal can scale an idle model down while Milk Man is still online. For an
+interactive session, set `MILK_MODAL_SERVE_MIN_CONTAINERS=1` before starting
+the job. It keeps one container warm after weights load, without dummy model
+calls. This remains billable until `bin/milk run serve-modal stop`; arrange
+that cleanup before starting. The default `0` still scales down after idle,
+using `MILK_MODAL_SERVE_SCALEDOWN_SECONDS` as its maximum idle window.
 An idle heartbeat does not keep a GPU warm or prove its endpoint is ready.
 
 To read recent Modal startup logs without starting compute:

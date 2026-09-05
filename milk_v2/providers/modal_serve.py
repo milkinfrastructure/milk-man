@@ -100,6 +100,7 @@ def plan() -> dict:
     count = integer("MILK_MODAL_SERVE_GPU_COUNT", 1, 1, 8)
     region = os.environ.get("MILK_MODAL_ROUTING_REGION", "us-west")
     scaledown = integer("MILK_MODAL_SERVE_SCALEDOWN_SECONDS", 60, 2, 1200)
+    minimum = integer("MILK_MODAL_SERVE_MIN_CONTAINERS", 0, 0, 1)
     concurrency = integer("MILK_MODAL_SERVE_TARGET_CONCURRENCY", 8, 1, 256)
     arguments = vllm_args()
     if MODEL.fullmatch(model) is None or REVISION.fullmatch(revision) is None:
@@ -117,7 +118,7 @@ def plan() -> dict:
         "environment": environment, "app_prefix": prefix, "volume_name": volume,
         "model": model, "revision": revision, "served_model": served, "image": image,
         "gpu": gpu, "gpu_count": count, "vllm_arguments": arguments,
-        "routing_region": region, "scaledown_seconds": scaledown,
+        "routing_region": region, "scaledown_seconds": scaledown, "min_containers": minimum,
         "target_concurrency": concurrency, "app_source_sha256": modal.file_digest(APP_FILE),
         "api_key_sha256": modal.digest({"api_key": api_key}),
     }
@@ -214,6 +215,7 @@ def result(value: dict, state: str, observed: dict | None, calls: int, error: st
         "volume_name": value["volume_name"], "cache_id": value.get("cache_id"), "model": value["model"],
         "revision": value["revision"], "served_model": value["served_model"],
         "gpu": value["gpu"], "gpu_count": value["gpu_count"], "observation": observed,
+        "min_containers": value.get("min_containers", 0),
     }
     if observed and observed.get("endpoint_url"):
         details["driver"] = {
@@ -256,6 +258,16 @@ def ensure(value: dict, path: Path) -> tuple[dict, int]:
     calls += 1
     accepted(hydrated, "model hydration", calls)
     hydrated_at = time.monotonic()
+    if value["min_containers"]:
+        # Only start the warm pool after hydration; the decorator stays at zero.
+        warm = modal.execute(
+            [modal.modal_python(), "-c",
+             "import modal,sys;modal.Server.from_name(sys.argv[1],'Model',environment_name=sys.argv[2]).update_autoscaler(min_containers=int(sys.argv[3]))",
+             value["app_name"], value["environment"], str(value["min_containers"])],
+            environment=value["environment"], timeout=120,
+        )
+        calls += 1
+        accepted(warm, "warm session", calls)
     observed = observe(value)
     calls += observed["provider_calls"]
     endpoint = observed.get("endpoint_url")
@@ -348,7 +360,7 @@ def main() -> None:
                 if failed:
                     state = "failed"
                 elif record.get("state") == "ready" and observed["app_state"] == "deployed" and observed["endpoint_url"]:
-                    state = "complete"
+                    state = "complete" if observed["active_containers"] else "idle"
                 elif record.get("state") == "pending" or observed["app_state"] in ACTIVE:
                     state = "active"
                 else:
