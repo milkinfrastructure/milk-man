@@ -23,8 +23,9 @@ Status notation:
   its 05:42:52 UTC stop confirmed `INACTIVE`, zero active replicas. Base model
   `qe2l6z2q`, deployment `31rd954`, was submitted once at 05:44:34 UTC, made one
   request and stopped at 05:54:10 UTC. Independent reads then confirmed both
-  deployments `INACTIVE` with zero active replicas. Final agent closeout is
-  still pending; no follow-up instruction was sent during this task.
+  deployments `INACTIVE` with zero active replicas. Deployment, inference and
+  cleanup progressed without a follow-up. Final closeout required the precise
+  correction recorded below; do not call the whole task unassisted.
   Its private state is `native-serving-proof/` under the existing native SFT
   experiment. Its deadline was 2026-09-05 06:00:31 UTC. Do not repeat these calls.
 - [x] `serve-baseten` accepts an exact saved model manifest through
@@ -54,6 +55,14 @@ Status notation:
   private diagnostics, redacted and limited to 20 entries. Live execution on
   the stopped base made two read-only provider calls, zero inference calls and
   no resource change. The ordinary heartbeat status path still fetches no logs.
+- [!] Closeout drifted into metadata reads: a file hash was compared with the
+  different prepared-request hash, `mem --help` was unsupported, and a list was
+  handled as a dict. Bulky output displaced earlier observations from context;
+  parsed tool calls and the output allowance were not failing. Codex queued one
+  Chrome correction to use the matching trial hashes, `mem add TEXT`, save the
+  result and finish. The job help now explains the hashes and the next-launch
+  prompt calls for compact receipts and batched reads. Improvement is unproven
+  until a later task uses that prompt; this does not change the active owner.
 - [x] Exported the one held-out DEV example unchanged from the retained
   dataset: SHA-256 `7b1a75e0c5aecb60e357c13860d6128db607a7e96ad06ea4ff6471bc9fbc2ae7`.
   The existing `native-trial check` withheld the target and preserved its

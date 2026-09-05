@@ -67,7 +67,7 @@
       "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
     },
     "native-trial": {
-      "description": "Request one next action from a pinned captured context and tools, withholding its saved answer. Never executes commands. Retains the source group/split and private input/result receipts; completed replay makes no model call. A formatted answer is not proof of task success.",
+      "description": "Request one next action from pinned captured context and tools, withholding the saved answer. Never executes commands. Retains the source group/split and private receipts; completed replay makes no model call. Compare input_sha256 between trials: it hashes prepared messages/tools, not the saved artifact. A formatted answer is not proof of task success.",
       "executable": "bin/native-trial",
       "environment": {
         "required": ["MILK_NATIVE_TRIAL_FILE", "MILK_NATIVE_TRIAL_SHA256", "LLM_API_URL", "LLM_MODEL"],

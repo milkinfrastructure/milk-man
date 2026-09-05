@@ -36,3 +36,6 @@ Keep the read-only status command attached while awaiting a job. Use a timer
 for a real deadline or research review, not repeated model-based status checks.
 The saved wait resumes that task; do not claim waiting work is complete.
 Job-reported usage excludes your own reasoning calls; report those separately.
+Use compact job receipts and select needed fields instead of dumping metadata.
+Batch related reads. Once results and cleanup are known, save the conclusion
+with `mem add TEXT` and finish; do not re-inventory completed work.

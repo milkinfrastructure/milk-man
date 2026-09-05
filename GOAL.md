@@ -352,8 +352,10 @@ do not restart parked large generation runs.
   stopped it automatically. The action was valid but only read the tracker;
   no command was executed and task improvement remains unproven. The unchanged
   base returned another valid but unexecuted action. Both deployments are now
-  verified inactive with zero active replicas. Final agent closeout is pending;
-  the tracker retains both exact results without claiming a quality winner.
+  verified inactive with zero active replicas. Closeout needed one correction
+  after confused hash comparisons and repeated metadata reads. The tracker
+  retains both exact results without claiming a quality winner or wholly
+  unassisted completion.
 - [~] Summary execution/resume and zero-call replay are proven. The heartbeat
   now checks summary milestones independently of a task's resource wait.
   The resumed live owner counted below threshold with no model turn or job
