@@ -15,6 +15,23 @@ Status notation:
 
 ## Executive state
 
+- [x] Driver failures now append `driver-error` through the existing trajectory
+  writer before exiting. The existing dashboard displays it as a visible
+  update; no frontend dependency, new retry loop or heartbeat change was needed.
+  HTTP failures retain fixed explanations for credit exhaustion, insufficient
+  quota and throttling instead of arbitrary provider response bodies.
+  Actual `bin/man develop` execution in native and fenced-Bash modes each
+  made one loopback HTTP 429 request, exited 70, saved one error, and produced
+  no reasoning, Bash or final event. A private response sentinel appeared in
+  neither saved history nor stderr. Replay state: `driver-error.yBSyh2/`.
+  No model/provider call or production write was made by these checks.
+- [!] The live 23:08 credit error remains unresolved. Codex appended a clearly
+  labelled copy of that existing failure to its original trajectory; Chrome
+  now displays it without unfolding logs. This was retained-error display,
+  not a new inference attempt. Owner `4017` remains failed at medium reasoning
+  and awaits input. The OpenAI billing page reports an invalidated login, so
+  current balance could not be read without the operator signing in again.
+  No provider switch, payment, retry or GPU launch was attempted.
 - [x] Current-runtime P7 selection repaired: `eval.current_matches` now keeps
   generation-version matching separate from saved-artifact selection. Dataset
   selection accepts the existing schema only with exact file hashes, scope,

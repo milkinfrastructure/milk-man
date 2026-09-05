@@ -40,6 +40,16 @@ redact() {
     python3 -u "$MILK_MAN_STATE_PY" redact
 }
 
+call_model() {
+    "$llm" "$@" > "$response" 2> "$run_dir/driver-error" || {
+        local status=$?
+        redact < "$run_dir/driver-error" > "$run_dir/safe-error"
+        append --type driver-error --content-file "$run_dir/safe-error" --exit-code "$status"
+        cat "$run_dir/safe-error" >&2
+        exit "$status"
+    }
+}
+
 yield_to_pending() {
     [[ -n "${MILK_MAN_HEARTBEAT_FILE:-}" ]] || return 0
     if python3 - "$MILK_MAN_HEARTBEAT_FILE" <<'PY'
@@ -100,9 +110,9 @@ for ((iteration=1; iteration<=maximum; iteration++)); do
     usage="$run_dir/usage.json"
     printf 'milk-man: reasoning %d/%d with %s\n' "$iteration" "$maximum" "$LLM_MODEL" >&2
     if [[ "$native_tools" == 1 ]]; then
-        "$llm" --system-file "$system_file" --messages-file "$messages" --tools-file "$run_dir/tools.json" --json-response --usage-file "$usage" > "$response"
+        call_model --system-file "$system_file" --messages-file "$messages" --tools-file "$run_dir/tools.json" --json-response --usage-file "$usage"
     else
-        "$llm" --system-file "$system_file" --messages-file "$messages" --usage-file "$usage" > "$response"
+        call_model --system-file "$system_file" --messages-file "$messages" --usage-file "$usage"
     fi
     yield_to_pending
 

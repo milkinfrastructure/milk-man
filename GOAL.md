@@ -54,6 +54,11 @@ Current frontier:
   no fallback or retry was launched. Restore the driver's OpenAI balance to
   demonstrate this selection through Milk Man, then continue signed routing.
   The direct code fix is proven; this agent turn and route activation are not.
+- [x] Failed driver calls now save a visible conversation error and preserve
+  their exit code, without inventing a final answer or retrying. Both local
+  call modes replayed HTTP 429 with no provider access or Bash execution;
+  Chrome shows the retained live credit error. No balance has been restored
+  or new live task completed by this check.
 - [x] Responsive landing and docs are published. Do not reopen their design.
 - [x] Positive native-data preparation and four-step Qwen training completed.
 - [!] The new checkpoint failed its six-reply task check: no requested answer.

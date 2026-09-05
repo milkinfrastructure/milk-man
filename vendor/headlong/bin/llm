@@ -142,9 +142,16 @@ if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
 import json, sys
 try:
     value = json.load(open(sys.argv[1]))
-    print(str(value.get("error", value))[:1000])
-except Exception:
-    print(open(sys.argv[1], errors="replace").read(1000))
+    error = value.get("error", {}) if isinstance(value, dict) else {}
+except (ValueError, OSError):
+    error = {}
+messages = {
+    "credit_balance_exhausted": "The model provider has no credits. Add API credits before continuing.",
+    "insufficient_quota": "The model provider's quota is exhausted. Check its billing and quota before continuing.",
+    "rate_limit_exceeded": "The model provider is throttling requests. Try again later.",
+}
+code = next((error.get(key) for key in ("code", "type") if isinstance(error.get(key), str) and error.get(key) in messages), None) if isinstance(error, dict) else None
+print(f"{code}: {messages[code]}" if code else "The model provider rejected the request.")
 PY
 )"
     die "HTTP $http_code: $detail"

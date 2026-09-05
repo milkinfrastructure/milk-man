@@ -468,7 +468,7 @@ def parser() -> argparse.ArgumentParser:
 
     append_parser = commands.add_parser("append")
     append_parser.add_argument("--trajectory", required=True)
-    append_parser.add_argument("--type", choices=("prompt", "reasoning", "shell-output", "final"), required=True)
+    append_parser.add_argument("--type", choices=("prompt", "reasoning", "shell-output", "final", "driver-error"), required=True)
     append_parser.add_argument("--content-file")
     append_parser.add_argument("--command-file")
     append_parser.add_argument("--message-file")
