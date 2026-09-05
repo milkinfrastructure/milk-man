@@ -98,16 +98,19 @@ Done: read the saved R2 record back, verify its referenced result identities,
 and replay the same write with zero inference/provider calls. Do not regenerate
 evals, retrain Qwen or invent an RL experiment to fill empty fields tonight.
 
-### N4 — keep the local product useful while idle [~]
+### N4 — keep the local product useful while idle [x]
 
 Fresh task-free owner `62714`, trajectory
 `706ed10d-73ee-455d-bab9-ae56efe5340d`, is live. Five checks increased its idle
 delay to 300 seconds with zero driver replies or summary launches. The normal
 next summary threshold is 1,000. Dashboard HTTP state identifies this owner,
 302 saved / 200 summarized / eight labeled, the latest 200 summary and 23 jobs.
-Existing Chrome tab listing works, but tab attachment and screenshots both
-fail with `Debugger unattached`. Browser verification remains unfinished;
-do not substitute the HTTP result for visual proof or restart the old task.
+Chrome verification completed at 08:26 UTC after creating one fresh dashboard
+tab in the existing browser; the old tab handles could not attach. The rendered
+page shows the real idle owner, last/next check, latest summary, milestone
+counts and job commands/settings. Eight idle checks still produced zero driver
+replies or summary launches. No reinstall, source change or model call was
+needed to recover browser control. The dashboard tab is left open.
 
 Start a fresh task-free heartbeat, preserving the old stopped trajectory.
 Use the normal environment-selected gateway, object store and thresholds;
@@ -125,13 +128,14 @@ Do not introduce a scheduler, new frontend dependencies or a visual redesign.
 Done: a usable live dashboard with real state, a working Bash command for the
 same owner, and no extra model calls caused by opening or refreshing the page.
 
-### N5 — publish and close the window [~]
+### N5 — publish and close the window [x]
 
 Published the working N1 code at `26bdd9326`. An independent provider read at
 08:12 UTC found the three experimental Modal apps stopped, zero containers in
 Modal `main`, and both Baseten comparison deployments inactive with zero
 replicas. No new paid experiment was started. Only the useful local idle
-heartbeat stays running. Final Chrome verification is still outstanding.
+heartbeat stays running. Chrome verification is now complete. N2 remains an
+explicit retained failure, not an owned-model success or product completion.
 
 Commit focused working changes and truthful tracker updates. Push only after
 direct execution succeeds. Publish no credentials, private raw conversations,

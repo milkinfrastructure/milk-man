@@ -24,15 +24,19 @@ Status notation:
   calls. Private evidence: `overnight-n3-20260905/{save,readback,replay}/stdout`.
   The first read used only the runtime environment and failed before any write;
   loading the existing driver overlay selected the correct mechanics scope.
-- [~] N4 now has a fresh task-free Milk Man owner, PID `62714`, trajectory
+- [x] N4 has a fresh task-free Milk Man owner, PID `62714`, trajectory
   `706ed10d-73ee-455d-bab9-ae56efe5340d`. The old autonomous task remains stopped.
   Five idle checks backed off to 300 seconds; the trajectory contains no model
   replies and no task. The next normal summary threshold remains 1,000.
   Dashboard HTTP state at port 8766 reports this owner online/idle, 302 saved,
   200 summarized, eight labeled, the actual latest summary and 23 job entries.
-  Private evidence: `overnight-n4-20260905/proof.json`. Chrome can list existing
-  tabs but attachment and screenshots fail with `Debugger unattached`; visual
-  proof remains open. No redesign or extra prompt was sent to mask that failure.
+  Initial evidence: `overnight-n4-20260905/proof.json`. At 08:26 UTC Chrome
+  control recovered by opening one fresh dashboard tab in the existing browser
+  after old handles failed to attach. Screenshot and rendered-page reads showed
+  the real idle owner, last/next check, 302/200/eight counts, latest summary,
+  four configured milestones and the Modal job's run/status/stop commands with
+  environment-name readiness. The same owner reached eight checks with zero
+  driver replies; opening the page launched no jobs. No reinstall or redesign.
 - [x] Independent cleanup read at 08:12 UTC: all three recent experimental
   Modal apps remain stopped and `main` has zero active containers. Baseten
   deployments `31rd954` and `q9254m6` are inactive with zero replicas and minimum
