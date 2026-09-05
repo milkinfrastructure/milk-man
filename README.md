@@ -38,6 +38,9 @@ In another terminal, start the optional local view:
 bin/man dashboard
 ```
 
+Load your environment file before starting Milk Man. Keep `PATH` inherited;
+replacing it inside a task can hide the agent's `mem`, `man`, and `milk` commands.
+
 Open <http://127.0.0.1:8765>. `MILK_DASHBOARD_PORT` changes the port,
 `MILK_DASHBOARD_REFRESH_SECONDS` changes the 30-second remote-status interval,
 and `MILK_PARLOR_BASE_URL` enables the gateway health check. Restart the
@@ -229,6 +232,10 @@ When `serve-modal` completes, `details.driver` gives the API URL, model, mode,
 and credential environment name for a child agent. Use that serving key, not
 the parent's Milk gateway key. `bin/man develop --check` shows the effective
 driver settings and step limit without calling the model.
+The serving result also records deployment, weight-loading, and readiness times
+in `details.observation.startup`. Status keeps those original measurements.
+They include provider checks and may use warm caches; they are not GPU-only
+startup time or billed duration. Older runs without timings remain unknown.
 
 `serve-baseten` provides the same run/status/stop workflow for an owned Baseten
 server. Set its model, exact model revision, runtime image and GPU through the

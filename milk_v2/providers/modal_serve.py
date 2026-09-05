@@ -227,10 +227,12 @@ def result(value: dict, state: str, observed: dict | None, calls: int, error: st
 
 
 def ensure(value: dict, path: Path) -> tuple[dict, int]:
+    started = time.monotonic()
     modal.atomic_json(path / "current.json", {"state": "pending", "plan": value})
     observed = observe(value)
     calls = observed["provider_calls"]
-    if observed["app_state"] != "deployed":
+    deployment_reused = observed["app_state"] == "deployed"
+    if not deployment_reused:
         print(f"milk: deploying {value['app_name']} ({value['gpu']} x {value['gpu_count']})", file=sys.stderr, flush=True)
         deployed = modal.execute(
             [modal.modal_binary(), "deploy", str(APP_FILE), "--name", value["app_name"],
@@ -239,6 +241,7 @@ def ensure(value: dict, path: Path) -> tuple[dict, int]:
         )
         calls += 1
         accepted(deployed, "deploy", calls)
+    deployed_at = time.monotonic()
     hydrate_code = (
         "import json,modal,sys;"
         "f=modal.Function.from_name(sys.argv[1],'hydrate',environment_name=sys.argv[2]);"
@@ -251,6 +254,7 @@ def ensure(value: dict, path: Path) -> tuple[dict, int]:
     )
     calls += 1
     accepted(hydrated, "model hydration", calls)
+    hydrated_at = time.monotonic()
     observed = observe(value)
     calls += observed["provider_calls"]
     endpoint = observed.get("endpoint_url")
@@ -272,7 +276,16 @@ def ensure(value: dict, path: Path) -> tuple[dict, int]:
         raise ServeError("Modal serving endpoint omitted the configured model", calls)
     observed = observe(value)
     calls += observed["provider_calls"]
-    modal.atomic_json(path / "current.json", {"state": "ready", "plan": value})
+    ready_at = time.monotonic()
+    observed["startup"] = {
+        "deployment_reused": deployment_reused,
+        "deploy_seconds": round(deployed_at - started, 3),
+        "weight_load_seconds": round(hydrated_at - deployed_at, 3),
+        "readiness_seconds": round(ready_at - hydrated_at, 3),
+        "total_seconds": round(ready_at - started, 3),
+        "basis": "client-observed phases including provider checks; cache may be warm; not GPU-only time or billed duration",
+    }
+    modal.atomic_json(path / "current.json", {"state": "ready", "plan": value, "startup": observed["startup"]})
     return observed, calls
 
 
@@ -327,6 +340,8 @@ def main() -> None:
                 record = modal.read_json(path / "current.json") or {}
                 if record.get("plan", {}).get("profile_id") != value["profile_id"]:
                     record = {}
+                if record.get("startup") is not None:
+                    observed["startup"] = record["startup"]
                 failed = record.get("state") == "failed"
                 if failed:
                     state = "failed"
