@@ -107,15 +107,16 @@ def _catalog(runtime, name: str | None = None) -> dict:
             optional.extend(config.BINDING_ENVIRONMENTS[binding]["optional"])
         if job.timeout_env not in required:
             optional.append(job.timeout_env)
+        actions = ["run", *(["status"] if job.supports_status else []), *(["stop"] if job.supports_stop else [])]
         rows.append(
             {
                 "name": job.name,
                 "description": job.description or job.name,
-                "actions": [
-                    "run",
-                    *(["status"] if job.supports_status else []),
-                    *(["stop"] if job.supports_stop else []),
-                ],
+                "actions": actions,
+                "commands": {
+                    action: f"bin/milk run {job.name}" + (f" {action}" if action != "run" else "")
+                    for action in actions
+                },
                 "environment": {
                     "required": sorted(set(required)),
                     "optional": sorted(set(optional)),

@@ -50,6 +50,12 @@ safe turn boundary without repeating completed work.
 This file is the execution order. [PRD.md](PRD.md) is the stable product
 contract. [goal_tracker.md](goal_tracker.md) is the evidence ledger.
 
+Codex edits and runs the job scripts directly while developing this system.
+Do not use Milk Man as an intermediary for routine implementation or debugging.
+Once a workflow works directly, give Milk Man one bounded task to demonstrate
+that it can discover, execute and recover that same workflow. This changes the
+development method, not the autonomous product outcome.
+
 ## Audit starting point: 2026-09-04
 
 These are the audit's initial observations. Current publication and deployment

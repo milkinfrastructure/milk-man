@@ -15,6 +15,18 @@ Status notation:
 
 ## Executive state
 
+- [x] Stopped Milk Man owner `22651` at the user's request; the process and its
+  wrapper have exited. The saved trajectory remains available. Codex will edit
+  and run scripts directly, then use Milk Man for the completed workflow proof.
+- [!] The new completed-task 120B comparison did not reach GPU startup. Its
+  first local command supplied an extra `run` argument and exited 64 with zero
+  provider/inference calls. Milk Man repaired that script but spent further
+  reasoning on setup; the user stopped it before a second launch. Retain
+  `completed-task-tune-20260905/` and reuse its prepared facts and workload.
+  No completed-task A/B result exists yet; do not restart the autonomous task.
+- [x] Job discovery now includes exact run/status/stop commands generated from
+  the existing actions. Direct parser checks passed without launching jobs.
+  This addresses the observed command ambiguity without a compatibility layer.
 - [x] Milk Man saved `native-serving-proof/comparison.json` and its completion
   memory at 06:04:24 UTC, then returned idle at turn 112. Comparison SHA-256:
   `b8caf3db61071b820fb31826e9ace8789c3e16a375e71c9e751fdfc2163e6fc3`.
@@ -24,8 +36,9 @@ Status notation:
 - [ ] Next: compare completed, useful tasks and inference settings through the
   existing `agent-trial`, benchmark and serving jobs. Reuse the 120B lifecycle
   and previous measurements; do not extend training or generation from this
-  two-request formatting check. Activate the compact closeout prompt on the
-  next safe harness launch and observe whether it avoids repeated metadata reads.
+  two-request formatting check. The compact closeout prompt was activated on
+  owner `22651`, but the interrupted task did not prove better completion.
+  Execute and debug the scripts directly before the next agent-driven proof.
 - [~] Submitted the held-out trained/base comparison through the local
   dashboard in Chrome; `/api/run` returned 202 and the existing owner resumed
   at turn 101. Milk Man created Baseten model `wl51vn73`, deployment `q9254m6`
