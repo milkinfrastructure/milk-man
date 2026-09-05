@@ -39,6 +39,17 @@ Status notation:
   classified, 20 tool-bearing, and zero eligible for the text-eval path in
   1.29 seconds. No inference, provider action, object write, or capture-body
   read occurred. This does not assert dataset admission or task success.
+- [x] Chrome-prompted Milk Man then discovered the named checkpoint job,
+  executed it once, and correctly reported the counts and missing tool-aware
+  training support at `2026-09-05T00:18:31Z`, without reading source or capture
+  bodies. Three paid Astra replies drove this interaction; the checkpoint
+  job itself made zero inference/provider calls. This proves the reusable-job
+  path, not a successful six-reply source-inspection trial or model-quality win.
+- [x] Milk Man saved both failures through the research job; independent R2
+  verification confirmed revision
+  `d488354068c9c3db48dcc20a0610186a04d990ce7ac5685c763bf1fb9e1ae176`.
+  Baseline, evaluation, and best remain null. A separate live Modal check
+  confirmed the selected H200 app is still stopped with zero containers.
 - [x] `36433b983` isolates nested Milk Man heartbeat context and makes
   subcommand `--help` work. A child no longer inherits the parent's wait file.
 - [x] Read-only Modal serving status now works while startup holds its mutation
@@ -212,7 +223,7 @@ Current source snapshot:
 
 | Repository | Local state | Published state | Assessment |
 | --- | --- | --- | --- |
-| `milk-man` | runtime `305937281`, plus this evidence checkpoint | runtime `305937281` and its following evidence checkpoint | child driver handoff, heartbeat isolation/steering, startup status, and retained operations comparison verified |
+| `milk-man` | runtime `68fe2aea0`, plus this evidence checkpoint | runtime `68fe2aea0` and its following evidence checkpoint | reusable agent trials, compact job lookup, verified checkpoint job; Baseten-owned live proof and unassisted research comparison remain open |
 | `milk-parlor` | `2b43cbd`, deployed | `2b43cbd39cfa21a8e6f6c9057fdd0dabe6115b71` | trajectory-aware capture image deployed and source pushed |
 | `milk-landing` | `db49fb7c436d5841d6b73a759a3bbe7604232adc` | same | clean and live |
 

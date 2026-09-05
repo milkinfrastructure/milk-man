@@ -30,3 +30,4 @@ recoverable state if work remains asynchronous. Never print secret values or
 raw production traffic. Registering a heartbeat wait yields automatically after
 the command returns; do not also sleep or poll.
 The saved wait resumes that task; do not claim waiting work is complete.
+Job-reported usage excludes your own reasoning calls; report those separately.

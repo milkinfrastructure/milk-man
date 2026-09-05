@@ -170,6 +170,7 @@ reconstruction and training on native tool trajectories remain unfinished.
 ## Run jobs
 
 Every `bin/milk` invocation emits one `milk.job-result.v2` JSON object to stdout.
+Its call counts describe that job, not the model calls driving Milk Man.
 Diagnostics go to stderr. Read one job's settings, or omit its name to list all jobs:
 
 ```bash

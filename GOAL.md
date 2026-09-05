@@ -181,6 +181,10 @@ interfaces, with one retained trajectory and no duplicate operation.
   needed, and retains the working script.
 - [x] Repeat the objective and reuse the script without changing the Headlong
   loop or runner core.
+- [x] Give the agent compact job definitions and verified checkpoint facts.
+  Chrome-prompted Milk Man used the read-only checkpoint job to report retained
+  R2 counts and the missing tool-aware training path. Two earlier source-reading
+  trials exhausted their reply allowances; retain them as failures, not wins.
 
 Acceptance: an unseen workload becomes a reusable tool through a small script,
 not another bespoke orchestration branch.
