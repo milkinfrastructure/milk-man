@@ -280,6 +280,9 @@ def main() -> None:
             details["summary_threshold"] = summary.threshold_probe(store, settings)
             identity = details["revision"] or summary.digest({"scope_id": settings.scope_id, "profile": settings.profile, "research": None})
             output = _result("idle", identity, details)
+            if os.environ.get("MILK_RESEARCH_STATUS_COMPACT") == "1":
+                del output["details"]["record"]
+                output["next"] = "research"
         print(json.dumps(redact_message(output), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False))
     except BusyError as error:
         identity = summary.digest({"scope_id": settings.scope_id if settings else None, "action": action, "state": "busy"})

@@ -13,9 +13,11 @@ Execution order, refreshed September 5 after the happy-path correction:
 The one-summary/one-eval formatting check is complete. Do not repeat generation.
 The retained DEV request also completed the new route-evaluation job, with
 zero-call replay and unchanged summary/eval pointers. The direct dataset path
-now accepts untagged captures without changing their splits. Next, connect
-measured results to the existing research/heartbeat loop. Keep new checks small
-and use saved data.
+now accepts untagged captures without changing their splits. The comparison is
+saved through the existing research job; its compact status works through the
+heartbeat observer. Next, prove Milk Man consumes the saved research, chooses
+one useful experiment, runs existing jobs and records its next action without
+command-by-command steering. Keep new checks small and use saved data.
 These checks prove functionality, not model improvement or the full outcome.
 
 Current operator direction: implement gateway, adapter and learning-job changes
@@ -57,6 +59,24 @@ Continue production polish using retained data and one-example checks.
 
 Current frontier:
 
+- [x] Added explicit Responses/Chat binding selection to both serving jobs
+  through `MILK_BASETEN_SERVE_API_MODE` and `MILK_MODAL_SERVE_API_MODE`.
+  Default Chat behavior and deployment identities stay unchanged; selecting a
+  client protocol creates no new deployment. Stop ignores this client setting.
+  Both bindings passed retained-result checks; actual Baseten status returned
+  a Responses URL with INACTIVE/zero replicas. No new inference or GPU launch.
+  This proves binding selection, not Responses execution in every vLLM image.
+- [x] Fixed research watches losing structured status when history exceeds
+  the heartbeat's 16 KiB observation limit. A retained 22,685-byte status
+  reproduced the failure. `MILK_RESEARCH_STATUS_COMPACT=1` omits history only
+  for status, retaining revision, stage pointers and threshold. Actual R2
+  status reached the heartbeat as a 689-byte object: 200 processed, below
+  1,000. Normal status still exposes the full record. The flag belongs in the
+  saved watch argv, not just the registering shell's environment.
+- [x] The existing research job retained the one-example comparison and six
+  exact object references in the private local scope. Replay checked zero
+  objects; compact observations stayed unchanged below the next threshold.
+  This was a direct Codex handoff, not the autonomous research iteration below.
 - [x] The existing `native-dataset` job no longer skips ordinary gateway calls
   without an agent trajectory ID. It reuses the original request-hash split;
   tagged conversations still stay together. One saved conversation produced
@@ -728,6 +748,9 @@ without a separate scheduler service.
   type/count, tensor parallelism, context, batching, cache/volume, region, and
   endpoint identity through environment variables. The completed Modal runs
   proved the model, revision, runtime, GPU, cache, and serving-argument subset.
+  Both jobs now select Responses or Chat bindings without changing their
+  deployment identity; current Baseten status and retained Modal output prove
+  selection. A new owned Responses inference run has not been performed.
 - [x] Keep Baseten managed inference, Baseten-owned resources, and Modal-owned
   resources available independently. Do not encode an automatic fallback.
 - [x] Set the existing Baseten vLLM arguments to separate Qwen reasoning

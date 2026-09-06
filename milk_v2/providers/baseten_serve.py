@@ -18,7 +18,7 @@ if __package__ in {None, ""}:
 
 from milk_v2.providers import baseten
 from milk_v2.providers.modal_controller import atomic_json, digest, now, read_json, state_root
-from milk_v2.providers.modal_serve import locked
+from milk_v2.providers.modal_serve import api_mode, locked
 from milk_v2.store import open_store, settings_from_environment
 from milk_v2.state import redact
 
@@ -165,7 +165,7 @@ def observe(client: baseten.Client, value: dict, record: dict) -> dict:
     )}
 
 
-def output(value: dict, record: dict, observed: dict | None, calls: int) -> dict:
+def output(value: dict, record: dict, observed: dict | None, calls: int, *, include_driver: bool = True) -> dict:
     status = (observed or {}).get("status")
     settings = (observed or {}).get("autoscaling_settings") or {}
     configured = all(settings.get(key) == expected for key, expected in value["autoscaling"].items())
@@ -182,10 +182,12 @@ def output(value: dict, record: dict, observed: dict | None, calls: int) -> dict
     details = {"provider": "baseten", "plan": value, "observation": observed, "configuration_applied": configured, "retained_state": str(record.get("state_path", ""))}
     if status in READY and not configured:
         details["next"] = "run serve-baseten again to apply the selected autoscaling settings; this reuses the existing deployment"
-    if observed and observed.get("id"):
+    if include_driver and observed and observed.get("id"):
+        mode = api_mode("MILK_BASETEN_SERVE_API_MODE")
+        endpoint = "/v1/responses" if mode == "responses" else "/v1/chat/completions"
         details["driver"] = {
-            "api_url": f"https://model-{observed['model_id']}.api.baseten.co/deployment/{observed['id']}/sync/v1/chat/completions",
-            "api_mode": "chat_completions", "auth_scheme": "Bearer",
+            "api_url": f"https://model-{observed['model_id']}.api.baseten.co/deployment/{observed['id']}/sync{endpoint}",
+            "api_mode": mode, "auth_scheme": "Bearer",
             "model": value["served_model"], "api_key_env": "BASETEN_API_KEY",
         }
     return {"state": state, "identity": value["profile_id"], "provider_calls": calls, "inference_calls": 0, "details": details}
@@ -243,7 +245,7 @@ def execute(action: str, path: Path, client: baseten.Client) -> dict:
                 observed = observe(client, value, record)
             record["observation"] = observed
             save(path, record, "stop")
-    result = output(value, record, observed, client.calls)
+    result = output(value, record, observed, client.calls, include_driver=action != "stop")
     if action == "status" and (seconds := number("LOG_SECONDS", 0, 0)):
         if seconds > 3600:
             raise ValueError("LOG_SECONDS must be at most 3600")
@@ -272,6 +274,8 @@ def main() -> None:
     client = None
     try:
         action = sys.argv[1] if len(sys.argv) == 2 else ""
+        if action != "stop":
+            api_mode("MILK_BASETEN_SERVE_API_MODE")
         if action == "plan":
             print(json.dumps({"state": "planned", "provider_calls": 0, "inference_calls": 0, "details": plan()}, sort_keys=True))
             return

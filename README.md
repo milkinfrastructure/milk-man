@@ -214,8 +214,15 @@ It lists only that scope's capture keys, stopping at the threshold; it does not
 read conversation bodies or call a model. Below the threshold its output stays
 unchanged. `MILK_AUTO_SUMMARY=1` runs the summary job directly at a crossed
 threshold; no agent reasoning is needed to decide whether to start it. A task
-can separately watch research results with `bin/man heartbeat wait -- bin/milk
-run research status`.
+can separately watch research results without sending its full history on each
+check:
+
+```bash
+bin/man heartbeat wait -- /usr/bin/env MILK_RESEARCH_STATUS_COMPACT=1 bin/milk run research status
+```
+
+The flag is part of the saved command, so resumed checks stay compact. Ordinary
+`research status` still returns the full record for reading and updating it.
 The record does not start jobs by itself. `wake` describes the plan; the
 heartbeat registers the actual watch.
 
@@ -251,6 +258,14 @@ another command; logs and the exit receipt stay private in that directory.
 When `serve-modal` completes, `details.driver` gives the API URL, model, mode,
 and credential environment name for model calls or an optional child agent.
 Use that serving key, not the parent's Milk gateway key.
+Set `MILK_MODAL_SERVE_API_MODE=responses` or
+`MILK_BASETEN_SERVE_API_MODE=responses` to select a Responses binding;
+the default is `chat_completions`. This selects the URL returned by run/status,
+not another deployment, image or model. The chosen serving image must support
+that endpoint. A reported URL is not an inference check. Stop ignores this
+client setting and does not return a driver binding.
+Baseten's [custom-server routing](https://docs.baseten.co/development/model/custom-server)
+forwards the selected `/sync/v1/...` path to the server.
 `bin/man develop --check` shows the effective
 driver settings and step limit without calling the model.
 

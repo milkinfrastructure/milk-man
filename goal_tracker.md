@@ -15,6 +15,36 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6: both serving jobs now select their returned driver binding
+  with `MILK_BASETEN_SERVE_API_MODE` / `MILK_MODAL_SERVE_API_MODE` (default
+  `chat_completions`, optional `responses`). Shared six-line enum reader;
+  server plans, images and IDs unchanged. Cleanup ignores the client setting.
+  Retained Baseten/Modal observations verified both URL/mode pairs and default
+  behavior. A real Baseten read returned Responses for model `w7mpx8dw`,
+  deployment `qj7d9z2`, INACTIVE, zero replicas: one metadata call, no inference.
+  No resource was activated. Runtime Responses support remains image-specific;
+  this closes binding selection, not live inference on a new owned image.
+- [x] September 6: compact research watches fix a reproduced observation bug.
+  `batching-load-20260905.aAMvKG/research-readback.json` is 22,685 compact
+  bytes; the old observer returned trailing text, not a JSON object. Three
+  lines in research status omit the full record only when
+  `MILK_RESEARCH_STATUS_COMPACT=1`. The actual R2 driver scope returned 689
+  bytes through `heartbeat.observe`, revision
+  `4184f48d8803b5d8d994fa2e445a1fe865b8b075c3d91c0a0cdc338272173711`,
+  200 processed and below 1,000. No R2 writes, model calls or GPU actions.
+  README and Milk Man's job skill put the flag in `/usr/bin/env` inside the
+  saved watch command; an unchanged local watch returned identical objects.
+- [x] September 6: the existing research job saved the retained route
+  comparison without new code or model calls. Private local research revision
+  `70b6ec86e00c856137f626711643aa72d34ec768e9becaae1a03c279e27d81aa`
+  binds six original scoped objects. Parent
+  `9504a7245d14a211e2b0804c1527a4fbdeaffc13088f3f98b7a734e81e9d3d4e`
+  remains immutable; the successor records the compact watch command.
+  Replay is idle with zero object rechecks. Full status retains the record;
+  compact status reports one processed/below 100 without changing output on
+  repeated observations. This local scope has no TRAIN row; no claim is made
+  about unavailable training data in R2. The wake field is a plan, not a live
+  registered watch. Codex authored this handoff; autonomous P7 remains open.
 - [x] September 6: removed the native dataset's unconditional skip for missing
   trajectory IDs. Reused `eval_plan.source_group` and its existing split;
   manifest metadata now names both trajectory and request-hash grouping.

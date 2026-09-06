@@ -71,6 +71,13 @@ def integer(name: str, default: int, minimum: int, maximum: int) -> int:
     return value
 
 
+def api_mode(name: str) -> str:
+    value = os.environ.get(name, "chat_completions")
+    if value not in {"chat_completions", "responses"}:
+        raise ValueError(f"{name} must be chat_completions or responses")
+    return value
+
+
 def vllm_args() -> list[str]:
     try:
         value = json.loads(os.environ.get("MILK_MODAL_SERVE_VLLM_ARGS_JSON", "[]"))
@@ -209,7 +216,7 @@ def observe(value: dict) -> dict:
     }
 
 
-def result(value: dict, state: str, observed: dict | None, calls: int, error: str | None = None) -> dict:
+def result(value: dict, state: str, observed: dict | None, calls: int, error: str | None = None, *, include_driver: bool = True) -> dict:
     details = {
         "provider": "modal", "app_name": value["app_name"],
         "volume_name": value["volume_name"], "cache_id": value.get("cache_id"), "model": value["model"],
@@ -217,10 +224,12 @@ def result(value: dict, state: str, observed: dict | None, calls: int, error: st
         "gpu": value["gpu"], "gpu_count": value["gpu_count"], "observation": observed,
         "min_containers": value.get("min_containers", 0),
     }
-    if observed and observed.get("endpoint_url"):
+    if include_driver and observed and observed.get("endpoint_url"):
+        mode = api_mode("MILK_MODAL_SERVE_API_MODE")
+        endpoint = "/v1/responses" if mode == "responses" else "/v1/chat/completions"
         details["driver"] = {
-            "api_url": observed["endpoint_url"].rstrip("/") + "/v1/chat/completions",
-            "api_mode": "chat_completions", "model": value["served_model"],
+            "api_url": observed["endpoint_url"].rstrip("/") + endpoint,
+            "api_mode": mode, "model": value["served_model"],
             "api_key_env": "MILK_MODAL_SERVE_API_KEY",
         }
     output = {"state": state, "identity": value["profile_id"], "provider_calls": calls, "details": details}
@@ -330,6 +339,8 @@ def main() -> None:
     try:
         if action not in {"run", "status", "stop"}:
             raise ServeError("action must be run, status, or stop")
+        if action != "stop":
+            api_mode("MILK_MODAL_SERVE_API_MODE")
         log_lines = integer("MILK_MODAL_SERVE_LOG_LINES", 0, 0, 100) if action == "status" else 0
         path = state_root()
         value = tracked(path) if action in {"status", "stop"} else None
@@ -385,7 +396,7 @@ def main() -> None:
                     output["details"]["logs_error"] = "No matching Modal app; nothing was started"
             else:
                 observed, calls = stop(value, path)
-                output = result(value, "complete", observed, calls)
+                output = result(value, "complete", observed, calls, include_driver=False)
         print(json.dumps(output, sort_keys=True, separators=(",", ":")))
         if output["state"] in {"failed", "blocked"}:
             raise SystemExit(70 if output["state"] == "failed" else 75)
