@@ -15,6 +15,40 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6: the saved c47 lineage completed live signed routing without
+  new summaries, evals or training. Added `candidate-modal` to the existing
+  executable job catalog: reuse exact saved candidate/model hashes, start,
+  inspect live state, stop. No new runner or provider abstraction.
+  Astra/medium through Parlor executed the Chrome dashboard restore request,
+  waited through its existing heartbeat and finished idle on trajectory
+  `706ed10d-73ee-455d-bab9-ae56efe5340d` (four driver calls; 37,479 input and
+  796 output tokens). Its cached H100 candidate first hit cold-start 503 and
+  min0 idle scale-down; explicit `MILK_MODAL_SERVE_MIN_CONTAINERS=1` after
+  cache readiness fixed availability. Both restored apps were explicitly
+  stopped; the final app was `ap-qsZg8uDxLbzkoROyqQPLmb`.
+  Seven short gateway replies covered baseline, candidate, fallback and the
+  initial-cache/accepted-route requests for rollback and zero. Candidate
+  `98a5b561-44d7-559c-9311-1b0a76edc345` returned `MILK_OK` through route
+  `01845788-0595-4d10-807d-15a077e1f254`; fallback recorded
+  `candidate_status_503`. Rollback revision 2 was
+  `5b3298d3-8340-4e14-8fba-8f4a6a430dfd`; signed zero revision 3 was
+  `e5d5293b-aa47-4424-aaf7-b306215babe5`. Captures retain those route IDs.
+  Temporary key removed (HTTP 401), all five original keys preserved, all
+  three candidate Cloudflare bindings deleted. Final Parlor version
+  `5eaa146a-fda3-4df2-8dea-1d69fc3bd2a9` is healthy with no candidate binding.
+  Independent 01:28 UTC reads show zero Modal containers and all three known
+  Baseten deployments inactive/zero replicas. Cached model files are retained.
+  Private state: `candidate-restore.KrHOmb/`. Content-free R2 proof:
+  `milk/v2/scopes/c47a7dd1-05fb-47fc-bfbe-1ba014ffa77b/j/candidate-lifecycle/959dab2d453db57535f127393244d3d371f2ab7c4c101f5ece4bc9d6dcc855c7/receipt.json`.
+  Its SHA is the parent key component. This is mechanics, not a quality win.
+- [x] September 6 01:10 UTC preflight: saved c47 candidate/model hashes match and the
+  Modal checkpoint cache remains present. Live candidate status is absent
+  with zero containers; this is not inferred from its historical zero receipt.
+  Reserved one explicit restore through the existing job system; no new data
+  or training. Chrome shows Baseten $35.37 and Modal $17.30 for September.
+  Carry $437.83 plus $0.39 newly displayed Baseten usage, $2 reporting
+  uncertainty and an $8 serving/driver allowance = $448.22 conservatively
+  allocated of the existing $500. Allocation is not actual billed spend.
 - [x] Parlor now enables signed routing from an explicit nonzero
   `route_revision`, independently of the capture profile. Mechanics without
   that setting still use their baseline; production still requires it.
@@ -28,8 +62,8 @@ Status notation:
   Cloudflare version `acb65932-fed5-486a-9e86-1823990a6397`.
   Deployment supplied no secrets and changed no key binding or route object.
   Parlor commit `2743c9c`; one live health read returned `ok`, both API
-  endpoints enabled and the capture writer healthy. No live candidate is
-  configured; local routing proof does not imply live candidate acceptance.
+  endpoints enabled and the capture writer healthy. No live candidate was
+  configured at that milestone. The later live proof and cleanup are above.
 - [x] Parlor's existing operator signer now imports `--proposal-file` with
   `--proposal-sha256`, verifies source identity and converts protocol hashes
   to the gateway's encoding. `--output-dir` saves signed files without S3.

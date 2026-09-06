@@ -44,6 +44,17 @@
   },
   "operate_order": ["summary", "eval", "dataset", "train", "evaluate"],
   "jobs": {
+    "candidate-modal": {
+      "description": "Start, inspect or stop an existing Modal candidate pinned by MILK_CANDIDATE_KEY/SHA256. Reuses its exact trained files, serving image and model settings. No generation, training, proposal or route write. Status and stop inspect live resources, not historical cleanup receipts. Run also needs BASETEN_API_KEY and MILK_CANDIDATE_API_KEY. Ready means deployed with its saved cache and endpoint; model answers are checked separately.",
+      "executable": "milk_v2/route.py",
+      "environment": {
+        "required": ["MILK_SCOPE_ID", "MILK_STORE_KIND", "MILK_CANDIDATE_KEY", "MILK_CANDIDATE_SHA256", "MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"],
+        "optional": ["MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS", "BASETEN_API_KEY", "MILK_CANDIDATE_API_KEY", "MODAL_ENVIRONMENT", "MILK_MODAL_CANDIDATE_APP_PREFIX", "MILK_MODAL_CANDIDATE_VOLUME_PREFIX", "MILK_MODAL_ROUTING_REGION", "MILK_MODAL_SERVE_MIN_CONTAINERS", "MILK_MODAL_CLI", "MILK_GPU_TIMEOUT_SECONDS"]
+      },
+      "status": true,
+      "stop": true,
+      "timeout_env": "MILK_GPU_TIMEOUT_SECONDS"
+    },
     "training-baseten": {
       "description": "Read or stop an existing Baseten training job selected by MILK_TRAIN_PROVIDER_JOB_ID and BASETEN_TRAINING_PROJECT_ID. Run/status only reads; stop skips terminal jobs and checks provider state after requesting a stop. Never creates a job. A terminal provider status is not proof that model results have been collected; run the original train job to collect them.",
       "executable": "milk_v2/providers/baseten_training.py",

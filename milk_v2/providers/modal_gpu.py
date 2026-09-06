@@ -245,6 +245,9 @@ def _mutate(plan: dict, arguments: list[str], manifest: dict, *, extra: dict[str
 
 def ensure(identity: dict, artifact_sha256: str, model: dict, baseten_client) -> dict:
     _required("MILK_CANDIDATE_API_KEY")
+    minimum = os.environ.get("MILK_MODAL_SERVE_MIN_CONTAINERS")
+    if minimum not in {None, "0", "1"}:
+        raise ProviderError("MILK_MODAL_SERVE_MIN_CONTAINERS must be 0 or 1", 0)
     plan_value = plan(identity, artifact_sha256)
     model = {**model, "candidate_artifact_sha256": artifact_sha256}
     manifest = _manifest(model)
@@ -321,6 +324,13 @@ def ensure(identity: dict, artifact_sha256: str, model: dict, baseten_client) ->
         if not observation["cache_ready"]:
             raise ProviderError("Modal candidate hydration is unresolved", calls, ambiguous=True)
 
+    if minimum is not None:
+        updated = _execute(plan_value, [_python(), "-c",
+            "import modal,sys;modal.Server.from_name(sys.argv[1],'Candidate',environment_name=sys.argv[2]).update_autoscaler(min_containers=int(sys.argv[3]))",
+            plan_value["app_name"], plan_value["environment"], minimum], timeout=120)
+        calls += 1
+        if updated.returncode:
+            raise ProviderError("Modal candidate availability update failed", calls, ambiguous=True)
     if not observation.get("endpoint_url"):
         observation = observe(plan_value, manifest)
         calls += observation["provider_calls"]

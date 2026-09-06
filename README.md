@@ -514,6 +514,24 @@ never starts a provider job, and failure in one provider does not select another
 Milk Man writes unsigned proposals only; the operator-controlled Milk Parlor
 release path signs and publishes routes.
 
+To restart a saved Modal candidate without repeating training, set
+`MILK_CANDIDATE_KEY` to its scoped `m/<uuid>/serve.json` object key and
+`MILK_CANDIDATE_SHA256` to that file's SHA-256. Keep its original scope/profile
+and Modal environment. The saved object supplies the image and model settings.
+
+```bash
+bin/milk run candidate-modal status
+bin/milk run candidate-modal
+bin/milk run candidate-modal stop
+```
+
+Status and stop read live resources; an old stop receipt is not current status.
+This job never creates data or routes. Starting needs the candidate serving key
+and Baseten key for downloading the existing checkpoint if its cache is absent.
+For a bounded routing check, `MILK_MODAL_SERVE_MIN_CONTAINERS=1` keeps one
+candidate container warm after the cache is ready. It incurs GPU charges until
+stopped. Set `0` to allow scale-down again; no dummy inference keeps it alive.
+
 For a small format check, use a private local store containing one completed,
 tool-free text DEV conversation with its original mechanics profile, scope
 and object bytes. Set

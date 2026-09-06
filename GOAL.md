@@ -56,12 +56,28 @@ next-step wording below.
 
 Current frontier:
 
+- [x] The retained c47 mechanics lineage now has a live signed-route proof.
+  Chrome-prompted Astra Milk Man restored its saved Modal candidate through
+  `candidate-modal`; the existing job also supplies live status and stop.
+  Reused the exact checkpoint/image. Explicit warm capacity fixed cold-start
+  availability. Parlor served the trained Qwen answer, recorded pre-byte
+  fallback after GPU stop, then accepted rollback and signed zero revisions.
+  The temporary key now returns 401; all five original keys remain unchanged;
+  candidate gateway credentials are removed. Modal has zero containers and
+  all three known Baseten deployments are inactive with zero replicas.
+  Seven short gateway replies and four Astra/medium driver calls; no new
+  summaries, evals or training. Receipt SHA `959dab2d453db57535f127393244d3d371f2ab7c4c101f5ece4bc9d6dcc855c7`.
+  This closes the routing mechanics requirement below, not model improvement.
+  Next: finish P8's local dashboard task/result/cleanup display from retained
+  files. Inspect current state once, fix a concrete display issue directly,
+  and verify in Chrome without new inference, traffic, generation or GPUs.
 - [x] Removed the coupling between signed routing and the capture profile.
   A mechanics scope can explicitly set a nonzero `route_revision`; the same
   signature, revision and candidate checks apply without relabeling its data.
   The actual Rust gateway passed one local candidate/fallback check, with four
   mechanics captures and zero inference. The CPU-only Cloudflare image is
-  deployed with existing keys/routes unchanged. No live route was activated.
+  deployed with existing keys/routes unchanged at that milestone. The separate
+  live route proof is recorded above.
 - [x] Added the missing saved-proposal input to Parlor's existing operator
   signer. A pinned proposal supplies the exact candidate artifact and protocol
   URLs; the operator still selects scope, revision, share, expiry and key.
@@ -82,11 +98,13 @@ Current frontier:
   generation. The saved v24 artifacts pass their exact hashes and linked-input
   checks; generating new data still requires the current v29 contract. Direct
   R2 execution made zero inference/provider calls and writes.
-- [~] The Chrome-requested Milk Man verification failed before Bash with
+- [x] The earlier Chrome-requested verification failed before Bash with
   OpenAI `credit_balance_exhausted`. Astra remains at medium through Parlor;
   no fallback or retry was launched. The operator now reports added balance;
   the one-summary/one-eval example above has now verified job API access.
-  The direct code fix is proven; this agent turn and route activation are not.
+  The subsequent Chrome-requested candidate restore completed through the
+  actual Astra/medium owner and heartbeat, then returned idle. The failure is
+  retained; it is not the current owner state.
 - [x] Failed driver calls now save a visible conversation error and preserve
   their exit code, without inventing a final answer or retrying. Both local
   call modes replayed HTTP 429 with no provider access or Bash execution;
@@ -891,9 +909,12 @@ do not restart parked large generation runs.
 - [ ] Add an explicit RL experiment only when needed: rollout generation,
   reward/judge output, training recipe, baseline, evaluation, and result must
   be independently visible.
-- [ ] Complete one coherent application lineage through an unsigned proposal,
+- [x] Complete one coherent application lineage through an unsigned proposal,
   operator-signed canary, candidate success, pre-byte fallback, rollback,
   signed zero route, and provider cleanup.
+  The saved c47 dataset/model/evaluation/proposal continued through live route
+  revisions 1–3. Capture objects identify each accepted route and fallback.
+  This is an isolated mechanics key, not production-qualified customer data.
 
 Acceptance: the whiteboard flywheel is one complete application of the general
 Milk Man engine, with fine-tuning and RL represented truthfully.

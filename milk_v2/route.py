@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import hashlib
@@ -6,10 +7,15 @@ import math
 import os
 from pathlib import Path
 import re
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    __package__ = "milk_v2"
 
 from . import evaluate, summary, train
 from .providers import baseten, modal_gpu
@@ -885,37 +891,73 @@ def reconcile(store, settings, runtime, serving_provider: str) -> dict:
     )
 
 
-def reconcile_gpu_modal(store, settings) -> dict:
-    status, unused = _object(store, settings.scope_prefix + "status/current.json")
-    candidate_reference = status.get("candidate")
-    if not isinstance(candidate_reference, dict):
-        raise RouteError("a current candidate is required for GPU reconciliation")
-    candidate, candidate_body = _object(store, candidate_reference.get("key", ""))
+def _saved_candidate(store, settings, key: str, expected_sha256: str) -> tuple[dict, dict]:
+    if (
+        not isinstance(key, str)
+        or not key.startswith(settings.scope_prefix + "m/")
+        or not key.endswith("/serve.json")
+        or not isinstance(expected_sha256, str)
+        or SHA256.fullmatch(expected_sha256) is None
+    ):
+        raise RouteError("saved candidate reference is invalid")
+    candidate, candidate_body = _object(store, key)
     identity = candidate.get("identity")
     provider = candidate.get("provider")
     artifact_sha256 = candidate.get("artifact_sha256")
     if (
-        status.get("schema_version") != "milk.status.v2"
-        or status.get("scope_id") != settings.scope_id
-        or candidate_reference.get("schema_version") != "milk.candidate-reference.v2"
-        or candidate_reference.get("scope_id") != settings.scope_id
-        or summary.digest(candidate_body) != candidate_reference.get("sha256")
+        summary.digest(candidate_body) != expected_sha256
         or candidate.get("schema_version") != "milk.candidate.v2"
         or candidate.get("scope_id") != settings.scope_id
+        or candidate.get("profile") != settings.profile
         or not isinstance(identity, dict)
         or identity.get("schema_version") != "milk.candidate-artifact-identity.v3"
+        or identity.get("scope_id") != settings.scope_id
+        or identity.get("profile") != settings.profile
         or not isinstance(artifact_sha256, str)
         or SHA256.fullmatch(artifact_sha256) is None
         or summary.digest(identity) != artifact_sha256
+        or candidate.get("candidate_uuid") != str(uuid.uuid5(uuid.NAMESPACE_URL, "milk:candidate:" + artifact_sha256))
+        or key != settings.scope_prefix + f"m/{candidate.get('candidate_uuid')}/serve.json"
         or not isinstance(provider, dict)
+        or provider.get("name") != identity.get("serving_provider")
     ):
-        raise RouteError("current candidate identity is invalid")
+        raise RouteError("saved candidate identity is invalid")
     model_reference = identity.get("model")
-    if not isinstance(model_reference, dict):
-        raise RouteError("current candidate has no model reference")
+    if (
+        not isinstance(model_reference, dict)
+        or model_reference.get("schema_version") != "milk.model-reference.v2"
+        or model_reference.get("scope_id") != settings.scope_id
+        or model_reference.get("key") != settings.scope_prefix + f"m/{model_reference.get('uuid')}/manifest.json"
+    ):
+        raise RouteError("saved candidate has no scoped model reference")
     model, model_body = _object(store, model_reference.get("key", ""))
-    if summary.digest(model_body) != model_reference.get("sha256"):
-        raise RouteError("current candidate model digest differs")
+    if (
+        summary.digest(model_body) != model_reference.get("sha256")
+        or model.get("schema_version") != "milk.model.v2"
+        or model.get("model_uuid") != model_reference.get("uuid")
+        or model.get("scope_id") != settings.scope_id
+        or model.get("profile") != settings.profile
+        or model.get("output_sha256") != identity.get("model_output_sha256")
+    ):
+        raise RouteError("saved candidate model identity differs")
+    return candidate, model
+
+
+def reconcile_gpu_modal(store, settings) -> dict:
+    status, unused = _object(store, settings.scope_prefix + "status/current.json")
+    candidate_reference = status.get("candidate")
+    if (
+        status.get("schema_version") != "milk.status.v2"
+        or status.get("scope_id") != settings.scope_id
+        or not isinstance(candidate_reference, dict)
+        or candidate_reference.get("schema_version") != "milk.candidate-reference.v2"
+        or candidate_reference.get("scope_id") != settings.scope_id
+    ):
+        raise RouteError("a current candidate is required for GPU reconciliation")
+    candidate, model = _saved_candidate(store, settings, candidate_reference.get("key", ""), candidate_reference.get("sha256", ""))
+    identity = candidate["identity"]
+    provider = candidate["provider"]
+    artifact_sha256 = candidate["artifact_sha256"]
 
     if provider.get("name") != "modal":
         raise RouteError("gpu-reconcile-modal requires a Modal candidate")
@@ -999,3 +1041,83 @@ def reconcile_gpu_modal(store, settings) -> dict:
             "state": "zero",
         },
     }
+
+
+def main() -> int:
+    from .state import redact
+    from .store import StoreError, open_store, settings_from_environment
+
+    artifact_sha256 = "candidate-modal"
+    client = None
+    provider_calls = 0
+    try:
+        if sys.argv[1:] not in ([], ["run"], ["status"], ["stop"]):
+            raise RouteError("usage: route.py [run|status|stop]")
+        action = sys.argv[1] if len(sys.argv) > 1 else "status"
+        settings = settings_from_environment()
+        store = open_store(settings)
+        key = _required("MILK_CANDIDATE_KEY")
+        expected_sha256 = _required("MILK_CANDIDATE_SHA256")
+        candidate, model = _saved_candidate(store, settings, key, expected_sha256)
+        identity = candidate["identity"]
+        artifact_sha256 = candidate["artifact_sha256"]
+        provider = candidate["provider"]
+        if provider.get("name") != "modal":
+            raise RouteError("candidate-modal requires a saved Modal candidate")
+        base_url = provider.get("base_url")
+        parsed = urllib.parse.urlsplit(base_url) if isinstance(base_url, str) else None
+        if parsed is None or parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise RouteError("saved candidate endpoint is invalid")
+        plan = modal_gpu.plan(identity, artifact_sha256)
+        if plan["app_name"] != provider.get("app_name") or plan["volume_name"] != provider.get("volume_name"):
+            raise RouteError("Modal app or volume settings differ from the saved candidate")
+        timeout = _integer("MILK_GPU_TIMEOUT_SECONDS", 180, 30, 1800)
+        if action == "run":
+            client = baseten.Client(_required("BASETEN_API_KEY"), min(timeout, 120))
+            live = modal_gpu.ensure(identity, artifact_sha256, model, client)
+            observation = live["observation"]
+            provider_calls = live["provider_calls"]
+        elif action == "stop":
+            live = modal_gpu.stop_candidate(identity, artifact_sha256, model, timeout)
+            observation = live["observation"]
+            provider_calls = live["provider_calls"]
+        else:
+            manifest = modal_gpu._manifest({**model, "candidate_artifact_sha256": artifact_sha256})
+            observation = modal_gpu.observe(plan, manifest)
+            provider_calls = observation["provider_calls"]
+        endpoint = observation.get("endpoint_url")
+        if endpoint is not None and (not isinstance(endpoint, str) or endpoint.rstrip("/") != base_url.rstrip("/")):
+            raise RouteError("observed endpoint differs from the saved candidate; do not activate its route")
+        ready = observation["app_state"] == "deployed" and observation["cache_ready"] and bool(endpoint)
+        zero = observation["app_state"] not in modal_gpu.ACTIVE and observation["active_containers"] == 0
+        print(redact(json.dumps({
+            "state": "complete" if ready or (zero and action != "run") else "active",
+            "identity": artifact_sha256,
+            "artifacts": [{"key": key, "sha256": expected_sha256}, {name: identity["model"][name] for name in ("key", "sha256")}],
+            "inference_calls": 0,
+            "provider_calls": provider_calls + (client.calls if client else 0),
+            "details": {
+                "action": action, "provider": "modal", "scope_id": settings.scope_id,
+                "profile": settings.profile, "candidate_uuid": candidate["candidate_uuid"],
+                "app_name": plan["app_name"], "volume_name": plan["volume_name"],
+                "base_url": base_url, "state": "ready" if ready else "zero" if zero else "active",
+                **{name: observation[name] for name in ("app_id", "app_state", "active_containers", "volume_exists", "cache_ready", "endpoint_url")},
+            },
+        }, separators=(",", ":"))))
+        return 0
+    except (modal_gpu.ProviderError, baseten.ProviderError) as error:
+        provider_calls = max(provider_calls, getattr(error, "provider_calls", 0))
+        message = "candidate provider operation failed; inspect live status before retrying"
+    except (RouteError, StoreError) as error:
+        message = redact(str(error))
+    except Exception as error:
+        message = "candidate operation failed: " + type(error).__name__
+    print(redact(json.dumps({
+        "state": "failed", "identity": artifact_sha256, "inference_calls": 0,
+        "provider_calls": provider_calls + (client.calls if client else 0), "error": message,
+    }, separators=(",", ":"))))
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
