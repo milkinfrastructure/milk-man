@@ -15,6 +15,42 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6: fixed an unbounded gateway read with reqwest's existing
+  per-read timeout; no new dependency or wrapper. Env and Cloudflare pass-through:
+  `MILK_UPSTREAM_READ_TIMEOUT_SECONDS=120`, range 1–3,600. Local actual-gateway
+  execution with one second returned 502 for stalled headers, truncated a
+  stalled body, and completed a stream emitting every 0.3 seconds for over
+  1.5 seconds. Both failures increment `interrupted`; the smoke's final assertion
+  expected one but observed two, confirmed correct from the two existing error
+  paths. Earlier behavior assertions passed; no runtime change was needed.
+  Locked offline build, formatter, Worker dry run and AMD64 cached Docker build
+  completed. Image is 2,363,424 bytes, digest
+  `70ccc64440eba5d32c6ece9449df47695cc1d1840efb4af0900a85aeae081aff`.
+  Deployed Worker `50fb14f6-d92e-493b-8fbd-0a67c4c6f59a`, selected generation
+  `parlor-idle-read-20260906`. Only the instance binding changed; the saved
+  five-key map and upstream/candidate credentials were not edited.
+  Live health: 200, writer alive, both protocols enabled; unauthorized POST:
+  401. Existing Milk Man key: scoped status 200, UUID
+  `1f1a8ad1-5d3d-6cf0-aa19-6d696c6ba72a`, saved capture count 302. The initial
+  default-Python-agent status request got an edge 403; the named Milk status
+  client returned 200, with no auth or policy changes. No model, training or
+  GPU calls; no new traffic capture or research result was generated.
+- [x] September 6: direct production-polish review reconciled six stale partial
+  mechanics entries without new paid runs: provider lifecycle, direct Bash
+  serving workload, Parlor capture, historical stage execution, native history
+  preservation, and native dataset/SFT. P0–P8 now has ten required open entries:
+  six unchecked and four partial. Quality, autonomy, portability and publication
+  requirements remain open. Text-only RL is optional; the full-model trainer's
+  `merged` output directory is not an implemented adapter merge.
+- [x] September 6: `route-eval` can explicitly reuse a pinned baseline while
+  selecting another candidate. Actual saved baseline SHA
+  `1913bcc992e9ecf93ab24ce041e1952cc724cad149086de45aa1f3e25c9f3f1e`
+  retained its answer/timing, required no baseline API credential, and accepted
+  a changed candidate. Source/split, request, API mode, decoder, model and digest
+  mismatches all failed. The registered job also rejected an invalid digest
+  with exit 70 and zero calls. Old objects are unchanged; new comparison results
+  identify reuse and label timing historical. No inference, provider operation,
+  cloud write or new comparison was performed for this change.
 - [x] September 6: both serving jobs now select their returned driver binding
   with `MILK_BASETEN_SERVE_API_MODE` / `MILK_MODAL_SERVE_API_MODE` (default
   `chat_completions`, optional `responses`). Shared six-line enum reader;
@@ -71,7 +107,7 @@ Status notation:
   Chrome billing before the run: Baseten $35.37; Modal $17.56. Carry forward
   $448.22, add $0.26 reported usage and $5 for this four-call check: $453.48
   conservatively allocated against $500, not an exact paid total.
-- [x] Current P0–P8 checklist count after route-eval: six required unchecked
+- [x] P0–P8 checklist count at the route-eval milestone: six required unchecked
   entries and ten partial entries. Excludes historical overnight items and
   explicitly optional RL. The sixteen entries overlap; they are not sixteen
   missing implementations. Earlier seven-item counts omitted partial evidence.
@@ -82,8 +118,8 @@ Status notation:
   existing image, instances and secrets. No model or GPU operation.
   Modal `serve-modal status` now exits 70 when its JSON reports failed startup;
   a local replay verified failed JSON/exit70 with no provider call. Matches
-  the existing Baseten behavior. Current provider drivers still return Chat
-  bindings only; explicit Responses selection is a remaining adapter gap.
+  the existing Baseten behavior. At that milestone provider drivers returned
+  Chat bindings only; the Responses binding change recorded above closes it.
 - [x] Checklist reconciliation: nine unchecked P0–P8 items included the
   already-proven Qwen base and optional RL execution. Marked the Qwen item
   complete from pinned config and retained SFT evidence. Seven required

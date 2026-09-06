@@ -25,6 +25,15 @@ directly. Milk Man is not an intermediary for code edits or routine checks.
 Use it to prove autonomous execution when that is the capability under study.
 Continue production polish using retained data and one-example checks.
 
+Remaining acceptance: ten open P0–P8 entries (six unchecked, four partial),
+excluding optional RL and historical checklists. Six former partial entries
+already proved their stated mechanics; their quality caveats remain below.
+The open work groups into provider portability, representative tuning,
+scope-specific research and task quality, and accurate published operation.
+These are overlapping acceptance criteria, not ten missing implementations.
+We can move to the saved-data research loop now; a driver swap, more generated
+examples, optional RL, or adapter merging is not a prerequisite.
+
 1. Keep Astra through Parlor as the working Milk Man driver. An infrastructure
    model does not have to replace the driver or execute Bash before Milk Man
    can use it. Preserve the failed driver trials; do not make another driver
@@ -59,6 +68,21 @@ Continue production polish using retained data and one-example checks.
 
 Current frontier:
 
+- [x] Parlor now bounds idle upstream reads with
+  `MILK_UPSTREAM_READ_TIMEOUT_SECONDS` (default 120). The native client resets
+  the deadline after data arrives; candidate first-byte checks stay intact.
+  Actual local Rust execution ended stalled headers/body while allowing an
+  active stream to exceed the read timeout. The 2,363,424-byte AMD64 scratch
+  image is deployed as Worker `50fb14f6-d92e-493b-8fbd-0a67c4c6f59a`.
+  Live health and the existing driver key's scoped status return 200;
+  unauthenticated inference returns 401. No model call or GPU operation.
+- [x] Added explicit saved-baseline reuse to `route-eval`. Environment-selected
+  object key and digest must match the original scope, source, split, request,
+  model binding and decoder before any new request. Changing only the candidate
+  reuses the old answer without its API credential. The actual retained
+  baseline passed; six mismatches were rejected, and the registered job rejected
+  an invalid digest with zero inference. Saved timing remains historical.
+  No new comparison, model call, training or cloud write occurred.
 - [x] Added explicit Responses/Chat binding selection to both serving jobs
   through `MILK_BASETEN_SERVE_API_MODE` and `MILK_MODAL_SERVE_API_MODE`.
   Default Chat behavior and deployment identities stay unchanged; selecting a
@@ -739,7 +763,7 @@ without a separate scheduler service.
   Reads are bounded and optional; logs are private. Ordinary status and absent
   app handling ran live, and the retained app ID returned 20 lines directly.
   The parent-driver run also attached 20 recent lines through this status job.
-- [~] Refactor the current fixed controller lifecycle into reusable,
+- [x] Refactor the current fixed controller lifecycle into reusable,
   provider-native scripts for ensure/reuse, status/logs, inference smoke, and
   stop. Both paths ran live; Baseten-owned activation, three requests, and
   verified shutdown completed. Its exact-answer check correctly failed on
@@ -796,11 +820,12 @@ hardcoding that model or provider into the harness.
   verified both API formats and native/fenced Bash, unknown missing counts,
   and unchanged zero-call replay. This improves task measurements; it does
   not repair or repeat the failed owned-120B task or establish a quality win.
-- [~] Direct Bash now proves the existing serving/benchmark/stop path on a
+- [x] Direct Bash now proves the existing serving/benchmark/stop path on a
   5,174-token checkpoint-facts workload. Both prefill settings returned three
   correct measured answers and reached independently verified zero containers.
   This small comparison names no winner and does not prove an agent-completed
-  task. Retain it; next validate the useful Bash workflow before agent execution.
+  task. The later useful Bash and agent executions are retained in P4; this
+  small check is not evidence of representative tuning performance.
 - [x] Accept a measurable objective such as minimum throughput subject to a
   latency, correctness, GPU, or cost constraint.
 - [x] Have Milk Man propose the next configuration from prior measurements,
@@ -908,10 +933,10 @@ example first; do not create more traffic or training merely to test formatting.
   tasks, retain the result even if it loses, and select the next useful action.
   New traffic must resume this loop without restarting completed work.
 
-- [~] Parlor already authenticates official OpenAI SDK traffic, streams both
+- [x] Parlor already authenticates official OpenAI SDK traffic, streams both
   supported protocols, and writes scoped request/response objects
   asynchronously.
-- [~] Summary, readiness, eval, dataset, Qwen3.5-0.8B training, model
+- [x] Summary, readiness, eval, dataset, Qwen3.5-0.8B training, model
   comparison, proposal, routing, fallback, rollback, and teardown have each
   run in historical mechanics lineages.
 - [x] Reconcile retained traffic before new generation: Chrome-prompted Milk Man
@@ -919,14 +944,14 @@ example first; do not create more traffic or training merely to test formatting.
   Eight examples were classified; all 100 exchanges carry tools. Independent
   digest and ancestry reads agree. Readiness remains false; this is not a
   trained or improved model.
-- [~] Preserve native assistant examples without flattening tool history.
+- [x] Preserve native assistant examples without flattening tool history.
   `native-capture` extracted one pinned Responses exchange into 28 context
   messages, two tools, and one next assistant tool-call target. Prior tool
   results remain paired; hidden reasoning is explicitly omitted. Native
   dataset selection and assistant-only training are now demonstrated below.
   Held-out agent-task evaluation remains unfinished; extraction does not
   establish task success.
-- [~] `native-dataset` now derives four examples from the saved 100-exchange
+- [x] `native-dataset` now derives four examples from the saved 100-exchange
   summary: three train, one DEV, zero calibration/sealed. R2 hashes and whole
   task separation were verified; replay makes zero capture reads or model and
   provider calls. The actual Qwen tokenizer preserves tool history and masks
@@ -976,6 +1001,11 @@ example first; do not create more traffic or training merely to test formatting.
 - [ ] Add or reuse scripts for eval generation, synthetic rollouts, scoring or
   rewards, filtering/deduplication, source-group splitting, dataset building,
   training, merging, quantization, evaluation, serving, and cleanup.
+  The active full-model SFT path already has these jobs except a merge operation,
+  which that recipe does not need. Its `merged` directory contains full saved
+  weights, not evidence of an adapter merge. Optional text-only RL has internal
+  rollouts/rewards; native tool-data RL is not implemented. Do not add either
+  branch just to close this broad bundle; select it only for an actual experiment.
 - [ ] Prove each required job with a small, inspected output before increasing
   volume. The prior 100-conversation x 100-case target is one configurable
   experiment, not a core runtime invariant.

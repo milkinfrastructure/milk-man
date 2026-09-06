@@ -288,6 +288,11 @@ DEV by default, or `MILK_ROUTE_EVAL_SPLIT=sealed` for final evaluation only.
 Messages, function tools and output requirements reach both models; returned
 tool calls are never executed. Replies and comparison stay in private object
 storage. Repeating the same configuration reuses the result without model calls.
+When changing only the candidate, set `MILK_ROUTE_EVAL_BASELINE_RESULT_KEY`
+and `MILK_ROUTE_EVAL_BASELINE_RESULT_SHA256` to the saved `baseline.json`.
+The job checks its original request and model settings before reusing it;
+its API credential is then unnecessary. A mismatch stops before any model call.
+Saved timing stays historical; it is not a fresh speed comparison.
 The job does not train, change routes or treat the old answer as ground truth.
 One judge preference is not proof of better task performance. The first live
 check used one saved request and four API calls; its replay used zero.

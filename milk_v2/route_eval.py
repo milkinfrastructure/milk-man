@@ -99,7 +99,33 @@ def prepared(store, settings):
         "decoder_sha256": summary.digest(Path(native_capture.__file__).read_bytes()),
         "judge_code_sha256": summary.digest(Path(semantic.__file__).read_bytes()),
     }
+    baseline_key = os.environ.get("MILK_ROUTE_EVAL_BASELINE_RESULT_KEY")
+    baseline_sha = os.environ.get("MILK_ROUTE_EVAL_BASELINE_RESULT_SHA256")
+    if baseline_key is not None or baseline_sha is not None:
+        if (not baseline_key or not baseline_sha or not re.fullmatch(r"[0-9a-f]{64}", baseline_sha)
+            or not re.fullmatch(re.escape(settings.scope_prefix) + r"j/route-eval/[0-9a-f]{64}/baseline\.json", baseline_key)):
+            raise ValueError("pin BASELINE_RESULT_KEY and BASELINE_RESULT_SHA256 to a saved baseline in this scope")
+        config["baseline_result"] = {"key": baseline_key, "sha256": baseline_sha}
     return config, request, {"messages": context, "tools": tools, "omissions": omissions}
+
+
+def saved_baseline(store, config, request):
+    reference = config.get("baseline_result")
+    if reference is None:
+        return None
+    prefix = reference["key"].rsplit("/", 1)[0] + "/"
+    original = json.loads(store.get(prefix + "config.json").body)
+    raw = store.get(reference["key"]).body
+    value = json.loads(raw)
+    if (summary.digest(original) != prefix.split("/")[-2]
+        or summary.digest(raw) != reference["sha256"]
+        or any(original.get(key) != config[key] for key in
+               ("schema_version", "scope_id", "profile", "source", "request_sha256", "mode", "decoder_sha256"))
+        or original.get("routes", {}).get("baseline") != config["routes"]["baseline"]
+        or value.get("state") != "complete"
+        or value.get("request_sha256") != summary.digest({**request, "model": config["routes"]["baseline"]["model"]})):
+        raise ValueError("saved baseline differs from the selected source, request, decoder or model binding")
+    return {**value, "reused_from": reference, "inference_calls": 0}
 
 
 def read(store, key):
@@ -165,11 +191,13 @@ def run(store, settings, calls):
     previous = read(store, result_key)
     if previous is not None:
         return {**previous, "inference_calls": 0, "details": {**previous["details"], "replay": True}}
-    # Check all credentials before recording an attempt or sending either request.
-    if any(not os.environ.get(route["api_key_env"]) for route in config["routes"].values()):
-        raise ValueError("both route API keys are required")
+    baseline = saved_baseline(store, config, request)
+    # Validate reuse and required credentials before recording a paid attempt.
+    if any(not os.environ.get(route["api_key_env"]) for side, route in config["routes"].items()
+           if side != "baseline" or baseline is None):
+        raise ValueError("API keys are required for routes without saved answers")
     store.create_same(prefix + "config.json", summary.canonical(config))
-    answers = {side: stage(store, prefix, side, lambda side=side: infer(config["routes"][side], config["mode"], request, config["timeout_seconds"], calls), calls)
+    answers = {side: stage(store, prefix, side, lambda side=side: baseline if side == "baseline" and baseline is not None else infer(config["routes"][side], config["mode"], request, config["timeout_seconds"], calls), calls)
                for side in ("baseline", "candidate")}
     order = ["baseline", "candidate"] if int(identity[:2], 16) % 2 == 0 else ["candidate", "baseline"]
 
@@ -189,7 +217,8 @@ def run(store, settings, calls):
               "details": {"source": config["source"], "preference": preference, "replay": False,
                           "measurements": {side: {k: answers[side][k] for k in ("model", "elapsed_ms", "usage", "response_sha256")} for side in order},
                           "result_key": result_key, "commands_executed": 0, "route_activated": False,
-                          "limits": "One next-reply judge preference, not task success or general model improvement. Model aliases are not immutable serving identities."}}
+                          "baseline_reused": baseline is not None,
+                          "limits": "One next-reply judge preference, not task success or general model improvement. Model aliases are not immutable serving identities. Reused baseline timings are historical, not a same-session speed comparison."}}
     store.create_same(result_key, summary.canonical(result))
     return result
 
