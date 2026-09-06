@@ -208,8 +208,9 @@ attach both the result and its run configuration, plus the evaluation data.
 Hashes tie notes to exact files; they do not prove task success, untouched data,
 or a better model. Keep unknown results `null`.
 
-Status reads the record and current stage pointers, then checks whether this
-scope has enough captures for its next `MILK_SUMMARY_THRESHOLDS` checkpoint.
+Status reads the record and current stage pointers, including readiness, then
+checks whether this scope has enough captures for its next
+`MILK_SUMMARY_THRESHOLDS` checkpoint.
 It lists only that scope's capture keys, stopping at the threshold; it does not
 read conversation bodies or call a model. Below the threshold its output stays
 unchanged. `MILK_AUTO_SUMMARY=1` runs the summary job directly at a crossed

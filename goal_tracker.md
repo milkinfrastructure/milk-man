@@ -15,6 +15,33 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6, 02:46 UTC: restored the actual R2 research watch after the
+  completed private sample. One Chrome instruction, one Astra/medium reply:
+  11,516 input / 339 output tokens. Owner 4017 stayed on its original driver
+  UUID, registered the profile inside the saved command, and returned waiting
+  with exit zero. The visible Chrome reply reports 200 summarized and next
+  threshold 1,000. No summary, comparison, training or GPU job; the driver's
+  normal gateway capture remains enabled. Refreshed OpenAI balance before
+  the call: $247.82; Baseten remains $35.37. Carry forward $463.48 plus the $5
+  reservation: $468.48 conservatively allocated of $500, not measured spend.
+  Private profile: `readiness-wake.7HbFVm/live-research.env`; runtime settings
+  load before driver scope/model settings. Driver-only settings lack object
+  storage and returned a zero-call failure during preflight; the full profile
+  returned actual R2 research `4184f48d8803b5d8d994fa2e445a1fe865b8b075c3d91c0a0cdc338272173711`.
+  Summary marker `283b68d47c3bfc9492d99cdf1e0e5cac50a8070de3d6bb3242e5046a5a8f1909`;
+  readiness marker `51fbc923d44f6f43d59bfea19ae3b6ffabfec84b4fb3dbdefb59f40cedcb5dbf`.
+  Brief configuration pause produced no extra turn; the new instruction resumed
+  the same owner. New-traffic threshold crossing remains unproven.
+- [x] September 6: one-line research change watches `readiness/current.json`
+  alongside the existing stage markers. Summary publishes readiness separately;
+  an admission-only update was previously invisible. Actual heartbeat execution
+  against an isolated retained-data mirror registered a watch, received the
+  exact retained readiness pointer, emitted one continuation, re-registered,
+  and stayed quiet on two unchanged checks. Original summary/eval/research
+  markers remained byte-identical. Pointer SHA
+  `3fb1c4fb31402bcacfcf3d3cf3f5bac8635f13f692f8a471ed74a653fd20beab`;
+  private check `readiness-wake.7HbFVm`. No model dispatch, provider call or
+  new production data. This closes marker coverage, not new-traffic research.
 - [x] September 6, 02:34–02:36 UTC: one Chrome instruction completed the
   saved-data research iteration without follow-up steering. Milk Man selected
   `gpt-5.6-sol`, reused the pinned Luna baseline, launched one detached

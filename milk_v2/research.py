@@ -22,7 +22,7 @@ from milk_v2.store import StoreError, open_store, settings_from_environment
 MAX_INPUT_BYTES = 64 * 1024
 MAX_EXPERIMENT_BYTES = 8 * 1024
 DIGEST = re.compile(r"[0-9a-f]{64}\Z")
-POINTERS = ("s/current.json", "e/current.json", "d/current.json", "m/current.json", "v/current.json")
+POINTERS = ("s/current.json", "readiness/current.json", "e/current.json", "d/current.json", "m/current.json", "v/current.json")
 INPUT_FIELDS = {"parent_revision", "objective", "targets", "baseline", "evaluation", "best", "experiments", "next_action", "wake"}
 RECORD_FIELDS = INPUT_FIELDS | {"schema_version", "research_uuid", "scope_id", "profile"}
 

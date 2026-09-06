@@ -70,6 +70,19 @@ a prerequisite.
 
 Current frontier:
 
+- [x] Research watches now include `readiness/current.json`, which controls
+  the next job and is published separately from the summary. An isolated
+  retained-object check published that exact pointer after registration:
+  one continuation, two unchanged checks with none, and unchanged summary,
+  eval and research files. No model was dispatched. This proves detection of
+  a readiness change, not new production traffic or a new research result.
+- [x] Replaced the completed private sample's watch with the actual R2 driver
+  scope. One Chrome instruction used one Astra/medium reply to read status,
+  register the correctly sourced profile and publish a visible `FINAL` report
+  while waiting. Chrome shows 200 summarized, next threshold 1,000. Same owner,
+  no generated test traffic, summaries, evals or GPU jobs. The earlier private
+  comparison is retained. Newly collected traffic crossing that threshold
+  remains unproven; do not lower it or generate traffic merely to mark it done.
 - [x] One Chrome prompt led Milk Man to choose Sol, reuse the pinned Luna
   baseline, run the existing comparison once, resume from the completed job,
   save the tie and register a compact research watch. Three job inference
