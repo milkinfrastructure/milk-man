@@ -12,9 +12,10 @@ Execution order, refreshed September 5 after the happy-path correction:
 
 The one-summary/one-eval formatting check is complete. Do not repeat generation.
 The retained DEV request also completed the new route-evaluation job, with
-zero-call replay and unchanged summary/eval pointers. Next, finish the direct
-captured-conversation dataset path, then connect measured results to the
-existing research/heartbeat loop. Keep new checks small and use saved data.
+zero-call replay and unchanged summary/eval pointers. The direct dataset path
+now accepts untagged captures without changing their splits. Next, connect
+measured results to the existing research/heartbeat loop. Keep new checks small
+and use saved data.
 These checks prove functionality, not model improvement or the full outcome.
 
 Current operator direction: implement gateway, adapter and learning-job changes
@@ -56,6 +57,12 @@ Continue production polish using retained data and one-example checks.
 
 Current frontier:
 
+- [x] The existing `native-dataset` job no longer skips ordinary gateway calls
+  without an agent trajectory ID. It reuses the original request-hash split;
+  tagged conversations still stay together. One saved conversation produced
+  one DEV row with unchanged messages/tools/answer and zero training rows.
+  Registered-job replay read zero captures and made zero model/provider calls.
+  This proves direct capture-to-dataset extraction, not training readiness.
 - [x] Cloudflare now forwards the existing gateway memory/queue limits,
   candidate timeouts, route polling and S3 region/path/timeout settings.
   Defaults and image remain unchanged. Worker version

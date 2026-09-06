@@ -371,8 +371,8 @@ that the example should be used for training.
 
 To build a small dataset from a saved summary, keep `MILK_CHECKPOINT_KEY` and
 `MILK_CHECKPOINT_SHA256` set and run `bin/milk run native-dataset`. It saves one
-supported exchange per task by default; `MILK_NATIVE_DATASET_PER_GROUP` changes
-that count. Tools and past results stay intact, and tasks keep their original
+supported exchange per source group by default; `MILK_NATIVE_DATASET_PER_GROUP`
+changes that count. Tools and past results stay intact, and groups keep their original
 data splits. Repeating it reuses the same files without reading conversations
 or calling a model. The result reports the manifest key, hash and split counts.
 
@@ -385,7 +385,11 @@ object lists exact captures in the same scope; it cannot assign data splits:
 ```
 
 This reads the listed calls without generating a summary or advancing a pointer.
-Related calls remain one task, even when several steps are selected.
+Calls sharing a trajectory ID stay together, even when several steps are
+selected. Untagged calls use the exact request hash. That groups identical
+requests, not related turns or paraphrases; use a shared trajectory ID for
+multi-turn conversations. A captured answer is training material, not a
+verified correct answer.
 
 To select successful training tasks, also set
 `MILK_NATIVE_TASK_OUTCOMES_KEY` and `MILK_NATIVE_TASK_OUTCOMES_SHA256` to a saved

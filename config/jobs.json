@@ -78,7 +78,7 @@
       "timeout_env": "MILK_TRAIN_TIMEOUT_SECONDS"
     },
     "native-dataset": {
-      "description": "Build native tool data from MILK_CHECKPOINT_KEY/SHA256 or MILK_NATIVE_CAPTURES_KEY/SHA256, never both. MILK_NATIVE_DATASET_PER_GROUP defaults to one earliest exchange per trajectory. Optional MILK_NATIVE_TASK_OUTCOMES_KEY/SHA256 selects successful TRAIN tasks; held-out splits stay unchanged. Saves immutable splits and a manifest, not current pointers. Replay reads no captures. No inference/provider calls. Extraction alone proves no improvement.",
+      "description": "Build native data from MILK_CHECKPOINT_KEY/SHA256 or MILK_NATIVE_CAPTURES_KEY/SHA256, never both. MILK_NATIVE_DATASET_PER_GROUP defaults to one exchange per trajectory, or exact request hash when untagged. Optional MILK_NATIVE_TASK_OUTCOMES_KEY/SHA256 selects successful TRAIN tasks; held-out splits stay unchanged. Saves immutable splits and a manifest, not current pointers. Replay reads no captures. No inference/provider calls. Extraction alone proves no improvement.",
       "executable": "milk_v2/native_dataset.py",
       "environment": {
         "required": ["MILK_SCOPE_ID", "MILK_STORE_KIND"],

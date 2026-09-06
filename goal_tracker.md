@@ -15,6 +15,18 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6: removed the native dataset's unconditional skip for missing
+  trajectory IDs. Reused `eval_plan.source_group` and its existing split;
+  manifest metadata now names both trajectory and request-hash grouping.
+  The one saved summary produced dataset `2c7ed446-2b39-5d8d-8737-ed32bb550be8`,
+  manifest SHA `07f4efeea11c86d3337020a87cf7c51dcd74bb325c7d98b5437a0ec394e1fe6b`.
+  DEV=1, TRAIN/calibration/sealed=0. Inspected the row against the original
+  decoded capture: messages, function tools and assistant answer unchanged.
+  No skipped/unsupported sources. Replay read zero captures; both registered
+  executions made zero model/provider calls. Private local objects only;
+  no training or current-pointer writes. Untagged grouping does not establish
+  independence between related turns or paraphrases; a shared trajectory ID
+  is still needed for multi-turn grouping.
 - [x] September 6: direct `route-eval` execution completed on the one-example
   private store. The original untagged capture stayed DEV and unchanged.
   Luna and Astra used the same saved request and low effort; an Astra/medium

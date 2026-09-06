@@ -17,7 +17,7 @@ from milk_v2.store import StoreError, open_store, settings_from_environment
 
 VERSION = "milk.native-dataset.v1"
 SPLITS = ("train", "dev", "calibration", "sealed")
-SPLIT_POLICY = {"version": eval_plan.SPLIT_VERSION, "basis": "scope_trajectory",
+SPLIT_POLICY = {"version": eval_plan.SPLIT_VERSION, "basis": "scope_trajectory_or_request_sha256",
                 "train_bps": 8000, "dev_bps": 1000, "calibration_bps": 500, "sealed_bps": 500}
 
 
@@ -47,7 +47,7 @@ def configuration(settings):
         "schema_version": "milk.native-dataset-identity.v1", "scope_id": settings.scope_id,
         "profile": settings.profile, **parent,
         "student_base": {"model_repo": student.model_repo, "model_revision": student.model_revision, "digest": student.digest},
-        "policy": {"per_group": per_group, "selection": "earliest_supported_per_trajectory", "split_version": eval_plan.SPLIT_VERSION},
+        "policy": {"per_group": per_group, "selection": "earliest_supported_per_source_group", "split_version": eval_plan.SPLIT_VERSION},
         "executor_sha256": summary.digest(Path(__file__).read_bytes()),
         "decoder_sha256": summary.digest(Path(native_capture.__file__).read_bytes()),
         "split_executor_sha256": summary.digest(Path(eval_plan.__file__).read_bytes()),
@@ -144,9 +144,6 @@ def prepare(store, settings, identity, checkpoint_uuid):
     for entry in sorted(sources, key=lambda row: (summary._utc(row.get("completed_at"), "completed_at"), row["key"])):
         if not entry["key"].startswith(settings.scope_prefix + "c/"):
             raise ValueError("capture key is outside the configured scope")
-        if entry["trajectory_id"] is None:
-            skipped["trajectory_id_missing"] += 1
-            continue
         group = eval_plan.source_group(entry["request_sha256"], entry["trajectory_id"], settings.scope_id)
         split = eval_plan.split_for_group(group["sha256"], group["kind"])
         if outcomes is not None and split == "train" and outcomes.get(group["sha256"]) is not True:
