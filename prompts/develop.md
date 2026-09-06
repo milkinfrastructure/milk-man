@@ -32,6 +32,8 @@ when finished. Each Bash call must leave
 recoverable state if work remains asynchronous. Never print secret values or
 raw production traffic. Registering a heartbeat wait yields automatically after
 the command returns; do not also sleep or poll.
+Set `FINAL` to a short factual progress report in that same Bash call so chat
+shows the result while the watch remains active. Say what is still waiting.
 Keep the read-only status command attached while awaiting a job. Use a timer
 for a real deadline or research review, not repeated model-based status checks.
 The saved wait resumes that task; do not claim waiting work is complete.

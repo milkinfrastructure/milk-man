@@ -13,11 +13,12 @@ Execution order, refreshed September 5 after the happy-path correction:
 The one-summary/one-eval formatting check is complete. Do not repeat generation.
 The retained DEV request also completed the new route-evaluation job, with
 zero-call replay and unchanged summary/eval pointers. The direct dataset path
-now accepts untagged captures without changing their splits. The comparison is
-saved through the existing research job; its compact status works through the
-heartbeat observer. Next, prove Milk Man consumes the saved research, chooses
-one useful experiment, runs existing jobs and records its next action without
-command-by-command steering. Keep new checks small and use saved data.
+now accepts untagged captures without changing their splits. Milk Man has now
+chosen and completed one further comparison without command-by-command steering,
+preserved the baseline and saved its next action. The new candidate tied; no
+improvement is claimed. Next, connect newly arriving data to that saved research
+loop without repeating completed work. Implement directly; keep checks small
+and use saved data.
 These checks prove functionality, not model improvement or the full outcome.
 
 Current operator direction: implement gateway, adapter and learning-job changes
@@ -25,14 +26,15 @@ directly. Milk Man is not an intermediary for code edits or routine checks.
 Use it to prove autonomous execution when that is the capability under study.
 Continue production polish using retained data and one-example checks.
 
-Remaining acceptance: ten open P0–P8 entries (six unchecked, four partial),
+Remaining acceptance: ten open P0–P8 entries (five unchecked, five partial),
 excluding optional RL and historical checklists. Six former partial entries
 already proved their stated mechanics; their quality caveats remain below.
 The open work groups into provider portability, representative tuning,
 scope-specific research and task quality, and accurate published operation.
 These are overlapping acceptance criteria, not ten missing implementations.
-We can move to the saved-data research loop now; a driver swap, more generated
-examples, optional RL, or adapter merging is not a prerequisite.
+We can move from the proven saved-data iteration to new-data resumption now;
+a driver swap, more generated examples, optional RL, or adapter merging is not
+a prerequisite.
 
 1. Keep Astra through Parlor as the working Milk Man driver. An infrastructure
    model does not have to replace the driver or execute Bash before Milk Man
@@ -68,6 +70,23 @@ examples, optional RL, or adapter merging is not a prerequisite.
 
 Current frontier:
 
+- [x] One Chrome prompt led Milk Man to choose Sol, reuse the pinned Luna
+  baseline, run the existing comparison once, resume from the completed job,
+  save the tie and register a compact research watch. Three job inference
+  calls (zero baseline, one candidate, two judge) and eight Astra/medium
+  driver replies. Research `c379db54c58daa22603362c74bdd0782a4c8a4275fc35145f19fe5a7f9c6356c`
+  preserves the previous entry and exact source/config/result references.
+  Direct replay makes zero calls. The watch remains idle below 100, with no
+  new inference on unchanged checks. No GPUs, training, generated corpus or
+  route changes. This is one private local DEV example, not a quality win or
+  proof of newly arriving cloud traffic resuming research.
+- [x] Chrome exposed a completed result hidden behind the generic waiting
+  reply. The existing Bash `FINAL` / `FINAL_FILE` mechanism already publishes
+  a report without clearing a heartbeat watch; the tool, entrypoint and job
+  instructions now explain it. Actual local native-tool execution saved a
+  visible final report and retained waiting state with zero paid model calls.
+  No new parser, state field or dashboard dependency. Existing history stays
+  unchanged; new turns receive the updated tool guidance.
 - [x] Parlor now bounds idle upstream reads with
   `MILK_UPSTREAM_READ_TIMEOUT_SECONDS` (default 120). The native client resets
   the deadline after data arrives; candidate first-byte checks stay intact.
@@ -267,9 +286,9 @@ Current frontier:
   Codex supplied the script and saved the report/receipts to R2; this does not
   prove independent script design, a new summary checkpoint or a quality win.
   The same Astra parent is idle. Research now retains seventeen experiments.
-- [ ] Continue P7/P8's scope-specific learning and signed-route application.
-  Preserve completed
-  baselines and every failed trial. A self-hosted driver remains additional
+- [~] Continue P7/P8's scope-specific learning and publication. The signed-route
+  mechanics proof is complete. Preserve completed baselines and every failed
+  trial. A self-hosted driver remains additional
   functionality, not a prerequisite for operating models.
 - [!] The first P5 selection attempt repeated reads and exhausted 20 replies
   without choosing a candidate or starting a GPU. Codex stopped that turn.
@@ -928,10 +947,14 @@ example first; do not create more traffic or training merely to test formatting.
   retains both exact executions and all fourteen experiments. This one-task
   negative result is not general model quality; baseline/evaluation/best stay
   unknown. A clean comparison and useful improvement remain unproven.
-- [ ] Prove one small scope-specific research iteration: inspect captured
+- [~] Prove one small scope-specific research iteration: inspect captured
   data, choose an experiment, run existing jobs, compare on the same held-out
   tasks, retain the result even if it loses, and select the next useful action.
   New traffic must resume this loop without restarting completed work.
+  The one-example Sol/Luna iteration completed autonomously; three job calls,
+  tie retained, previous baseline reused and research watch registered after
+  saving. Replays use zero inference. Newly arriving traffic resuming useful
+  research is the remaining part, not another comparison on this old example.
 
 - [x] Parlor already authenticates official OpenAI SDK traffic, streams both
   supported protocols, and writes scoped request/response objects

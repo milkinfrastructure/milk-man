@@ -15,6 +15,38 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6, 02:34–02:36 UTC: one Chrome instruction completed the
+  saved-data research iteration without follow-up steering. Milk Man selected
+  `gpt-5.6-sol`, reused the pinned Luna baseline, launched one detached
+  `route-eval` job and resumed when it finished. Result: tie on one DEV request,
+  not a quality or fresh-latency win. Job identity
+  `0266bb0358751596415f16c8f7ee2a597473b10083d4b9825ed9ac1479cf96e8`;
+  result SHA `768fc7357fbcade3e75efb9929686116535fc316dfec7f4586ba26dc9cf6b013`.
+  Exactly three inference calls: baseline zero, candidate one, judge two;
+  1,365 input and 1,228 output tokens. Eight separate Astra/medium driver
+  replies used 88,781 input (17,024 cached) and 3,844 output tokens.
+  Worker 61241/child 61246 exited zero at 02:35:07 UTC. No GPU operations,
+  training, new generated corpus, source changes or route changes occurred.
+  Research `c379db54c58daa22603362c74bdd0782a4c8a4275fc35145f19fe5a7f9c6356c`
+  parents `70b6ec86e00c856137f626711643aa72d34ec768e9becaae1a03c279e27d81aa`;
+  the original experiment is unchanged, eleven unique referenced objects
+  match, and best remains null. Watch registered after save/readback with the
+  exact local store/scope profile inside its compact command. Summary/eval
+  pointers are unchanged. Direct route replay and status made zero calls;
+  owner 4017 remains waiting with exit zero. Newly arriving traffic resumption
+  remains unproven. Browser billing before the task: Baseten $35.37, Modal
+  $17.56, OpenAI balance $248.99. Carry forward $453.48 plus the $10 reservation:
+  $463.48 conservatively allocated of $500, not measured billing.
+- [x] September 6: Chrome showed the result buried in work details behind an
+  automatic waiting reply. Reused the existing `FINAL`/`FINAL_FILE` plus wait
+  contract in Bash tool, entrypoint, prompt, skill and README instructions.
+  Actual local native-tool execution publishes a final report and retains the
+  watch in waiting state. One loopback HTTP reply, zero paid model/GPU calls;
+  no runtime branch, new state or UI dependency. The first local check omitted
+  its trajectory environment name and stopped before HTTP; correcting the
+  check environment passed. Private check state: `milk-wait-report-8bn0k83o`.
+  Existing saved history was not rewritten. P0–P8 now has ten open entries:
+  five unchecked and five partial, excluding optional RL.
 - [x] September 6: fixed an unbounded gateway read with reqwest's existing
   per-read timeout; no new dependency or wrapper. Env and Cloudflare pass-through:
   `MILK_UPSTREAM_READ_TIMEOUT_SECONDS=120`, range 1–3,600. Local actual-gateway

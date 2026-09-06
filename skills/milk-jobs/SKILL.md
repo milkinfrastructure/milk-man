@@ -28,6 +28,8 @@ with an intentionally new directory. Keep credentials in environment variables.
   silently fall back to another provider.
 - An `idle` result is successful. If the task requires a later check, register
   a read-only heartbeat watch and yield rather than repeatedly calling a model.
+  In the same Bash call, set `FINAL` to a short result and what is still waiting;
+  chat displays it without clearing the watch. Use `FINAL_FILE` for a saved report.
   For research, use `man heartbeat wait -- /usr/bin/env MILK_RESEARCH_STATUS_COMPACT=1 milk run research status`.
   This watches revisions, stage pointers and summary thresholds without the full
   research history. Read ordinary `milk run research status` after waking.

@@ -226,6 +226,11 @@ The flag is part of the saved command, so resumed checks stay compact. Ordinary
 The record does not start jobs by itself. `wake` describes the plan; the
 heartbeat registers the actual watch.
 
+Inside Milk Man's Bash call, set `FINAL='Result saved. Waiting for new data.'`
+alongside the wait command to show a report in chat without stopping the watch.
+`FINAL_FILE=/private/report.txt` uses an existing report instead. Describe only
+completed work; a waiting job is not finished.
+
 Summaries can classify non-streaming Responses and Chat Completions tool calls
 and results. A tool call alone is not a successful task. Streamed tool-event
 reconstruction and a measured improvement from this training remain unfinished.
