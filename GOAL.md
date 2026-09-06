@@ -56,6 +56,10 @@ next-step wording below.
 
 Current frontier:
 
+- [x] The dataset reader accepts the saved single-eval example, including
+  empty calibration/sealed splits. `bin/milk run dataset` now waits for a
+  separate training source instead of rejecting the valid eval. One direct
+  local run made zero inference/provider calls; training readiness is unchanged.
 - [x] Fixed the dashboard's stale instruction display. A follow-up hidden in
   saved task context is extracted before truncation and shown as the latest
   instruction; new heartbeat turns retain it after completion. Original task

@@ -221,7 +221,7 @@ def _eval_context_v3(store, settings, pointer: dict, pointer_body: bytes) -> tup
         or pointer.get("readiness_pointer_sha256") != manifest.get("readiness_pointer_sha256")
         or not isinstance(counts, dict)
         or set(counts) != set(SPLITS[1:])
-        or any(not isinstance(counts[split], int) or isinstance(counts[split], bool) or counts[split] < 1 for split in SPLITS[1:])
+        or any(not isinstance(counts[split], int) or isinstance(counts[split], bool) or counts[split] < 0 for split in SPLITS[1:])
         or identity.get("target_split_counts") != counts
         or identity.get("target_case_count") != manifest.get("target_case_count")
         or manifest.get("case_count") != manifest.get("target_case_count")

@@ -15,6 +15,15 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6 01:46 UTC: fixed the dataset reader's positive-count
+  assumption for eval splits. The retained one-example manifest contains
+  DEV=1, calibration=0, sealed=0; previously rejected as an identity mismatch.
+  One `bin/milk run dataset` against `one-example.b1jFwi/objects` now returns
+  `idle`, `insufficient_train_sources`, requested=1, available=0 and zero
+  inference/provider calls. Identity:
+  `22e56821a97fe900b72d1be254e59a81580f0e23ec56649965964a5c73fb5156`.
+  No source relabeling, generation, training or cloud writes; all hash, shard
+  and training-readiness checks remain. One-line code correction.
 - [x] September 6 01:42 UTC: dashboard task display repaired directly.
   `heartbeat` preserves the last consumed instruction after finish. Dashboard
   extracts a retained follow-up before its display limit, distinguishes task
