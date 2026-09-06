@@ -12,6 +12,8 @@
   --white: #fff;
   --pink: #ed2d6c;
   --teal: #00a092;
+  --amber: #e6b450;
+  --red: #e54b4b;
 }
 
 * { box-sizing: border-box; }
@@ -159,9 +161,10 @@ body[data-active-view="talk"] .view-heading { display: none; }
 .signal.up,
 .signal.discovered { --lamp: var(--teal); --face: var(--teal); }
 .signal.ready { --lamp: var(--teal); }
-.signal.degraded { --lamp: var(--pink); --face: var(--pink); }
+.signal.waiting { --lamp: var(--amber); --face: var(--amber); }
+.signal.degraded { --lamp: var(--red); --face: var(--red); }
 .signal.detached,
-.signal.down { --lamp: var(--pink); }
+.signal.down { --lamp: var(--red); }
 body[data-heartbeat-online="true"] :is(#heartbeat-signal, #conversation-signal)::before { animation: heartbeat-lamp 3s steps(1, end) infinite; }
 body[data-agent-state="working"] :is(#heartbeat-signal, #conversation-signal)::before { animation-duration: 1.5s; }
 @keyframes heartbeat-lamp { 12%, 36% { background: var(--black); } 24%, 48% { background: var(--face); } }
@@ -197,6 +200,10 @@ body[data-agent-state="working"] :is(#heartbeat-signal, #conversation-signal)::b
 .work-entry time { margin-left: auto; }
 .log-tools { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding: .65rem .75rem; font-size: 14px; }
 .log-output { margin: 0; padding: 1rem; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--white); font: 14px/1.7 "Berkeley Mono", monospace; tab-size: 2; }
+.diagnostics { grid-column: 1 / -1; min-width: 0; margin: 0; }
+.diagnostics > summary { display: flex; align-items: center; gap: .5rem; font-size: 14px; }
+.diagnostics > summary > small { margin-left: auto; }
+.diagnostics .log-output { max-height: 26rem; overflow: auto; }
 .work-update { margin-bottom: .75rem; border-left: 1px dotted var(--white); font-size: 14px; }
 .resume-note { margin: 0 0 1rem; border: 0; border-top: 1px solid var(--white); font-size: 14px; }
 .resume-note > summary { display: flex; flex-wrap: wrap; gap: .25rem .5rem; padding: .45rem 0; border: 0; }

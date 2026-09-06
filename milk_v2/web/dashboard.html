@@ -52,7 +52,7 @@
     </aside>
 
     <details class="chat" id="talk" data-view="talk" aria-label="Milk Man conversation" open>
-      <summary title="Recent instructions and replies stay visible while Milk Man continues. Older work remains in the saved session. Expand work details to inspect commands and their output.">Milk Man <span class="chat-connection" title="The light pulses while the local heartbeat process is connected, including when idle. It does not mean a model call or GPU job is running."><i class="signal" id="conversation-signal" aria-hidden="true"></i><small id="conversation-state">finding session</small></span></summary>
+      <summary title="Recent instructions and replies stay visible while Milk Man continues. Older work remains in the saved session. Expand work details to inspect commands and their output.">Milk Man <span class="chat-connection" title="Green: working. Amber: waiting or paused. Red: failed or disconnected. A pulse means the process is connected, not that a GPU is active."><i class="signal" id="conversation-signal" aria-hidden="true"></i><small id="conversation-state">finding session</small></span></summary>
       <div class="chat-tools"><small id="message-position">Saved conversation</small><button id="latest-message" type="button" title="Read the latest result. This does not send a message or start work.">latest reply ↓</button></div>
       <div class="messages" id="activity" tabindex="0" aria-label="Milk Man transcript">
         <article class="message milk-man"><b>milk man</b><p>Waiting for a local session.</p></article>
@@ -69,6 +69,11 @@
         <div class="prompt-footer"><span class="prompt-state" id="prompt-state" role="status" aria-live="polite">Milk Man is ready.</span><small class="prompt-help" id="prompt-help">⌘ / Ctrl + Enter sends</small></div>
         <details class="prompt-starters"><summary>Suggested instructions <small>draft only</small></summary><div class="drafts"><button type="button" data-draft="Explain the current task, what has finished, and what you are waiting for. Do not start new work.">explain current work</button><button type="button" data-draft="Read the existing summary checkpoint and explain what it tells us. Do not generate more data or start compute.">read saved summary</button></div></details>
       </div>
+    </details>
+    <details class="diagnostics" id="diagnostics">
+      <summary>Raw diagnostics <small id="diagnostic-count">no output</small></summary>
+      <div class="log-tools"><small>For debugging. Includes earlier turns and may begin mid-command.</small><button type="button" id="diagnostic-copy">copy raw log</button></div>
+      <pre class="log-output" id="diagnostic-output"></pre>
     </details>
     </div>
 

@@ -8,70 +8,45 @@ Codex edits code directly, finishes one concrete item, verifies the actual
 result, marks its bracket, commits/pushes, and moves to the next unfinished item.
 Keep the complete outcome and P0–P8 acceptance criteria below intact.
 
-## Mini tracker — September 5, 2026, 20:02 PDT / September 6, 03:02 UTC
+## Remaining-work goal — September 5, 2026, 20:12 PDT / September 6, 03:12 UTC
 
-**Goal:** Milk Man turns a prompt into useful model/compute work through Bash
-jobs and environment settings, saves its results, and continues when new data
-arrives. Parlor routes and captures its calls. The dashboard makes the current
-task, heartbeat, summaries and results understandable without reading logs.
-Codex implements and repairs the code directly; Milk Man proves the resulting
-autonomous workflow. UI work must never require a model call.
+Finish the remaining Milk work by implementing code directly: finish
+publication, provider compatibility and owned-model
+task execution, demonstrate useful inference tuning and held-out task quality,
+close the remaining training-path gaps, and let new traffic resume research
+without repeating completed work. Use Milk Man to demonstrate autonomous
+execution, not to make Codex's code or UI edits.
 
-**Proven:** P0–P3 and P6; gateway capture/routing; environment-selected serving
-jobs and cleanup; one summary/eval example; Qwen SFT execution; small tuning
-comparisons; one autonomous saved-data comparison and zero-call replay; signed
-route/fallback/rollback/zero-route mechanics. These are working capabilities,
-not evidence that a trained model is better. The last candidate tied.
+- [ ] **Publication:** update remaining affected public docs/screenshots,
+  deploy changed surfaces, and make public
+  descriptions distinguish development examples from measured improvements.
+- [ ] **Provider compatibility:** prove only the remaining advertised
+  environment-selected combinations and actual Responses inference on owned
+  Baseten/Modal deployments. Fix any concrete adapter failure.
+- [ ] **Owned 120B driver:** repair the observed task-execution failure, then
+  complete one useful agent task through that endpoint. Keep this additional
+  driver work separate from other jobs; do not repeat an unchanged failed run.
+- [ ] **Inference tuning:** complete one autonomous, comparable experiment on
+  a representative workload using the current runtime; measure task success,
+  latency and throughput together, then retain the measured decision.
+- [ ] **Training-path coverage:** close only missing code or output evidence
+  for the selected full-model SFT recipe. Reuse retained stage outputs; do not
+  add adapter merging or optional RL to satisfy an unrelated checklist.
+- [ ] **Held-out task quality:** make a specific correction based on the
+  failed task, compare baseline and candidate on untouched tasks, and establish
+  useful improvement before selecting a better model.
+- [ ] **New-data continuation:** observe genuinely arriving traffic cross its
+  configured milestone, produce the next summary, and resume useful research
+  once. Do not lower thresholds or generate traffic merely to close this item;
+  continue other implementation work while it waits.
 
-**Remaining:** ten P0–P8 acceptance entries (five partial, five unchecked),
-grouped into seven deliverables below. Optional RL is excluded. A partial item
-needs the stated result, not another implementation of working infrastructure.
-
-1. [~] **Readable live dashboard + publication (P8, three entries). Active.**
-   Idle pulse, connection-loss state, folded instructions/history and a visible
-   laptop composer are fixed directly. Chrome checked desktop/mobile layouts,
-   all five views, reconnect/draft retention and reduced motion. Process logs
-   are one copyable, formatted block; commands keep their output/exit details.
-   Finish the last log-reading check, commit/push this patch and keep the actual
-   owner running. A connected light is not GPU activity. P8 stays open until
-   the remaining shipped surfaces and public claims are reconciled.
-2. [~] **Portable provider jobs (P4).** Serving bindings exist. Prove the
-   remaining advertised environment choices and owned Responses execution;
-   a returned URL alone is not a successful request. Reuse existing resources
-   and one useful request after identifying the exact unproven combination.
-3. [~] **Research resumes on new traffic (P7).** Saved-data iteration and
-   readiness-change detection work. The live R2 watch has 200 summarized and
-   next milestone 1,000. Let actual arriving data trigger the next summary and
-   useful research action once; do not pump traffic, lower the threshold or
-   repeat a completed comparison to manufacture completion. Work on other
-   items while this waits.
-4. [ ] **Required SFT job coverage (P7, two entries).** Match the existing
-   full-model recipe's required jobs to retained small outputs; implement only
-   an actual missing step. Include generation, source-group separation,
-   teacher targets, training, comparison, serving and cleanup. Adapter merging
-   is required only for an adapter recipe; RL is a separate optional experiment.
-   Do not rerun proven stages or add merge/RL work to close a vague checklist.
-5. [~] **Representative inference tuning (P5).** Selection, measurement,
-   rejection and saved results work on small samples. Still need a comparable
-   useful workload under the current runtime, with task success and latency/
-   throughput measured together. Reuse prepared inputs; one change at a time.
-6. [~] **Useful held-out task quality (P7).** Failed Qwen tasks and the Sol/Luna
-   tie are retained. Need a clean comparison on untouched tasks and a useful
-   improvement before selecting a better model. Inspect the failure and make
-   a specific change first; do not buy the same failed training/task run again.
-7. [!] **Owned 120B model drives a complete agent task (P4).** Serving worked;
-   parent task completion failed. Keep Astra/medium through Parlor as the
-   working driver. An owned-driver retry needs a concrete fix for the observed
-   failure. It is additional functionality, not a prerequisite for other jobs.
-
-Execution: finish item 1, then select the next concrete missing code behavior.
-Use current code, retained objects and one-example checks. No fixture suite,
-new runner, broad audit, bulk generation or unchanged paid replay. Preserve
-existing backends, model choices and scripts. Carry forward the cumulative
-$500 development authorization and refresh usage before new paid compute.
-Update this timestamp and the affected bracket after each completed item.
-The detailed P0–P8 criteria below remain authoritative. Older dated sections
-are evidence of past work, not instructions to restart those execution windows.
+Continue with the next executable item. Use minimal code,
+existing environment bindings, retained data and the smallest useful check.
+No new fixture suite, runner, broad audit, bulk generation or unchanged paid
+replay. Carry forward the cumulative $500 development authorization; refresh
+usage before new paid compute. Remove an item from this list when completed
+and record its result in `goal_tracker.md`. Detailed P0–P8 criteria below retain
+the full scope; older dated sections are history, not active work orders.
 
 ## Completed work and retained attempts
 

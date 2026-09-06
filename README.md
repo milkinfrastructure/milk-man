@@ -49,8 +49,10 @@ dashboard after changing its environment.
 The dashboard reads the saved trajectory and heartbeat, sends instructions,
 and shows messages, workspace changes, configured environment names, gateway
 health, and object-store progress. It never displays environment values.
-The heartbeat light pulses while the process is connected, including while
-idle. It stops pulsing on a lost connection; it is not a GPU activity light.
+Green means working, amber means waiting or paused, and red means failed or
+disconnected. The heartbeat light pulses while connected, including while
+waiting. It is not a GPU activity light; a healthy gateway can stay green
+while Milk Man waits.
 Last/next check times show when work is inspected. Open **Full instruction +
 task** for the complete instruction and activity counts. The model
 beside chat comes from the running heartbeat. If no owner reports its model,
@@ -67,9 +69,10 @@ from Bash as shown above so the dashboard has a trajectory to resume.
 ## Dashboard
 
 Chat opens on the latest reply. Earlier messages and long instructions expand
-inline. Commands show their exit status; process output is one readable log
-with formatted JSON and a copy button. The message box stays separate from
-the log, and reconnecting preserves an unsent message. These are development screenshots
+inline. Commands and their output stay folded until opened, with exit status,
+formatted JSON and copy buttons. Raw process logs are in **Raw diagnostics**
+below chat, not mixed with replies. Reconnecting preserves an unsent message.
+These are development screenshots
 from September 4, 2026, not live status.
 
 ![Milk Man conversation](docs/dashboard-conversation.png)

@@ -15,6 +15,19 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6, 03:12 UTC: corrected misleading dashboard status and removed
+  raw process logs from the conversation. Agent, chat and heartbeat now share
+  one state: working green, waiting/paused amber, failed/disconnected red.
+  Watched-job and summary failures override a live parent's healthy state.
+  Failure text cannot be overwritten by the last resource report. Healthy
+  gateway/storage indicators remain independent. Chrome showed all three
+  waiting lamps amber, the latest saved reply readable, and 54 raw diagnostic
+  lines folded separately below chat with no horizontal overflow. No model
+  call, job, GPU operation or process restart. JavaScript syntax and diff
+  checks passed; independent review found no blocker. This supersedes the
+  process-log presentation and pending browser check in the preceding entry.
+  README describes the status colors and separate diagnostics; completed UI
+  work is removed from the remaining-work list. Publication follows in Git.
 - [~] September 6, 03:04 UTC: direct dashboard cleanup, no Milk Man edit task
   or new model/GPU call. Live owner remains waiting at 28 turns. Chrome proved
   connected idle pulse, disconnected pulse stop, reduced motion, unsent draft

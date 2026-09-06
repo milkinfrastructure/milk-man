@@ -788,7 +788,6 @@ function renderMan(man) {
     idle: "ready for a task" + (jobs ? " · jobs active" : ""),
     setup: "session setup needed",
   };
-  light("man", state === "failed" ? "degraded" : man.online ? "up" : "down", man.online ? labels[state] || labels.setup : man.trajectory_id ? "offline · session saved" : "no session yet");
   const driverSource = driver.source === "heartbeat" ? "Running agent" : "Dashboard setting";
   el("driver-detail").textContent = driverSource + ": " + (driverStatus || "not configured") + ". Session: " + (man.trajectory_id || "not started") + ".";
   el("active-model").textContent = driverSource + " · " + (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
@@ -798,10 +797,18 @@ function renderMan(man) {
   const heartbeatStarting = !heartbeatOnline && man.connection === "attached" && man.active;
   const heartbeatRetained = !heartbeatOnline && Boolean(pulse.state || pulse.checked_at || pulse.next_wake);
   const heartbeatState = heartbeatOnline ? (pulse.state || "idle") : heartbeatStarting ? "starting" : heartbeatRetained ? "stopped" : "not started";
-  light("heartbeat", heartbeatOnline ? (pulse.state === "failed" ? "degraded" : "up") : heartbeatStarting ? "ready" : "down", "heartbeat · " + heartbeatState);
   const workActive = heartbeatOnline && (pulse.state === "running" || man.active);
   const summaryJob = pulse.summary || {};
   const summaryState = summaryJob.state;
+  const failure = state === "failed" || pulse.state === "failed" ? "last turn failed"
+    : pulse.watch_state === "failed" ? "watched job failed"
+    : summaryState === "failed" ? "summary job failed" : "";
+  const signalState = !heartbeatOnline ? heartbeatStarting ? "waiting" : "down"
+    : failure ? "degraded" : workActive ? "up" : "waiting";
+  const agentLabel = heartbeatOnline ? failure || labels[state] || state
+    : heartbeatStarting ? "starting" : man.trajectory_id ? "offline · session saved" : "no session yet";
+  light("man", signalState, agentLabel);
+  light("heartbeat", signalState, "heartbeat · " + (failure || heartbeatState));
   runningSummaryThreshold = heartbeatOnline && summaryJob.enabled === true && summaryState === "running" && Number.isInteger(summaryJob.threshold) ? summaryJob.threshold : null;
   renderSummaryMilestone();
   const summaryThreshold = Number.isInteger(summaryJob.threshold) ? summaryJob.threshold.toLocaleString() : "the next milestone";
@@ -812,7 +819,8 @@ function renderMan(man) {
     : summaryState === "complete" ? "Summary saved · checking for the next milestone"
     : pulse.state === "paused" ? "Summary checks paused"
     : "Counting saved objects · next summary at " + summaryThreshold;
-  light("summary-job", !heartbeatOnline ? "down" : summaryJob.enabled !== true ? "ready" : summaryState === "failed" ? "degraded" : "up", summaryLabel);
+  light("summary-job", !heartbeatOnline ? "down" : summaryState === "failed" ? "degraded"
+    : summaryJob.enabled !== true || !["running", "complete"].includes(summaryState) ? "waiting" : "up", summaryLabel);
   el("summary-job-checked").textContent = summaryJob.checked_at
     ? "Last check " + new Date(summaryJob.checked_at * 1000).toLocaleTimeString() + (summaryJob.error ? " · " + summaryJob.error : "") : "";
   document.body.dataset.agentState = workActive ? "working" : heartbeatOnline ? heartbeatState : "disconnected";
@@ -821,11 +829,11 @@ function renderMan(man) {
   const taskPreview = task.split(/\n|(?<=[.!?])\s/)[0];
   el("current-work").textContent = taskPreview.length > 160 ? taskPreview.slice(0, 160) + "…" : taskPreview;
   el("current-work-note").textContent = !heartbeatOnline ? "The task is saved, but no heartbeat owner is connected."
+    : failure ? failure[0].toUpperCase() + failure.slice(1) + ". Review the saved output before continuing."
     : workActive ? (jobs ? "Running: " + jobNames + "." : "Working through the task. New replies appear below.")
     : pulse.state === "waiting" ? pulse.watch_state === "unknown"
       ? "The task is waiting, but its job status is unknown. This does not confirm a worker is running."
       : "Watching " + (pulse.watch_label || "saved work") + (pulse.watch_state ? " · " + pulse.watch_state : "") + ". No model call while unchanged."
-    : pulse.state === "failed" ? "The last turn failed. Open its result below before continuing."
     : pulse.state === "paused" ? "Paused. Send an instruction to continue."
     : "Ready for your next instruction. Idle checks use no model calls.";
   const resource = pulse.watch_resource || {};
@@ -833,7 +841,7 @@ function renderMan(man) {
   resourceRow.replaceChildren();
   resourceRow.hidden = !resource.provider_status;
   if (resource.provider_status) {
-    el("current-work-note").textContent = "Last server report: " + resource.provider_status.toLowerCase().replaceAll("_", " ")
+    if (heartbeatOnline && !failure) el("current-work-note").textContent = "Last server report: " + resource.provider_status.toLowerCase().replaceAll("_", " ")
       + (Number.isInteger(resource.active_replicas) ? " · " + resource.active_replicas + " active replicas" : "") + ".";
     resourceRow.append(node("span", "", "Last reported by the watched job. Zero replicas during a build does not mean it has been stopped. "));
     for (const [key, label] of [["model_id", "model"], ["deployment_id", "deployment"]]) {
@@ -849,19 +857,19 @@ function renderMan(man) {
   el("heartbeat-task").textContent = pulse.task ? "Saved task: " + pulse.task : "No task saved yet.";
   el("heartbeat-brief").hidden = !task || task === pulse.task;
   el("heartbeat-brief").textContent = "Latest instruction: " + task;
-  light("conversation", heartbeatOnline ? (state === "failed" ? "degraded" : "up") : "down",
-    (heartbeatOnline ? labels[state] || state : "agent offline") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : ""));
+  light("conversation", signalState, agentLabel + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : ""));
   el("conversation-state").title = pulse.checked_at ? "Heartbeat last checked " + new Date(pulse.checked_at * 1000).toLocaleString() + ". Unchanged idle checks use no model tokens." : "Heartbeat starts with your next task. Closing this page does not stop it.";
   if (!runLoading) {
     runState(el("prompt-text").value.trim() ? "Unsent message · review it, then send to Milk Man."
+      : failure ? failure[0].toUpperCase() + failure.slice(1) + ". Review its output, then send a correction."
+      : !heartbeatOnline && !heartbeatStarting && man.trajectory_id ? "Milk Man is disconnected. Its session is saved; sending an instruction resumes it."
       : man.queued ? "Your next instruction is queued. Milk Man is finishing the current work."
       : man.active ? "Milk Man is working. A follow-up will wait its turn."
-      : state === "failed" ? "The last turn failed. Review its output, then send a correction."
       : state === "waiting" ? "Connected. Waiting uses no model tokens. You can send a new instruction."
       : state === "paused" ? "Automatic continuation is paused. Send an instruction to continue."
       : state === "setup" ? "Start your first session from Bash; see connect an app → local agent setup."
       : jobs ? "Milk jobs are running outside chat. Their results will appear in object memory."
-      : "Milk Man is ready for the next instruction.", state === "failed");
+      : "Milk Man is ready for the next instruction.", Boolean(failure));
   }
   if (man.workspaces) rows(el("workspaces"), man.workspaces.map(workspace => ({
     title: workspace.name + " · " + (workspace.head || "no git"),
@@ -870,12 +878,18 @@ function renderMan(man) {
   })), "no workspaces");
   if (man.memory) rows(el("memory"), man.memory.map(memory => ({ title: memory.ts || "memory", detail: memory.content })), "no saved memory");
 
+  const activity = man.activity.filter(event => event.type !== "process-output");
+  const diagnosticText = man.activity.filter(event => event.type === "process-output")
+    .map(event => (event.ts ? event.ts + " UTC  " : "") + event.content).join("\n");
+  if (el("diagnostic-output").textContent !== diagnosticText) el("diagnostic-output").textContent = diagnosticText;
+  el("diagnostic-copy").disabled = !diagnosticText;
+  el("diagnostic-count").textContent = diagnosticText ? diagnosticText.split("\n").length + " lines" : "no output";
   const target = el("activity");
   target.setAttribute("aria-busy", man.active ? "true" : "false");
-  const nextActivityKey = String(man.active) + JSON.stringify(man.activity);
+  const nextActivityKey = String(man.active) + JSON.stringify(activity);
   if (nextActivityKey === activityKey) return;
   const initial = !activityKey;
-  const nextFinalKey = JSON.stringify(man.activity.findLast(event => event.type === "final"));
+  const nextFinalKey = JSON.stringify(activity.findLast(event => event.type === "final"));
   const newFinal = nextFinalKey !== finalKey;
   finalKey = nextFinalKey;
   const follow = initial || target.scrollHeight - target.scrollTop - target.clientHeight < 64;
@@ -883,17 +897,17 @@ function renderMan(man) {
   const scroll = target.scrollTop;
   const opened = new Set(Array.from(target.querySelectorAll("details[open]"), value => value.dataset.key));
   target.replaceChildren();
-  if (!man.activity.length) target.append(node("article", "message milk-man", "No conversation yet."));
-  const currentStart = man.activity.findLastIndex(event => event.type === "prompt" && (!event.resumed || event.instruction));
+  if (!activity.length) target.append(node("article", "message milk-man", "No conversation yet."));
+  const currentStart = activity.findLastIndex(event => event.type === "prompt" && (!event.resumed || event.instruction));
   const history = node("details", "chat-history");
   history.dataset.key = "history";
   history.open = opened.has("history");
   history.append(node("summary", "", "Earlier messages"));
   if (currentStart > 0) target.append(history);
   let shownInstruction = "";
-  for (let index = 0; index < man.activity.length;) {
+  for (let index = 0; index < activity.length;) {
     const destination = index < currentStart ? history : target;
-    const event = man.activity[index];
+    const event = activity[index];
     if (event.type === "prompt" && event.resumed) {
       if (event.instruction && event.instruction !== shownInstruction) {
         const instruction = node("article", "message you");
@@ -920,28 +934,14 @@ function renderMan(man) {
     }
     if (!["prompt", "final"].includes(event.type)) {
       const group = [event];
-      while (man.activity[index + group.length] && !["prompt", "final"].includes(man.activity[index + group.length].type)
-        && (man.activity[index + group.length].type === "process-output") === (event.type === "process-output")) group.push(man.activity[index + group.length]);
+      while (activity[index + group.length] && !["prompt", "final"].includes(activity[index + group.length].type)) group.push(activity[index + group.length]);
       const message = node("details", "work-log");
       message.dataset.key = "work:" + index + ":" + (event.ts || event.type);
       message.open = opened.has(message.dataset.key);
-      if (event.type === "process-output") {
-        message.classList.add("process-log");
-        const heading = node("summary", "", "Process log");
-        heading.title = "Raw recent process output, including earlier turns. The buffer can begin mid-command. Commands and saved replies above are easier to read.";
-        heading.append(node("small", "", group.length + " lines"));
-        const content = group.map(entry => (entry.ts ? entry.ts + " UTC  " : "") + entry.content).join("\n");
-        const tools = node("div", "log-tools");
-        tools.append(node("small", "", "Buffered excerpt · newest at bottom · long lines may be shortened"), copyButton("copy log", content, "process log"));
-        message.append(heading, tools, outputBlock(content));
-        destination.append(message);
-        index += group.length;
-        continue;
-      }
       const commands = group.filter(value => value.type === "shell-output").length;
       const updates = group.length - commands;
       const failures = group.filter(value => value.type === "shell-output" && /\nexit (?!0\s*$)\S+\s*$/.test(value.content)).length;
-      const update = group.filter(value => !["shell-output", "process-output"].includes(value.type)).map(value => value.content.split("```")[0].trim().split(/\n\s*\n/)[0]).filter(Boolean).at(-1);
+      const update = group.filter(value => value.type !== "shell-output").map(value => value.content.split("```")[0].trim().split(/\n\s*\n/)[0]).filter(Boolean).at(-1);
       if (update) {
         const preview = node("article", "message work-update");
         preview.append(node("b", "", "Milk Man · update"), node("p", "", update.length > 240 ? update.slice(0, 240) + "…" : update));
@@ -1258,12 +1258,10 @@ document.addEventListener("click", event => {
   const button = event.target.closest?.("[data-draft]");
   if (button) draftPrompt(button.dataset.draft);
   const detail = event.target.closest?.(".work-log > summary, .work-entry > summary")?.parentElement;
-  if (detail && !detail.open) requestAnimationFrame(() => {
-    if (detail.classList.contains("process-log")) el("activity").scrollTop = el("activity").scrollHeight;
-    else revealActivity(detail);
-  });
+  if (detail && !detail.open) requestAnimationFrame(() => revealActivity(detail));
 });
 el("run-form").addEventListener("submit", startRun);
+el("diagnostic-copy").addEventListener("click", () => copyValue(el("diagnostic-output").textContent, "raw diagnostics"));
 el("prompt-text").addEventListener("keydown", event => {
   if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
     event.preventDefault();
