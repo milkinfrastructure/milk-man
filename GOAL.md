@@ -10,17 +10,12 @@ Keep the complete outcome and P0–P8 acceptance criteria below intact.
 
 Execution order, refreshed September 5 after the happy-path correction:
 
-Immediate operator instruction: validate one saved conversation through one
-summary and one generated eval, inspect their JSON, and stop generation. Use
-the existing jobs with one-example environment settings and no repair turns.
-Keep the original capture unchanged in a private local store; do not advance
-production pointers. No new traffic, bulk generation, training, GPUs, route
-activation or repeated production checks for this step. Fix concrete failures
-directly, then commit the minimal working code. This proves functionality and
-formatting, not model quality or completion of the broader outcome below.
-The operator reports adding OpenAI balance; verify access through useful work,
-not a separate credit probe. This instruction takes precedence over the older
-next-step wording below.
+The one-summary/one-eval formatting check is complete. Do not repeat generation.
+The retained DEV request also completed the new route-evaluation job, with
+zero-call replay and unchanged summary/eval pointers. Next, finish the direct
+captured-conversation dataset path, then connect measured results to the
+existing research/heartbeat loop. Keep new checks small and use saved data.
+These checks prove functionality, not model improvement or the full outcome.
 
 Current operator direction: implement gateway, adapter and learning-job changes
 directly. Milk Man is not an intermediary for code edits or routine checks.
@@ -846,11 +841,18 @@ the next experiment. Keep final held-out data outside both training and tuning.
 Heartbeat counting and milestone summaries remain separate. Validate one saved
 example first; do not create more traffic or training merely to test formatting.
 
-- [ ] Add the missing environment-selected route-evaluation job using retained
+- [x] Add the missing environment-selected route-evaluation job using retained
   held-out requests, existing inference clients and object storage. Preserve
   messages/tools; compare replies automatically and retain exact input/model
   settings. Reuse saved results without another paid call. No route activation
   or automatic quality claim from a one-example mechanics check.
+  `bin/milk run route-eval` compared one retained DEV request through two
+  configured Responses bindings and a structured judge. Four model requests;
+  unchanged replay made zero. Request-level formatting constraints are included
+  in judging. Both answers were inspected; Astra was preferred to Luna on this
+  example, with Astra also judging. This is plumbing, not an independent model
+  quality win. Chat and function-tool support are code paths, not new live
+  proofs. No gateway traffic, GPU, training, route or cloud pointer changed.
 
 - [x] Store each scope's research objective, targets, experiment references,
   next action, and planned wake in object storage through a registered job.

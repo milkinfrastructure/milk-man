@@ -15,6 +15,24 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6: direct `route-eval` execution completed on the one-example
+  private store. The original untagged capture stayed DEV and unchanged.
+  Luna and Astra used the same saved request and low effort; an Astra/medium
+  judge returned valid winner/reason JSON. Four calls used 1,399 input and
+  1,092 output tokens. Both answers inspected; candidate preferred, not a
+  training or independent quality win. Unchanged registered-job replay made
+  zero calls. Summary, readiness, eval and status pointer hashes are unchanged.
+  Result identity `9f7f894927253e02dca0b78f31398a7fa1cd302da0058480f9eabc0736f8055a`;
+  result SHA `4e65080e0e905160a23f65c9a07756194f15902b9b24cd102a8a65e3c5565345`.
+  Private prefix: `one-example.b1jFwi/objects/milk/v2/scopes/aeaa9585-74c8-43ea-b6e5-070b60c40619/j/route-eval/`.
+  No gateway requests, R2 writes, GPU starts, training or route changes.
+  Chrome billing before the run: Baseten $35.37; Modal $17.56. Carry forward
+  $448.22, add $0.26 reported usage and $5 for this four-call check: $453.48
+  conservatively allocated against $500, not an exact paid total.
+- [x] Current P0–P8 checklist count after route-eval: six required unchecked
+  entries and ten partial entries. Excludes historical overnight items and
+  explicitly optional RL. The sixteen entries overlap; they are not sixteen
+  missing implementations. Earlier seven-item counts omitted partial evidence.
 - [x] September 6: direct gateway/adapter polish. Cloudflare's Worker now
   passes documented optional runtime settings instead of dropping them or
   forcing R2-only defaults. Local environment check and Wrangler dry run

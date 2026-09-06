@@ -44,6 +44,17 @@
   },
   "operate_order": ["summary", "eval", "dataset", "train", "evaluate"],
   "jobs": {
+    "route-eval": {
+      "description": "Compare one pinned held-out request against two native Responses or Chat URLs and an automatic judge. MILK_ROUTE_EVAL_SPLIT defaults to dev; sealed is for final evaluation. Preserves messages/function tools, but never executes tools. Saves private replies, timing, usage and preference. Replay makes no paid calls; failed/unfinished stages require inspection. Never trains, relabels holdouts, activates routes or claims general quality.",
+      "executable": "milk_v2/route_eval.py",
+      "environment": {
+        "required": ["MILK_SCOPE_ID", "MILK_STORE_KIND", "MILK_ROUTE_EVAL_CAPTURE_KEY", "MILK_ROUTE_EVAL_CAPTURE_SHA256", "MILK_ROUTE_EVAL_BASELINE_URL", "MILK_ROUTE_EVAL_BASELINE_MODEL", "MILK_ROUTE_EVAL_BASELINE_API_KEY", "MILK_ROUTE_EVAL_CANDIDATE_URL", "MILK_ROUTE_EVAL_CANDIDATE_MODEL", "MILK_ROUTE_EVAL_CANDIDATE_API_KEY", "MILK_EVAL_BASE_URL", "MILK_EVAL_MODEL", "MILK_EVAL_API_KEY"],
+        "optional": ["MILK_SCOPE_PROFILE", "MILK_STORE_ROOT", "MILK_STORE_ENDPOINT", "MILK_STORE_REGION", "MILK_STORE_BUCKET", "MILK_STORE_ACCESS_KEY_ID", "MILK_STORE_SECRET_ACCESS_KEY", "MILK_STORE_SESSION_TOKEN", "MILK_STORE_PATH_STYLE", "MILK_STORE_TIMEOUT_SECONDS", "MILK_ROUTE_EVAL_SPLIT", "MILK_ROUTE_EVAL_BASELINE_REVISION", "MILK_ROUTE_EVAL_CANDIDATE_REVISION", "MILK_ROUTE_EVAL_MAX_OUTPUT_TOKENS", "MILK_ROUTE_EVAL_TIMEOUT_SECONDS", "MILK_ROUTE_EVAL_JOB_TIMEOUT_SECONDS", "MILK_EVAL_API_MODE", "MILK_EVAL_MAX_OUTPUT_TOKENS", "MILK_EVAL_MAX_TURNS", "MILK_REASONING_EFFORT"]
+      },
+      "status": false,
+      "stop": false,
+      "timeout_env": "MILK_ROUTE_EVAL_JOB_TIMEOUT_SECONDS"
+    },
     "candidate-modal": {
       "description": "Start, inspect or stop an existing Modal candidate pinned by MILK_CANDIDATE_KEY/SHA256. Reuses its exact trained files, serving image and model settings. No generation, training, proposal or route write. Status and stop inspect live resources, not historical cleanup receipts. Run also needs BASETEN_API_KEY and MILK_CANDIDATE_API_KEY. Ready means deployed with its saved cache and endpoint; model answers are checked separately.",
       "executable": "milk_v2/route.py",

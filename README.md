@@ -263,6 +263,20 @@ the model returns text; it cannot run Bash. Save stdout as the result and check
 the exit status. Use `bin/background` for long calls and the original serving
 job's `stop` command for cleanup. Changing the parent driver is not required.
 
+To compare replies on a saved request, run `bin/milk jobs route-eval` for its
+settings, then `bin/milk run route-eval`. Pin the capture with
+`MILK_ROUTE_EVAL_CAPTURE_KEY` and `MILK_ROUTE_EVAL_CAPTURE_SHA256`. Configure
+`MILK_ROUTE_EVAL_BASELINE_URL/MODEL/API_KEY` and the corresponding `CANDIDATE`
+variables; URLs must use the capture's Responses or Chat Completions protocol.
+`MILK_EVAL_*` selects the judge. Whole source groups keep their existing splits:
+DEV by default, or `MILK_ROUTE_EVAL_SPLIT=sealed` for final evaluation only.
+Messages, function tools and output requirements reach both models; returned
+tool calls are never executed. Replies and comparison stay in private object
+storage. Repeating the same configuration reuses the result without model calls.
+The job does not train, change routes or treat the old answer as ground truth.
+One judge preference is not proof of better task performance. The first live
+check used one saved request and four API calls; its replay used zero.
+
 The serving result also records deployment, weight-loading, and readiness times
 in `details.observation.startup`. Status keeps those original measurements.
 They include provider checks and may use warm caches; they are not GPU-only

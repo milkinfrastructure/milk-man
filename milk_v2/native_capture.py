@@ -110,11 +110,9 @@ def tool_sequence(context, targets, tools):
                 pending.add(entry["id"])
 
 
-def decode(envelope, request, response):
-    require(not envelope.get("streaming"), "streaming_not_supported")
-    require(isinstance(request, dict) and isinstance(response, dict), "invalid_protocol_body")
+def decode_request(request, mode):
+    require(isinstance(request, dict), "invalid_protocol_body")
     require(not request.get("previous_response_id") and not request.get("conversation"), "server_side_history_missing")
-    mode = envelope.get("endpoint")
     require(mode in {"responses", "chat_completions"}, "unsupported_endpoint")
     tools = []
     require(isinstance(request.get("tools", []), list), "invalid_tool_definitions")
@@ -127,7 +125,6 @@ def decode(envelope, request, response):
     require(len({tool["function"]["name"] for tool in tools}) == len(tools), "duplicate_tool_definition")
     omissions = {"reasoning_items": 0, "encrypted_reasoning_items": 0}
     if mode == "responses":
-        require(response.get("status") == "completed", "incomplete_assistant_turn")
         inputs = request.get("input", [])
         if isinstance(inputs, str):
             inputs = [{"role": "user", "content": inputs}]
@@ -135,12 +132,24 @@ def decode(envelope, request, response):
         if request.get("instructions"):
             require(isinstance(request["instructions"], str), "unsupported_instructions")
             context.insert(0, {"role": "system", "content": request["instructions"]})
+    else:
+        context = messages(request.get("messages"), mode, omissions)
+    require(bool(context), "missing_message_history")
+    return context, tools, omissions
+
+
+def decode(envelope, request, response):
+    require(not envelope.get("streaming"), "streaming_not_supported")
+    require(isinstance(response, dict), "invalid_protocol_body")
+    mode = envelope.get("endpoint")
+    context, tools, omissions = decode_request(request, mode)
+    if mode == "responses":
+        require(response.get("status") == "completed", "incomplete_assistant_turn")
         targets = messages(response.get("output"), mode, omissions)
     else:
         choices = response.get("choices")
         require(isinstance(choices, list) and len(choices) == 1 and isinstance(choices[0], dict), "multiple_or_missing_choices")
         require(choices[0].get("finish_reason") in {"stop", "tool_calls"}, "incomplete_assistant_turn")
-        context = messages(request.get("messages"), mode, omissions)
         targets = messages([choices[0].get("message")], mode, omissions)
     require(bool(context) and bool(targets), "no_visible_assistant_target")
     require(any(message.get("tool_calls") or (bool(message["content"]) if isinstance(message["content"], str)
