@@ -49,8 +49,10 @@ dashboard after changing its environment.
 The dashboard reads the saved trajectory and heartbeat, sends instructions,
 and shows messages, workspace changes, configured environment names, gateway
 health, and object-store progress. It never displays environment values.
-The heartbeat strip shows the last check, next wake, and idle-check count.
-Open **Full task + activity counts** for the complete instruction. The model
+The heartbeat light pulses while the process is connected, including while
+idle. It stops pulsing on a lost connection; it is not a GPU activity light.
+Last/next check times show when work is inspected. Open **Full instruction +
+task** for the complete instruction and activity counts. The model
 beside chat comes from the running heartbeat. If no owner reports its model,
 the page labels the dashboard setting instead. Change a model at an idle
 boundary: stop the heartbeat, load the new environment, and resume the same
@@ -64,8 +66,10 @@ from Bash as shown above so the dashboard has a trajectory to resume.
 
 ## Dashboard
 
-Chat shows the reply, expandable command output, and the heartbeat beside it.
-The input stays separate from the logs. These are real development screenshots
+Chat opens on the latest reply. Earlier messages and long instructions expand
+inline. Commands show their exit status; process output is one readable log
+with formatted JSON and a copy button. The message box stays separate from
+the log, and reconnecting preserves an unsent message. These are development screenshots
 from September 4, 2026, not live status.
 
 ![Milk Man conversation](docs/dashboard-conversation.png)

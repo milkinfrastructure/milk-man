@@ -1,6 +1,6 @@
 # Milk evidence and execution tracker
 
-Updated: 2026-09-05
+Updated: 2026-09-06
 
 This is the state ledger. [GOAL.md](GOAL.md) is the sole execution guide;
 `PRD.md` is not an execution input. The former 1,874-line tracker remains in Git
@@ -15,6 +15,17 @@ Status notation:
 
 ## Executive state
 
+- [~] September 6, 03:04 UTC: direct dashboard cleanup, no Milk Man edit task
+  or new model/GPU call. Live owner remains waiting at 28 turns. Chrome proved
+  connected idle pulse, disconnected pulse stop, reduced motion, unsent draft
+  retention, desktop composer visibility, 390px layout and all five views.
+  Earlier messages and long instructions fold inline. Process logs are one
+  copyable block with readable JSON, separate from commands and saved replies.
+  The final newest-output-on-open adjustment still needs a browser recheck;
+  Chrome detached before that refresh. No process was restarted. UI changes
+  remain local pending that final check/publication. GOAL.md now starts with
+  a timestamped seven-deliverable list mapping ten open acceptance entries;
+  historical windows are explicitly historical and optional RL is excluded.
 - [x] September 6, 02:46 UTC: restored the actual R2 research watch after the
   completed private sample. One Chrome instruction, one Astra/medium reply:
   11,516 input / 339 output tokens. Owner 4017 stayed on its original driver

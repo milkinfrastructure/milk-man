@@ -8,67 +8,72 @@ Codex edits code directly, finishes one concrete item, verifies the actual
 result, marks its bracket, commits/pushes, and moves to the next unfinished item.
 Keep the complete outcome and P0–P8 acceptance criteria below intact.
 
-Execution order, refreshed September 5 after the happy-path correction:
+## Mini tracker — September 5, 2026, 20:02 PDT / September 6, 03:02 UTC
 
-The one-summary/one-eval formatting check is complete. Do not repeat generation.
-The retained DEV request also completed the new route-evaluation job, with
-zero-call replay and unchanged summary/eval pointers. The direct dataset path
-now accepts untagged captures without changing their splits. Milk Man has now
-chosen and completed one further comparison without command-by-command steering,
-preserved the baseline and saved its next action. The new candidate tied; no
-improvement is claimed. Next, connect newly arriving data to that saved research
-loop without repeating completed work. Implement directly; keep checks small
-and use saved data.
-These checks prove functionality, not model improvement or the full outcome.
+**Goal:** Milk Man turns a prompt into useful model/compute work through Bash
+jobs and environment settings, saves its results, and continues when new data
+arrives. Parlor routes and captures its calls. The dashboard makes the current
+task, heartbeat, summaries and results understandable without reading logs.
+Codex implements and repairs the code directly; Milk Man proves the resulting
+autonomous workflow. UI work must never require a model call.
 
-Current operator direction: implement gateway, adapter and learning-job changes
-directly. Milk Man is not an intermediary for code edits or routine checks.
-Use it to prove autonomous execution when that is the capability under study.
-Continue production polish using retained data and one-example checks.
+**Proven:** P0–P3 and P6; gateway capture/routing; environment-selected serving
+jobs and cleanup; one summary/eval example; Qwen SFT execution; small tuning
+comparisons; one autonomous saved-data comparison and zero-call replay; signed
+route/fallback/rollback/zero-route mechanics. These are working capabilities,
+not evidence that a trained model is better. The last candidate tied.
 
-Remaining acceptance: ten open P0–P8 entries (five unchecked, five partial),
-excluding optional RL and historical checklists. Six former partial entries
-already proved their stated mechanics; their quality caveats remain below.
-The open work groups into provider portability, representative tuning,
-scope-specific research and task quality, and accurate published operation.
-These are overlapping acceptance criteria, not ten missing implementations.
-We can move from the proven saved-data iteration to new-data resumption now;
-a driver swap, more generated examples, optional RL, or adapter merging is not
-a prerequisite.
+**Remaining:** ten P0–P8 acceptance entries (five partial, five unchecked),
+grouped into seven deliverables below. Optional RL is excluded. A partial item
+needs the stated result, not another implementation of working infrastructure.
 
-1. Keep Astra through Parlor as the working Milk Man driver. An infrastructure
-   model does not have to replace the driver or execute Bash before Milk Man
-   can use it. Preserve the failed driver trials; do not make another driver
-   swap, parser experiment, race-condition audit or log check the next task.
-   The operator-selected Astra effort is now `medium`, not `max`. Run new
-   product work from the current checkout. Keep old measurements as historical
-   references; do not pin the working harness to old code just to reuse them.
-   When a controlled comparison is actually needed, run both sides on the
-   current runtime rather than present mixed-runtime results as comparable.
-2. The useful start/use/save/stop workflow is complete: Milk Man ran the
-   prepared script, waited through its heartbeat, reviewed the model's report,
-   and finished without follow-up steering. After the context repair, Milk Man
-   selected and measured one P5 candidate, reused the saved baseline, rejected
-   the slower setting and retained its results. Next, continue the P7
-   application using current code and retained evaluation/model artifacts.
-   The scope-specific learning requirement remains open; it does not justify
-   another outdated-runtime trial as the next product step.
-   Keep provider/model selection in environment settings. No new runner,
-   bulk generation, unchanged training repeat or format-only benchmark.
-   The old-runtime captured-demonstration trial was cancelled during startup
-   on user direction, before child inference. Preserve its preparation and
-   cleanup; do not restart it. Proceed with current-runtime application work.
-3. Implement the first missing or broken step directly with minimal code,
-   then demonstrate the working path through Milk Man. The shared completion
-   check and native tool-choice configuration are locally verified. Do not
-   expand them into a validation project. A future owned-driver trial remains
-   separate and needs a concrete change addressing its observed failure.
-4. Keep scope-specific research, untouched evaluation, the complete whiteboard
-   application, signed routing and public operation in the outcome. Mark each
-   actual result, retain failures, commit/push working changes, and move on.
-   The cumulative development authorization remains $500, not a new budget.
+1. [~] **Readable live dashboard + publication (P8, three entries). Active.**
+   Idle pulse, connection-loss state, folded instructions/history and a visible
+   laptop composer are fixed directly. Chrome checked desktop/mobile layouts,
+   all five views, reconnect/draft retention and reduced motion. Process logs
+   are one copyable, formatted block; commands keep their output/exit details.
+   Finish the last log-reading check, commit/push this patch and keep the actual
+   owner running. A connected light is not GPU activity. P8 stays open until
+   the remaining shipped surfaces and public claims are reconciled.
+2. [~] **Portable provider jobs (P4).** Serving bindings exist. Prove the
+   remaining advertised environment choices and owned Responses execution;
+   a returned URL alone is not a successful request. Reuse existing resources
+   and one useful request after identifying the exact unproven combination.
+3. [~] **Research resumes on new traffic (P7).** Saved-data iteration and
+   readiness-change detection work. The live R2 watch has 200 summarized and
+   next milestone 1,000. Let actual arriving data trigger the next summary and
+   useful research action once; do not pump traffic, lower the threshold or
+   repeat a completed comparison to manufacture completion. Work on other
+   items while this waits.
+4. [ ] **Required SFT job coverage (P7, two entries).** Match the existing
+   full-model recipe's required jobs to retained small outputs; implement only
+   an actual missing step. Include generation, source-group separation,
+   teacher targets, training, comparison, serving and cleanup. Adapter merging
+   is required only for an adapter recipe; RL is a separate optional experiment.
+   Do not rerun proven stages or add merge/RL work to close a vague checklist.
+5. [~] **Representative inference tuning (P5).** Selection, measurement,
+   rejection and saved results work on small samples. Still need a comparable
+   useful workload under the current runtime, with task success and latency/
+   throughput measured together. Reuse prepared inputs; one change at a time.
+6. [~] **Useful held-out task quality (P7).** Failed Qwen tasks and the Sol/Luna
+   tie are retained. Need a clean comparison on untouched tasks and a useful
+   improvement before selecting a better model. Inspect the failure and make
+   a specific change first; do not buy the same failed training/task run again.
+7. [!] **Owned 120B model drives a complete agent task (P4).** Serving worked;
+   parent task completion failed. Keep Astra/medium through Parlor as the
+   working driver. An owned-driver retry needs a concrete fix for the observed
+   failure. It is additional functionality, not a prerequisite for other jobs.
 
-Current frontier:
+Execution: finish item 1, then select the next concrete missing code behavior.
+Use current code, retained objects and one-example checks. No fixture suite,
+new runner, broad audit, bulk generation or unchanged paid replay. Preserve
+existing backends, model choices and scripts. Carry forward the cumulative
+$500 development authorization and refresh usage before new paid compute.
+Update this timestamp and the affected bracket after each completed item.
+The detailed P0–P8 criteria below remain authoritative. Older dated sections
+are evidence of past work, not instructions to restart those execution windows.
+
+## Completed work and retained attempts
 
 - [x] Research watches now include `readiness/current.json`, which controls
   the next job and is published separately from the summary. An isolated
@@ -325,7 +330,7 @@ Current frontier:
   landing/docs and local dashboard. Chrome confirms the typeface and narrow
   layout. Font licensing is separate from the repositories' code licenses.
 
-## Overnight execution — September 5, 2026
+## Historical overnight execution — September 5, 2026
 
 Window: 00:45–08:45 America/Los_Angeles (07:45–15:45 UTC). This is the
 ordered execution slice of the full goal below, not a new definition of product
@@ -491,7 +496,7 @@ its full acceptance criteria are actually satisfied.
   concrete failure. A plan, model claim, valid JSON or successful process exit
   does not by itself prove task success, better quality or production routing.
 
-## Current continuation — September 5, 19:10 UTC
+## Historical continuation — September 5, 19:10 UTC
 
 The concurrent 120B comparison is complete. Milk Man inspected the retained
 baseline, justified the prepared one-setting candidate, launched it once,
@@ -1034,9 +1039,11 @@ example first; do not create more traffic or training merely to test formatting.
   from an actual job observation. The live job and idle checks were observed;
   Chrome displayed the saved 200-exchange summary. Its Latest selection now
   follows new checkpoints, while explicitly selected earlier summaries stay put.
-- [ ] Add or reuse scripts for eval generation, synthetic rollouts, scoring or
-  rewards, filtering/deduplication, source-group splitting, dataset building,
-  training, merging, quantization, evaluation, serving, and cleanup.
+- [ ] Finish coverage of the selected full-model SFT recipe using existing
+  scripts: eval generation, teacher targets, filtering/deduplication,
+  source-group splitting, dataset building, training, quantization,
+  evaluation, serving and cleanup. Link each required stage to its retained
+  small output; implement only a demonstrated gap.
   The active full-model SFT path already has these jobs except a merge operation,
   which that recipe does not need. Its `merged` directory contains full saved
   weights, not evidence of an adapter merge. Optional text-only RL has internal

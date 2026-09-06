@@ -114,6 +114,7 @@ function showView() {
   });
   el("view-title").textContent = views[view][0];
   el("view-description").textContent = views[view][1];
+  document.body.dataset.activeView = view;
   const panel = target || el("talk");
   if (panel.tagName === "DETAILS") panel.open = true;
   if (view === "talk" && !chatVisited) {
@@ -282,8 +283,34 @@ function replyBody(text) {
 
 function latestReply() {
   const target = el("activity");
-  const latest = Array.from(target.querySelectorAll("article.result")).at(-1) || target.lastElementChild;
-  if (latest) target.scrollTop += latest.getBoundingClientRect().top - target.getBoundingClientRect().top - 16;
+  const latest = Array.from(target.querySelectorAll(":scope > article.result")).at(-1) || target.lastElementChild;
+  revealActivity(latest);
+}
+
+function revealActivity(item) {
+  const target = el("activity");
+  if (item) target.scrollTop += item.getBoundingClientRect().top - target.getBoundingClientRect().top - 16;
+}
+
+function instructionBody(content) {
+  const body = node("div");
+  body.append(node("p", "", content.length > 500 ? content.slice(0, 280) + "…" : content));
+  if (content.length > 500) {
+    const full = node("details", "reply-code");
+    full.append(node("summary", "", "Full instruction"), node("pre", "", content));
+    body.append(full);
+  }
+  return body;
+}
+
+function outputBlock(content) {
+  const text = content.split("\n").map(line => {
+    if (/^[\[{]/.test(line.trim())) {
+      try { return JSON.stringify(JSON.parse(line), null, 2); } catch {}
+    }
+    return line;
+  }).join("\n");
+  return node("pre", "log-output", text);
 }
 
 function summaryRow(label, value, help, copiedValue) {
@@ -767,6 +794,7 @@ function renderMan(man) {
   el("active-model").textContent = driverSource + " · " + (driver.model || "not configured") + (driver.reasoning_effort ? " · " + driver.reasoning_effort + " reasoning" : "");
   const pulse = man.heartbeat || {};
   const heartbeatOnline = pulse.online === true;
+  document.body.dataset.heartbeatOnline = String(heartbeatOnline);
   const heartbeatStarting = !heartbeatOnline && man.connection === "attached" && man.active;
   const heartbeatRetained = !heartbeatOnline && Boolean(pulse.state || pulse.checked_at || pulse.next_wake);
   const heartbeatState = heartbeatOnline ? (pulse.state || "idle") : heartbeatStarting ? "starting" : heartbeatRetained ? "stopped" : "not started";
@@ -821,14 +849,15 @@ function renderMan(man) {
   el("heartbeat-task").textContent = pulse.task ? "Saved task: " + pulse.task : "No task saved yet.";
   el("heartbeat-brief").hidden = !task || task === pulse.task;
   el("heartbeat-brief").textContent = "Latest instruction: " + task;
-  el("conversation-state").textContent = (man.online ? labels[state] || state : "agent offline") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
+  light("conversation", heartbeatOnline ? (state === "failed" ? "degraded" : "up") : "down",
+    (heartbeatOnline ? labels[state] || state : "agent offline") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : ""));
   el("conversation-state").title = pulse.checked_at ? "Heartbeat last checked " + new Date(pulse.checked_at * 1000).toLocaleString() + ". Unchanged idle checks use no model tokens." : "Heartbeat starts with your next task. Closing this page does not stop it.";
   if (!runLoading) {
     runState(el("prompt-text").value.trim() ? "Unsent message · review it, then send to Milk Man."
       : man.queued ? "Your next instruction is queued. Milk Man is finishing the current work."
       : man.active ? "Milk Man is working. A follow-up will wait its turn."
       : state === "failed" ? "The last turn failed. Review its output, then send a correction."
-      : state === "waiting" ? "Milk Man will continue when the watched job changes or its next review is due."
+      : state === "waiting" ? "Connected. Waiting uses no model tokens. You can send a new instruction."
       : state === "paused" ? "Automatic continuation is paused. Send an instruction to continue."
       : state === "setup" ? "Start your first session from Bash; see connect an app → local agent setup."
       : jobs ? "Milk jobs are running outside chat. Their results will appear in object memory."
@@ -855,14 +884,27 @@ function renderMan(man) {
   const opened = new Set(Array.from(target.querySelectorAll("details[open]"), value => value.dataset.key));
   target.replaceChildren();
   if (!man.activity.length) target.append(node("article", "message milk-man", "No conversation yet."));
+  const currentStart = man.activity.findLastIndex(event => event.type === "prompt" && (!event.resumed || event.instruction));
+  const history = node("details", "chat-history");
+  history.dataset.key = "history";
+  history.open = opened.has("history");
+  history.append(node("summary", "", "Earlier messages"));
+  if (currentStart > 0) target.append(history);
   let shownInstruction = "";
   for (let index = 0; index < man.activity.length;) {
+    const destination = index < currentStart ? history : target;
     const event = man.activity[index];
     if (event.type === "prompt" && event.resumed) {
       if (event.instruction && event.instruction !== shownInstruction) {
         const instruction = node("article", "message you");
-        instruction.append(node("b", "", "Instruction used"), node("p", "", event.instruction));
-        target.append(instruction);
+        const heading = node("div", "message-heading");
+        heading.append(node("b", "", "You"), node("time", "", event.ts ? event.ts + " UTC" : ""));
+        instruction.append(heading, instructionBody(event.instruction));
+        instruction.querySelectorAll("details").forEach(detail => {
+          detail.dataset.key = "instruction:" + index;
+          detail.open = opened.has(detail.dataset.key);
+        });
+        destination.append(instruction);
         shownInstruction = event.instruction;
       }
       const resumed = node("details", "resume-note");
@@ -872,41 +914,56 @@ function renderMan(man) {
       if (event.ts) title.append(node("time", "", event.ts + " UTC"));
       resumed.append(title, node("pre", "", event.content));
       if (event.truncated) resumed.append(node("small", "", "Display shortened. Full text is saved in the session."));
-      target.append(resumed);
+      destination.append(resumed);
       index++;
       continue;
     }
     if (!["prompt", "final"].includes(event.type)) {
       const group = [event];
-      while (man.activity[index + group.length] && !["prompt", "final"].includes(man.activity[index + group.length].type)) group.push(man.activity[index + group.length]);
+      while (man.activity[index + group.length] && !["prompt", "final"].includes(man.activity[index + group.length].type)
+        && (man.activity[index + group.length].type === "process-output") === (event.type === "process-output")) group.push(man.activity[index + group.length]);
       const message = node("details", "work-log");
       message.dataset.key = "work:" + index + ":" + (event.ts || event.type);
       message.open = opened.has(message.dataset.key);
+      if (event.type === "process-output") {
+        message.classList.add("process-log");
+        const heading = node("summary", "", "Process log");
+        heading.title = "Raw recent process output, including earlier turns. The buffer can begin mid-command. Commands and saved replies above are easier to read.";
+        heading.append(node("small", "", group.length + " lines"));
+        const content = group.map(entry => (entry.ts ? entry.ts + " UTC  " : "") + entry.content).join("\n");
+        const tools = node("div", "log-tools");
+        tools.append(node("small", "", "Buffered excerpt · newest at bottom · long lines may be shortened"), copyButton("copy log", content, "process log"));
+        message.append(heading, tools, outputBlock(content));
+        destination.append(message);
+        index += group.length;
+        continue;
+      }
       const commands = group.filter(value => value.type === "shell-output").length;
-      const logs = group.filter(value => value.type === "process-output").length;
-      const updates = group.length - commands - logs;
+      const updates = group.length - commands;
       const failures = group.filter(value => value.type === "shell-output" && /\nexit (?!0\s*$)\S+\s*$/.test(value.content)).length;
       const update = group.filter(value => !["shell-output", "process-output"].includes(value.type)).map(value => value.content.split("```")[0].trim().split(/\n\s*\n/)[0]).filter(Boolean).at(-1);
       if (update) {
         const preview = node("article", "message work-update");
         preview.append(node("b", "", "Milk Man · update"), node("p", "", update.length > 240 ? update.slice(0, 240) + "…" : update));
-        target.append(preview);
+        destination.append(preview);
       }
-      const heading = node("summary", "", "Work details");
-      heading.append(node("small", "", [commands ? commands + " command" + (commands === 1 ? "" : "s") : "", updates ? updates + " update" + (updates === 1 ? "" : "s") : "", logs ? logs + " log line" + (logs === 1 ? "" : "s") : "", failures ? failures + " nonzero exit" + (failures === 1 ? "" : "s") : ""].filter(Boolean).join(" · ")));
+      const heading = node("summary", "", "Commands + output");
+      heading.append(node("small", "", [commands ? commands + " command" + (commands === 1 ? "" : "s") : "", updates ? updates + " update" + (updates === 1 ? "" : "s") : "", failures ? failures + " nonzero exit" + (failures === 1 ? "" : "s") : ""].filter(Boolean).join(" · ")));
       message.append(heading);
       group.forEach((entry, part) => {
         const detail = node("details", "work-entry");
         detail.dataset.key = message.dataset.key + ":" + part;
         detail.open = opened.has(detail.dataset.key);
         const exit = entry.type === "shell-output" ? entry.content.match(/\nexit (\S+)\s*$/)?.[1] : null;
-        const label = entry.type === "shell-output" ? "Command output" : entry.type === "process-output" ? "Process log" : "Model step";
+        const label = entry.type === "shell-output" ? "Bash command" : "Milk Man's working notes";
         const title = node("summary", "", label + (exit != null ? " · exit " + exit : ""));
         if (entry.ts) title.append(node("time", "", entry.ts + " UTC"));
-        detail.append(title, node("pre", "", entry.content));
+        const tools = node("div", "log-tools");
+        tools.append(node("small", "", "Saved output excerpt"), copyButton("copy output", entry.content, "saved output"));
+        detail.append(title, tools, outputBlock(entry.content));
         message.append(detail);
       });
-      target.append(message);
+      destination.append(message);
       index += group.length;
       continue;
     }
@@ -914,27 +971,23 @@ function renderMan(man) {
     if (role === "you") shownInstruction = event.content;
     const message = node("article", "message " + role + (event.type === "final" ? " result" : ""));
     const heading = node("div", "message-heading");
-    heading.append(node("b", "", role === "you" ? "You" : "Milk Man · saved reply"));
+    heading.append(node("b", "", role === "you" ? "You" : "Milk Man"));
     if (event.type === "final") heading.title = "Saved when this turn finished. This is not a live resource or cleanup check.";
     if (event.ts) heading.append(node("time", "", event.ts + " UTC"));
     message.append(heading);
-    if (role === "you" && event.content.length > 500) {
-      const full = node("details", "reply-code");
-      full.append(node("summary", "", "Full instruction"), node("pre", "", event.content));
-      message.append(node("p", "", event.content.slice(0, 300) + "…"), full);
-    } else message.append(event.type === "final" ? replyBody(event.content) : node("p", "", event.content));
+    message.append(event.type === "final" ? replyBody(event.content) : instructionBody(event.content));
     if (event.truncated) message.append(node("small", "", "Display shortened. Full text is saved in the session."));
     message.querySelectorAll("details").forEach((detail, part) => {
       detail.dataset.key = index + ":" + event.ts + ":reply:" + part;
       detail.open = opened.has(detail.dataset.key);
     });
-    target.append(message);
+    destination.append(message);
     index++;
   }
-  const latest = Array.from(target.querySelectorAll("article.result")).at(-1);
+  const latest = Array.from(target.querySelectorAll(":scope > article.result")).at(-1);
   if (latest) latest.classList.add("latest-reply");
   const unread = !follow && (newFinal || el("latest-message").classList.contains("unread"));
-  el("message-position").textContent = unread ? "New reply · your reading position was kept" : "Instructions + replies · work details folded";
+  el("message-position").textContent = unread ? "New reply below" : "Latest conversation";
   el("latest-message").classList.toggle("unread", unread);
   if (follow && (initial || newFinal)) latestReply();
   else if (follow) target.scrollTop = target.scrollHeight;
@@ -1178,6 +1231,8 @@ async function refreshLocal() {
     if (!response.ok) throw Error();
     renderMan((await response.json()).man);
   } catch {
+    document.body.dataset.heartbeatOnline = "false";
+    document.body.dataset.agentState = "disconnected";
     light("man", "detached", "dashboard disconnected from Milk Man");
     light("heartbeat", "down", "heartbeat · connection lost");
     light("summary-job", "down", "Summary status unknown · connection lost");
@@ -1186,7 +1241,7 @@ async function refreshLocal() {
     renderSummaryMilestone();
     el("heartbeat-next").textContent = "unknown while disconnected";
     el("current-work-note").textContent = "Dashboard connection lost. The task may still be running; reconnect before sending another instruction.";
-    el("conversation-state").textContent = "connection lost";
+    light("conversation", "down", "connection lost");
     runState("Cannot reach the local dashboard server. Your task may still be running.", true);
   }
 }
@@ -1202,6 +1257,11 @@ document.querySelectorAll("[data-copy]").forEach(button => button.addEventListen
 document.addEventListener("click", event => {
   const button = event.target.closest?.("[data-draft]");
   if (button) draftPrompt(button.dataset.draft);
+  const detail = event.target.closest?.(".work-log > summary, .work-entry > summary")?.parentElement;
+  if (detail && !detail.open) requestAnimationFrame(() => {
+    if (detail.classList.contains("process-log")) el("activity").scrollTop = el("activity").scrollHeight;
+    else revealActivity(detail);
+  });
 });
 el("run-form").addEventListener("submit", startRun);
 el("prompt-text").addEventListener("keydown", event => {

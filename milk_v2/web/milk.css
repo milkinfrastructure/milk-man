@@ -70,6 +70,7 @@ header > a { color: var(--white); font-size: 14px; text-underline-offset: .25rem
 .view-heading { margin: 1.1rem 0; }
 .view-heading h2 { font-weight: bold; }
 .view-heading p { margin: .25rem 0 0; font-size: 14px; }
+body[data-active-view="talk"] .view-heading { display: none; }
 .task-heading { font-size: 14px; }
 .drafts { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .55rem .75rem; border-top: 1px solid var(--white); font-size: 14px; }
 .drafts button { padding: .25rem .45rem; }
@@ -77,7 +78,7 @@ header > a { color: var(--white); font-size: 14px; text-underline-offset: .25rem
 .carton { width: 2.7rem; height: auto; image-rendering: pixelated; }
 
 .lights { align-items: flex-start; flex-direction: column; gap: .25rem; }
-.workdesk { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 1rem; align-items: start; }
+.workdesk { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 1rem; align-items: start; }
 .heartbeat { grid-column: 2; grid-row: 1; min-width: 0; padding: .9rem; border: 2px outset var(--white); }
 .heartbeat > span { display: flex; align-items: center; gap: .4rem; margin-bottom: .75rem; }
 .heartbeat > details { border: 0; border-top: 1px solid var(--white); margin-top: .75rem; }
@@ -161,22 +162,26 @@ header > a { color: var(--white); font-size: 14px; text-underline-offset: .25rem
 .signal.degraded { --lamp: var(--pink); --face: var(--pink); }
 .signal.detached,
 .signal.down { --lamp: var(--pink); }
-body[data-agent-state="working"] #heartbeat-signal::before { animation: working-lamp 1.2s steps(2, end) infinite; }
-@keyframes working-lamp { 50% { background: var(--black); } }
-@media (prefers-reduced-motion: reduce) { body[data-agent-state="working"] #heartbeat-signal::before { animation: none; } }
+body[data-heartbeat-online="true"] :is(#heartbeat-signal, #conversation-signal)::before { animation: heartbeat-lamp 3s steps(1, end) infinite; }
+body[data-agent-state="working"] :is(#heartbeat-signal, #conversation-signal)::before { animation-duration: 1.5s; }
+@keyframes heartbeat-lamp { 12%, 36% { background: var(--black); } 24%, 48% { background: var(--face); } }
+@media (prefers-reduced-motion: reduce) { body[data-heartbeat-online="true"] :is(#heartbeat-signal, #conversation-signal)::before { animation: none; } }
 
 .chat { grid-column: 1; grid-row: 1; min-width: 0; margin-top: 0; border: 2px inset var(--white); }
 .chat > summary { display: flex; align-items: center; gap: .6rem; }
-.chat > summary > small { margin-left: auto; font-size: 14px; }
-.messages { height: clamp(18rem, 48svh, 34rem); overflow-y: auto; overflow-anchor: none; padding: 1rem; scrollbar-color: var(--white) var(--black); }
-.message { width: min(96%, 48rem); margin: 0 0 1.5rem; padding: .5rem 0 .5rem .9rem; border-left: 2px solid var(--white); }
+.chat[open] > summary::before { content: none; }
+.chat-connection { display: flex; align-items: center; gap: .2rem; margin-left: auto; font-size: 14px; }
+.chat-connection .signal { flex-shrink: 0; }
+.messages { height: clamp(15rem, calc(100svh - 31rem), 36rem); overflow-y: auto; overflow-anchor: none; padding: 1.25rem; scrollbar-color: var(--white) var(--black); }
+.message { width: min(100%, 65ch); margin: 0 0 1.75rem; padding: .65rem 0 .65rem 1rem; border-left: 2px solid var(--white); line-height: 1.65; }
 .message:last-child { margin-bottom: 0; }
 .message b { display: block; margin-bottom: .25rem; }
 .message-heading { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; margin-bottom: .5rem; font-size: 14px; }
 .message-heading b { margin: 0; font-weight: bold; }
 .message-heading time { margin: 0; }
 .message.latest-reply { border-left-color: var(--teal); }
-.message.you { margin-left: auto; padding-right: .75rem; padding-left: 0; border-right: 2px solid var(--pink); border-left: 0; }
+.message.you { width: min(90%, 60ch); margin-left: auto; padding: .75rem 1rem; border: 1px solid var(--white); border-right: 3px solid var(--pink); }
+.message.you p { font-size: 14px; }
 .message.you > b,
 .message.you > time { text-align: right; }
 .message p,
@@ -185,17 +190,20 @@ body[data-agent-state="working"] #heartbeat-signal::before { animation: working-
 .work-log { margin: -.5rem 0 1.25rem; border: 0; border-left: 1px dotted var(--white); font-size: 14px; }
 .work-log > summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: .25rem .5rem; padding: .4rem .75rem; border: 0; }
 .work-log > summary > small { margin-left: auto; }
-.work-log[open] > summary { border-bottom: 1px solid var(--white); }
+.work-log[open] > summary { position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--white); }
 .work-entry { margin: 0; border: 0; border-bottom: 1px solid var(--white); }
 .work-entry:last-child { border-bottom: 0; }
 .work-entry > summary { display: flex; flex-wrap: wrap; gap: .25rem .5rem; padding: .45rem .75rem; border: 0; }
 .work-entry time { margin-left: auto; }
-.work-entry > pre { max-height: 18rem; margin: 0 .75rem .75rem; padding: .65rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 2px inset var(--white); font: inherit; }
+.log-tools { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding: .65rem .75rem; font-size: 14px; }
+.log-output { margin: 0; padding: 1rem; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--white); font: 14px/1.7 "Berkeley Mono", monospace; tab-size: 2; }
 .work-update { margin-bottom: .75rem; border-left: 1px dotted var(--white); font-size: 14px; }
 .resume-note { margin: 0 0 1rem; border: 0; border-top: 1px solid var(--white); font-size: 14px; }
 .resume-note > summary { display: flex; flex-wrap: wrap; gap: .25rem .5rem; padding: .45rem 0; border: 0; }
 .resume-note time { margin-left: auto; }
 .resume-note > pre { max-height: 15rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.chat-history { margin: 0 0 1.25rem; border: 0; border-bottom: 1px solid var(--white); }
+.chat-history > summary { padding: .5rem 0; border: 0; font-size: 14px; }
 .reply-body > p + p { margin-top: .75rem; }
 .reply-body ul { margin: .8rem 0; padding-left: 1.3rem; }
 .reply-body li + li { margin-top: .5rem; }
@@ -224,7 +232,7 @@ body[data-agent-state="working"] #heartbeat-signal::before { animation: working-
 .prompt-state { margin: 0; font-size: 14px; }
 .prompt-state.error { padding-left: .55rem; border-left: 2px solid var(--pink); }
 form { display: grid; grid-template-columns: 1fr 6rem; gap: .6rem; padding: .65rem; }
-textarea { min-width: 0; min-height: 6.5rem; resize: vertical; border: 2px inset var(--white); padding: .75rem; background: var(--black); color: var(--white); outline: 0; }
+textarea { min-width: 0; min-height: 4.5rem; max-height: 12rem; resize: vertical; border: 2px inset var(--white); padding: .75rem; background: var(--black); color: var(--white); outline: 0; }
 form button { align-self: end; min-height: 3rem; border-bottom-color: var(--teal); }
 textarea::placeholder { color: var(--white); opacity: 1; }
 textarea:focus { outline: 2px solid var(--teal); outline-offset: -3px; }
@@ -499,7 +507,7 @@ footer span { font-size: 14px; }
 .summary-delivery > .table-scroll { padding: 0 .75rem; }
 .table-scroll .field-heading { display: flex; align-items: center; gap: .5rem; }
 .summary-delivery .row { grid-column: 1 / -1; }
-@media (max-width: 65rem) {
+@media (max-width: 55rem) {
   .workdesk { grid-template-columns: 1fr; }
   .heartbeat { grid-column: 1; grid-row: 2; }
   .heartbeat .current-work { grid-template-columns: 1fr 1fr; column-gap: 1.5rem; }
@@ -553,8 +561,11 @@ footer span { font-size: 14px; }
   .summary-row:first-child { border-top: 0; }
   .facts .summary-row { border-right: 0; }
   .facts .summary-row:nth-child(2) { border-top: 1px solid var(--white); }
-  .messages { height: max(16rem, 46svh); }
+  .messages { height: max(18rem, 45svh); padding: .85rem; }
   .message { width: 100%; }
+  .message.you { width: 95%; }
+  .chat > summary { flex-wrap: wrap; }
+  .chat-connection { margin-left: 0; }
   .prompt-head { align-items: flex-start; gap: .5rem; }
   .prompt-state { text-align: left; }
   form { grid-template-columns: 1fr; }
