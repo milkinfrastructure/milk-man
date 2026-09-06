@@ -22,6 +22,11 @@ The operator reports adding OpenAI balance; verify access through useful work,
 not a separate credit probe. This instruction takes precedence over the older
 next-step wording below.
 
+Current operator direction: implement gateway, adapter and learning-job changes
+directly. Milk Man is not an intermediary for code edits or routine checks.
+Use it to prove autonomous execution when that is the capability under study.
+Continue production polish using retained data and one-example checks.
+
 1. Keep Astra through Parlor as the working Milk Man driver. An infrastructure
    model does not have to replace the driver or execute Bash before Milk Man
    can use it. Preserve the failed driver trials; do not make another driver
@@ -56,6 +61,12 @@ next-step wording below.
 
 Current frontier:
 
+- [x] Cloudflare now forwards the existing gateway memory/queue limits,
+  candidate timeouts, route polling and S3 region/path/timeout settings.
+  Defaults and image remain unchanged. Worker version
+  `7ff33cbd-e7c9-4ae4-8541-7e2a29928ff0` is deployed.
+- [x] Modal failed-startup status now exits 70 instead of 0, matching Baseten.
+  A local status replay verified the shell result without provider calls.
 - [x] Added a read-only `agent-compare` job for saved agent-task results and
   their pinned original configs. The retained held-out Qwen pair has matching
   recorded inputs and two failed task checks; no winner or speed improvement.
@@ -936,8 +947,10 @@ example first; do not create more traffic or training merely to test formatting.
 - [ ] Prove each required job with a small, inspected output before increasing
   volume. The prior 100-conversation x 100-case target is one configurable
   experiment, not a core runtime invariant.
-- [ ] Keep Qwen3.5-0.8B as the first student workload. SFT is the current
+- [x] Keep Qwen3.5-0.8B as the first student workload. SFT is the current
   demonstrated training mechanic; do not call it RL.
+  `config/student.json` pins the base and the completed native SFT receipts
+  above retain the trained outputs. This was a stale unchecked item.
 - [ ] Add an explicit RL experiment only when needed: rollout generation,
   reward/judge output, training recipe, baseline, evaluation, and result must
   be independently visible.

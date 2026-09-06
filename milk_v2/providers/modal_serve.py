@@ -387,6 +387,8 @@ def main() -> None:
                 observed, calls = stop(value, path)
                 output = result(value, "complete", observed, calls)
         print(json.dumps(output, sort_keys=True, separators=(",", ":")))
+        if output["state"] in {"failed", "blocked"}:
+            raise SystemExit(70 if output["state"] == "failed" else 75)
     except BlockingIOError:
         print(json.dumps(result(value or UNKNOWN, "blocked", None, 0, "another Modal serving operation is active")))
         raise SystemExit(75)

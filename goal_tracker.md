@@ -15,6 +15,20 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6: direct gateway/adapter polish. Cloudflare's Worker now
+  passes documented optional runtime settings instead of dropping them or
+  forcing R2-only defaults. Local environment check and Wrangler dry run
+  passed; deployed version `7ff33cbd-e7c9-4ae4-8541-7e2a29928ff0` retains the
+  existing image, instances and secrets. No model or GPU operation.
+  Modal `serve-modal status` now exits 70 when its JSON reports failed startup;
+  a local replay verified failed JSON/exit70 with no provider call. Matches
+  the existing Baseten behavior. Current provider drivers still return Chat
+  bindings only; explicit Responses selection is a remaining adapter gap.
+- [x] Checklist reconciliation: nine unchecked P0–P8 items included the
+  already-proven Qwen base and optional RL execution. Marked the Qwen item
+  complete from pinned config and retained SFT evidence. Seven required
+  unchecked items remain, plus partial proof notes; these overlap across
+  route evaluation, automatic learning, gateway/adapters and public operation.
 - [x] September 6: registered `agent-compare` reads four pinned result/config
   files without calling models or checkers. The saved held-out base/trained
   Qwen pair has matching task, workspace, runtime and execution settings;
