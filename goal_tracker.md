@@ -15,6 +15,14 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6: registered `agent-compare` reads four pinned result/config
+  files without calling models or checkers. The saved held-out base/trained
+  Qwen pair has matching task, workspace, runtime and execution settings;
+  both task verdicts are false. No winner or faster-failure improvement.
+  Private result: `agent-comparison.1l_c8stu/result.json`, SHA
+  `7cbbfc975635062db50242521ce34528c0974e9e58854def11e69e44ea385e4b`.
+  Zero inference/provider calls. User's next direction is captured holdout
+  requests against existing/candidate routes, not another generation layer.
 - [x] September 6 01:46 UTC: fixed the dataset reader's positive-count
   assumption for eval splits. The retained one-example manifest contains
   DEV=1, calibration=0, sealed=0; previously rejected as an identity mismatch.

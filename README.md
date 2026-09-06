@@ -311,6 +311,11 @@ without another model call. `MILK_TRIAL_ID` retrieves an exact earlier trial;
 use a new `MILK_TRIAL_ATTEMPT` only to deliberately run again. Judge the answer
 against the task: an agent finishing does not mean it answered correctly.
 
+`bin/milk run agent-compare` compares two saved task results and their original
+configs without running either model or checker. `bin/milk jobs agent-compare`
+lists the four file/hash pairs to set. Different tasks, code or execution
+settings produce an unknown comparison. Failed answers are not speed wins.
+
 `bin/score-benchmark-task` uses the existing checker hook for a small research
 task: save `comparison.json` and choose a profile in `decision.json`. Its JSON
 task pins baseline/candidate input files and hashes plus throughput/latency

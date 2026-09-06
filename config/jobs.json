@@ -110,6 +110,16 @@
       "stop": false,
       "timeout_env": "MILK_STORE_TIMEOUT_SECONDS"
     },
+    "agent-compare": {
+      "description": "Compare two saved agent-trial results and their original configs. Pin all four files with SHA256. Reads only; never reruns models or task checkers. Reports matched recorded task, workspace, runtime, execution settings and checker verdicts; different settings or missing verdicts mean unknown. Faster failure is not improvement. Keep original trial/provider receipts for model identity and separate evidence for held-out independence. No automatic winner or deployment.",
+      "executable": "bin/agent-compare",
+      "environment": {
+        "required": ["MILK_COMPARE_BASELINE_FILE", "MILK_COMPARE_BASELINE_SHA256", "MILK_COMPARE_BASELINE_CONFIG_FILE", "MILK_COMPARE_BASELINE_CONFIG_SHA256", "MILK_COMPARE_CANDIDATE_FILE", "MILK_COMPARE_CANDIDATE_SHA256", "MILK_COMPARE_CANDIDATE_CONFIG_FILE", "MILK_COMPARE_CANDIDATE_CONFIG_SHA256"],
+        "optional": []
+      },
+      "status": false,
+      "stop": false
+    },
     "agent-score": {
       "description": "Score one saved trial using its repository-owned task checker, without rerunning the model. Pin MILK_TRIAL_RESULT_FILE/SHA256. Keeps the original receipt unchanged and saves a separate scored result with source and checker digests. Repeating the same inputs replays without executing the checker. Checkers must verify actual task artifacts and pin their expected inputs; process exit and a model's report alone do not prove task success.",
       "executable": "bin/agent-score",

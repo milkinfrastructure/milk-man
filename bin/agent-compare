@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""Compare pinned task runs without calling models or executing their checkers."""
+
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from milk_v2.state import redact_message
+
+
+def digest(value):
+    return hashlib.sha256(value).hexdigest()
+
+
+def load(name):
+    prefix = "MILK_COMPARE_" + name.upper()
+    expected = os.environ[prefix + "_SHA256"]
+    with Path(os.environ[prefix + "_FILE"]).expanduser().open("rb") as source:
+        body = source.read(1_048_577)
+    if not re.fullmatch(r"[0-9a-f]{64}", expected) or len(body) > 1_048_576 or digest(body) != expected:
+        raise ValueError(name + " size or digest differs")
+    value = json.loads(body)
+    if not isinstance(value, dict):
+        raise ValueError(name + " must be an object")
+    return value, expected
+
+
+def trial(name):
+    result, result_hash = load(name)
+    config, config_hash = load(name + "_config")
+    if (result.get("schema_version") != "milk.agent-trial-result.v1"
+        or config.get("schema_version") != "milk.agent-trial.v1"
+        or result.get("state") not in {"complete", "failed"}
+        or not re.fullmatch(r"[0-9a-f]{64}", config.get("task_sha256", ""))
+        or result.get("task_sha256") != config["task_sha256"]):
+        raise ValueError(name + " trial/config identity differs")
+    required = ("task_sha256", "workspace_before", "runtime_before", "scope_id", "store", "timeout_seconds", "driver", "checker")
+    inputs = {key: config.get(key) for key in required}
+    inputs["driver"] = {key: value for key, value in config["driver"].items() if key not in {"LLM_API_URL", "LLM_MODEL"}}
+    checker = result.get("checker") or {}
+    verdict = checker.get("verdict") or {}
+    checked = (isinstance(config.get("checker"), dict)
+               and all(checker.get(key) == config["checker"].get(key) for key in ("script", "sha256", "timeout_seconds"))
+               and checker.get("error") is None and checker.get("exit_code") == 0
+               and type(verdict.get("task_correct")) is bool
+               and result.get("task_correct") is verdict["task_correct"])
+    stable_runtime = result.get("runtime_after") == config.get("runtime_before")
+    inputs_known = all(key in config for key in required) and all(
+        isinstance(config.get(key), dict) and re.fullmatch(r"[0-9a-f]{64}", config[key].get("content_sha256", ""))
+        for key in ("workspace_before", "runtime_before"))
+    details = {"result_sha256": result_hash, "config_sha256": config_hash,
+               "task_sha256": config["task_sha256"], "scope_id": config.get("scope_id"),
+               "model": config["driver"].get("LLM_MODEL"), "endpoint": config["driver"].get("LLM_API_URL"),
+               "state": result["state"], "exit_code": result.get("exit_code"),
+               "task_correct": verdict["task_correct"] if checked else None,
+               "checker_valid": checked, "runtime_unchanged": stable_runtime,
+               "elapsed_seconds": result.get("elapsed_seconds"),
+               "observed_model_replies": result.get("observed_model_replies"),
+               "usage": result.get("usage"), "usage_coverage": result.get("usage_coverage"),
+               "task_metrics": verdict.get("metrics", {}) if checked else {}}
+    return inputs, inputs_known and stable_runtime, details
+
+
+def main():
+    if sys.argv[1:] == ["--help"]:
+        print("agent-compare [run]\nPin MILK_COMPARE_BASELINE_FILE/SHA256 and CANDIDATE_FILE/SHA256 to saved agent-trial results, plus BASELINE_CONFIG_FILE/SHA256 and CANDIDATE_CONFIG_FILE/SHA256 to their original configs. Reads only; no model, checker or provider execution. Configs are caller-pinned; keep their original trial and model receipts.")
+        return
+    if sys.argv[1:] not in ([], ["run"]):
+        raise ValueError("usage: agent-compare [run]")
+    a, a_known, baseline = trial("baseline")
+    b, b_known, candidate = trial("candidate")
+    differences = [key for key in a if a[key] != b[key]]
+    matched = a_known and b_known and not differences
+    scored = matched and baseline["checker_valid"] and candidate["checker_valid"]
+    outcome = "unknown"
+    if scored:
+        outcome = {(False, False): "neither_passed", (True, True): "both_passed",
+                   (False, True): "candidate_passed_only", (True, False): "baseline_passed_only"}[
+                       baseline["task_correct"], candidate["task_correct"]]
+    both_passed = scored and baseline["task_correct"] and candidate["task_correct"]
+    before, after = baseline["elapsed_seconds"], candidate["elapsed_seconds"]
+    elapsed_change = None
+    if both_passed and all(type(v) in (int, float) and math.isfinite(v) and v > 0 for v in (before, after)):
+        elapsed_change = round((after / before - 1) * 100, 3)
+    details = {"schema_version": "milk.agent-comparison.v1", "baseline": baseline, "candidate": candidate,
+               "recorded_settings_match": matched, "setting_differences": differences,
+               "outcome": outcome, "candidate_elapsed_change_percent": elapsed_change,
+               "selected_winner": None, "limits": [
+                   "One saved task, not general model quality. Faster failure is not improvement.",
+                   "Configs and results are caller-pinned. Keep original trial and provider receipts.",
+                   "Model artifact identity, external state and held-out independence need separate evidence."]}
+    identity = digest(json.dumps({"baseline": [baseline["result_sha256"], baseline["config_sha256"]],
+                                 "candidate": [candidate["result_sha256"], candidate["config_sha256"]],
+                                 "script": digest(Path(__file__).read_bytes())}, sort_keys=True).encode())
+    print(json.dumps(redact_message({"state": "complete", "identity": identity,
+                                    "inference_calls": 0, "provider_calls": 0, "details": details}),
+                     sort_keys=True, separators=(",", ":"), allow_nan=False))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (KeyError, ValueError, TypeError, AttributeError, OSError) as error:
+        print(json.dumps({"state": "failed", "identity": "agent-comparison", "inference_calls": 0,
+                          "provider_calls": 0, "error": str(error) if isinstance(error, ValueError) and not isinstance(error, json.JSONDecodeError) else type(error).__name__}))
+        raise SystemExit(64)

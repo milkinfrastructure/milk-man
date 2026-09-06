@@ -56,6 +56,11 @@ next-step wording below.
 
 Current frontier:
 
+- [x] Added a read-only `agent-compare` job for saved agent-task results and
+  their pinned original configs. The retained held-out Qwen pair has matching
+  recorded inputs and two failed task checks; no winner or speed improvement.
+  One local registered-job run made zero model/checker/provider calls. This is
+  reusable comparison code, not evidence that the failed student improved.
 - [x] The dataset reader accepts the saved single-eval example, including
   empty calibration/sealed splits. `bin/milk run dataset` now waits for a
   separate training source instead of rejecting the valid eval. One direct
@@ -821,6 +826,20 @@ Acceptance: the agent is a general research and compute operator, not a GLM,
 Build these capabilities with the same scripts, heartbeat, state, and
 optimization loop. Reuse existing R2 objects and historical implementations;
 do not restart parked large generation runs.
+
+Next minimal application path: use the existing source-group train/test split
+on captured conversations. Held-out original requests are sufficient evals;
+synthetic expansion is optional. Compare the existing route and a candidate on
+the same requests, score automatically, save results, and let Milk Man choose
+the next experiment. Keep final held-out data outside both training and tuning.
+Heartbeat counting and milestone summaries remain separate. Validate one saved
+example first; do not create more traffic or training merely to test formatting.
+
+- [ ] Add the missing environment-selected route-evaluation job using retained
+  held-out requests, existing inference clients and object storage. Preserve
+  messages/tools; compare replies automatically and retain exact input/model
+  settings. Reuse saved results without another paid call. No route activation
+  or automatic quality claim from a one-example mechanics check.
 
 - [x] Store each scope's research objective, targets, experiment references,
   next action, and planned wake in object storage through a registered job.
