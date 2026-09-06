@@ -337,6 +337,8 @@ server. Set its model, exact model revision, runtime image and GPU through the
 catalog's `MILK_BASETEN_SERVE_*` settings. Weights mount from Baseten's cache,
 not from the image. A small Qwen deployment has completed inference and shutdown;
 managed Baseten inference remains a separate option.
+An accepted start may precede Baseten's visible status. Keep reading status
+until ready; `stop` also cancels a start that is still pending.
 
 To serve a model trained by Milk, also set `MILK_BASETEN_SERVE_CHECKPOINT_KEY`
 and `MILK_BASETEN_SERVE_CHECKPOINT_SHA256` to its saved model manifest. The usual

@@ -15,6 +15,47 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6, 03:31 UTC: selected full-model SFT stage coverage now links
+  inspected outputs instead of requesting another run. Local generation
+  `759248fa-3c16-5cbf-a130-0db2a32060d0` and dataset
+  `2c7ed446-2b39-5d8d-8737-ed32bb550be8` contain one DEV case only.
+  Native selection proof `native-success-20260905.rlmSlv/proof.json` retains
+  dataset `d71f66b4-f9c5-530d-803b-b24f18ee8f61`: four TRAIN steps, unchanged
+  DEV, and completed four-step H100 job `qzyd88w`, model
+  `74dcd875-ff13-5066-87de-55e3b3ea6219`. Separately, read-only R2 inspection
+  verified c47 dataset `af6004f0-923e-5abd-977f-ed654f5966c6` (`milk.dataset.v3`)
+  against its pinned digest: 1 TRAIN / 50 DEV / 25 calibration / 25 sealed,
+  matching compressed/content hashes and a nonempty 1,038-character TRAIN
+  target from the saved Sol teacher binding. Evaluation group
+  `0859095f-1c49-550b-b6d2-dcbd93e0acb9` links BF16 DEV `bf0e6e88`, dynamic-FP8
+  DEV `d9536695`, static-FP8 DEV `39596cb2`, and dynamic-FP8 sealed `02cc3e05`.
+  All 175 result rows, response hashes, aggregate metrics and ordered DEV
+  case IDs verified; all saved jobs completed with zero recorded errors.
+  Dynamic FP8 reports 187 quantized modules; static FP8 used 25 calibration
+  cases. Existing `candidate-restore.KrHOmb/proof.json` retains serving,
+  fallback, rollback and cleanup for candidate
+  `98a5b561-44d7-559c-9311-1b0a76edc345`. These are named historical mechanics
+  and native SFT runs, not a new combined lineage or task-quality win. No
+  cloud writes, model calls, training or GPU starts for this inspection.
+- [x] September 6: the owned Baseten Responses check found an accepted
+  activation followed by a stale INACTIVE read. No inference was sent; two
+  later reads confirmed zero replicas. The existing serving job now retains
+  start intent, blocks replacing that pending deployment, and cancels it on
+  stop even before status changes. Confirmed stop intent is saved before the
+  follow-up read. Direct execution checked this without provider calls;
+  independent review found no blocker. The corrected check reused deployment
+  `wxe4k60` and reached DEPLOYING. At the user's pause it was cancelled before
+  inference; stop completed and an independent read confirmed INACTIVE/zero
+  replicas. The private wrapper records interrupted execution as `failed`,
+  not a model/protocol failure. Actual Responses inference remains unproven.
+  Chrome
+  refreshed Baseten usage at $35.37. Carry forward $468.48 plus one $5
+  reservation: $473.48 conservatively allocated of $500, not measured spend.
+  The initial stopped attempt and its continuation share this reservation.
+  Results remain private under `baseten-responses.4F4wsp` and
+  `baseten-responses.OImCyC`; no worker remains running. The final result
+  reports zero inference requests and verified zero replicas, SHA-256
+  `522a19022fb6ac14b2f75f0a7d4744463300e8e1a2057576b94fc8609831fa0b`.
 - [x] September 6, 03:17 UTC: fixed Responses context loss in the existing
   `llm` adapter. It requests encrypted reasoning and saves the full output
   items on the private native assistant record; the next call reuses them

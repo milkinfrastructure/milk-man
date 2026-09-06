@@ -8,12 +8,12 @@ Codex edits code directly, finishes one concrete item, verifies the actual
 result, marks its bracket, commits/pushes, and moves to the next unfinished item.
 Keep the complete outcome and P0–P8 acceptance criteria below intact.
 
-## Remaining-work goal — September 5, 2026, 20:12 PDT / September 6, 03:12 UTC
+## Remaining-work goal — September 5, 2026, 20:31 PDT / September 6, 03:31 UTC
 
 Finish the remaining Milk work by implementing code directly: finish
 publication, provider compatibility and owned-model
 task execution, demonstrate useful inference tuning and held-out task quality,
-close the remaining training-path gaps, and let new traffic resume research
+and let new traffic resume research
 without repeating completed work. Use Milk Man to demonstrate autonomous
 execution, not to make Codex's code or UI edits.
 
@@ -29,9 +29,6 @@ execution, not to make Codex's code or UI edits.
 - [ ] **Inference tuning:** complete one autonomous, comparable experiment on
   a representative workload using the current runtime; measure task success,
   latency and throughput together, then retain the measured decision.
-- [ ] **Training-path coverage:** close only missing code or output evidence
-  for the selected full-model SFT recipe. Reuse retained stage outputs; do not
-  add adapter merging or optional RL to satisfy an unrelated checklist.
 - [ ] **Held-out task quality:** make a specific correction based on the
   failed task, compare baseline and candidate on untouched tasks, and establish
   useful improvement before selecting a better model.
@@ -50,6 +47,17 @@ the full scope; older dated sections are history, not active work orders.
 
 ## Completed work and retained attempts
 
+- [x] Selected full-model SFT stage coverage is linked to inspected retained
+  outputs in `goal_tracker.md`: generation, teacher targets, dataset/splits,
+  training, three evaluation branches, serving and cleanup. Read-only R2
+  inspection verified the missing teacher target and 175 evaluation rows.
+  No new training branch or run was needed. These are mechanics receipts
+  across the identified runs, not proof of improved agent task completion.
+- [x] Baseten start/stop now retains pending activation until explicitly
+  stopped, without replacing the provider's observed status. The cancelled
+  Responses check stopped the existing deployment and independently observed
+  INACTIVE/zero replicas. No inference request was sent. Actual owned Responses
+  inference remains open; cancellation is not a provider/model failure.
 - [x] Responses tool turns now retain the provider's output items, including
   reasoning context, for the same URL/model. A changed binding uses visible
   history; Chat receives no internal Responses metadata. Actual local native
@@ -1021,17 +1029,23 @@ example first; do not create more traffic or training merely to test formatting.
   from an actual job observation. The live job and idle checks were observed;
   Chrome displayed the saved 200-exchange summary. Its Latest selection now
   follows new checkpoints, while explicitly selected earlier summaries stay put.
-- [ ] Finish coverage of the selected full-model SFT recipe using existing
+- [x] Finish coverage of the selected full-model SFT recipe using existing
   scripts: eval generation, teacher targets, filtering/deduplication,
   source-group splitting, dataset building, training, quantization,
   evaluation, serving and cleanup. Link each required stage to its retained
   small output; implement only a demonstrated gap.
+  September 6 read-only inspection closed missing output evidence: c47
+  dataset `af6004f0` contains one teacher TRAIN target and 50/25/25 DEV,
+  calibration and sealed rows; evaluation group `0859095f` has three completed
+  DEV branches and completed sealed evaluation. Hashes and 175 output rows
+  match. The ledger links native dataset/SFT and serving/cleanup receipts too.
+  No new execution or task-quality claim is implied by this coverage check.
   The active full-model SFT path already has these jobs except a merge operation,
   which that recipe does not need. Its `merged` directory contains full saved
   weights, not evidence of an adapter merge. Optional text-only RL has internal
   rollouts/rewards; native tool-data RL is not implemented. Do not add either
   branch just to close this broad bundle; select it only for an actual experiment.
-- [ ] Prove each required job with a small, inspected output before increasing
+- [x] Prove each required job with a small, inspected output before increasing
   volume. The prior 100-conversation x 100-case target is one configurable
   experiment, not a core runtime invariant.
 - [x] Keep Qwen3.5-0.8B as the first student workload. SFT is the current

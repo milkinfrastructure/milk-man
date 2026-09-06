@@ -180,6 +180,8 @@ def output(value: dict, record: dict, observed: dict | None, calls: int, *, incl
     else:
         state = "active"
     details = {"provider": "baseten", "plan": value, "observation": observed, "configuration_applied": configured, "retained_state": str(record.get("state_path", ""))}
+    if status == "INACTIVE" and record.get("desired_active"):
+        details["next"] = "Activation was requested but is not visible yet. Read status; do not start inference."
     if status in READY and not configured:
         details["next"] = "run serve-baseten again to apply the selected autoscaling settings; this reuses the existing deployment"
     if include_driver and observed and observed.get("id"):
@@ -198,7 +200,7 @@ def execute(action: str, path: Path, client: baseten.Client) -> dict:
     value = plan() if action == "run" else record.get("plan") or plan()
     if record.get("plan", {}).get("profile_id") not in (None, value["profile_id"]):
         old = observe(client, record["plan"], record)
-        if old["status"] != "INACTIVE" or old.get("active_replica_count") != 0:
+        if record.get("desired_active") or old["status"] != "INACTIVE" or old.get("active_replica_count") != 0:
             raise ValueError("stop the saved Baseten deployment and verify zero replicas before changing profiles")
         record = {}
     record = {**record, "plan": value, "state_path": str(path / "current.json")}
@@ -226,8 +228,9 @@ def execute(action: str, path: Path, client: baseten.Client) -> dict:
         if observed.get("id"):
             record.update(model_id=observed["model_id"], deployment_id=observed["id"])
             if observed["status"] == "INACTIVE":
+                record["desired_active"] = True
                 save(path, record, "activate")
-                client.set_active(record["model_id"], record["deployment_id"], True)
+                record["activation"] = client.set_active(record["model_id"], record["deployment_id"], True)
                 observed = observe(client, value, record)
             if observed.get("autoscaling_settings") is not None and any(
                 observed["autoscaling_settings"].get(key) != expected for key, expected in value["autoscaling"].items()
@@ -239,13 +242,17 @@ def execute(action: str, path: Path, client: baseten.Client) -> dict:
     elif action == "stop":
         if observed.get("id"):
             record.update(model_id=observed["model_id"], deployment_id=observed["id"])
-            if observed["status"] not in {"INACTIVE", "DEACTIVATING"}:
+            if record.get("desired_active") or observed["status"] not in {"INACTIVE", "DEACTIVATING"}:
                 save(path, record, "deactivate")
                 client.set_active(record["model_id"], record["deployment_id"], False)
+                record["desired_active"] = False
+                save(path, record, "deactivated")
                 observed = observe(client, value, record)
             record["observation"] = observed
             save(path, record, "stop")
     result = output(value, record, observed, client.calls, include_driver=action != "stop")
+    if action == "run" and observed["status"] == "INACTIVE" and record.get("activation", {}).get("success"):
+        result["state"] = "active"
     if action == "status" and (seconds := number("LOG_SECONDS", 0, 0)):
         if seconds > 3600:
             raise ValueError("LOG_SECONDS must be at most 3600")
