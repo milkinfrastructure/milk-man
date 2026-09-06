@@ -15,6 +15,21 @@ Status notation:
 
 ## Executive state
 
+- [x] Parlor now enables signed routing from an explicit nonzero
+  `route_revision`, independently of the capture profile. Mechanics without
+  that setting still use their baseline; production still requires it.
+  The built Rust binary accepted a locally signed route, reached a loopback
+  candidate and fell back on its pre-byte failure. All four saved exchanges
+  remained mechanics. No inference, GPU or cloud write occurred. Private
+  check and output: `signed-mechanics.tTIDB8/`. This removes the need to relabel
+  existing mechanics data for a full route check; it is not a quality claim.
+  The existing cached Linux/amd64 scratch build is published and deployed as
+  image `3286d948792c9188470655a978b65283e0e2e414f10502ad640efbce01b9f18f`;
+  Cloudflare version `acb65932-fed5-486a-9e86-1823990a6397`.
+  Deployment supplied no secrets and changed no key binding or route object.
+  Parlor commit `2743c9c`; one live health read returned `ok`, both API
+  endpoints enabled and the capture writer healthy. No live candidate is
+  configured; local routing proof does not imply live candidate acceptance.
 - [x] Parlor's existing operator signer now imports `--proposal-file` with
   `--proposal-sha256`, verifies source identity and converts protocol hashes
   to the gateway's encoding. `--output-dir` saves signed files without S3.
@@ -26,7 +41,7 @@ Status notation:
   route and candidate bindings match Parlor's compact encoding. Private
   state: `route-handoff.4qOW98/`. The source proposal is unchanged; no
   inference, GPU, cloud write, deployed revision or traffic change occurred.
-  This proves offline handoff only. Candidate liveness, production-key
+  This proves offline handoff only. Candidate liveness, exact key-revision
   configuration and live signed-route acceptance remain separate work.
 - [x] The operator restored OpenAI balance. The one-example summary job now
   completed on Astra/Responses at medium with two inference requests. It read

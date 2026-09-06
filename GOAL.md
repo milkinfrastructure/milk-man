@@ -56,6 +56,12 @@ next-step wording below.
 
 Current frontier:
 
+- [x] Removed the coupling between signed routing and the capture profile.
+  A mechanics scope can explicitly set a nonzero `route_revision`; the same
+  signature, revision and candidate checks apply without relabeling its data.
+  The actual Rust gateway passed one local candidate/fallback check, with four
+  mechanics captures and zero inference. The CPU-only Cloudflare image is
+  deployed with existing keys/routes unchanged. No live route was activated.
 - [x] Added the missing saved-proposal input to Parlor's existing operator
   signer. A pinned proposal supplies the exact candidate artifact and protocol
   URLs; the operator still selects scope, revision, share, expiry and key.
