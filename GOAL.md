@@ -56,6 +56,13 @@ next-step wording below.
 
 Current frontier:
 
+- [x] Added the missing saved-proposal input to Parlor's existing operator
+  signer. A pinned proposal supplies the exact candidate artifact and protocol
+  URLs; the operator still selects scope, revision, share, expiry and key.
+  The retained c47 proposal produced signed local route/pointer files; both
+  signatures, pointer hash and gateway-format protocol binding verified.
+  No publication, resource launch or traffic occurred. This is the working
+  proposal-to-signed-file handoff, not live route acceptance or P7 completion.
 - [x] One-example functionality check completed: one unchanged saved mechanics
   conversation, one summary and one generated eval. Astra/Responses at medium
   used four model requests total. The JSON and example calculation were

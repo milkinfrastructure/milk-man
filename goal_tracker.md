@@ -15,6 +15,19 @@ Status notation:
 
 ## Executive state
 
+- [x] Parlor's existing operator signer now imports `--proposal-file` with
+  `--proposal-sha256`, verifies source identity and converts protocol hashes
+  to the gateway's encoding. `--output-dir` saves signed files without S3.
+  Retained c47 proposal `008d3ba1-06f9-53eb-9bb2-d9cd8b10d9ae`, file SHA
+  `aabe50ba1f93350eea472d37a509133bf49baf719299ffc92e3b952f11df31d3`,
+  produced a local 1% route with SHA
+  `b545a28288d5450bcda25baf74b4b13ba22a2c0cf0c22de0bbe23107c3d73f28`.
+  Both Ed25519 signatures independently verified; the pointer matches the
+  route and candidate bindings match Parlor's compact encoding. Private
+  state: `route-handoff.4qOW98/`. The source proposal is unchanged; no
+  inference, GPU, cloud write, deployed revision or traffic change occurred.
+  This proves offline handoff only. Candidate liveness, production-key
+  configuration and live signed-route acceptance remain separate work.
 - [x] The operator restored OpenAI balance. The one-example summary job now
   completed on Astra/Responses at medium with two inference requests. It read
   one unchanged saved mechanics conversation from a private local store and
