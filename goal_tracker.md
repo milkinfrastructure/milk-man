@@ -15,6 +15,24 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6, 03:17 UTC: fixed Responses context loss in the existing
+  `llm` adapter. It requests encrypted reasoning and saves the full output
+  items on the private native assistant record; the next call reuses them
+  only for the same URL/model, without duplicating tool calls. Changed
+  bindings use visible history and Chat strips the internal field. Opaque
+  encrypted context survives redaction unchanged. The actual `bin/man develop`
+  loop made two loopback requests, executed Bash, returned its output and
+  saved the final reply. Three further local requests checked changed model,
+  changed endpoint and Chat. No inference or provider operations. First check
+  compared argument JSON whitespace; corrected to compare parsed arguments,
+  preserving the original failed trajectory. Receipt: private
+  `responses-context.koOWMo/receipt.json`, SHA-256
+  `de85038ac90ca70118d419495b35c9d8b0cec16907e2be1cd1c4839aa754bc53`.
+  Matches [OpenAI's protocol guidance](https://developers.openai.com/cookbook/articles/gpt-oss/verifying-implementations).
+  The retained owned-120B Chat failure parsed six Bash calls and preserved
+  reasoning; it inspected code instead of running checkpoint. This fix does
+  not explain that failure or prove owned-model task quality. No unchanged
+  paid trial was started; live owned Responses checks remain outstanding.
 - [x] September 6, 03:12 UTC: corrected misleading dashboard status and removed
   raw process logs from the conversation. Agent, chat and heartbeat now share
   one state: working green, waiting/paused amber, failed/disconnected red.

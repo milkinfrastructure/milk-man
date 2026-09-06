@@ -149,6 +149,8 @@ bin/man develop \
 ```
 
 This defaults to `gpt-6-astra`, the Responses API, and low reasoning.
+Responses tool calls keep the provider's reasoning context between steps.
+That context stays private and is not sent to a different URL or model.
 The driver uses `bash` to work and `finish` to report completion. For an endpoint without
 function calling, explicitly set `MILK_MAN_TOOL_CALLS=0` to use fenced Bash.
 For native tools, `LLM_TOOL_CHOICE=auto` lets the endpoint choose a tool or a

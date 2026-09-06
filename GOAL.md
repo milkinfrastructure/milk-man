@@ -50,6 +50,13 @@ the full scope; older dated sections are history, not active work orders.
 
 ## Completed work and retained attempts
 
+- [x] Responses tool turns now retain the provider's output items, including
+  reasoning context, for the same URL/model. A changed binding uses visible
+  history; Chat receives no internal Responses metadata. Actual local native
+  Bash execution retained the tool result and final reply across two calls;
+  three binding/mode checks made no inference or provider calls. This repairs
+  Responses continuity, not the prior owned-120B Chat task failure. Actual
+  Responses inference on owned deployments remains open.
 - [x] Research watches now include `readiness/current.json`, which controls
   the next job and is published separately from the summary. An isolated
   retained-object check published that exact pointer after registration:

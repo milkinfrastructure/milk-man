@@ -64,6 +64,10 @@ if mode == "responses":
     for message in messages:
         role = message.get("role")
         content = message.get("content")
+        saved = message.get("_milk_response")
+        if role == "assistant" and isinstance(saved, dict) and saved.get("api_url") == os.environ["LLM_API_URL"] and saved.get("model") == model:
+            items.extend(saved["output"])
+            continue
         if role in {"user", "assistant"} and isinstance(content, str) and content:
             items.append({"role": role, "content": content})
         if role == "assistant":
@@ -74,7 +78,9 @@ if mode == "responses":
             items.append({"type": "function_call_output", "call_id": message["tool_call_id"], "output": content})
     payload = {"model": model, "instructions": system, "input": items}
 else:
-    payload = {"model": model, "messages": [{"role": "system", "content": system}, *messages]}
+    payload = {"model": model, "messages": [{"role": "system", "content": system}, *[
+        {key: value for key, value in message.items() if key != "_milk_response"} for message in messages
+    ]]}
 effort = os.environ.get("LLM_REASONING_EFFORT", "")
 if effort:
     if effort not in {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}:
@@ -92,6 +98,8 @@ if tools_file:
         raise SystemExit("llm: LLM_TOOL_CHOICE must be auto or required")
     payload["tool_choice"] = choice
     payload["parallel_tool_calls"] = False
+    if mode == "responses":
+        payload["include"] = ["reasoning.encrypted_content"]
     if mode == "chat_completions":
         payload["temperature"] = 0
 maximum = int(os.environ.get("LLM_MAX_TOKENS", "16384"))
@@ -177,6 +185,8 @@ if os.environ.get("LLM_API_MODE", "chat_completions") == "responses":
     message = {"role": "assistant", "content": "".join(texts) or None}
     if tool_calls:
         message["tool_calls"] = tool_calls
+        # Keep provider context intact between tools, only for this binding.
+        message["_milk_response"] = {"api_url": os.environ["LLM_API_URL"], "model": os.environ["LLM_MODEL"], "output": value["output"]}
 else:
     try:
         message = value["choices"][0]["message"]

@@ -67,7 +67,7 @@ def redact_message(value: object, key: str = "") -> object:
     if isinstance(value, list):
         return [redact_message(item) for item in value]
     if isinstance(value, str):
-        if key in {"id", "tool_call_id", "name", "role", "type"}:
+        if key in {"id", "tool_call_id", "name", "role", "type", "encrypted_content"}:
             return value
         if key == "arguments":
             try:
