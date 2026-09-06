@@ -771,7 +771,6 @@ def _case_source_matches(case: object, split: str, revision: dict) -> bool:
         and source.get("source_group_sha256") == case.get("source_group_sha256")
         and source.get("selection") == case.get("selection")
         and source.get("tail_reason") == case.get("tail_reason")
-        and source.get("operation") == case.get("source_operation")
         and ("reference" if source.get("oracle") == "schema" else source.get("oracle")) == case.get("oracle")
         and case.get("operation") == eval_plan.GENERATION_OPERATIONS[source_example_index % len(eval_plan.GENERATION_OPERATIONS)]
         and case.get("source_example_index") == source_example_index

@@ -74,6 +74,7 @@ BINDING_ENVIRONMENTS = {
             "MILK_SUMMARY_TAIL_SAMPLE",
             "MILK_CLASSIFIER_TEXT_BYTES",
             "MILK_SUMMARY_MAX_OUTPUT_TOKENS",
+            "MILK_SUMMARY_MAX_TURNS",
             "MILK_EVAL_MIN_CAPTURES",
             "MILK_EVAL_REPRESENTATIVE_CASES",
             "MILK_EVAL_TAIL_CASES",
@@ -92,6 +93,7 @@ BINDING_ENVIRONMENTS = {
             "MILK_EVAL_SHARD_CASES",
             "MILK_EVAL_PRECOMPUTE_SHARD",
             "MILK_EVAL_MAX_OUTPUT_TOKENS",
+            "MILK_EVAL_MAX_TURNS",
         ),
     },
     "teacher": {

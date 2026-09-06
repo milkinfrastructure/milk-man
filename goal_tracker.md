@@ -15,6 +15,31 @@ Status notation:
 
 ## Executive state
 
+- [x] The operator restored OpenAI balance. The one-example summary job now
+  completed on Astra/Responses at medium with two inference requests. It read
+  one unchanged saved mechanics conversation from a private local store and
+  saved one summary, label and readiness result. Cloud pointers are unchanged.
+  Summary UUID `8798c478-a3f1-5df7-9808-585a2ea17c47`, SHA
+  `1b07d3902cbef3424f88972ab76ad7ca241a91c84b9146c63086fee867d7c6d8`.
+- [x] One eval completed from that summary: UUID
+  `759248fa-3c16-5cbf-a130-0db2a32060d0`; manifest SHA
+  `aeb41678d444034a2b582919791199c2d7e30f285051ab75e4b24f20413b3f98`.
+  Its customer-support refund example has correct arithmetic and a 136-word
+  reference answer. The saved JSON has one case with source links and the
+  expected input/reference fields. This is formatting and sample review,
+  not broad quality evidence. State is private: `one-example.b1jFwi/`.
+- [x] Fixed `stored eval shard identity differs`: the reader required
+  `source_operation`, which the writer never included. Removed that redundant
+  comparison; retained source hashes, linked revision and operation-schedule
+  checks. Finalized the exact saved shard with inference disabled; zero new
+  calls and no object replacement. The original failed CLI result reported
+  zero calls, but its saved receipt proves two eval requests had occurred;
+  receipt totals are authoritative for this run.
+- [x] Added optional two-turn limits to existing summary/eval jobs: read input,
+  commit output, no repair turn. Existing defaults remain unchanged. Total
+  for both outputs: four model requests, 9,539 input and 1,304 output tokens.
+  No extra model-based validator, test files, dependency or runner was added.
+  Generation stopped; no new traffic, training, GPU, route or cloud writes.
 - [x] Driver failures now append `driver-error` through the existing trajectory
   writer before exiting. The existing dashboard displays it as a visible
   update; no frontend dependency, new retry loop or heartbeat change was needed.
@@ -25,12 +50,12 @@ Status notation:
   no reasoning, Bash or final event. A private response sentinel appeared in
   neither saved history nor stderr. Replay state: `driver-error.yBSyh2/`.
   No model/provider call or production write was made by these checks.
-- [!] The live 23:08 credit error remains unresolved. Codex appended a clearly
+- [~] The earlier live 23:08 credit error was retained. Codex appended a clearly
   labelled copy of that existing failure to its original trajectory; Chrome
   now displays it without unfolding logs. This was retained-error display,
   not a new inference attempt. Owner `4017` remains failed at medium reasoning
   and awaits input. The OpenAI billing page reports an invalidated login, so
-  current balance could not be read without the operator signing in again.
+  balance could not be read at that time without the operator signing in again.
   No provider switch, payment, retry or GPU launch was attempted.
 - [x] Current-runtime P7 selection repaired: `eval.current_matches` now keeps
   generation-version matching separate from saved-artifact selection. Dataset
@@ -49,14 +74,13 @@ Status notation:
   The saved evaluation policy and Qwen base match current configuration;
   `route._inputs` accepts the sealed dynamic-FP8 winner. This proves selection,
   not provider liveness, model improvement or production qualification.
-- [!] Chrome dashboard task submitted at 23:08:08 UTC failed before any Bash
+- [~] Chrome dashboard task submitted at 23:08:08 UTC failed before any Bash
   execution. The retained run log says HTTP 429, `insufficient_quota`,
-  `credit_balance_exhausted`: OpenAI has no remaining credits. Owner `4017`
+  `credit_balance_exhausted`: OpenAI had no remaining credits then. Owner `4017`
   reports failed / exit 70 with Astra medium through Parlor. There is no new
   reasoning result, generation, GPU job or route write. Do not classify this
-  as throttling, retry it, or silently select another provider. Resume the
-  read-only demonstration after the operator restores the driver's balance.
-  Dashboard Chrome tab `1025730670` remains open with the actual failed state.
+  as throttling or silently select another provider. The newer successful
+  summary above proves current job API access, not a new parent-driver task.
 - [x] User-directed correction: keep new work on the current Milk Man runtime;
   old measurements are historical references, not a reason to run old code.
   The `capture-learning.o1Ofod` trial was stopped during Baseten startup before

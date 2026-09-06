@@ -514,6 +514,19 @@ never starts a provider job, and failure in one provider does not select another
 Milk Man writes unsigned proposals only; the operator-controlled Milk Parlor
 release path signs and publishes routes.
 
+For a small format check, use a private local store containing one completed,
+tool-free text DEV conversation with its original mechanics profile, scope
+and object bytes. Set
+`MILK_SUMMARY_THRESHOLDS=1`, `MILK_SUMMARY_REPRESENTATIVE_SAMPLE=1`,
+`MILK_SUMMARY_TAIL_SAMPLE=0`, `MILK_EVAL_REPRESENTATIVE_CASES=1`,
+`MILK_EVAL_TAIL_CASES=0`, `MILK_EVAL_SOURCE_CONVERSATIONS=1`, and
+`MILK_CASES_PER_CONVERSATION=1`. Run `bin/milk run summary`, inspect its saved
+JSON, then run `bin/milk run eval` once. Do not use `operate --once` for this
+check: it can continue into training. Set `MILK_SUMMARY_MAX_TURNS=2` and
+`MILK_EVAL_MAX_TURNS=2` to allow only input-read then output-commit, with no
+repair turn. Defaults remain four and three turns. Keep production readiness
+settings unchanged; this sample is a format check, not a quality measurement.
+
 ## Storage and job environment
 
 Every store uses:

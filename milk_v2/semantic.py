@@ -9,7 +9,7 @@ import tempfile
 import time
 import urllib.parse
 
-from .summary import canonical, digest
+from .summary import canonical, digest, _integer_environment
 
 
 class ProviderError(RuntimeError):
@@ -85,6 +85,7 @@ def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: d
     endpoint, model, api_key, api_mode = _endpoint(prefix)
     timeout = _timeout(timeout_env)
     maximum = _maximum(prefix)
+    max_turns = _integer_environment("MILK_EVAL_MAX_TURNS", 3, 2, 3) if prefix == "EVAL" else 3
     strict_tools = job == "eval"
     input_sha256 = digest(input_value)
     messages = [{
@@ -109,7 +110,7 @@ def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: d
         system_file, messages_file, tools_file = (root / name for name in ("system", "messages.json", "tools.json"))
         system_file.write_text(prompt)
         os.chmod(system_file, 0o600)
-        for turn in range(1, 4):
+        for turn in range(1, max_turns + 1):
             remaining = timeout - int(time.monotonic() - started)
             if remaining < 1:
                 raise ProviderError(f"{job} provider session timed out", turn - 1)
@@ -224,4 +225,4 @@ def call(job: str, prefix: str, prompt: str, input_value: dict, result_schema: d
                     "output_sha256": digest(committed),
                 }
                 return committed, receipt
-    raise ProviderError(f"{job} provider did not commit within three turns: tools={','.join(last_tools)} rejection={last_rejection}", 3)
+    raise ProviderError(f"{job} provider did not commit within {max_turns} turns: tools={','.join(last_tools)} rejection={last_rejection}", max_turns)

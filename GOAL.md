@@ -10,6 +10,18 @@ Keep the complete outcome and P0–P8 acceptance criteria below intact.
 
 Execution order, refreshed September 5 after the happy-path correction:
 
+Immediate operator instruction: validate one saved conversation through one
+summary and one generated eval, inspect their JSON, and stop generation. Use
+the existing jobs with one-example environment settings and no repair turns.
+Keep the original capture unchanged in a private local store; do not advance
+production pointers. No new traffic, bulk generation, training, GPUs, route
+activation or repeated production checks for this step. Fix concrete failures
+directly, then commit the minimal working code. This proves functionality and
+formatting, not model quality or completion of the broader outcome below.
+The operator reports adding OpenAI balance; verify access through useful work,
+not a separate credit probe. This instruction takes precedence over the older
+next-step wording below.
+
 1. Keep Astra through Parlor as the working Milk Man driver. An infrastructure
    model does not have to replace the driver or execute Bash before Milk Man
    can use it. Preserve the failed driver trials; do not make another driver
@@ -44,21 +56,29 @@ Execution order, refreshed September 5 after the happy-path correction:
 
 Current frontier:
 
+- [x] One-example functionality check completed: one unchanged saved mechanics
+  conversation, one summary and one generated eval. Astra/Responses at medium
+  used four model requests total. The JSON and example calculation were
+  inspected. Fixed a reader check for `source_operation`, which the case
+  writer never persisted; the saved eval then finalized with zero new
+  inference. Source hashes and operation checks remain. All new objects are
+  private/local; no cloud pointer, GPU, training or route changed. Generation
+  is stopped. Do not repeat this sample or expand its volume for validation.
 - [x] Current code can select the retained 100-case mechanics dataset, trained
   model, sealed dynamic-FP8 evaluation and unsigned proposal without rerunning
   generation. The saved v24 artifacts pass their exact hashes and linked-input
   checks; generating new data still requires the current v29 contract. Direct
   R2 execution made zero inference/provider calls and writes.
-- [!] The Chrome-requested Milk Man verification failed before Bash with
+- [~] The Chrome-requested Milk Man verification failed before Bash with
   OpenAI `credit_balance_exhausted`. Astra remains at medium through Parlor;
-  no fallback or retry was launched. Restore the driver's OpenAI balance to
-  demonstrate this selection through Milk Man, then continue signed routing.
+  no fallback or retry was launched. The operator now reports added balance;
+  the one-summary/one-eval example above has now verified job API access.
   The direct code fix is proven; this agent turn and route activation are not.
 - [x] Failed driver calls now save a visible conversation error and preserve
   their exit code, without inventing a final answer or retrying. Both local
   call modes replayed HTTP 429 with no provider access or Bash execution;
-  Chrome shows the retained live credit error. No balance has been restored
-  or new live task completed by this check.
+  Chrome shows the retained live credit error. That check itself restored no
+  balance and completed no new live task.
 - [x] Responsive landing and docs are published. Do not reopen their design.
 - [x] Positive native-data preparation and four-step Qwen training completed.
 - [!] The new checkpoint failed its six-reply task check: no requested answer.

@@ -794,6 +794,7 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
         raise SummaryError("MILK_SUMMARY_API_MODE must be chat_completions or responses")
     endpoint = base + ("" if parsed.path.rstrip("/") == "/v1" else "/v1") + ("/responses" if api_mode == "responses" else "/chat/completions")
     timeout = _integer_environment("MILK_SUMMARY_TIMEOUT_SECONDS", 120, 1, 3600)
+    max_turns = _integer_environment("MILK_SUMMARY_MAX_TURNS", 4, 2, 4)
     input_sha256 = digest(input_value)
     rows = input_value.get("rows")
     if (
@@ -827,7 +828,7 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
         tools_file.write_bytes(canonical(_session_tools(len(rows))))
         os.chmod(system_file, 0o600)
         os.chmod(tools_file, 0o600)
-        for turn in range(1, 5):
+        for turn in range(1, max_turns + 1):
             remaining = timeout - int(time.monotonic() - started)
             if remaining < 1:
                 raise ProviderError("summary provider session timed out")
@@ -941,8 +942,8 @@ def _provider_call(prompt: str, input_value: dict) -> tuple[dict, dict]:
                 }
                 return committed, receipt
     raise ProviderError(
-        f"summary provider did not commit within four turns: tools={','.join(last_tools)} rejection={last_rejection}",
-        inference_calls=4,
+        f"summary provider did not commit within {max_turns} turns: tools={','.join(last_tools)} rejection={last_rejection}",
+        inference_calls=max_turns,
     )
 
 
