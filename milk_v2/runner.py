@@ -102,8 +102,15 @@ def _parse(argv: list[str]) -> tuple[str, str | None, str | None]:
 
 
 def _catalog(runtime, name: str | None = None) -> dict:
+    if name is None:
+        return {
+            "schema_version": "milk.job-index.v1",
+            "jobs": [{"name": job.name, "description": (job.description or job.name).partition(". ")[0],
+                      "actions": list(job.commands)} for job in runtime.jobs.values()],
+            "next": "milk jobs NAME shows commands and required environment names",
+        }
     rows = []
-    for job in (runtime.job(name),) if name is not None else runtime.jobs.values():
+    for job in (runtime.job(name),):
         required = list(job.environment_required)
         optional = list(job.environment_optional)
         for binding in job.bindings:

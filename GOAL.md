@@ -47,6 +47,12 @@ the full scope; older dated sections are history, not active work orders.
 
 ## Completed work and retained attempts
 
+- [x] Job discovery now returns a compact index: all 27 names, short
+  descriptions and supported actions in 3,214 bytes instead of the 25,843-byte
+  full catalog. `jobs NAME` still returns the complete contract. Actual CLI
+  checks confirmed every job and the pinned-checkpoint settings without model
+  or provider calls. The failed 120B trial read the source config directly;
+  this usability fix does not prove that task now completes.
 - [x] Selected full-model SFT stage coverage is linked to inspected retained
   outputs in `goal_tracker.md`: generation, teacher targets, dataset/splits,
   training, three evaluation branches, serving and cleanup. Read-only R2

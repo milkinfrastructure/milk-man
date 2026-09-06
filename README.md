@@ -256,8 +256,9 @@ bin/milk jobs serve-modal
 ```
 
 Run these commands directly from Bash while developing; Milk Man calls the
-same scripts. `bin/milk jobs` returns every registered job, its exact commands,
-and the required and optional environment names for starting a run. Status and stop
+same scripts. `bin/milk jobs` lists job names, short descriptions and actions.
+Use `bin/milk jobs NAME` for its exact commands and required or optional
+environment names for starting a run. Status and stop
 commands use saved resource settings. The catalog can include built-in jobs
 and repository-owned executable jobs from [`config/jobs.json`](config/jobs.json).
 The `serve-modal` executable job has deployed Qwen, served three correct

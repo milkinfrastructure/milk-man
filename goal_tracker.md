@@ -15,6 +15,18 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6: compact job discovery shipped through the existing CLI,
+  not another tool or service. `bin/milk jobs` now returns 3,214 bytes with all
+  27 job names, first-sentence descriptions and exact supported actions;
+  its previous full-contract output was 25,843 bytes. Named lookup keeps the
+  full commands and environment contract. Actual CLI execution and all 27
+  named contracts checked; no provider, model or storage operations. Dashboard
+  reads configuration independently and is unchanged. The retained 120B
+  checkpoint trial executed six valid Bash calls but only read source files;
+  it never ran checkpoint. Existing job/budget guidance predates that run.
+  This makes supported discovery fit the context window, but does not repair
+  the exact source-dump path or prove task completion. Preserve that failure;
+  any explicitly guided task is a new task, not same-task improvement.
 - [x] September 6, 03:31 UTC: selected full-model SFT stage coverage now links
   inspected outputs instead of requesting another run. Local generation
   `759248fa-3c16-5cbf-a130-0db2a32060d0` and dataset
