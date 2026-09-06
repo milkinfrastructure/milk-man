@@ -340,6 +340,7 @@ def main() -> None:
                 prompt = "Resume the interrupted task: " + objective(value) + "\nInspect saved outputs and existing resources first; do not duplicate completed work."
             elif isinstance(pending, str) and pending.strip():
                 pending = pending.strip()
+                value["last_instruction"] = pending
                 if new_task or not value.get("task"):
                     value["task"] = pending
                     value.pop("brief", None)

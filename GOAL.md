@@ -56,6 +56,16 @@ next-step wording below.
 
 Current frontier:
 
+- [x] Fixed the dashboard's stale instruction display. A follow-up hidden in
+  saved task context is extracted before truncation and shown as the latest
+  instruction; new heartbeat turns retain it after completion. Original task
+  context stays expandable. Replies are explicitly saved reports, not live
+  cleanup observations; process log lines no longer count as progress updates.
+  Chrome shows the actual candidate-restore instruction, its reply and the
+  unchanged idle Astra/medium owner. A local tick/finish check preserved the
+  instruction without changing the execution prompt. No model/provider call,
+  new data, history rewrite, dependency or fixture suite. This finishes the
+  task-display repair, not every remaining P7/P8 acceptance criterion.
 - [x] The retained c47 mechanics lineage now has a live signed-route proof.
   Chrome-prompted Astra Milk Man restored its saved Modal candidate through
   `candidate-modal`; the existing job also supplies live status and stop.
@@ -68,9 +78,8 @@ Current frontier:
   Seven short gateway replies and four Astra/medium driver calls; no new
   summaries, evals or training. Receipt SHA `959dab2d453db57535f127393244d3d371f2ab7c4c101f5ece4bc9d6dcc855c7`.
   This closes the routing mechanics requirement below, not model improvement.
-  Next: finish P8's local dashboard task/result/cleanup display from retained
-  files. Inspect current state once, fix a concrete display issue directly,
-  and verify in Chrome without new inference, traffic, generation or GPUs.
+  The follow-up P8 task-display repair is complete above. Continue remaining
+  P7/P8 requirements without repeating generation or this routing proof.
 - [x] Removed the coupling between signed routing and the capture profile.
   A mechanics scope can explicitly set a nonzero `route_revision`; the same
   signature, revision and candidate checks apply without relabeling its data.

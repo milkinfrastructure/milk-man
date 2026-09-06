@@ -143,6 +143,17 @@ def _current_state() -> tuple[dict, Path, Path]:
     return {**current, "workspaces": workspaces}, trajectory, memory
 
 
+def _prompt_context(content: str) -> tuple[str, bool]:
+    resumed = content.startswith(("Continue the saved task:", "Resume the interrupted task:"))
+    if not resumed:
+        return content, False
+    instruction = content.partition("\nLatest operator instruction: ")[2]
+    for suffix in ("\nScheduled review is due.", "\nStatus changed: ",
+                   "\nInspect saved outputs and existing resources first;"):
+        instruction = instruction.split(suffix, 1)[0]
+    return instruction.strip(), True
+
+
 def _man_state(include_metadata: bool = True) -> dict:
     try:
         current, trajectory, memory = _current_state()
@@ -214,16 +225,25 @@ def _man_state(include_metadata: bool = True) -> dict:
     events = _tail(trajectory, 200) if trajectory else []
     prompts = [index for index, event in enumerate(events) if event.get("type") == "prompt"]
     recent_start = prompts[-3] if len(prompts) >= 3 else 0
+    last_instruction = _redact(pulse.get("brief") or pulse.get("task"))
     activity = []
     for value in events[recent_start:]:
         kind = str(value.get("type", "event"))[:32]
         if kind == "trajectory":
             continue
         content = _redact(value.get("content"))
+        context = {}
+        if kind == "prompt":
+            instruction, resumed = _prompt_context(content)
+            if instruction:
+                last_instruction = instruction
+            context = {"instruction": instruction[:16384], "resumed": resumed}
         if kind == "shell-output":
             command = "\n".join(_redact(value.get("command")).splitlines()[:6])
             content = f"$ {command}\n{content[-1800:]}\nexit {value.get('exit', '?')}"
-        activity.append({"type": kind, "ts": str(value.get("ts", ""))[11:19], "content": content[:2400]})
+        limit = 16384 if kind in {"prompt", "final"} else 2400
+        activity.append({"type": kind, "ts": str(value.get("ts", ""))[11:19],
+                         "content": content[:limit], "truncated": len(content) > limit, **context})
     with PROCESS_LOG_LOCK:
         activity.extend(PROCESS_LOG)
     try:
@@ -262,6 +282,7 @@ def _man_state(include_metadata: bool = True) -> dict:
         "queued": queued,
         "last_exit_code": last_exit_code,
         "trajectory_id": current.get("trajectory_id"),
+        "last_instruction": _redact(pulse.get("last_instruction") or last_instruction)[:16384],
         "driver": {**driver, "source": driver_source},
         "local_jobs": local_jobs,
         "workspaces": workspaces,

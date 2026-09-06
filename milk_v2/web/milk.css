@@ -93,7 +93,6 @@ header > a { color: var(--white); font-size: 14px; text-underline-offset: .25rem
 .current-work small { font-size: 14px; }
 .current-work strong { font-weight: normal; overflow-wrap: anywhere; }
 .current-work > span, .heartbeat > span { font-size: 14px; }
-#current-instruction { border-left: 2px solid var(--pink); padding-left: .6rem; }
 .driver-strip { display: grid; gap: .25rem; padding-top: .75rem; font-size: 14px; overflow-wrap: anywhere; }
 .driver-strip .field-heading { display: flex; align-items: center; justify-content: space-between; gap: .4rem; }
 .desk-note { display: block; padding-top: .75rem; border-top: 1px solid var(--white); font-size: 14px; }

@@ -15,6 +15,19 @@ Status notation:
 
 ## Executive state
 
+- [x] September 6 01:42 UTC: dashboard task display repaired directly.
+  `heartbeat` preserves the last consumed instruction after finish. Dashboard
+  extracts a retained follow-up before its display limit, distinguishes task
+  context from a newly authored message, and shows full instruction details.
+  Prompt/reply display allows 16,384 characters and labels any truncation.
+  Saved replies are not live resource checks; 77 retained process lines now
+  say log lines, not progress updates. Chrome tab `1025730703` confirmed the
+  actual candidate-restore instruction, expanded details and saved result.
+  Only dashboard PID 3843 was restarted, using the existing wrapper in
+  `dashboard-instructions.KP1GIB/`; heartbeat owner 4017 stayed idle on
+  Astra/medium. Retained prompts and isolated tick/finish checked without
+  model/provider calls. No live trajectory rewrite; its SHA remained
+  `d0105a3c183746d0263de279637cc05a2c804ca431ebdbf8b48f7d862f41619d`.
 - [x] September 6: the saved c47 lineage completed live signed routing without
   new summaries, evals or training. Added `candidate-modal` to the existing
   executable job catalog: reuse exact saved candidate/model hashes, start,

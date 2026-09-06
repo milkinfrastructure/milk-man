@@ -788,12 +788,10 @@ function renderMan(man) {
   el("summary-job-checked").textContent = summaryJob.checked_at
     ? "Last check " + new Date(summaryJob.checked_at * 1000).toLocaleTimeString() + (summaryJob.error ? " · " + summaryJob.error : "") : "";
   document.body.dataset.agentState = workActive ? "working" : heartbeatOnline ? heartbeatState : "disconnected";
-  const task = (pulse.task || "No task saved yet.").replace(/^Continue the saved task:\s*/, "");
-  el("task-label").textContent = workActive || (heartbeatOnline && pulse.state === "waiting") ? "current task" : "last saved instruction";
+  const task = man.last_instruction || pulse.brief || pulse.task || "No task saved yet.";
+  el("task-label").textContent = workActive || (heartbeatOnline && pulse.state === "waiting") ? "current instruction" : "last instruction";
   const taskPreview = task.split(/\n|(?<=[.!?])\s/)[0];
   el("current-work").textContent = taskPreview.length > 160 ? taskPreview.slice(0, 160) + "…" : taskPreview;
-  el("current-instruction").hidden = !pulse.brief || pulse.brief === pulse.task;
-  el("current-instruction").textContent = pulse.brief ? "Latest instruction: " + pulse.brief.split(/\n|(?<=[.!?])\s/)[0].slice(0, 220) : "";
   el("current-work-note").textContent = !heartbeatOnline ? "The task is saved, but no heartbeat owner is connected."
     : workActive ? (jobs ? "Running: " + jobNames + "." : "Working through the task. New replies appear below.")
     : pulse.state === "waiting" ? pulse.watch_state === "unknown"
@@ -820,9 +818,9 @@ function renderMan(man) {
     target.dateTime = stamp ? new Date(stamp * 1000).toISOString() : "";
   }
   el("heartbeat-count").textContent = (pulse.turns || 0) + " work sessions · " + (pulse.polls || 0) + " idle checks";
-  el("heartbeat-task").textContent = pulse.task || "No task saved yet.";
-  el("heartbeat-brief").hidden = !pulse.brief;
-  el("heartbeat-brief").textContent = pulse.brief ? "Latest instruction: " + pulse.brief : "";
+  el("heartbeat-task").textContent = pulse.task ? "Saved task: " + pulse.task : "No task saved yet.";
+  el("heartbeat-brief").hidden = !task || task === pulse.task;
+  el("heartbeat-brief").textContent = "Latest instruction: " + task;
   el("conversation-state").textContent = (man.online ? labels[state] || state : "agent offline") + (state === "failed" && Number.isInteger(man.last_exit_code) ? " · exit " + man.last_exit_code : "");
   el("conversation-state").title = pulse.checked_at ? "Heartbeat last checked " + new Date(pulse.checked_at * 1000).toLocaleString() + ". Unchanged idle checks use no model tokens." : "Heartbeat starts with your next task. Closing this page does not stop it.";
   if (!runLoading) {
@@ -857,15 +855,23 @@ function renderMan(man) {
   const opened = new Set(Array.from(target.querySelectorAll("details[open]"), value => value.dataset.key));
   target.replaceChildren();
   if (!man.activity.length) target.append(node("article", "message milk-man", "No conversation yet."));
+  let shownInstruction = "";
   for (let index = 0; index < man.activity.length;) {
     const event = man.activity[index];
-    if (event.type === "prompt" && event.content.startsWith("Continue the saved task:")) {
+    if (event.type === "prompt" && event.resumed) {
+      if (event.instruction && event.instruction !== shownInstruction) {
+        const instruction = node("article", "message you");
+        instruction.append(node("b", "", "Instruction used"), node("p", "", event.instruction));
+        target.append(instruction);
+        shownInstruction = event.instruction;
+      }
       const resumed = node("details", "resume-note");
       resumed.dataset.key = "resume:" + index + ":" + event.ts;
       resumed.open = opened.has(resumed.dataset.key);
-      const title = node("summary", "", "Task resumed");
+      const title = node("summary", "", "Task context");
       if (event.ts) title.append(node("time", "", event.ts + " UTC"));
       resumed.append(title, node("pre", "", event.content));
+      if (event.truncated) resumed.append(node("small", "", "Display shortened. Full text is saved in the session."));
       target.append(resumed);
       index++;
       continue;
@@ -877,7 +883,8 @@ function renderMan(man) {
       message.dataset.key = "work:" + index + ":" + (event.ts || event.type);
       message.open = opened.has(message.dataset.key);
       const commands = group.filter(value => value.type === "shell-output").length;
-      const updates = group.length - commands;
+      const logs = group.filter(value => value.type === "process-output").length;
+      const updates = group.length - commands - logs;
       const failures = group.filter(value => value.type === "shell-output" && /\nexit (?!0\s*$)\S+\s*$/.test(value.content)).length;
       const update = group.filter(value => !["shell-output", "process-output"].includes(value.type)).map(value => value.content.split("```")[0].trim().split(/\n\s*\n/)[0]).filter(Boolean).at(-1);
       if (update) {
@@ -886,7 +893,7 @@ function renderMan(man) {
         target.append(preview);
       }
       const heading = node("summary", "", "Work details");
-      heading.append(node("small", "", [commands ? commands + " command" + (commands === 1 ? "" : "s") : "", updates ? updates + " update" + (updates === 1 ? "" : "s") : "", failures ? failures + " nonzero exit" + (failures === 1 ? "" : "s") : ""].filter(Boolean).join(" · ")));
+      heading.append(node("small", "", [commands ? commands + " command" + (commands === 1 ? "" : "s") : "", updates ? updates + " update" + (updates === 1 ? "" : "s") : "", logs ? logs + " log line" + (logs === 1 ? "" : "s") : "", failures ? failures + " nonzero exit" + (failures === 1 ? "" : "s") : ""].filter(Boolean).join(" · ")));
       message.append(heading);
       group.forEach((entry, part) => {
         const detail = node("details", "work-entry");
@@ -904,9 +911,11 @@ function renderMan(man) {
       continue;
     }
     const role = event.type === "prompt" ? "you" : "milk-man";
+    if (role === "you") shownInstruction = event.content;
     const message = node("article", "message " + role + (event.type === "final" ? " result" : ""));
     const heading = node("div", "message-heading");
-    heading.append(node("b", "", role === "you" ? "You" : "Milk Man"));
+    heading.append(node("b", "", role === "you" ? "You" : "Milk Man · saved reply"));
+    if (event.type === "final") heading.title = "Saved when this turn finished. This is not a live resource or cleanup check.";
     if (event.ts) heading.append(node("time", "", event.ts + " UTC"));
     message.append(heading);
     if (role === "you" && event.content.length > 500) {
@@ -914,6 +923,7 @@ function renderMan(man) {
       full.append(node("summary", "", "Full instruction"), node("pre", "", event.content));
       message.append(node("p", "", event.content.slice(0, 300) + "…"), full);
     } else message.append(event.type === "final" ? replyBody(event.content) : node("p", "", event.content));
+    if (event.truncated) message.append(node("small", "", "Display shortened. Full text is saved in the session."));
     message.querySelectorAll("details").forEach((detail, part) => {
       detail.dataset.key = index + ":" + event.ts + ":reply:" + part;
       detail.open = opened.has(detail.dataset.key);
